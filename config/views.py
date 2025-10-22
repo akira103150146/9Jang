@@ -8,3 +8,5 @@ def index(request):
     在 SSR 架構中，這是前端路由的單一進入點。
     """
     return render(request, 'index.html')
+def tuition(request):
+    return render(request, 'tuition.html')

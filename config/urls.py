@@ -21,6 +21,7 @@ from . import views # 導入剛剛新增的 views.py
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.index, name='index'),
+    path('tuition/', views.tuition, name='tuition'),  # 新增學費頁面的路由
     path('api/account/', include('account.urls')),  # 包含 accounts 應用程式的 URL
     #path('api/cramschool', include('cramschool.urls')),  # 包含 cramschool
 ]
