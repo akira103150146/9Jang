@@ -16,9 +16,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from . import views # 導入剛剛新增的 views.py
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('', views.index, name='index'),
     path('api/account/', include('account.urls')),  # 包含 accounts 應用程式的 URL
     #path('api/cramschool', include('cramschool.urls')),  # 包含 cramschool
 ]

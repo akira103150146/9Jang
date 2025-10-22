@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -53,6 +53,11 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'config.urls'
+# 告訴 Django 在哪裡尋找靜態檔案 (例如：CSS, JS, 圖片)
+STATICFILES_DIRS = [
+    # 假設你的 Vue build 輸出路徑是 frontend/dist 或 frontend/build
+    os.path.join(BASE_DIR, "frontend/dist/static"), # 根據你的前端打包結果調整路徑
+]
 
 TEMPLATES = [
     {
@@ -66,6 +71,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
             ],
         },
+        'DIRS': [os.path.join(BASE_DIR, 'templates')], # 確保 templates 資料夾在 DIRS 列表中
     },
 ]
 
@@ -123,3 +129,5 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
