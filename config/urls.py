@@ -24,4 +24,5 @@ urlpatterns = [
     path('tuition/', views.tuition, name='tuition'),  # 新增學費頁面的路由
     path('api/account/', include('account.urls')),  # 包含 accounts 應用程式的 URL
     #path('api/cramschool', include('cramschool.urls')),  # 包含 cramschool
+    path('cramschool/', include('cramschool.urls')), # 確保這裡指向您的新 App
 ]

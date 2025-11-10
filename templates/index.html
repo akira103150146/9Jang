@@ -11,6 +11,12 @@
 <body>
     <div id="app">
         <h1>歡迎來到 Django Vue 整合專案</h1>
+        <h1>所有使用者</h1>
+        <ul>
+            {% for user in users %}
+                <li>{{ user.username }} - {{ user.role }}</li>
+            {% endfor %}
+        </ul>
     </div>
     
     <script src="{% static 'js/main.js' %}"></script>
