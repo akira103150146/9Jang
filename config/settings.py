@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'cramschool',
     'account',
     'rest_framework',
+    
 ]
 
 MIDDLEWARE = [

@@ -27,6 +27,7 @@ def student_create(request):
             # 3. 有效：保存數據到資料庫
             # ModelForm 的 save() 方法會創建並保存新物件
             form.save()
+            return redirect(reverse('student_list'))
             
             # 4. 重定向：成功後導航回學生列表頁面
             return redirect(reverse('student_list'))
