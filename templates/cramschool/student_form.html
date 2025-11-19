@@ -1,85 +1,67 @@
-<!-- <div class="max-w-xl mx-auto mt-10 p-6 bg-white shadow-xl rounded-lg">
-    <h1 class="text-2xl font-bold text-gray-900 mb-6">{{ page_title }}</h1>
-
-    <form method="post">
-        {% csrf_token %}
-
-        {# DTL 提供了幾種快速渲染方式：as_p, as_ul, as_table #}
-        {# 這裡使用 as_p (以 <p> 標籤包裹) #}
-        {{ form.as_p }}
-
-        <div class="mt-8">
-            <button type="submit" 
-                    class="w-full px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                儲存資料
-            </button>
-        </div>
-    </form>
-</div> -->
-<!-- From Uiverse.io by themrsami -->
 <!DOCTYPE html>
-  <html lang="zh-Hant"> 
-  <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>九章後台管理系統</title>
-      
-      {% load static %}
-      <link rel="stylesheet" href="{% static 'css/app.css' %}"> 
-      
-      <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-      
-      </head>
-  <body>
-      </body>
-</html>
- {% block content %}
- <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
- <html class="zh-Hant"> 
-  <body class="bg-gray-50 text-gray-800">
+<html lang="zh-Hant">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>九章後台管理系統</title>
+
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+
+</head>
+<style>
+    /* 放在您的 <style> 標籤內或外部 CSS 檔案中 */
+    body {
+        /* 推薦寫法：使用英文名稱在前，確保跨平台相容性 */
+        font-family: "微軟正黑體", Arial, sans-serif;
+    }
+</style>
+
+<body class="bg-gray-50 text-gray-800">
 
     <div class="flex h-screen overflow-hidden">
-        
-        <aside class="w-64 flex-shrink-0 bg-blue-600 h-full flex flex-col justify-between p-4 border-r border-gray-300">            
-          <!-- 讓一個 Flex 或 Grid 容器中的垂直子元素之間，產生一致的間隔。 -->
-          <nav class="space-y-1">
-            <!-- 增加LOGO -->
-              {% load static %} 
-              <div class="flex items-center justify-center space-x-3 mb-10 pb-4 border-b border-blue-500/50">
-    
-                  <img src="{% static 'img/logo_jiuzhang.png' %}" 
-                      alt="九章 Logo" 
-                      class="h-10 w-auto object-cover">
-                      
-                  <span class="text-2xl font-extrabold tracking-wider text-white">後台</span> 
-                  
-              </div>
-        <a href="{% url 'student_list' %}" 
-           class="flex items-center space-x-3 p-2 rounded-lg 
-                  bg-indigo-100 text-indigo-700 font-semibold"> 
-            
-            <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"></svg>
-            <span>學生資訊</span>
-        </a>
-        
-        <a href="#" class="flex items-center space-x-3 p-2 rounded-lg text-gray-700 hover:bg-gray-200">
-            <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"></svg>
-            <span>課程管理</span>
-        </a>
-          </nav>
-        </aside>
-        
-        <main class="flex-1 flex flex-col overflow-auto">
-            
-            <header class="h-16 flex-shrink-0">
-                </header>
-            
-            <div class="flex-1 p-6">
+
+        <aside class="w-64 flex-shrink-0 bg-blue-600 h-full flex flex-col justify-between p-4 border-r border-gray-300">
+            <!-- 讓一個 Flex 或 Grid 容器中的垂直子元素之間，產生一致的間隔。 -->
+            <nav class="space-y-1">
+                <!-- 增加LOGO -->
+                {% load static %}
+                <div class="flex items-center justify-center space-x-3 mb-10 pb-4 border-b border-blue-500/50">
+
+                    <img src="{% static 'img/logo_jiuzhang.png' %}" alt="九章 Logo" class="h-10 w-auto object-cover">
+
+                    <span class="text-2xl font-extrabold tracking-wider text-white">後台</span>
+
                 </div>
-            
+                <a href="{% url 'student_list' %}" class="flex items-center space-x-3 p-2 rounded-lg 
+                  bg-indigo-100 text-indigo-700 font-semibold">
+
+                    <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"></svg>
+                    <span>學生資訊</span>
+                </a>
+
+                <a href="#" class="flex items-center space-x-3 p-2 rounded-lg text-gray-700 hover:bg-gray-200">
+                    <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"></svg>
+                    <span>課程管理</span>
+                </a>
+            </nav>
+        </aside>
+
+        <main class="flex-1 flex flex-col overflow-auto">
+
+            <header class="h-16 flex-shrink-0">
+            </header>
+
+            <div class="flex-1 p-6">
+            </div>
+
         </main>
-        
+
     </div>
 </body>
+
 </html>
-{% endblock content %}
