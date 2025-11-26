@@ -40,12 +40,14 @@ INSTALLED_APPS = [
     'cramschool',
     'account',
     'rest_framework',
+    'corsheaders',  # CORS 支援
     
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # CORS 中間件應該放在 CommonMiddleware 之前
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -131,4 +133,23 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# CORS 設定
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",  # Vite 預設端口
+    "http://localhost:3000",  # 其他可能的開發端口
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
+]
+
+# 允許所有來源（僅開發環境使用，生產環境請移除）
+CORS_ALLOW_ALL_ORIGINS = True  # 開發階段使用，生產環境請設為 False
+
+# REST Framework 設定
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',  # 開發階段，生產環境請改為適當的權限
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10
+}
 

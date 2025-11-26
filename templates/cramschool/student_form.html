@@ -1,85 +1,134 @@
-<!-- <div class="max-w-xl mx-auto mt-10 p-6 bg-white shadow-xl rounded-lg">
-    <h1 class="text-2xl font-bold text-gray-900 mb-6">{{ page_title }}</h1>
-
-    <form method="post">
-        {% csrf_token %}
-
-        {# DTL 提供了幾種快速渲染方式：as_p, as_ul, as_table #}
-        {# 這裡使用 as_p (以 <p> 標籤包裹) #}
-        {{ form.as_p }}
-
-        <div class="mt-8">
-            <button type="submit" 
-                    class="w-full px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                儲存資料
-            </button>
-        </div>
-    </form>
-</div> -->
-<!-- From Uiverse.io by themrsami -->
+{% load static %}
 <!DOCTYPE html>
-  <html lang="zh-Hant"> 
-  <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>九章後台管理系統</title>
-      
-      {% load static %}
-      <link rel="stylesheet" href="{% static 'css/app.css' %}"> 
-      
-      <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-      
-      </head>
-  <body>
-      </body>
-</html>
- {% block content %}
- <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
- <html class="zh-Hant"> 
-  <body class="bg-gray-50 text-gray-800">
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>九章後台管理系統</title>
 
-    <div class="flex h-screen overflow-hidden">
-        
-        <aside class="w-64 flex-shrink-0 bg-blue-600 h-full flex flex-col justify-between p-4 border-r border-gray-300">            
-          <!-- 讓一個 Flex 或 Grid 容器中的垂直子元素之間，產生一致的間隔。 -->
-          <nav class="space-y-1">
-            <!-- 增加LOGO -->
-              {% load static %} 
-              <div class="flex items-center justify-center space-x-3 mb-10 pb-4 border-b border-blue-500/50">
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
     
-                  <img src="{% static 'img/logo_jiuzhang.png' %}" 
-                      alt="九章 Logo" 
-                      class="h-10 w-auto object-cover">
-                      
-                  <span class="text-2xl font-extrabold tracking-wider text-white">後台</span> 
-                  
-              </div>
-        <a href="{% url 'student_list' %}" 
-           class="flex items-center space-x-3 p-2 rounded-lg 
-                  bg-indigo-100 text-indigo-700 font-semibold"> 
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script> 
+
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+
+<style>
+    /* 確保字體正確應用 */
+    body {
+        font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif;
+    }
+</style>
+
+<body class="bg-gray-50 text-gray-800">
+    <div class="flex h-screen overflow-hidden">
+
+        <aside id="sidebar"
+               class="fixed inset-y-0 left-0 z-40 w-64 flex-shrink-0 bg-blue-600 h-full flex flex-col justify-between p-4 border-r border-gray-300
+                      transition-transform duration-300 ease-in-out transform -translate-x-full md:translate-x-0 md:relative md:flex">
             
-            <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"></svg>
-            <span>學生資訊</span>
-        </a>
-        
-        <a href="#" class="flex items-center space-x-3 p-2 rounded-lg text-gray-700 hover:bg-gray-200">
-            <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"></svg>
-            <span>課程管理</span>
-        </a>
-          </nav>
-        </aside>
-        
-        <main class="flex-1 flex flex-col overflow-auto">
-            
-            <header class="h-16 flex-shrink-0">
-                </header>
-            
-            <div class="flex-1 p-6">
+            <nav class="space-y-1">
+                {% load static %}
+                <div class="flex items-center justify-center space-x-3 mb-10 pb-4 border-b border-blue-500/50">
+                    <img src="{% static 'img/logo_jiuzhang.png' %}" alt="九章 Logo" class="h-10 w-auto object-cover">
+                    <span class="text-2xl font-extrabold tracking-wider text-white">後台</span>
                 </div>
-            
+                
+                <a href="{% url 'student_list' %}" class="flex items-center space-x-3 p-2 rounded-lg bg-indigo-100 text-indigo-700 font-semibold">
+                    <span>學生資訊</span>
+                </a>
+
+                <a href="#" class="flex items-center space-x-3 p-2 rounded-lg text-white hover:bg-blue-500/70">
+                    <span>課程管理</span>
+                </a>
+                </nav>
+        </aside>
+
+        <main class="flex-1 flex flex-col overflow-y-auto">
+
+            <header class="h-16 flex-shrink-0 border-b border-gray-200 bg-white shadow-sm p-4 flex items-center justify-center relative">
+    
+                <button id="sidebar-toggle" class="absolute left-4 text-gray-500 hover:text-gray-900 md:hidden">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+
+                <h1 class="text-xl font-semibold text-gray-900">學生資訊管理</h1>
+                
+                <div class="absolute right-4 md:hidden">
+                    </div>
+            </header>
+
+            <div class="flex-1 p-4 md:p-6">
+                <div class="text-gray-600">
+                    <div class="flex-1 p-4 md:p-6 flex flex-col items-center justify-center">
+    
+                        <div class="w-full max-w-xl">                        
+                            <div class="w-full bg-white rounded-lg shadow-xl p-6">
+                                <h2 class="text-2xl font-bold text-gray-900 mb-4">新增學生資料</h2>
+
+                                <form class="flex flex-col">
+                                    <input type="text" class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150" placeholder="姓名">
+                                    <input type="school" class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150" placeholder="學校/年級">
+                                    <input type="text" class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150" placeholder="聯絡方式">
+                                    <textarea name="cover_letter" class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150" placeholder="備註"></textarea>
+                                
+
+
+                                    <button type="submit" class="bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-bold py-3 px-4 rounded-lg mt-4 hover:from-indigo-700 hover:to-blue-700 transition ease-in-out duration-150 shadow-md">
+                                        新增
+                                    </button>
+                                </form>
+                            </div>
+                            </div>
+                    </div>
+
+                </div>
+                </div>
+
         </main>
         
+        <div id="sidebar-overlay" 
+             class="fixed inset-0 z-30 bg-black opacity-0 pointer-events-none transition-opacity duration-300 md:hidden">
+        </div>
+
     </div>
+    
+    <script>
+        const sidebar = document.getElementById('sidebar');
+        const toggleButton = document.getElementById('sidebar-toggle');
+        const overlay = document.getElementById('sidebar-overlay');
+
+        // 函式：切換側邊欄狀態
+        function toggleSidebar() {
+            // 檢查側邊欄是否有 -translate-x-full 類別
+            const isClosed = sidebar.classList.contains('-translate-x-full');
+
+            if (isClosed) {
+                // 開啟側邊欄 (移除滑出/添加滑入)
+                sidebar.classList.remove('-translate-x-full');
+                sidebar.classList.add('translate-x-0');
+                
+                // 顯示遮罩
+                overlay.classList.remove('opacity-0', 'pointer-events-none');
+                overlay.classList.add('opacity-50');
+
+            } else {
+                // 關閉側邊欄 (移除滑入/添加滑出)
+                sidebar.classList.remove('translate-x-0');
+                sidebar.classList.add('-translate-x-full');
+
+                // 隱藏遮罩
+                overlay.classList.remove('opacity-50');
+                overlay.classList.add('opacity-0', 'pointer-events-none');
+            }
+        }
+
+        // 綁定事件
+        toggleButton.addEventListener('click', toggleSidebar);
+        // 點擊遮罩時關閉側邊欄
+        overlay.addEventListener('click', toggleSidebar); 
+    </script>
 </body>
 </html>
-{% endblock content %}
