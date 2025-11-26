@@ -1,40 +1,75 @@
 <template>
-  <aside 
+  <aside
     id="sidebar"
     :class="[
-      'fixed inset-y-0 left-0 z-40 w-64 flex-shrink-0 bg-white h-full flex flex-col justify-between p-4 border-r border-gray-300 transition-transform duration-300 ease-in-out',
+      'fixed inset-y-0 left-0 z-40 w-72 flex-shrink-0 bg-white/95 backdrop-blur border-r border-blue-100 h-full flex flex-col p-5 transition-transform duration-300 ease-in-out',
       isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0 md:relative md:flex'
     ]"
   >
-    <nav class="space-y-1">
-      <div class="flex items-center justify-center space-x-3 mb-10 pb-4 border-b border-gray-200">
-        <img :src="logoUrl" alt="九章 Logo" class="h-10 w-auto object-cover">
-        <span class="text-2xl font-extrabold tracking-wider text-gray-900">後台</span>
+    <div>
+      <div class="flex items-center gap-3 rounded-2xl border border-blue-100 bg-sky-50/60 px-4 py-3">
+        <img :src="logoUrl" alt="九章 Logo" class="h-10 w-auto object-cover" />
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-widest text-sky-600">九章補教</p>
+          <p class="text-lg font-bold text-slate-900">管理後台</p>
+        </div>
       </div>
-      
-      <router-link 
-        to="/" 
-        class="flex items-center space-x-3 p-2 rounded-lg font-semibold transition-colors"
-        :class="$route.name === 'student-list' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'"
-      >
-        <span>學生資訊</span>
-      </router-link>
 
-      <a href="#" class="flex items-center space-x-3 p-2 rounded-lg text-gray-700 hover:bg-gray-100">
-        <span>課程管理</span>
-      </a>
-    </nav>
+      <nav class="mt-8 space-y-2">
+        <router-link
+          v-for="item in navItems"
+          :key="item.name"
+          :to="item.path"
+          class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition"
+          :class="isActive(item.name)
+            ? 'bg-gradient-to-r from-sky-500 to-indigo-500 text-white shadow-md'
+            : 'text-slate-600 hover:bg-slate-50'"
+          @click="$emit('close')"
+        >
+          <span>{{ item.label }}</span>
+        </router-link>
+      </nav>
+    </div>
   </aside>
 </template>
 
 <script setup>
+import { useRoute } from 'vue-router'
 import logoUrl from '../assets/logo_jiuzhang.png'
 
 defineProps({
   isOpen: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 })
+
+defineEmits(['close'])
+
+const route = useRoute()
+
+const navItems = [
+  { name: 'dashboard', label: '儀表板', path: '/' },
+  { name: 'student-list', label: '學生資訊', path: '/students' },
+  { name: 'teachers', label: '老師管理', path: '/teachers' },
+  { name: 'courses', label: '課程管理', path: '/courses' },
+  { name: 'enrollments', label: '課程報名', path: '/enrollments' },
+  { name: 'fees', label: '費用追蹤', path: '/fees' },
+  { name: 'attendance', label: '出缺勤', path: '/attendance' },
+  { name: 'questions', label: '題庫與錯題', path: '/questions' },
+  { name: 'stores', label: '校區資訊', path: '/stores' },
+]
+
+const childMatchMap = {
+  'student-list': ['student-list', 'student-add', 'student-edit'],
+}
+
+const isActive = (name) => {
+  const current = route.name
+  if (childMatchMap[name]) {
+    return childMatchMap[name].includes(current)
+  }
+  return current === name
+}
 </script>
 
