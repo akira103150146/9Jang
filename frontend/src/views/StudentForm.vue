@@ -51,7 +51,7 @@
               {{ loading ? '處理中...' : (isEdit ? '更新' : '新增') }}
             </button>
             <router-link 
-              to="/"
+              to="/students"
               class="flex-1 bg-gray-300 text-gray-900 font-bold py-3 px-4 rounded-lg mt-4 hover:bg-gray-400 transition ease-in-out duration-150 shadow-md text-center"
             >
               取消
@@ -97,7 +97,7 @@ const fetchStudent = async () => {
   } catch (error) {
     console.error('獲取學生資料失敗:', error)
     alert('獲取學生資料失敗，請稍後再試')
-    router.push('/')
+    router.push('/students')
   }
 }
 
@@ -111,7 +111,7 @@ const handleSubmit = async () => {
       await studentAPI.create(form.value)
       alert('新增成功')
     }
-    router.push('/')
+    router.push('/students')
   } catch (error) {
     console.error('操作失敗:', error)
     alert('操作失敗，請稍後再試')
