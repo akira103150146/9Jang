@@ -2,7 +2,11 @@
 
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
-from .models import Student, Teacher, Course, StudentEnrollment, ExtraFee, SessionRecord, Attendance, Leave
+from .models import (
+    Student, Teacher, Course, StudentEnrollment, ExtraFee, 
+    SessionRecord, Attendance, Leave, Subject, QuestionBank, Hashtag, QuestionTag,
+    StudentAnswer, ErrorLog
+)
 
 class StudentSerializer(serializers.ModelSerializer):
     """
@@ -166,4 +170,187 @@ class LeaveSerializer(serializers.ModelSerializer):
     
     def get_course_name(self, obj):
         return obj.course.course_name if obj.course else None
+
+
+class SubjectSerializer(serializers.ModelSerializer):
+    """
+    科目序列化器
+    """
+    class Meta:
+        model = Subject
+        fields = ['subject_id', 'name', 'code', 'description', 'created_at']
+        read_only_fields = ['subject_id', 'created_at']
+
+
+class HashtagSerializer(serializers.ModelSerializer):
+    """
+    標籤序列化器
+    """
+    creator_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Hashtag
+        fields = ['tag_id', 'tag_name', 'creator', 'creator_name']
+        read_only_fields = ['tag_id', 'creator_name']
+        extra_kwargs = {
+            'creator': {'required': False, 'allow_null': True}
+        }
+    
+    def get_creator_name(self, obj):
+        return obj.creator.name if obj.creator else None
+
+
+class QuestionTagSerializer(serializers.ModelSerializer):
+    """
+    題目標籤關聯序列化器
+    """
+    tag_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = QuestionTag
+        fields = ['question_tag_id', 'question', 'tag', 'tag_name']
+        read_only_fields = ['question_tag_id', 'tag_name']
+    
+    def get_tag_name(self, obj):
+        return obj.tag.tag_name if obj.tag else None
+
+
+class QuestionBankSerializer(serializers.ModelSerializer):
+    """
+    題目庫序列化器
+    """
+    tags = serializers.SerializerMethodField()
+    tag_ids = serializers.SerializerMethodField()
+    subject_name = serializers.SerializerMethodField()
+    tag_ids_input = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False,
+        help_text='標籤ID列表（寫入用）'
+    )
+    
+    class Meta:
+        model = QuestionBank
+        fields = [
+            'question_id', 'subject', 'subject_name', 'level', 'chapter', 'content',
+            'image_path', 'correct_answer', 'difficulty', 'tags', 'tag_ids', 'tag_ids_input'
+        ]
+        read_only_fields = ['question_id', 'tags', 'tag_ids', 'subject_name']
+    
+    def get_tags(self, obj):
+        """
+        獲取題目的所有標籤名稱
+        """
+        return [qt.tag.tag_name for qt in obj.tags.select_related('tag').all()]
+    
+    def get_tag_ids(self, obj):
+        """
+        獲取題目的所有標籤ID
+        """
+        return [qt.tag.tag_id for qt in obj.tags.select_related('tag').all()]
+    
+    def get_subject_name(self, obj):
+        """
+        獲取科目名稱
+        """
+        return obj.subject.name if obj.subject else None
+    
+    def create(self, validated_data):
+        """
+        創建題目並關聯標籤
+        """
+        tag_ids = validated_data.pop('tag_ids_input', [])
+        question = QuestionBank.objects.create(**validated_data)
+        
+        # 關聯標籤
+        if tag_ids:
+            for tag_id in tag_ids:
+                try:
+                    tag = Hashtag.objects.get(tag_id=tag_id)
+                    QuestionTag.objects.get_or_create(question=question, tag=tag)
+                except Hashtag.DoesNotExist:
+                    pass
+        
+        return question
+    
+    def update(self, instance, validated_data):
+        """
+        更新題目並處理標籤關聯
+        """
+        tag_ids = validated_data.pop('tag_ids_input', None)
+        
+        # 更新題目基本資訊
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        
+        # 如果提供了 tag_ids，則更新標籤關聯
+        if tag_ids is not None:
+            # 刪除現有的標籤關聯
+            QuestionTag.objects.filter(question=instance).delete()
+            # 創建新的標籤關聯
+            for tag_id in tag_ids:
+                try:
+                    tag = Hashtag.objects.get(tag_id=tag_id)
+                    QuestionTag.objects.create(question=instance, tag=tag)
+                except Hashtag.DoesNotExist:
+                    pass
+        
+        return instance
+
+
+class StudentAnswerSerializer(serializers.ModelSerializer):
+    """
+    學生作答記錄序列化器
+    """
+    student_name = serializers.SerializerMethodField()
+    question_chapter = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = StudentAnswer
+        fields = [
+            'answer_id', 'student', 'student_name', 'question', 'question_chapter',
+            'test_name', 'is_correct', 'scanned_file_path'
+        ]
+        read_only_fields = ['answer_id', 'student_name', 'question_chapter']
+    
+    def get_student_name(self, obj):
+        return obj.student.name if obj.student else None
+    
+    def get_question_chapter(self, obj):
+        return obj.question.chapter if obj.question else None
+
+
+class ErrorLogSerializer(serializers.ModelSerializer):
+    """
+    錯題本序列化器
+    """
+    student_name = serializers.SerializerMethodField()
+    question_chapter = serializers.SerializerMethodField()
+    question_subject = serializers.SerializerMethodField()
+    question_level = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = ErrorLog
+        fields = [
+            'error_log_id', 'student', 'student_name', 'question', 
+            'question_chapter', 'question_subject', 'question_level',
+            'error_count', 'review_status'
+        ]
+        read_only_fields = [
+            'error_log_id', 'student_name', 'question_chapter', 
+            'question_subject', 'question_level'
+        ]
+    
+    def get_student_name(self, obj):
+        return obj.student.name if obj.student else None
+    
+    def get_question_chapter(self, obj):
+        return obj.question.chapter if obj.question else None
+    
+    def get_question_subject(self, obj):
+        return obj.question.subject.name if obj.question and obj.question.subject else None
+    
+    def get_question_level(self, obj):
+        return obj.question.get_level_display() if obj.question else None
 

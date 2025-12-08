@@ -312,3 +312,216 @@ class Leave(models.Model):
 
     def __str__(self):
         return f"{self.student.name} - {self.course.course_name} ({self.leave_date}) - {self.get_approval_status_display()}"
+
+
+class Subject(models.Model):
+    """
+    科目模型
+    """
+    subject_id = models.AutoField(primary_key=True, verbose_name='科目ID')
+    name = models.CharField(
+        max_length=50,
+        unique=True,
+        verbose_name='科目名稱'
+    )
+    code = models.CharField(
+        max_length=20,
+        unique=True,
+        blank=True,
+        null=True,
+        default=None,
+        verbose_name='科目代碼'
+    )
+    description = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='描述'
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='建立時間'
+    )
+
+    class Meta:
+        verbose_name = '科目'
+        verbose_name_plural = '科目'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class QuestionBank(models.Model):
+    """
+    題目庫模型
+    """
+    LEVEL_CHOICES = [
+        ('JHS', 'Junior High School'),
+        ('SHS', 'Senior High School'),
+        ('VCS', 'Vocational School'),
+    ]
+    
+    # 核心欄位
+    question_id = models.AutoField(primary_key=True, verbose_name='題目ID')
+    subject = models.ForeignKey(
+        Subject,
+        on_delete=models.PROTECT,
+        related_name='questions',
+        verbose_name='科目'
+    )
+    level = models.CharField(
+        max_length=3,
+        choices=LEVEL_CHOICES,
+        verbose_name='適用年級'
+    )
+    chapter = models.CharField(max_length=100, verbose_name='章節/單元')
+    content = models.TextField(verbose_name='題目內容 (Markdown + LaTeX)')
+    image_path = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name='題目圖片路徑'
+    )
+    correct_answer = models.TextField(verbose_name='正確答案')
+    difficulty = models.IntegerField(
+        default=1,
+        verbose_name='難度等級 (1-5)'
+    )
+
+    class Meta:
+        verbose_name = '題目庫'
+        verbose_name_plural = '題目庫'
+        ordering = ['subject', 'level', 'chapter']
+
+    def __str__(self):
+        return f"{self.subject.name if self.subject else '無科目'} - {self.chapter} (Q{self.question_id})"
+
+
+class Hashtag(models.Model):
+    """
+    自訂標籤模型
+    """
+    tag_id = models.AutoField(primary_key=True, verbose_name='標籤ID')
+    tag_name = models.CharField(
+        max_length=50,
+        unique=True,
+        verbose_name='標籤名稱'
+    )
+    creator = models.ForeignKey(
+        Teacher,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='created_tags',
+        verbose_name='創建者'
+    )
+
+    class Meta:
+        verbose_name = '標籤'
+        verbose_name_plural = '標籤'
+        ordering = ['tag_name']
+
+    def __str__(self):
+        return f"#{self.tag_name}"
+
+
+class QuestionTag(models.Model):
+    """
+    題目與標籤關聯模型
+    """
+    question_tag_id = models.AutoField(primary_key=True, verbose_name='關聯ID')
+    question = models.ForeignKey(
+        QuestionBank,
+        on_delete=models.CASCADE,
+        related_name='tags',
+        verbose_name='題目'
+    )
+    tag = models.ForeignKey(
+        Hashtag,
+        on_delete=models.CASCADE,
+        related_name='questions',
+        verbose_name='標籤'
+    )
+
+    class Meta:
+        verbose_name = '題目標籤關聯'
+        verbose_name_plural = '題目標籤關聯'
+        unique_together = [('question', 'tag')]
+
+    def __str__(self):
+        return f"{self.question} - {self.tag}"
+
+
+class StudentAnswer(models.Model):
+    """
+    學生作答記錄模型
+    """
+    answer_id = models.AutoField(primary_key=True, verbose_name='作答ID')
+    student = models.ForeignKey(
+        Student,
+        on_delete=models.CASCADE,
+        related_name='answers',
+        verbose_name='學生'
+    )
+    question = models.ForeignKey(
+        QuestionBank,
+        on_delete=models.CASCADE,
+        related_name='student_answers',
+        verbose_name='題目'
+    )
+    test_name = models.CharField(max_length=100, verbose_name='測驗/作業名稱')
+    is_correct = models.BooleanField(default=False, verbose_name='是否答對')
+    scanned_file_path = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name='考卷掃描檔路徑'
+    )
+
+    class Meta:
+        verbose_name = '學生作答記錄'
+        verbose_name_plural = '學生作答記錄'
+        ordering = ['-answer_id']
+
+    def __str__(self):
+        return f"{self.student.name} - Q{self.question.question_id} - {self.test_name}"
+
+
+class ErrorLog(models.Model):
+    """
+    錯題本模型
+    """
+    REVIEW_STATUS_CHOICES = [
+        ('New', 'New'),
+        ('Reviewing', 'Reviewing'),
+        ('Mastered', 'Mastered'),
+    ]
+    
+    error_log_id = models.AutoField(primary_key=True, verbose_name='錯誤記錄ID')
+    student = models.ForeignKey(
+        Student,
+        on_delete=models.CASCADE,
+        related_name='error_logs',
+        verbose_name='學生'
+    )
+    question = models.ForeignKey(
+        QuestionBank,
+        on_delete=models.CASCADE,
+        related_name='error_logs',
+        verbose_name='錯題'
+    )
+    error_count = models.IntegerField(default=1, verbose_name='錯誤次數')
+    review_status = models.CharField(
+        max_length=10,
+        choices=REVIEW_STATUS_CHOICES,
+        default='New',
+        verbose_name='掌握狀態'
+    )
+
+    class Meta:
+        verbose_name = '錯題本'
+        verbose_name_plural = '錯題本'
+        ordering = ['-error_count']
+        unique_together = [('student', 'question')]  # 確保同一學生同一題目只有一筆記錄
+
+    def __str__(self):
+        return f"{self.student.name} - Q{self.question.question_id} - 錯誤{self.error_count}次"

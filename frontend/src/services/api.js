@@ -151,5 +151,95 @@ export const leaveAPI = {
   delete: (id) => api.delete(`/cramschool/leaves/${id}/`)
 }
 
+// Subject API
+export const subjectAPI = {
+  // 獲取所有科目
+  getAll: () => api.get('/cramschool/subjects/'),
+  
+  // 獲取單個科目
+  getById: (id) => api.get(`/cramschool/subjects/${id}/`),
+  
+  // 創建科目
+  create: (data) => api.post('/cramschool/subjects/', data),
+  
+  // 更新科目
+  update: (id, data) => api.put(`/cramschool/subjects/${id}/`, data),
+  
+  // 刪除科目
+  delete: (id) => api.delete(`/cramschool/subjects/${id}/`)
+}
+
+// QuestionBank API
+export const questionBankAPI = {
+  // 獲取所有題目
+  getAll: () => api.get('/cramschool/questions/'),
+  
+  // 獲取單個題目
+  getById: (id) => api.get(`/cramschool/questions/${id}/`),
+  
+  // 創建題目
+  create: (data) => api.post('/cramschool/questions/', data),
+  
+  // 更新題目
+  update: (id, data) => api.put(`/cramschool/questions/${id}/`, data),
+  
+  // 刪除題目
+  delete: (id) => api.delete(`/cramschool/questions/${id}/`)
+}
+
+// Hashtag API
+export const hashtagAPI = {
+  // 獲取所有標籤
+  getAll: () => api.get('/cramschool/hashtags/'),
+  
+  // 獲取單個標籤
+  getById: (id) => api.get(`/cramschool/hashtags/${id}/`),
+  
+  // 創建標籤
+  create: (data) => api.post('/cramschool/hashtags/', data),
+  
+  // 更新標籤
+  update: (id, data) => api.put(`/cramschool/hashtags/${id}/`, data),
+  
+  // 刪除標籤
+  delete: (id) => api.delete(`/cramschool/hashtags/${id}/`)
+}
+
+// ErrorLog API
+export const errorLogAPI = {
+  // 獲取所有錯題記錄
+  getAll: () => api.get('/cramschool/error-logs/'),
+  
+  // 獲取單個錯題記錄
+  getById: (id) => api.get(`/cramschool/error-logs/${id}/`),
+  
+  // 創建錯題記錄
+  create: (data) => api.post('/cramschool/error-logs/', data),
+  
+  // 更新錯題記錄
+  update: (id, data) => api.put(`/cramschool/error-logs/${id}/`, data),
+  
+  // 刪除錯題記錄
+  delete: (id) => api.delete(`/cramschool/error-logs/${id}/`)
+}
+
+// StudentAnswer API
+export const studentAnswerAPI = {
+  // 獲取所有作答記錄
+  getAll: () => api.get('/cramschool/student-answers/'),
+  
+  // 獲取單個作答記錄
+  getById: (id) => api.get(`/cramschool/student-answers/${id}/`),
+  
+  // 創建作答記錄
+  create: (data) => api.post('/cramschool/student-answers/', data),
+  
+  // 更新作答記錄
+  update: (id, data) => api.put(`/cramschool/student-answers/${id}/`, data),
+  
+  // 刪除作答記錄
+  delete: (id) => api.delete(`/cramschool/student-answers/${id}/`)
+}
+
 export default api
 

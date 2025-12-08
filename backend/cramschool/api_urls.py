@@ -5,7 +5,9 @@ from rest_framework.routers import DefaultRouter
 from .api_views import (
     StudentViewSet, TeacherViewSet, CourseViewSet, 
     StudentEnrollmentViewSet, ExtraFeeViewSet,
-    SessionRecordViewSet, AttendanceViewSet, LeaveViewSet
+    SessionRecordViewSet, AttendanceViewSet, LeaveViewSet,
+    SubjectViewSet, QuestionBankViewSet, HashtagViewSet, QuestionTagViewSet,
+    StudentAnswerViewSet, ErrorLogViewSet
 )
 
 # 建立一個 Router 實例
@@ -42,6 +44,30 @@ router.register(r'attendances', AttendanceViewSet)
 # 將 LeaveViewSet 註冊到 'leaves' 這個 URL 前綴下
 # 註冊後會自動產生 /api/cramschool/leaves/, /api/cramschool/leaves/{id}/ 等路由
 router.register(r'leaves', LeaveViewSet)
+
+# 將 SubjectViewSet 註冊到 'subjects' 這個 URL 前綴下
+# 註冊後會自動產生 /api/cramschool/subjects/, /api/cramschool/subjects/{id}/ 等路由
+router.register(r'subjects', SubjectViewSet)
+
+# 將 QuestionBankViewSet 註冊到 'questions' 這個 URL 前綴下
+# 註冊後會自動產生 /api/cramschool/questions/, /api/cramschool/questions/{id}/ 等路由
+router.register(r'questions', QuestionBankViewSet)
+
+# 將 HashtagViewSet 註冊到 'hashtags' 這個 URL 前綴下
+# 註冊後會自動產生 /api/cramschool/hashtags/, /api/cramschool/hashtags/{id}/ 等路由
+router.register(r'hashtags', HashtagViewSet)
+
+# 將 QuestionTagViewSet 註冊到 'question-tags' 這個 URL 前綴下
+# 註冊後會自動產生 /api/cramschool/question-tags/, /api/cramschool/question-tags/{id}/ 等路由
+router.register(r'question-tags', QuestionTagViewSet)
+
+# 將 StudentAnswerViewSet 註冊到 'student-answers' 這個 URL 前綴下
+# 註冊後會自動產生 /api/cramschool/student-answers/, /api/cramschool/student-answers/{id}/ 等路由
+router.register(r'student-answers', StudentAnswerViewSet)
+
+# 將 ErrorLogViewSet 註冊到 'error-logs' 這個 URL 前綴下
+# 註冊後會自動產生 /api/cramschool/error-logs/, /api/cramschool/error-logs/{id}/ 等路由
+router.register(r'error-logs', ErrorLogViewSet)
 
 # 應用程式的 URL 模式
 urlpatterns = [
