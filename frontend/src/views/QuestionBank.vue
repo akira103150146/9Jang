@@ -303,15 +303,45 @@
             </select>
           </div>
 
-          <div>
+          <div class="relative">
             <label class="block text-sm font-semibold text-slate-700 mb-1">章節/單元 *</label>
             <input
               v-model="formData.chapter"
               type="text"
               required
+              @input="searchChapters"
+              @focus="searchChapters"
+              @blur="handleChapterBlur"
               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-              placeholder="例如：向量與空間"
+              placeholder="例如：向量與空間（輸入關鍵字自動搜尋）"
             />
+            <!-- 章節候選列表 -->
+            <div
+              v-if="chapterSuggestions.length > 0 && showChapterSuggestions"
+              class="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+            >
+              <div
+                v-for="(suggestion, index) in chapterSuggestions"
+                :key="index"
+                @mousedown.prevent="selectChapter(suggestion.chapter)"
+                class="px-3 py-2 hover:bg-indigo-50 cursor-pointer border-b border-slate-100 last:border-b-0 transition-colors"
+              >
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-slate-900">{{ suggestion.chapter }}</span>
+                  <div class="flex items-center gap-2">
+                    <span
+                      v-if="suggestion.relevance === 2"
+                      class="text-xs text-indigo-600 font-semibold bg-indigo-50 px-2 py-0.5 rounded"
+                    >
+                      精確匹配
+                    </span>
+                    <span class="text-xs text-slate-500">
+                      {{ suggestion.count }} 題
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div>
@@ -437,6 +467,9 @@ const editingQuestion = ref(null)
 const saving = ref(false)
 const savingSubject = ref(false)
 const savingTag = ref(false)
+const chapterSuggestions = ref([])
+const showChapterSuggestions = ref(false)
+const searchChapterTimeout = ref(null)
 
 const formData = ref({
   subject: '',
@@ -536,6 +569,52 @@ const fetchSubjects = async () => {
 
 const openSubjectForm = () => {
   showSubjectForm.value = true
+}
+
+const searchChapters = async () => {
+  // 清除之前的延遲
+  if (searchChapterTimeout.value) {
+    clearTimeout(searchChapterTimeout.value)
+  }
+  
+  const query = formData.value.chapter?.trim() || ''
+  
+  // 如果輸入太短，不搜尋
+  if (query.length < 1) {
+    chapterSuggestions.value = []
+    showChapterSuggestions.value = false
+    return
+  }
+  
+  // 延遲搜尋，避免頻繁請求
+  searchChapterTimeout.value = setTimeout(async () => {
+    try {
+      const response = await questionBankAPI.searchChapters(
+        query,
+        formData.value.subject || null,
+        formData.value.level || null
+      )
+      chapterSuggestions.value = response.data || []
+      showChapterSuggestions.value = chapterSuggestions.value.length > 0
+    } catch (error) {
+      console.warn('搜尋章節失敗：', error)
+      chapterSuggestions.value = []
+      showChapterSuggestions.value = false
+    }
+  }, 300)
+}
+
+const selectChapter = (chapter) => {
+  formData.value.chapter = chapter
+  showChapterSuggestions.value = false
+  chapterSuggestions.value = []
+}
+
+const handleChapterBlur = () => {
+  // 延遲隱藏，讓點擊事件先執行
+  setTimeout(() => {
+    showChapterSuggestions.value = false
+  }, 200)
 }
 
 const saveSubject = async () => {

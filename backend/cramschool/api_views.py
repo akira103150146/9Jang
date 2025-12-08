@@ -2,6 +2,9 @@
 
 from rest_framework import viewsets
 from rest_framework.permissions import AllowAny
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from django.db.models import Q, Count
 from .models import (
     Student, Teacher, Course, StudentEnrollment, ExtraFee, 
     SessionRecord, Attendance, Leave, Subject, QuestionBank, Hashtag, QuestionTag,
@@ -103,6 +106,58 @@ class QuestionBankViewSet(viewsets.ModelViewSet):
     queryset = QuestionBank.objects.select_related('subject').prefetch_related('tags__tag').all()
     serializer_class = QuestionBankSerializer
     permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+    
+    @action(detail=False, methods=['get'])
+    def search_chapters(self, request):
+        """
+        模糊搜尋章節名稱
+        返回匹配的章節列表，按相關性排序（開頭匹配優先）
+        """
+        query = request.query_params.get('q', '').strip()
+        subject_id = request.query_params.get('subject', None)
+        level = request.query_params.get('level', None)
+        
+        if not query:
+            return Response([])
+        
+        # 建立查詢條件
+        queryset = QuestionBank.objects.filter(chapter__icontains=query)
+        
+        # 如果有選擇科目，則過濾科目
+        if subject_id:
+            queryset = queryset.filter(subject_id=subject_id)
+        
+        # 如果有選擇年級，則過濾年級
+        if level:
+            queryset = queryset.filter(level=level)
+        
+        # 使用聚合查詢，按章節分組並計算使用次數
+        results = queryset.values('chapter').annotate(
+            count=Count('question_id')
+        ).order_by('chapter')
+        
+        # 手動計算相關性並排序
+        chapters = []
+        for item in results:
+            chapter = item['chapter']
+            count = item['count']
+            # 計算相關性：開頭匹配得分更高
+            if chapter.lower().startswith(query.lower()):
+                relevance = 2
+            else:
+                relevance = 1
+            
+            chapters.append({
+                'chapter': chapter,
+                'count': count,
+                'relevance': relevance
+            })
+        
+        # 按相關性和使用次數排序
+        chapters.sort(key=lambda x: (-x['relevance'], -x['count']))
+        
+        # 只返回前 10 個結果
+        return Response(chapters[:10])
 
 
 class HashtagViewSet(viewsets.ModelViewSet):

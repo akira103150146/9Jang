@@ -11,16 +11,16 @@ const api = axios.create({
 export const studentAPI = {
   // 獲取所有學生
   getAll: () => api.get('/cramschool/students/'),
-  
+
   // 獲取單個學生
   getById: (id) => api.get(`/cramschool/students/${id}/`),
-  
+
   // 創建學生
   create: (data) => api.post('/cramschool/students/', data),
-  
+
   // 更新學生
   update: (id, data) => api.put(`/cramschool/students/${id}/`, data),
-  
+
   // 刪除學生
   delete: (id) => api.delete(`/cramschool/students/${id}/`)
 }
@@ -29,16 +29,16 @@ export const studentAPI = {
 export const teacherAPI = {
   // 獲取所有老師
   getAll: () => api.get('/cramschool/teachers/'),
-  
+
   // 獲取單個老師
   getById: (id) => api.get(`/cramschool/teachers/${id}/`),
-  
+
   // 創建老師
   create: (data) => api.post('/cramschool/teachers/', data),
-  
+
   // 更新老師
   update: (id, data) => api.put(`/cramschool/teachers/${id}/`, data),
-  
+
   // 刪除老師
   delete: (id) => api.delete(`/cramschool/teachers/${id}/`)
 }
@@ -47,16 +47,16 @@ export const teacherAPI = {
 export const courseAPI = {
   // 獲取所有課程
   getAll: () => api.get('/cramschool/courses/'),
-  
+
   // 獲取單個課程
   getById: (id) => api.get(`/cramschool/courses/${id}/`),
-  
+
   // 創建課程
   create: (data) => api.post('/cramschool/courses/', data),
-  
+
   // 更新課程
   update: (id, data) => api.put(`/cramschool/courses/${id}/`, data),
-  
+
   // 刪除課程
   delete: (id) => api.delete(`/cramschool/courses/${id}/`)
 }
@@ -65,16 +65,16 @@ export const courseAPI = {
 export const enrollmentAPI = {
   // 獲取所有報名記錄
   getAll: () => api.get('/cramschool/enrollments/'),
-  
+
   // 獲取單個報名記錄
   getById: (id) => api.get(`/cramschool/enrollments/${id}/`),
-  
+
   // 創建報名記錄
   create: (data) => api.post('/cramschool/enrollments/', data),
-  
+
   // 更新報名記錄
   update: (id, data) => api.put(`/cramschool/enrollments/${id}/`, data),
-  
+
   // 刪除報名記錄
   delete: (id) => api.delete(`/cramschool/enrollments/${id}/`)
 }
@@ -83,16 +83,16 @@ export const enrollmentAPI = {
 export const feeAPI = {
   // 獲取所有費用記錄
   getAll: () => api.get('/cramschool/fees/'),
-  
+
   // 獲取單個費用記錄
   getById: (id) => api.get(`/cramschool/fees/${id}/`),
-  
+
   // 創建費用記錄
   create: (data) => api.post('/cramschool/fees/', data),
-  
+
   // 更新費用記錄
   update: (id, data) => api.put(`/cramschool/fees/${id}/`, data),
-  
+
   // 刪除費用記錄
   delete: (id) => api.delete(`/cramschool/fees/${id}/`)
 }
@@ -101,16 +101,16 @@ export const feeAPI = {
 export const sessionAPI = {
   // 獲取所有上課記錄
   getAll: () => api.get('/cramschool/sessions/'),
-  
+
   // 獲取單個上課記錄
   getById: (id) => api.get(`/cramschool/sessions/${id}/`),
-  
+
   // 創建上課記錄
   create: (data) => api.post('/cramschool/sessions/', data),
-  
+
   // 更新上課記錄
   update: (id, data) => api.put(`/cramschool/sessions/${id}/`, data),
-  
+
   // 刪除上課記錄
   delete: (id) => api.delete(`/cramschool/sessions/${id}/`)
 }
@@ -119,16 +119,16 @@ export const sessionAPI = {
 export const attendanceAPI = {
   // 獲取所有出席記錄
   getAll: () => api.get('/cramschool/attendances/'),
-  
+
   // 獲取單個出席記錄
   getById: (id) => api.get(`/cramschool/attendances/${id}/`),
-  
+
   // 創建出席記錄
   create: (data) => api.post('/cramschool/attendances/', data),
-  
+
   // 更新出席記錄
   update: (id, data) => api.put(`/cramschool/attendances/${id}/`, data),
-  
+
   // 刪除出席記錄
   delete: (id) => api.delete(`/cramschool/attendances/${id}/`)
 }
@@ -137,16 +137,16 @@ export const attendanceAPI = {
 export const leaveAPI = {
   // 獲取所有請假記錄
   getAll: () => api.get('/cramschool/leaves/'),
-  
+
   // 獲取單個請假記錄
   getById: (id) => api.get(`/cramschool/leaves/${id}/`),
-  
+
   // 創建請假記錄
   create: (data) => api.post('/cramschool/leaves/', data),
-  
+
   // 更新請假記錄
   update: (id, data) => api.put(`/cramschool/leaves/${id}/`, data),
-  
+
   // 刪除請假記錄
   delete: (id) => api.delete(`/cramschool/leaves/${id}/`)
 }
@@ -155,16 +155,16 @@ export const leaveAPI = {
 export const subjectAPI = {
   // 獲取所有科目
   getAll: () => api.get('/cramschool/subjects/'),
-  
+
   // 獲取單個科目
   getById: (id) => api.get(`/cramschool/subjects/${id}/`),
-  
+
   // 創建科目
   create: (data) => api.post('/cramschool/subjects/', data),
-  
+
   // 更新科目
   update: (id, data) => api.put(`/cramschool/subjects/${id}/`, data),
-  
+
   // 刪除科目
   delete: (id) => api.delete(`/cramschool/subjects/${id}/`)
 }
@@ -173,34 +173,42 @@ export const subjectAPI = {
 export const questionBankAPI = {
   // 獲取所有題目
   getAll: () => api.get('/cramschool/questions/'),
-  
+
   // 獲取單個題目
   getById: (id) => api.get(`/cramschool/questions/${id}/`),
-  
+
   // 創建題目
   create: (data) => api.post('/cramschool/questions/', data),
-  
+
   // 更新題目
   update: (id, data) => api.put(`/cramschool/questions/${id}/`, data),
-  
+
   // 刪除題目
-  delete: (id) => api.delete(`/cramschool/questions/${id}/`)
+  delete: (id) => api.delete(`/cramschool/questions/${id}/`),
+
+  // 搜尋章節
+  searchChapters: (query, subjectId = null, level = null) => {
+    const params = new URLSearchParams({ q: query })
+    if (subjectId) params.append('subject', subjectId)
+    if (level) params.append('level', level)
+    return api.get(`/cramschool/questions/search_chapters/?${params.toString()}`)
+  }
 }
 
 // Hashtag API
 export const hashtagAPI = {
   // 獲取所有標籤
   getAll: () => api.get('/cramschool/hashtags/'),
-  
+
   // 獲取單個標籤
   getById: (id) => api.get(`/cramschool/hashtags/${id}/`),
-  
+
   // 創建標籤
   create: (data) => api.post('/cramschool/hashtags/', data),
-  
+
   // 更新標籤
   update: (id, data) => api.put(`/cramschool/hashtags/${id}/`, data),
-  
+
   // 刪除標籤
   delete: (id) => api.delete(`/cramschool/hashtags/${id}/`)
 }
@@ -209,16 +217,16 @@ export const hashtagAPI = {
 export const errorLogAPI = {
   // 獲取所有錯題記錄
   getAll: () => api.get('/cramschool/error-logs/'),
-  
+
   // 獲取單個錯題記錄
   getById: (id) => api.get(`/cramschool/error-logs/${id}/`),
-  
+
   // 創建錯題記錄
   create: (data) => api.post('/cramschool/error-logs/', data),
-  
+
   // 更新錯題記錄
   update: (id, data) => api.put(`/cramschool/error-logs/${id}/`, data),
-  
+
   // 刪除錯題記錄
   delete: (id) => api.delete(`/cramschool/error-logs/${id}/`)
 }
@@ -227,16 +235,16 @@ export const errorLogAPI = {
 export const studentAnswerAPI = {
   // 獲取所有作答記錄
   getAll: () => api.get('/cramschool/student-answers/'),
-  
+
   // 獲取單個作答記錄
   getById: (id) => api.get(`/cramschool/student-answers/${id}/`),
-  
+
   // 創建作答記錄
   create: (data) => api.post('/cramschool/student-answers/', data),
-  
+
   // 更新作答記錄
   update: (id, data) => api.put(`/cramschool/student-answers/${id}/`, data),
-  
+
   // 刪除作答記錄
   delete: (id) => api.delete(`/cramschool/student-answers/${id}/`)
 }
