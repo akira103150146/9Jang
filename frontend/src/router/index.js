@@ -5,6 +5,7 @@ import StudentForm from '../views/StudentForm.vue'
 import TeacherList from '../views/TeacherList.vue'
 import TeacherForm from '../views/TeacherForm.vue'
 import CourseList from '../views/CourseList.vue'
+import CourseForm from '../views/CourseForm.vue'
 import EnrollmentBoard from '../views/EnrollmentBoard.vue'
 import FeeTracker from '../views/FeeTracker.vue'
 import AttendanceTracker from '../views/AttendanceTracker.vue'
@@ -63,6 +64,19 @@ const router = createRouter({
       name: 'courses',
       component: CourseList,
       meta: { title: '課程管理' },
+    },
+    {
+      path: '/courses/add',
+      name: 'course-add',
+      component: CourseForm,
+      meta: { title: '新增課程' },
+    },
+    {
+      path: '/courses/edit/:id',
+      name: 'course-edit',
+      component: CourseForm,
+      props: true,
+      meta: { title: '編輯課程' },
     },
     {
       path: '/enrollments',

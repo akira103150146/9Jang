@@ -58,3 +58,61 @@ class Teacher(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.username})"
+
+
+class Course(models.Model):
+    """
+    補習班課程資料模型
+    """
+    DAY_CHOICES = [
+        ('Mon', 'Monday'),
+        ('Tue', 'Tuesday'),
+        ('Wed', 'Wednesday'),
+        ('Thu', 'Thursday'),
+        ('Fri', 'Friday'),
+        ('Sat', 'Saturday'),
+        ('Sun', 'Sunday'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('Active', 'Active'),
+        ('Pending', 'Pending'),
+        ('Closed', 'Closed'),
+    ]
+    
+    # 核心欄位
+    course_id = models.AutoField(primary_key=True, verbose_name='課程ID')
+    course_name = models.CharField(max_length=100, verbose_name='課程名稱')
+    teacher = models.ForeignKey(
+        Teacher,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='courses',
+        verbose_name='授課老師'
+    )
+    start_time = models.TimeField(verbose_name='開始時間')
+    end_time = models.TimeField(verbose_name='結束時間')
+    day_of_week = models.CharField(
+        max_length=3,
+        choices=DAY_CHOICES,
+        verbose_name='上課日'
+    )
+    fee_per_session = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name='每堂課收費'
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default='Active',
+        verbose_name='課程狀態'
+    )
+
+    class Meta:
+        verbose_name = '課程'
+        verbose_name_plural = '課程'
+        ordering = ['day_of_week', 'start_time']
+
+    def __str__(self):
+        return f"{self.course_name} ({self.get_day_of_week_display()})"
