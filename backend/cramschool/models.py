@@ -116,3 +116,39 @@ class Course(models.Model):
 
     def __str__(self):
         return f"{self.course_name} ({self.get_day_of_week_display()})"
+
+
+class StudentEnrollment(models.Model):
+    """
+    學生課程報名模型
+    """
+    # 核心欄位
+    enrollment_id = models.AutoField(primary_key=True, verbose_name='報名ID')
+    student = models.ForeignKey(
+        Student,
+        on_delete=models.CASCADE,
+        related_name='enrollments',
+        verbose_name='學生'
+    )
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name='enrollments',
+        verbose_name='課程'
+    )
+    enroll_date = models.DateField(verbose_name='報名日期')
+    discount_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0.0,
+        verbose_name='折扣百分比'
+    )
+
+    class Meta:
+        verbose_name = '學生報名'
+        verbose_name_plural = '學生報名'
+        ordering = ['-enroll_date']
+        unique_together = [('student', 'course')]  # 確保一個學生不能重複報名同一課程
+
+    def __str__(self):
+        return f"{self.student.name} - {self.course.course_name}"

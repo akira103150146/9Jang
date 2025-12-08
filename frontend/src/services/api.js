@@ -61,5 +61,23 @@ export const courseAPI = {
   delete: (id) => api.delete(`/cramschool/courses/${id}/`)
 }
 
+// Enrollment API
+export const enrollmentAPI = {
+  // 獲取所有報名記錄
+  getAll: () => api.get('/cramschool/enrollments/'),
+  
+  // 獲取單個報名記錄
+  getById: (id) => api.get(`/cramschool/enrollments/${id}/`),
+  
+  // 創建報名記錄
+  create: (data) => api.post('/cramschool/enrollments/', data),
+  
+  // 更新報名記錄
+  update: (id, data) => api.put(`/cramschool/enrollments/${id}/`, data),
+  
+  // 刪除報名記錄
+  delete: (id) => api.delete(`/cramschool/enrollments/${id}/`)
+}
+
 export default api
 

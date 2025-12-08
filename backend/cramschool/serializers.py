@@ -2,7 +2,7 @@
 
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
-from .models import Student, Teacher, Course
+from .models import Student, Teacher, Course, StudentEnrollment
 
 class StudentSerializer(serializers.ModelSerializer):
     """
@@ -60,4 +60,26 @@ class CourseSerializer(serializers.ModelSerializer):
     
     def get_teacher_name(self, obj):
         return obj.teacher.name if obj.teacher else None
+
+
+class StudentEnrollmentSerializer(serializers.ModelSerializer):
+    """
+    學生課程報名序列化器
+    """
+    student_name = serializers.SerializerMethodField()
+    course_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = StudentEnrollment
+        fields = [
+            'enrollment_id', 'student', 'student_name', 'course', 'course_name',
+            'enroll_date', 'discount_rate'
+        ]
+        read_only_fields = ['enrollment_id', 'student_name', 'course_name']
+    
+    def get_student_name(self, obj):
+        return obj.student.name if obj.student else None
+    
+    def get_course_name(self, obj):
+        return obj.course.course_name if obj.course else None
 

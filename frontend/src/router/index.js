@@ -7,6 +7,7 @@ import TeacherForm from '../views/TeacherForm.vue'
 import CourseList from '../views/CourseList.vue'
 import CourseForm from '../views/CourseForm.vue'
 import EnrollmentBoard from '../views/EnrollmentBoard.vue'
+import EnrollmentForm from '../views/EnrollmentForm.vue'
 import FeeTracker from '../views/FeeTracker.vue'
 import AttendanceTracker from '../views/AttendanceTracker.vue'
 import QuestionBank from '../views/QuestionBank.vue'
@@ -83,6 +84,19 @@ const router = createRouter({
       name: 'enrollments',
       component: EnrollmentBoard,
       meta: { title: '報名紀錄' },
+    },
+    {
+      path: '/enrollments/add',
+      name: 'enrollment-add',
+      component: EnrollmentForm,
+      meta: { title: '新增報名記錄' },
+    },
+    {
+      path: '/enrollments/edit/:id',
+      name: 'enrollment-edit',
+      component: EnrollmentForm,
+      props: true,
+      meta: { title: '編輯報名記錄' },
     },
     {
       path: '/fees',
