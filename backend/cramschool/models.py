@@ -26,4 +26,35 @@ class Student(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.school} - {self.grade})"
-# Create your models here.
+
+
+class Teacher(models.Model):
+    """
+    補習班老師資料模型
+    """
+    PERMISSION_CHOICES = [
+        ('Teacher', 'Teacher'),
+        ('Admin', 'Admin'),
+    ]
+    
+    # 核心欄位
+    teacher_id = models.AutoField(primary_key=True, verbose_name='老師ID')
+    name = models.CharField(max_length=100, verbose_name='姓名')
+    username = models.CharField(max_length=50, unique=True, verbose_name='帳號')
+    password_hash = models.CharField(max_length=255, verbose_name='密碼雜湊')
+    permission_level = models.CharField(
+        max_length=10,
+        choices=PERMISSION_CHOICES,
+        default='Teacher',
+        verbose_name='權限等級'
+    )
+    phone = models.CharField(max_length=20, blank=True, null=True, verbose_name='聯絡電話')
+    hire_date = models.DateField(blank=True, null=True, verbose_name='入職日期')
+
+    class Meta:
+        verbose_name = '老師資料'
+        verbose_name_plural = '老師資料'
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name} ({self.username})"

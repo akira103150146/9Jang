@@ -25,5 +25,23 @@ export const studentAPI = {
   delete: (id) => api.delete(`/cramschool/students/${id}/`)
 }
 
+// Teacher API
+export const teacherAPI = {
+  // 獲取所有老師
+  getAll: () => api.get('/cramschool/teachers/'),
+  
+  // 獲取單個老師
+  getById: (id) => api.get(`/cramschool/teachers/${id}/`),
+  
+  // 創建老師
+  create: (data) => api.post('/cramschool/teachers/', data),
+  
+  // 更新老師
+  update: (id, data) => api.put(`/cramschool/teachers/${id}/`, data),
+  
+  // 刪除老師
+  delete: (id) => api.delete(`/cramschool/teachers/${id}/`)
+}
+
 export default api
 
