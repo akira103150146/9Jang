@@ -152,3 +152,55 @@ class StudentEnrollment(models.Model):
 
     def __str__(self):
         return f"{self.student.name} - {self.course.course_name}"
+
+
+class ExtraFee(models.Model):
+    """
+    學生額外收費模型
+    """
+    ITEM_CHOICES = [
+        ('Transport', 'Transport'),
+        ('Meal', 'Meal'),
+        ('Book', 'Book'),
+        ('Other', 'Other'),
+    ]
+    
+    PAYMENT_STATUS_CHOICES = [
+        ('Paid', 'Paid'),
+        ('Unpaid', 'Unpaid'),
+        ('Partial', 'Partial'),
+    ]
+    
+    # 核心欄位
+    fee_id = models.AutoField(primary_key=True, verbose_name='收費ID')
+    student = models.ForeignKey(
+        Student,
+        on_delete=models.CASCADE,
+        related_name='extra_fees',
+        verbose_name='學生'
+    )
+    item = models.CharField(
+        max_length=20,
+        choices=ITEM_CHOICES,
+        verbose_name='收費名目'
+    )
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name='收費金額'
+    )
+    fee_date = models.DateField(verbose_name='費用日期')
+    payment_status = models.CharField(
+        max_length=10,
+        choices=PAYMENT_STATUS_CHOICES,
+        default='Unpaid',
+        verbose_name='繳費狀態'
+    )
+
+    class Meta:
+        verbose_name = '額外收費'
+        verbose_name_plural = '額外收費'
+        ordering = ['-fee_date']
+
+    def __str__(self):
+        return f"{self.student.name} - {self.get_item_display()} - ${self.amount}"

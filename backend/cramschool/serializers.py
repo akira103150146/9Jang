@@ -2,7 +2,7 @@
 
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
-from .models import Student, Teacher, Course, StudentEnrollment
+from .models import Student, Teacher, Course, StudentEnrollment, ExtraFee
 
 class StudentSerializer(serializers.ModelSerializer):
     """
@@ -82,4 +82,21 @@ class StudentEnrollmentSerializer(serializers.ModelSerializer):
     
     def get_course_name(self, obj):
         return obj.course.course_name if obj.course else None
+
+
+class ExtraFeeSerializer(serializers.ModelSerializer):
+    """
+    額外收費序列化器
+    """
+    student_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = ExtraFee
+        fields = [
+            'fee_id', 'student', 'student_name', 'item', 'amount', 'fee_date', 'payment_status'
+        ]
+        read_only_fields = ['fee_id', 'student_name']
+    
+    def get_student_name(self, obj):
+        return obj.student.name if obj.student else None
 

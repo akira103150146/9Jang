@@ -79,5 +79,23 @@ export const enrollmentAPI = {
   delete: (id) => api.delete(`/cramschool/enrollments/${id}/`)
 }
 
+// Fee API
+export const feeAPI = {
+  // 獲取所有費用記錄
+  getAll: () => api.get('/cramschool/fees/'),
+  
+  // 獲取單個費用記錄
+  getById: (id) => api.get(`/cramschool/fees/${id}/`),
+  
+  // 創建費用記錄
+  create: (data) => api.post('/cramschool/fees/', data),
+  
+  // 更新費用記錄
+  update: (id, data) => api.put(`/cramschool/fees/${id}/`, data),
+  
+  // 刪除費用記錄
+  delete: (id) => api.delete(`/cramschool/fees/${id}/`)
+}
+
 export default api
 

@@ -9,6 +9,7 @@ import CourseForm from '../views/CourseForm.vue'
 import EnrollmentBoard from '../views/EnrollmentBoard.vue'
 import EnrollmentForm from '../views/EnrollmentForm.vue'
 import FeeTracker from '../views/FeeTracker.vue'
+import FeeForm from '../views/FeeForm.vue'
 import AttendanceTracker from '../views/AttendanceTracker.vue'
 import QuestionBank from '../views/QuestionBank.vue'
 import StoreInfo from '../views/StoreInfo.vue'
@@ -103,6 +104,19 @@ const router = createRouter({
       name: 'fees',
       component: FeeTracker,
       meta: { title: '費用追蹤' },
+    },
+    {
+      path: '/fees/add',
+      name: 'fee-add',
+      component: FeeForm,
+      meta: { title: '新增費用記錄' },
+    },
+    {
+      path: '/fees/edit/:id',
+      name: 'fee-edit',
+      component: FeeForm,
+      props: true,
+      meta: { title: '編輯費用記錄' },
     },
     {
       path: '/attendance',

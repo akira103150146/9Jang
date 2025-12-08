@@ -2,8 +2,8 @@
 
 from rest_framework import viewsets
 from rest_framework.permissions import AllowAny
-from .models import Student, Teacher, Course, StudentEnrollment
-from .serializers import StudentSerializer, TeacherSerializer, CourseSerializer, StudentEnrollmentSerializer
+from .models import Student, Teacher, Course, StudentEnrollment, ExtraFee
+from .serializers import StudentSerializer, TeacherSerializer, CourseSerializer, StudentEnrollmentSerializer, ExtraFeeSerializer
 
 class StudentViewSet(viewsets.ModelViewSet):
     """
@@ -38,5 +38,14 @@ class StudentEnrollmentViewSet(viewsets.ModelViewSet):
     """
     queryset = StudentEnrollment.objects.select_related('student', 'course').all()
     serializer_class = StudentEnrollmentSerializer
+    permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+
+
+class ExtraFeeViewSet(viewsets.ModelViewSet):
+    """
+    提供 ExtraFee 模型 CRUD 操作的 API 視圖集
+    """
+    queryset = ExtraFee.objects.select_related('student').all()
+    serializer_class = ExtraFeeSerializer
     permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
 
