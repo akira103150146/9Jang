@@ -6,17 +6,18 @@ class Student(models.Model):
     補習班學生資料模型
     """
     # 核心欄位
+    student_id = models.AutoField(primary_key=True, verbose_name='學生ID')
     name = models.CharField(max_length=100, verbose_name='姓名')
     school = models.CharField(max_length=100, verbose_name='學校')
-    grade = models.CharField(max_length=50, verbose_name='年級')
-    contact = models.CharField(max_length=150, verbose_name='聯絡方式')
+    grade = models.CharField(max_length=20, verbose_name='年級')
+    phone = models.CharField(max_length=20, blank=True, null=True, verbose_name='聯絡電話')
+    
+    # 緊急聯絡人欄位
+    emergency_contact_name = models.CharField(max_length=100, blank=True, null=True, verbose_name='緊急聯絡人姓名')
+    emergency_contact_phone = models.CharField(max_length=20, blank=True, null=True, verbose_name='緊急聯絡人電話')
     
     # 備註欄位 (可為空)
     notes = models.TextField(blank=True, null=True, verbose_name='備註')
-
-    # 追蹤欄位 (自動建立/更新時間)
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='建立時間')
-    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新時間')
 
     class Meta:
         verbose_name = '學生資料'

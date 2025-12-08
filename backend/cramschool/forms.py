@@ -11,4 +11,4 @@ class StudentForm(forms.ModelForm):
         model = Student
         
         # 指定表單中要包含的字段
-        fields = ['name', 'school', 'grade', 'contact', 'notes'] 
+        fields = ['name', 'school', 'grade', 'phone', 'emergency_contact_name', 'emergency_contact_phone', 'notes'] 

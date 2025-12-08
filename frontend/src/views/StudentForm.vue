@@ -29,11 +29,22 @@
             required
           >
           <input 
-            v-model="form.contact"
+            v-model="form.phone"
             type="text" 
             class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150" 
-            placeholder="聯絡方式"
-            required
+            placeholder="聯絡電話"
+          >
+          <input 
+            v-model="form.emergency_contact_name"
+            type="text" 
+            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150" 
+            placeholder="緊急聯絡人姓名"
+          >
+          <input 
+            v-model="form.emergency_contact_phone"
+            type="text" 
+            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150" 
+            placeholder="緊急聯絡人電話"
           >
           <textarea 
             v-model="form.notes"
@@ -78,7 +89,9 @@ const form = ref({
   name: '',
   school: '',
   grade: '',
-  contact: '',
+  phone: '',
+  emergency_contact_name: '',
+  emergency_contact_phone: '',
   notes: ''
 })
 
@@ -91,7 +104,9 @@ const fetchStudent = async () => {
       name: response.data.name,
       school: response.data.school,
       grade: response.data.grade,
-      contact: response.data.contact,
+      phone: response.data.phone || '',
+      emergency_contact_name: response.data.emergency_contact_name || '',
+      emergency_contact_phone: response.data.emergency_contact_phone || '',
       notes: response.data.notes || ''
     }
   } catch (error) {

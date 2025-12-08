@@ -106,15 +106,14 @@ const loading = ref(false)
 const usingMock = ref(false)
 
 const normalizeStudent = (student) => ({
-  id: student.id,
+  id: student.student_id || student.id,
   name: student.name,
   school: student.school,
   grade: student.grade,
-  phone: student.phone || student.contact,
-  emergency_contact_name: student.emergency_contact_name || student.emergencyContactName,
-  emergency_contact_phone: student.emergency_contact_phone || student.emergencyContactPhone,
-  notes: student.notes,
-  contact: student.contact,
+  phone: student.phone || student.contact || '',
+  emergency_contact_name: student.emergency_contact_name || student.emergencyContactName || '',
+  emergency_contact_phone: student.emergency_contact_phone || student.emergencyContactPhone || '',
+  notes: student.notes || '',
 })
 
 const fetchStudents = async () => {
