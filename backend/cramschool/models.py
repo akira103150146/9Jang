@@ -204,3 +204,111 @@ class ExtraFee(models.Model):
 
     def __str__(self):
         return f"{self.student.name} - {self.get_item_display()} - ${self.amount}"
+
+
+class SessionRecord(models.Model):
+    """
+    課程上課記錄模型
+    """
+    # 核心欄位
+    session_id = models.AutoField(primary_key=True, verbose_name='場次ID')
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name='sessions',
+        verbose_name='課程'
+    )
+    session_date = models.DateField(verbose_name='上課日期')
+
+    class Meta:
+        verbose_name = '上課記錄'
+        verbose_name_plural = '上課記錄'
+        ordering = ['-session_date']
+        unique_together = [('course', 'session_date')]  # 確保同一課程在同一天不能重複記錄
+
+    def __str__(self):
+        return f"{self.course.course_name} - {self.session_date}"
+
+
+class Attendance(models.Model):
+    """
+    出席記錄模型
+    """
+    STATUS_CHOICES = [
+        ('Present', 'Present'),
+        ('Absent', 'Absent'),
+        ('Late', 'Late'),
+        ('Leave', 'Leave'),
+    ]
+    
+    # 核心欄位
+    attendance_id = models.AutoField(primary_key=True, verbose_name='出席ID')
+    session = models.ForeignKey(
+        SessionRecord,
+        on_delete=models.CASCADE,
+        related_name='attendances',
+        verbose_name='課程場次'
+    )
+    student = models.ForeignKey(
+        Student,
+        on_delete=models.CASCADE,
+        related_name='attendances',
+        verbose_name='學生'
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default='Absent',
+        verbose_name='出席狀態'
+    )
+
+    class Meta:
+        verbose_name = '出席記錄'
+        verbose_name_plural = '出席記錄'
+        ordering = ['-session__session_date']
+        unique_together = [('session', 'student')]  # 確保同一場次同一學生不能重複記錄
+
+    def __str__(self):
+        return f"{self.student.name} - {self.session.course.course_name} ({self.session.session_date}) - {self.get_status_display()}"
+
+
+class Leave(models.Model):
+    """
+    請假記錄模型
+    """
+    APPROVAL_STATUS_CHOICES = [
+        ('Pending', 'Pending'),
+        ('Approved', 'Approved'),
+        ('Rejected', 'Rejected'),
+    ]
+    
+    # 核心欄位
+    leave_id = models.AutoField(primary_key=True, verbose_name='請假ID')
+    student = models.ForeignKey(
+        Student,
+        on_delete=models.CASCADE,
+        related_name='leaves',
+        verbose_name='學生'
+    )
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name='leaves',
+        verbose_name='課程'
+    )
+    leave_date = models.DateField(verbose_name='請假日期')
+    reason = models.CharField(max_length=255, verbose_name='請假原因')
+    approval_status = models.CharField(
+        max_length=10,
+        choices=APPROVAL_STATUS_CHOICES,
+        default='Pending',
+        verbose_name='審核狀態'
+    )
+
+    class Meta:
+        verbose_name = '請假記錄'
+        verbose_name_plural = '請假記錄'
+        ordering = ['-leave_date']
+
+    def __str__(self):
+        return f"{self.student.name} - {self.course.course_name} ({self.leave_date}) - {self.get_approval_status_display()}"

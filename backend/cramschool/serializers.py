@@ -2,7 +2,7 @@
 
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
-from .models import Student, Teacher, Course, StudentEnrollment, ExtraFee
+from .models import Student, Teacher, Course, StudentEnrollment, ExtraFee, SessionRecord, Attendance, Leave
 
 class StudentSerializer(serializers.ModelSerializer):
     """
@@ -99,4 +99,71 @@ class ExtraFeeSerializer(serializers.ModelSerializer):
     
     def get_student_name(self, obj):
         return obj.student.name if obj.student else None
+
+
+class SessionRecordSerializer(serializers.ModelSerializer):
+    """
+    課程上課記錄序列化器
+    """
+    course_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = SessionRecord
+        fields = ['session_id', 'course', 'course_name', 'session_date']
+        read_only_fields = ['session_id', 'course_name']
+    
+    def get_course_name(self, obj):
+        return obj.course.course_name if obj.course else None
+
+
+class AttendanceSerializer(serializers.ModelSerializer):
+    """
+    出席記錄序列化器
+    """
+    student_name = serializers.SerializerMethodField()
+    session_id_display = serializers.SerializerMethodField()
+    course_name = serializers.SerializerMethodField()
+    session_date = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Attendance
+        fields = [
+            'attendance_id', 'session', 'session_id_display', 'student', 'student_name',
+            'status', 'course_name', 'session_date'
+        ]
+        read_only_fields = ['attendance_id', 'student_name', 'session_id_display', 'course_name', 'session_date']
+    
+    def get_student_name(self, obj):
+        return obj.student.name if obj.student else None
+    
+    def get_session_id_display(self, obj):
+        return obj.session.session_id if obj.session else None
+    
+    def get_course_name(self, obj):
+        return obj.session.course.course_name if obj.session and obj.session.course else None
+    
+    def get_session_date(self, obj):
+        return obj.session.session_date if obj.session else None
+
+
+class LeaveSerializer(serializers.ModelSerializer):
+    """
+    請假記錄序列化器
+    """
+    student_name = serializers.SerializerMethodField()
+    course_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Leave
+        fields = [
+            'leave_id', 'student', 'student_name', 'course', 'course_name',
+            'leave_date', 'reason', 'approval_status'
+        ]
+        read_only_fields = ['leave_id', 'student_name', 'course_name']
+    
+    def get_student_name(self, obj):
+        return obj.student.name if obj.student else None
+    
+    def get_course_name(self, obj):
+        return obj.course.course_name if obj.course else None
 

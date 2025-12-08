@@ -11,6 +11,7 @@ import EnrollmentForm from '../views/EnrollmentForm.vue'
 import FeeTracker from '../views/FeeTracker.vue'
 import FeeForm from '../views/FeeForm.vue'
 import AttendanceTracker from '../views/AttendanceTracker.vue'
+import LeaveForm from '../views/LeaveForm.vue'
 import QuestionBank from '../views/QuestionBank.vue'
 import StoreInfo from '../views/StoreInfo.vue'
 
@@ -122,7 +123,20 @@ const router = createRouter({
       path: '/attendance',
       name: 'attendance',
       component: AttendanceTracker,
-      meta: { title: '出缺勤' },
+      meta: { title: '請假管理' },
+    },
+    {
+      path: '/attendance/leaves/add',
+      name: 'leave-add',
+      component: LeaveForm,
+      meta: { title: '新增請假記錄' },
+    },
+    {
+      path: '/attendance/leaves/edit/:id',
+      name: 'leave-edit',
+      component: LeaveForm,
+      props: true,
+      meta: { title: '編輯請假記錄' },
     },
     {
       path: '/questions',

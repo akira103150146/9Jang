@@ -2,8 +2,12 @@
 
 from rest_framework import viewsets
 from rest_framework.permissions import AllowAny
-from .models import Student, Teacher, Course, StudentEnrollment, ExtraFee
-from .serializers import StudentSerializer, TeacherSerializer, CourseSerializer, StudentEnrollmentSerializer, ExtraFeeSerializer
+from .models import Student, Teacher, Course, StudentEnrollment, ExtraFee, SessionRecord, Attendance, Leave
+from .serializers import (
+    StudentSerializer, TeacherSerializer, CourseSerializer, 
+    StudentEnrollmentSerializer, ExtraFeeSerializer, 
+    SessionRecordSerializer, AttendanceSerializer, LeaveSerializer
+)
 
 class StudentViewSet(viewsets.ModelViewSet):
     """
@@ -47,5 +51,32 @@ class ExtraFeeViewSet(viewsets.ModelViewSet):
     """
     queryset = ExtraFee.objects.select_related('student').all()
     serializer_class = ExtraFeeSerializer
+    permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+
+
+class SessionRecordViewSet(viewsets.ModelViewSet):
+    """
+    提供 SessionRecord 模型 CRUD 操作的 API 視圖集
+    """
+    queryset = SessionRecord.objects.select_related('course').all()
+    serializer_class = SessionRecordSerializer
+    permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+
+
+class AttendanceViewSet(viewsets.ModelViewSet):
+    """
+    提供 Attendance 模型 CRUD 操作的 API 視圖集
+    """
+    queryset = Attendance.objects.select_related('session', 'session__course', 'student').all()
+    serializer_class = AttendanceSerializer
+    permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+
+
+class LeaveViewSet(viewsets.ModelViewSet):
+    """
+    提供 Leave 模型 CRUD 操作的 API 視圖集
+    """
+    queryset = Leave.objects.select_related('student', 'course').all()
+    serializer_class = LeaveSerializer
     permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
 

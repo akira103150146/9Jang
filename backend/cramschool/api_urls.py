@@ -2,7 +2,11 @@
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .api_views import StudentViewSet, TeacherViewSet, CourseViewSet, StudentEnrollmentViewSet, ExtraFeeViewSet
+from .api_views import (
+    StudentViewSet, TeacherViewSet, CourseViewSet, 
+    StudentEnrollmentViewSet, ExtraFeeViewSet,
+    SessionRecordViewSet, AttendanceViewSet, LeaveViewSet
+)
 
 # 建立一個 Router 實例
 router = DefaultRouter()
@@ -26,6 +30,18 @@ router.register(r'enrollments', StudentEnrollmentViewSet)
 # 將 ExtraFeeViewSet 註冊到 'fees' 這個 URL 前綴下
 # 註冊後會自動產生 /api/cramschool/fees/, /api/cramschool/fees/{id}/ 等路由
 router.register(r'fees', ExtraFeeViewSet)
+
+# 將 SessionRecordViewSet 註冊到 'sessions' 這個 URL 前綴下
+# 註冊後會自動產生 /api/cramschool/sessions/, /api/cramschool/sessions/{id}/ 等路由
+router.register(r'sessions', SessionRecordViewSet)
+
+# 將 AttendanceViewSet 註冊到 'attendances' 這個 URL 前綴下
+# 註冊後會自動產生 /api/cramschool/attendances/, /api/cramschool/attendances/{id}/ 等路由
+router.register(r'attendances', AttendanceViewSet)
+
+# 將 LeaveViewSet 註冊到 'leaves' 這個 URL 前綴下
+# 註冊後會自動產生 /api/cramschool/leaves/, /api/cramschool/leaves/{id}/ 等路由
+router.register(r'leaves', LeaveViewSet)
 
 # 應用程式的 URL 模式
 urlpatterns = [

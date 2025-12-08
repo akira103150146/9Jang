@@ -97,5 +97,59 @@ export const feeAPI = {
   delete: (id) => api.delete(`/cramschool/fees/${id}/`)
 }
 
+// Session API
+export const sessionAPI = {
+  // 獲取所有上課記錄
+  getAll: () => api.get('/cramschool/sessions/'),
+  
+  // 獲取單個上課記錄
+  getById: (id) => api.get(`/cramschool/sessions/${id}/`),
+  
+  // 創建上課記錄
+  create: (data) => api.post('/cramschool/sessions/', data),
+  
+  // 更新上課記錄
+  update: (id, data) => api.put(`/cramschool/sessions/${id}/`, data),
+  
+  // 刪除上課記錄
+  delete: (id) => api.delete(`/cramschool/sessions/${id}/`)
+}
+
+// Attendance API
+export const attendanceAPI = {
+  // 獲取所有出席記錄
+  getAll: () => api.get('/cramschool/attendances/'),
+  
+  // 獲取單個出席記錄
+  getById: (id) => api.get(`/cramschool/attendances/${id}/`),
+  
+  // 創建出席記錄
+  create: (data) => api.post('/cramschool/attendances/', data),
+  
+  // 更新出席記錄
+  update: (id, data) => api.put(`/cramschool/attendances/${id}/`, data),
+  
+  // 刪除出席記錄
+  delete: (id) => api.delete(`/cramschool/attendances/${id}/`)
+}
+
+// Leave API
+export const leaveAPI = {
+  // 獲取所有請假記錄
+  getAll: () => api.get('/cramschool/leaves/'),
+  
+  // 獲取單個請假記錄
+  getById: (id) => api.get(`/cramschool/leaves/${id}/`),
+  
+  // 創建請假記錄
+  create: (data) => api.post('/cramschool/leaves/', data),
+  
+  // 更新請假記錄
+  update: (id, data) => api.put(`/cramschool/leaves/${id}/`, data),
+  
+  // 刪除請假記錄
+  delete: (id) => api.delete(`/cramschool/leaves/${id}/`)
+}
+
 export default api
 
