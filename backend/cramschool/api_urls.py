@@ -7,7 +7,8 @@ from .api_views import (
     StudentEnrollmentViewSet, ExtraFeeViewSet,
     SessionRecordViewSet, AttendanceViewSet, LeaveViewSet,
     SubjectViewSet, QuestionBankViewSet, HashtagViewSet, QuestionTagViewSet,
-    StudentAnswerViewSet, ErrorLogViewSet
+    StudentAnswerViewSet, ErrorLogViewSet,
+    upload_image
 )
 
 # 建立一個 Router 實例
@@ -72,5 +73,6 @@ router.register(r'error-logs', ErrorLogViewSet)
 # 應用程式的 URL 模式
 urlpatterns = [
     path('', include(router.urls)),
+    path('upload-image/', upload_image, name='upload-image'),
 ]
 

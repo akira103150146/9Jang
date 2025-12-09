@@ -16,6 +16,8 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 from . import views # 導入剛剛新增的 views.py
 
 urlpatterns = [
@@ -26,3 +28,7 @@ urlpatterns = [
     path('api/cramschool/', include('cramschool.api_urls')),  # API 路由
     path('cramschool/', include('cramschool.urls')), # 確保這裡指向您的新 App
 ]
+
+# 在開發環境中提供媒體文件服務
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

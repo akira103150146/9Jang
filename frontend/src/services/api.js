@@ -254,5 +254,19 @@ export const studentAnswerAPI = {
   delete: (id) => api.delete(`/cramschool/student-answers/${id}/`)
 }
 
+// Image Upload API
+export const uploadImageAPI = {
+  // 上傳圖片
+  upload: (file) => {
+    const formData = new FormData()
+    formData.append('image', file)
+    return api.post('/cramschool/upload-image/', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      }
+    })
+  }
+}
+
 export default api
 

@@ -301,15 +301,64 @@
             />
           </div>
 
-          <!-- 圖片路徑 -->
+          <!-- 圖片上傳 -->
           <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">圖片路徑</label>
-            <input
-              v-model="errorFormData.image_path"
-              type="text"
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
-              placeholder="圖片檔案路徑（選填）"
-            />
+            <label class="block text-sm font-semibold text-slate-700 mb-1">題目圖片（選填）</label>
+            <div class="space-y-3">
+              <!-- 圖片預覽 -->
+              <div v-if="imagePreview" class="relative rounded-lg border border-slate-300 overflow-hidden bg-slate-50">
+                <img
+                  :src="imagePreview"
+                  alt="圖片預覽"
+                  class="w-full max-h-64 object-contain"
+                />
+                <button
+                  type="button"
+                  @click="clearImage"
+                  class="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 transition-colors"
+                >
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <!-- 上傳按鈕 -->
+              <div class="flex gap-2">
+                <label class="flex-1">
+                  <input
+                    type="file"
+                    ref="fileInput"
+                    @change="handleImageSelect"
+                    accept="image/*"
+                    class="hidden"
+                  />
+                  <div class="w-full rounded-lg border-2 border-dashed border-slate-300 px-4 py-3 text-center cursor-pointer hover:border-purple-500 hover:bg-purple-50 transition-colors">
+                    <svg class="w-6 h-6 mx-auto mb-1 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span class="text-sm font-semibold text-slate-700">選擇圖片</span>
+                  </div>
+                </label>
+                
+                <button
+                  type="button"
+                  @click="openCamera"
+                  class="rounded-lg border-2 border-dashed border-slate-300 px-4 py-3 text-center cursor-pointer hover:border-purple-500 hover:bg-purple-50 transition-colors"
+                >
+                  <svg class="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <span class="text-xs text-slate-600 block mt-1">拍照</span>
+                </button>
+              </div>
+              
+              <p v-if="uploadingImage" class="text-sm text-purple-600">上傳中...</p>
+              <p v-else-if="errorFormData.image_path" class="text-xs text-slate-500">
+                已上傳：{{ errorFormData.image_path }}
+              </p>
+            </div>
           </div>
 
           <!-- 標籤選擇區域 -->
@@ -397,6 +446,44 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- 相機拍照對話框 -->
+    <div
+      v-if="showCameraModal"
+      class="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 backdrop-blur-sm"
+      @click.self="closeCamera"
+    >
+      <div class="w-full max-w-2xl bg-black rounded-lg overflow-hidden">
+        <div class="relative">
+          <video
+            ref="videoRef"
+            autoplay
+            playsinline
+            class="w-full h-auto"
+          ></video>
+          <canvas ref="canvasRef" class="hidden"></canvas>
+        </div>
+        <div class="flex justify-center gap-4 p-4 bg-black">
+          <button
+            type="button"
+            @click="closeCamera"
+            class="px-6 py-2 bg-gray-600 text-white rounded-full hover:bg-gray-700"
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            @click="capturePhoto"
+            class="px-6 py-2 bg-white rounded-full hover:bg-gray-100 flex items-center gap-2"
+          >
+            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/>
+            </svg>
+            <span>拍照</span>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -570,7 +657,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { errorLogAPI, questionBankAPI, studentAPI, subjectAPI, hashtagAPI } from '../services/api'
+import { errorLogAPI, questionBankAPI, studentAPI, subjectAPI, hashtagAPI, uploadImageAPI } from '../services/api'
 
 const route = useRoute()
 const studentId = parseInt(route.params.id)
@@ -593,6 +680,13 @@ const studentName = ref('')
 const chapterSuggestions = ref([])
 const showChapterSuggestions = ref(false)
 const searchChapterTimeout = ref(null)
+const imagePreview = ref('')
+const uploadingImage = ref(false)
+const fileInput = ref(null)
+const showCameraModal = ref(false)
+const videoRef = ref(null)
+const videoStream = ref(null)
+const canvasRef = ref(null)
 
 const errorFormData = ref({
   useExistingQuestion: true,
@@ -723,6 +817,13 @@ const loadQuestionFromBank = async () => {
     errorFormData.value.correct_answer = question.correct_answer
     errorFormData.value.difficulty = question.difficulty
     errorFormData.value.image_path = question.image_path || ''
+    
+    // 如果有圖片路徑，顯示預覽
+    if (question.image_path) {
+      imagePreview.value = `http://localhost:8000/media/${question.image_path}`
+    } else {
+      imagePreview.value = ''
+    }
     
     // 自動帶入題目的標籤
     if (question.tag_ids && Array.isArray(question.tag_ids)) {
@@ -897,7 +998,156 @@ const openAddErrorModal = () => {
     error_count: 1,
     review_status: 'New'
   }
+  imagePreview.value = ''
   showAddErrorModal.value = true
+}
+
+const handleImageSelect = async (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+  
+  // 檢查文件類型
+  if (!file.type.startsWith('image/')) {
+    alert('請選擇圖片文件')
+    return
+  }
+  
+  // 檢查文件大小（5MB）
+  if (file.size > 5 * 1024 * 1024) {
+    alert('圖片文件大小不能超過 5MB')
+    return
+  }
+  
+  // 顯示預覽
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    imagePreview.value = e.target.result
+  }
+  reader.readAsDataURL(file)
+  
+  // 上傳圖片
+  uploadingImage.value = true
+  try {
+    const response = await uploadImageAPI.upload(file)
+    errorFormData.value.image_path = response.data.image_path
+    // 更新預覽 URL 為伺服器 URL
+    if (response.data.image_url) {
+      imagePreview.value = `http://localhost:8000${response.data.image_url}`
+    }
+  } catch (error) {
+    console.error('上傳圖片失敗：', error)
+    alert('上傳圖片失敗，請稍後再試')
+    imagePreview.value = ''
+    errorFormData.value.image_path = ''
+  } finally {
+    uploadingImage.value = false
+    // 清空 input 值，以便可以重新選擇同一個文件
+    if (fileInput.value) fileInput.value.value = ''
+    if (cameraInput.value) cameraInput.value.value = ''
+  }
+}
+
+const clearImage = () => {
+  imagePreview.value = ''
+  errorFormData.value.image_path = ''
+  if (fileInput.value) fileInput.value.value = ''
+}
+
+const openCamera = async () => {
+  try {
+    // 請求相機權限
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: 'environment' // 使用後置相機
+      }
+    })
+    
+    videoStream.value = stream
+    showCameraModal.value = true
+    
+    // 等待 DOM 更新後設置視頻流
+    await new Promise(resolve => setTimeout(resolve, 100))
+    if (videoRef.value) {
+      videoRef.value.srcObject = stream
+      videoRef.value.play()
+    }
+  } catch (error) {
+    console.error('無法訪問相機：', error)
+    if (error.name === 'NotAllowedError') {
+      alert('請允許瀏覽器訪問相機權限')
+    } else if (error.name === 'NotFoundError') {
+      alert('未找到可用的相機設備')
+    } else {
+      alert('無法啟動相機，請嘗試使用「選擇圖片」功能')
+    }
+  }
+}
+
+const closeCamera = () => {
+  // 停止視頻流
+  if (videoStream.value) {
+    videoStream.value.getTracks().forEach(track => track.stop())
+    videoStream.value = null
+  }
+  showCameraModal.value = false
+}
+
+const capturePhoto = async () => {
+  if (!videoRef.value || !canvasRef.value) return
+  
+  try {
+    const canvas = canvasRef.value
+    const video = videoRef.value
+    
+    // 設置 canvas 尺寸與視頻相同
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    
+    // 繪製當前視頻幀到 canvas
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    
+    // 將 canvas 轉換為 Blob
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        alert('拍照失敗，請重試')
+        return
+      }
+      
+      // 創建 File 對象
+      const file = new File([blob], `photo_${Date.now()}.jpg`, { type: 'image/jpeg' })
+      
+      // 顯示預覽
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        imagePreview.value = e.target.result
+      }
+      reader.readAsDataURL(file)
+      
+      // 關閉相機
+      closeCamera()
+      
+      // 上傳圖片
+      uploadingImage.value = true
+      try {
+        const response = await uploadImageAPI.upload(file)
+        errorFormData.value.image_path = response.data.image_path
+        if (response.data.image_url) {
+          imagePreview.value = `http://localhost:8000${response.data.image_url}`
+        }
+      } catch (error) {
+        console.error('上傳圖片失敗：', error)
+        alert('上傳圖片失敗，請稍後再試')
+        imagePreview.value = ''
+        errorFormData.value.image_path = ''
+      } finally {
+        uploadingImage.value = false
+      }
+    }, 'image/jpeg', 0.9)
+  } catch (error) {
+    console.error('拍照失敗：', error)
+    alert('拍照失敗，請重試')
+  }
 }
 
 const saveErrorLog = async () => {

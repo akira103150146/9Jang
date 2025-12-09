@@ -1,10 +1,14 @@
 # cramschool/api_views.py
 
-from rest_framework import viewsets
+from rest_framework import viewsets, status
 from rest_framework.permissions import AllowAny
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
 from django.db.models import Q, Count
+from django.conf import settings
+import os
+import uuid
+from datetime import datetime
 from .models import (
     Student, Teacher, Course, StudentEnrollment, ExtraFee, 
     SessionRecord, Attendance, Leave, Subject, QuestionBank, Hashtag, QuestionTag,
@@ -209,4 +213,70 @@ class ErrorLogViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(student_id=student_id)
         
         return queryset
+
+
+@api_view(['POST'])
+def upload_image(request):
+    """
+    上傳圖片 API endpoint
+    支援上傳圖片文件並返回圖片路徑
+    """
+    if 'image' not in request.FILES:
+        return Response(
+            {'error': '沒有提供圖片文件'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    image_file = request.FILES['image']
+    
+    # 檢查文件類型
+    allowed_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp']
+    file_ext = image_file.name.split('.')[-1].lower()
+    if file_ext not in allowed_extensions:
+        return Response(
+            {'error': f'不支援的文件類型。允許的類型：{", ".join(allowed_extensions)}'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # 檢查文件大小（限制為 5MB）
+    if image_file.size > 5 * 1024 * 1024:
+        return Response(
+            {'error': '圖片文件大小不能超過 5MB'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # 創建保存路徑
+    # 使用日期和 UUID 來組織文件結構，避免文件名衝突
+    now = datetime.now()
+    date_folder = now.strftime('%Y/%m/%d')
+    upload_dir = os.path.join(settings.MEDIA_ROOT, 'question_images', date_folder)
+    
+    # 確保目錄存在
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    # 生成唯一的文件名
+    unique_filename = f"{uuid.uuid4().hex}.{file_ext}"
+    file_path = os.path.join(upload_dir, unique_filename)
+    
+    # 保存文件
+    try:
+        with open(file_path, 'wb+') as destination:
+            for chunk in image_file.chunks():
+                destination.write(chunk)
+    except Exception as e:
+        return Response(
+            {'error': f'保存文件失敗：{str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    
+    # 返回相對路徑（相對於 MEDIA_ROOT）
+    relative_path = os.path.join('question_images', date_folder, unique_filename)
+    
+    # 返回完整的 URL 路徑
+    image_url = f"{settings.MEDIA_URL}{relative_path}"
+    
+    return Response({
+        'image_path': relative_path,
+        'image_url': image_url
+    }, status=status.HTTP_201_CREATED)
 
