@@ -642,7 +642,7 @@ const completeGroupOrder = async (id) => {
     fetchGroupOrders()
     const feesCreated = response.data.fees_created || 0
     if (feesCreated > 0) {
-      alert(`團購已完成！已自動生成 ${feesCreated} 筆餐費記錄。\n請前往「費用追蹤」頁面查看。`)
+      alert(`團購已完成！已自動生成 ${feesCreated} 筆餐費記錄。\n請前往「學生資訊」頁面查看各學生的費用記錄。`)
     } else {
       alert('團購已完成！\n（沒有生成新的費用記錄，可能已存在或沒有訂單）')
     }

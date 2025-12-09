@@ -40,8 +40,14 @@
 
       <!-- 費用列表 -->
       <div class="rounded-3xl border border-slate-100 bg-white shadow-sm">
-        <div class="p-6 border-b border-slate-200">
+        <div class="p-6 border-b border-slate-200 flex items-center justify-between">
           <h3 class="text-lg font-semibold text-slate-900">費用記錄</h3>
+          <button
+            @click="openAddFeeModal"
+            class="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-semibold hover:bg-green-600"
+          >
+            + 新增費用記錄
+          </button>
         </div>
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-slate-100">
@@ -100,12 +106,20 @@
                   <p class="max-w-xs truncate">{{ fee.notes || '—' }}</p>
                 </td>
                 <td class="px-4 py-4 text-center">
-                  <button
-                    @click="deleteFee(fee.fee_id)"
-                    class="rounded-full bg-rose-500 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-600"
-                  >
-                    刪除
-                  </button>
+                  <div class="flex justify-center gap-2">
+                    <button
+                      @click="editFee(fee)"
+                      class="rounded-full bg-sky-500 px-3 py-1 text-xs font-semibold text-white hover:bg-sky-600"
+                    >
+                      編輯
+                    </button>
+                    <button
+                      @click="deleteFee(fee.fee_id)"
+                      class="rounded-full bg-rose-500 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-600"
+                    >
+                      刪除
+                    </button>
+                  </div>
                 </td>
               </tr>
               <tr v-if="fees.length === 0">
@@ -113,6 +127,113 @@
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 新增/編輯費用記錄模態框 -->
+    <div
+      v-if="showFeeModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+      @click.self="closeFeeModal"
+    >
+      <div class="bg-white rounded-3xl shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="p-6 border-b border-slate-200">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xl font-bold text-slate-900">
+              {{ editingFee ? '編輯費用記錄' : '新增費用記錄' }}
+            </h3>
+            <button
+              @click="closeFeeModal"
+              class="text-slate-400 hover:text-slate-600"
+            >
+              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="p-6">
+          <form @submit.prevent="saveFee" class="space-y-4">
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 mb-1">收費名目 *</label>
+              <select
+                v-model="feeForm.item"
+                required
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
+              >
+                <option value="">請選擇收費名目</option>
+                <option value="Tuition">學費</option>
+                <option value="Transport">交通費</option>
+                <option value="Meal">餐費</option>
+                <option value="Book">書籍費</option>
+                <option value="Other">其他</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 mb-1">收費金額 *</label>
+              <input
+                v-model.number="feeForm.amount"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                required
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
+              />
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 mb-1">費用日期 *</label>
+              <input
+                v-model="feeForm.fee_date"
+                type="date"
+                required
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
+              />
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 mb-1">繳費狀態 *</label>
+              <select
+                v-model="feeForm.payment_status"
+                required
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
+              >
+                <option value="Unpaid">未繳</option>
+                <option value="Partial">部分繳</option>
+                <option value="Paid">已繳</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 mb-1">備註</label>
+              <textarea
+                v-model="feeForm.notes"
+                rows="3"
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
+                placeholder="備註資訊..."
+              ></textarea>
+            </div>
+
+            <div class="flex gap-2 pt-4">
+              <button
+                type="button"
+                @click="closeFeeModal"
+                class="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                取消
+              </button>
+              <button
+                type="submit"
+                :disabled="savingFee"
+                class="flex-1 rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {{ savingFee ? '儲存中...' : '儲存' }}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
@@ -132,6 +253,17 @@ const studentId = route.params.studentId
 const student = ref(null)
 const fees = ref([])
 const loading = ref(false)
+const showFeeModal = ref(false)
+const editingFee = ref(null)
+const savingFee = ref(false)
+
+const feeForm = ref({
+  item: '',
+  amount: '',
+  fee_date: new Date().toISOString().split('T')[0],
+  payment_status: 'Unpaid',
+  notes: '',
+})
 
 const fetchStudent = async () => {
   try {
@@ -215,6 +347,75 @@ const getItemDisplayName = (item) => {
     'Other': '其他',
   }
   return names[item] || item
+}
+
+const openAddFeeModal = () => {
+  editingFee.value = null
+  feeForm.value = {
+    item: '',
+    amount: '',
+    fee_date: new Date().toISOString().split('T')[0],
+    payment_status: 'Unpaid',
+    notes: '',
+  }
+  showFeeModal.value = true
+}
+
+const editFee = (fee) => {
+  editingFee.value = fee
+  feeForm.value = {
+    item: fee.item,
+    amount: parseFloat(fee.amount),
+    fee_date: fee.fee_date ? new Date(fee.fee_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    payment_status: fee.payment_status,
+    notes: fee.notes || '',
+  }
+  showFeeModal.value = true
+}
+
+const closeFeeModal = () => {
+  showFeeModal.value = false
+  editingFee.value = null
+  feeForm.value = {
+    item: '',
+    amount: '',
+    fee_date: new Date().toISOString().split('T')[0],
+    payment_status: 'Unpaid',
+    notes: '',
+  }
+}
+
+const saveFee = async () => {
+  savingFee.value = true
+  try {
+    const submitData = {
+      student: parseInt(studentId),
+      item: feeForm.value.item,
+      amount: parseFloat(feeForm.value.amount),
+      fee_date: feeForm.value.fee_date,
+      payment_status: feeForm.value.payment_status,
+      notes: feeForm.value.notes || null,
+    }
+
+    if (editingFee.value) {
+      // 編輯
+      await feeAPI.update(editingFee.value.fee_id, submitData)
+      alert('費用記錄已更新')
+    } else {
+      // 新增
+      await feeAPI.create(submitData)
+      alert('費用記錄已新增')
+    }
+
+    closeFeeModal()
+    await fetchStudent()
+    await fetchFees()
+  } catch (error) {
+    console.error('儲存費用記錄失敗：', error)
+    alert('儲存費用記錄失敗，請稍後再試')
+  } finally {
+    savingFee.value = false
+  }
 }
 
 onMounted(() => {

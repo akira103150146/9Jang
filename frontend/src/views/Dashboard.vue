@@ -15,10 +15,10 @@
             報名記錄 {{ totalEnrollments }} 筆
           </router-link>
           <router-link
-            to="/fees"
+            to="/students"
             class="rounded-full border border-white/60 bg-white/70 px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm backdrop-blur hover:bg-white"
           >
-            未付費用 {{ pendingFeesList.length }} 筆
+            未付費用 {{ totalPendingFeesCount }} 筆
           </router-link>
         </div>
       </div>
@@ -85,7 +85,7 @@
             <h3 class="text-xl font-semibold text-slate-900">待處理款項</h3>
           </div>
           <router-link
-            to="/fees"
+            to="/students"
             class="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-100"
           >
             查看全部
@@ -93,10 +93,11 @@
         </div>
         <div v-if="loadingFees" class="text-center py-4 text-slate-500">載入中...</div>
         <ul v-else class="mt-6 space-y-4">
-          <li
+          <router-link
             v-for="fee in pendingFeesList"
             :key="fee.fee_id"
-            class="flex items-center justify-between rounded-2xl border border-slate-100 px-4 py-3 hover:bg-slate-50 transition"
+            :to="getStudentFeePath(fee)"
+            class="flex items-center justify-between rounded-2xl border border-slate-100 px-4 py-3 hover:bg-slate-50 transition cursor-pointer block"
           >
             <div>
               <p class="text-sm font-semibold text-slate-500">{{ fee.student_name }}</p>
@@ -108,7 +109,7 @@
             >
               {{ getPaymentStatusDisplay(fee.payment_status) }}
             </span>
-          </li>
+          </router-link>
           <li v-if="pendingFeesList.length === 0" class="py-4 text-center text-slate-500 text-sm">
             目前沒有待處理款項
           </li>
@@ -230,6 +231,7 @@ const dayMap = {
 }
 
 const itemMap = {
+  'Tuition': '學費',
   'Transport': '交通費',
   'Meal': '餐費',
   'Book': '書籍費',
@@ -267,16 +269,36 @@ const recentEnrollments = computed(() => {
   return enrollments.value.slice(0, 5)
 })
 
+// 所有未繳費用（用於顯示列表）
+const allPendingFees = computed(() => {
+  if (!Array.isArray(fees.value)) return []
+  return fees.value.filter(f => {
+    // 過濾掉已繳費的，保留未繳和部分繳費的
+    return f && f.payment_status && f.payment_status !== 'Paid'
+  })
+})
+
+// 待處理款項列表（只顯示前5筆）
 const pendingFeesList = computed(() => {
-  return fees.value.filter(f => f.payment_status !== 'Paid').slice(0, 5)
+  return allPendingFees.value.slice(0, 5)
 })
 
 const pendingLeaves = computed(() => {
   return leaves.value.filter(l => l.approval_status === 'Pending').slice(0, 5)
 })
 
+// 計算所有未繳費用的總金額（與學生資訊頁面一致：從所有學生的 unpaid_fees 總和）
 const pendingFeeAmount = computed(() => {
-  return pendingFeesList.value.reduce((sum, fee) => sum + parseFloat(fee.amount || 0), 0)
+  if (!Array.isArray(students.value)) return 0
+  return students.value.reduce((sum, student) => {
+    const unpaidFees = parseFloat(student.unpaid_fees) || 0
+    return sum + unpaidFees
+  }, 0)
+})
+
+// 計算所有未繳費用的總筆數（與學生資訊頁面一致）
+const totalPendingFeesCount = computed(() => {
+  return allPendingFees.value.length
 })
 
 const metrics = computed(() => [
@@ -304,9 +326,9 @@ const metrics = computed(() => [
   {
     label: '待收款項',
     value: `$${pendingFeeAmount.value.toLocaleString()}`,
-    badge: `${pendingFeesList.value.length} 筆`,
+    badge: `${totalPendingFeesCount.value} 筆`,
     desc: '未繳費用的總金額',
-    link: '/fees',
+    link: '/students',
   },
 ])
 
@@ -367,6 +389,16 @@ const getPaymentStatusClass = (status) => {
   return map[status] ?? 'bg-slate-100 text-slate-700'
 }
 
+const getStudentFeePath = (fee) => {
+  // 獲取學生ID，支持多種可能的欄位名稱
+  const studentId = fee.student || fee.student_id || (fee.student && typeof fee.student === 'object' ? fee.student.student_id || fee.student.id : null)
+  if (studentId) {
+    return `/students/${studentId}/fees`
+  }
+  // 如果找不到學生ID，返回學生列表頁面
+  return '/students'
+}
+
 const fetchStudents = async () => {
   try {
     const response = await studentAPI.getAll()
@@ -422,10 +454,11 @@ const fetchFees = async () => {
   try {
     const response = await feeAPI.getAll()
     const data = response.data.results || response.data
-    fees.value = data
+    // 確保數據是數組格式
+    fees.value = Array.isArray(data) ? data : []
   } catch (error) {
     console.warn('獲取費用記錄失敗，使用 mock 資料：', error)
-    fees.value = mockExtraFees
+    fees.value = Array.isArray(mockExtraFees) ? mockExtraFees : []
   } finally {
     loadingFees.value = false
   }
