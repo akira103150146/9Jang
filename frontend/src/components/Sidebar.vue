@@ -56,12 +56,13 @@ const navItems = [
   { name: 'enrollments', label: '課程報名', path: '/enrollments' },
   { name: 'fees', label: '費用追蹤', path: '/fees' },
   { name: 'attendance', label: '出缺勤', path: '/attendance' },
-  { name: 'questions', label: '題庫與錯題', path: '/questions' },
-  { name: 'stores', label: '校區資訊', path: '/stores' },
+  { name: 'questions', label: '題庫系統', path: '/questions' },
+  { name: 'lunch-orders', label: '訂便當系統', path: '/lunch-orders' },
 ]
 
 const childMatchMap = {
   'student-list': ['student-list', 'student-add', 'student-edit'],
+  'lunch-orders': ['lunch-orders', 'group-order-detail', 'join-group-order'],
 }
 
 const isActive = (name) => {

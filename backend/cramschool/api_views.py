@@ -12,14 +12,15 @@ from datetime import datetime
 from .models import (
     Student, Teacher, Course, StudentEnrollment, ExtraFee, 
     SessionRecord, Attendance, Leave, Subject, QuestionBank, Hashtag, QuestionTag,
-    StudentAnswer, ErrorLog
+    StudentAnswer, ErrorLog, Restaurant, GroupOrder, Order, OrderItem
 )
 from .serializers import (
     StudentSerializer, TeacherSerializer, CourseSerializer, 
     StudentEnrollmentSerializer, ExtraFeeSerializer, 
     SessionRecordSerializer, AttendanceSerializer, LeaveSerializer,
     SubjectSerializer, QuestionBankSerializer, HashtagSerializer, QuestionTagSerializer,
-    StudentAnswerSerializer, ErrorLogSerializer
+    StudentAnswerSerializer, ErrorLogSerializer,
+    RestaurantSerializer, GroupOrderSerializer, OrderSerializer, OrderItemSerializer
 )
 
 class StudentViewSet(viewsets.ModelViewSet):
@@ -279,4 +280,183 @@ def upload_image(request):
         'image_path': relative_path,
         'image_url': image_url
     }, status=status.HTTP_201_CREATED)
+
+
+class RestaurantViewSet(viewsets.ModelViewSet):
+    """
+    提供 Restaurant 模型 CRUD 操作的 API 視圖集
+    """
+    queryset = Restaurant.objects.all()
+    serializer_class = RestaurantSerializer
+    permission_classes = [AllowAny]
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
+
+class GroupOrderViewSet(viewsets.ModelViewSet):
+    """
+    提供 GroupOrder 模型 CRUD 操作的 API 視圖集
+    """
+    queryset = GroupOrder.objects.select_related('restaurant', 'created_by').prefetch_related('orders').all()
+    serializer_class = GroupOrderSerializer
+    permission_classes = [AllowAny]
+
+    def perform_create(self, serializer):
+        """
+        創建團購時自動生成唯一連結
+        """
+        # 生成唯一連結
+        unique_link = f"order-{uuid.uuid4().hex[:12]}"
+        
+        # 確保連結唯一
+        while GroupOrder.objects.filter(order_link=unique_link).exists():
+            unique_link = f"order-{uuid.uuid4().hex[:12]}"
+        
+        # 保存時自動設置連結
+        serializer.save(order_link=unique_link)
+    
+    @action(detail=True, methods=['post'])
+    def complete(self, request, pk=None):
+        """
+        完成團購並自動生成費用
+        """
+        from django.utils import timezone
+        from decimal import Decimal
+        
+        group_order = self.get_object()
+        
+        # 更新團購狀態
+        group_order.status = 'Completed'
+        group_order.closed_at = timezone.now()
+        group_order.save()
+        
+        # 為每個已確認和待確認的訂單生成費用
+        # 包括 Pending 和 Confirmed 狀態的訂單
+        orders_to_process = group_order.orders.filter(status__in=['Pending', 'Confirmed'])
+        created_fees = []
+        
+        for order in orders_to_process:
+            # 檢查是否已經為這個學生在同一天生成過相同金額的餐費
+            # 使用金額和日期作為重複檢查條件（因為同一個訂單金額相同）
+            today = timezone.now().date()
+            existing_fee = ExtraFee.objects.filter(
+                student=order.student,
+                item='Meal',
+                amount=order.total_amount,
+                fee_date=today
+            ).first()
+            
+            if not existing_fee:
+                try:
+                    fee = ExtraFee.objects.create(
+                        student=order.student,
+                        item='Meal',
+                        amount=order.total_amount,
+                        fee_date=today,
+                        payment_status='Unpaid'
+                    )
+                    # 如果有 notes 欄位，添加團購資訊（需要遷移後才能使用）
+                    try:
+                        fee.notes = f"團購：{group_order.title} (訂單ID: {order.order_id}, 團購ID: {group_order.group_order_id})"
+                        fee.save()
+                    except:
+                        pass  # 如果 notes 欄位不存在，忽略
+                    created_fees.append(fee.fee_id)
+                except Exception as e:
+                    # 如果創建失敗（可能是 notes 欄位問題），記錄錯誤但繼續
+                    print(f"創建費用失敗：{e}")
+        
+        return Response({
+            'message': '團購已完成',
+            'fees_created': len(created_fees),
+            'fee_ids': created_fees
+        })
+
+
+class OrderViewSet(viewsets.ModelViewSet):
+    """
+    提供 Order 模型 CRUD 操作的 API 視圖集
+    """
+    queryset = Order.objects.select_related('group_order', 'student').prefetch_related('items').all()
+    serializer_class = OrderSerializer
+    permission_classes = [AllowAny]
+    
+    def get_queryset(self):
+        """
+        支援按團購 ID 和學生 ID 篩選
+        """
+        queryset = super().get_queryset()
+        group_order_id = self.request.query_params.get('group_order', None)
+        student_id = self.request.query_params.get('student', None)
+        
+        if group_order_id:
+            queryset = queryset.filter(group_order_id=group_order_id)
+        if student_id:
+            queryset = queryset.filter(student_id=student_id)
+        
+        return queryset
+    
+    def perform_create(self, serializer):
+        """
+        創建訂單時自動計算總金額
+        """
+        order = serializer.save()
+        
+        # 計算總金額
+        items = OrderItem.objects.filter(order=order)
+        total = sum(item.subtotal for item in items)
+        order.total_amount = total
+        order.save()
+
+
+class OrderItemViewSet(viewsets.ModelViewSet):
+    """
+    提供 OrderItem 模型 CRUD 操作的 API 視圖集
+    """
+    queryset = OrderItem.objects.select_related('order').all()
+    serializer_class = OrderItemSerializer
+    permission_classes = [AllowAny]
+    
+    def perform_create(self, serializer):
+        """
+        創建訂單項目時自動計算小計，並更新訂單總金額
+        """
+        item = serializer.save()
+        item.subtotal = item.quantity * item.unit_price
+        item.save()
+        
+        # 更新訂單總金額
+        order = item.order
+        items = OrderItem.objects.filter(order=order)
+        order.total_amount = sum(item.subtotal for item in items)
+        order.save()
+    
+    def perform_update(self, serializer):
+        """
+        更新訂單項目時自動計算小計，並更新訂單總金額
+        """
+        item = serializer.save()
+        item.subtotal = item.quantity * item.unit_price
+        item.save()
+        
+        # 更新訂單總金額
+        order = item.order
+        items = OrderItem.objects.filter(order=order)
+        order.total_amount = sum(item.subtotal for item in items)
+        order.save()
+    
+    def perform_destroy(self, instance):
+        """
+        刪除訂單項目時更新訂單總金額
+        """
+        order = instance.order
+        instance.delete()
+        
+        # 更新訂單總金額
+        items = OrderItem.objects.filter(order=order)
+        order.total_amount = sum(item.subtotal for item in items)
+        order.save()
 

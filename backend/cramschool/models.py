@@ -196,6 +196,11 @@ class ExtraFee(models.Model):
         default='Unpaid',
         verbose_name='繳費狀態'
     )
+    notes = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='備註'
+    )
 
     class Meta:
         verbose_name = '額外收費'
@@ -525,3 +530,160 @@ class ErrorLog(models.Model):
 
     def __str__(self):
         return f"{self.student.name} - Q{self.question.question_id} - 錯誤{self.error_count}次"
+
+
+class Restaurant(models.Model):
+    """
+    店家模型
+    """
+    restaurant_id = models.AutoField(primary_key=True, verbose_name='店家ID')
+    name = models.CharField(max_length=100, verbose_name='店家名稱')
+    phone = models.CharField(max_length=20, blank=True, null=True, verbose_name='電話')
+    address = models.CharField(max_length=255, blank=True, null=True, verbose_name='地址')
+    menu_image_path = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name='菜單圖片路徑'
+    )
+    is_active = models.BooleanField(default=True, verbose_name='是否啟用')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='建立時間')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新時間')
+
+    class Meta:
+        verbose_name = '店家'
+        verbose_name_plural = '店家'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class GroupOrder(models.Model):
+    """
+    團購模型
+    """
+    STATUS_CHOICES = [
+        ('Open', '進行中'),
+        ('Closed', '已結束'),
+        ('Completed', '已完成'),
+    ]
+    
+    group_order_id = models.AutoField(primary_key=True, verbose_name='團購ID')
+    restaurant = models.ForeignKey(
+        Restaurant,
+        on_delete=models.PROTECT,
+        related_name='group_orders',
+        verbose_name='店家'
+    )
+    title = models.CharField(max_length=200, verbose_name='團購標題')
+    order_link = models.CharField(
+        max_length=255,
+        unique=True,
+        verbose_name='團購連結'
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='Open',
+        verbose_name='狀態'
+    )
+    deadline = models.DateTimeField(verbose_name='截止時間')
+    created_by = models.ForeignKey(
+        Teacher,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='created_group_orders',
+        verbose_name='建立者'
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='建立時間')
+    closed_at = models.DateTimeField(blank=True, null=True, verbose_name='結束時間')
+
+    class Meta:
+        verbose_name = '團購'
+        verbose_name_plural = '團購'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.title} - {self.restaurant.name}"
+
+
+class Order(models.Model):
+    """
+    訂單模型
+    """
+    STATUS_CHOICES = [
+        ('Pending', '待確認'),
+        ('Confirmed', '已確認'),
+        ('Cancelled', '已取消'),
+    ]
+    
+    order_id = models.AutoField(primary_key=True, verbose_name='訂單ID')
+    group_order = models.ForeignKey(
+        GroupOrder,
+        on_delete=models.CASCADE,
+        related_name='orders',
+        verbose_name='團購'
+    )
+    student = models.ForeignKey(
+        Student,
+        on_delete=models.CASCADE,
+        related_name='orders',
+        verbose_name='學生'
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='Pending',
+        verbose_name='狀態'
+    )
+    total_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0.00,
+        verbose_name='總金額'
+    )
+    notes = models.TextField(blank=True, null=True, verbose_name='備註')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='建立時間')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新時間')
+
+    class Meta:
+        verbose_name = '訂單'
+        verbose_name_plural = '訂單'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.student.name} - {self.group_order.title}"
+
+
+class OrderItem(models.Model):
+    """
+    訂單項目模型
+    """
+    order_item_id = models.AutoField(primary_key=True, verbose_name='訂單項目ID')
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        related_name='items',
+        verbose_name='訂單'
+    )
+    item_name = models.CharField(max_length=200, verbose_name='項目名稱')
+    quantity = models.IntegerField(default=1, verbose_name='數量')
+    unit_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name='單價'
+    )
+    subtotal = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name='小計'
+    )
+
+    class Meta:
+        verbose_name = '訂單項目'
+        verbose_name_plural = '訂單項目'
+        ordering = ['order_item_id']
+
+    def __str__(self):
+        return f"{self.order.student.name} - {self.item_name} x{self.quantity}"

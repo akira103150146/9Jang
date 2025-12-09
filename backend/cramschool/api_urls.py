@@ -8,6 +8,7 @@ from .api_views import (
     SessionRecordViewSet, AttendanceViewSet, LeaveViewSet,
     SubjectViewSet, QuestionBankViewSet, HashtagViewSet, QuestionTagViewSet,
     StudentAnswerViewSet, ErrorLogViewSet,
+    RestaurantViewSet, GroupOrderViewSet, OrderViewSet, OrderItemViewSet,
     upload_image
 )
 
@@ -69,6 +70,18 @@ router.register(r'student-answers', StudentAnswerViewSet)
 # 將 ErrorLogViewSet 註冊到 'error-logs' 這個 URL 前綴下
 # 註冊後會自動產生 /api/cramschool/error-logs/, /api/cramschool/error-logs/{id}/ 等路由
 router.register(r'error-logs', ErrorLogViewSet)
+
+# 將 RestaurantViewSet 註冊到 'restaurants' 這個 URL 前綴下
+router.register(r'restaurants', RestaurantViewSet)
+
+# 將 GroupOrderViewSet 註冊到 'group-orders' 這個 URL 前綴下
+router.register(r'group-orders', GroupOrderViewSet)
+
+# 將 OrderViewSet 註冊到 'orders' 這個 URL 前綴下
+router.register(r'orders', OrderViewSet)
+
+# 將 OrderItemViewSet 註冊到 'order-items' 這個 URL 前綴下
+router.register(r'order-items', OrderItemViewSet)
 
 # 應用程式的 URL 模式
 urlpatterns = [

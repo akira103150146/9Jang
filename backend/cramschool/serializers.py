@@ -5,7 +5,7 @@ from django.contrib.auth.hashers import make_password
 from .models import (
     Student, Teacher, Course, StudentEnrollment, ExtraFee, 
     SessionRecord, Attendance, Leave, Subject, QuestionBank, Hashtag, QuestionTag,
-    StudentAnswer, ErrorLog
+    StudentAnswer, ErrorLog, Restaurant, GroupOrder, Order, OrderItem
 )
 
 class StudentSerializer(serializers.ModelSerializer):
@@ -97,7 +97,7 @@ class ExtraFeeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExtraFee
         fields = [
-            'fee_id', 'student', 'student_name', 'item', 'amount', 'fee_date', 'payment_status'
+            'fee_id', 'student', 'student_name', 'item', 'amount', 'fee_date', 'payment_status', 'notes'
         ]
         read_only_fields = ['fee_id', 'student_name']
     
@@ -409,5 +409,100 @@ class ErrorLogSerializer(serializers.ModelSerializer):
             if len(content) > 100:
                 return content[:100] + '...'
             return content
+        return None
+
+
+class OrderItemSerializer(serializers.ModelSerializer):
+    """
+    訂單項目序列化器
+    """
+    class Meta:
+        model = OrderItem
+        fields = ['order_item_id', 'order', 'item_name', 'quantity', 'unit_price', 'subtotal']
+        read_only_fields = ['order_item_id']
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    """
+    訂單序列化器
+    """
+    student_name = serializers.SerializerMethodField()
+    items = OrderItemSerializer(many=True, read_only=True)
+    group_order_title = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Order
+        fields = [
+            'order_id', 'group_order', 'group_order_title', 'student', 'student_name',
+            'status', 'total_amount', 'notes', 'items', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['order_id', 'created_at', 'updated_at']
+        extra_kwargs = {
+            'group_order': {'required': False},
+            'student': {'required': False},
+            'total_amount': {'required': False},
+        }
+    
+    def get_student_name(self, obj):
+        return obj.student.name if obj.student else None
+    
+    def get_group_order_title(self, obj):
+        return obj.group_order.title if obj.group_order else None
+
+
+class GroupOrderSerializer(serializers.ModelSerializer):
+    """
+    團購序列化器
+    """
+    restaurant_name = serializers.SerializerMethodField()
+    created_by_name = serializers.SerializerMethodField()
+    orders_count = serializers.SerializerMethodField()
+    total_amount = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = GroupOrder
+        fields = [
+            'group_order_id', 'restaurant', 'restaurant_name', 'title', 'order_link',
+            'status', 'deadline', 'created_by', 'created_by_name', 'orders_count',
+            'total_amount', 'created_at', 'closed_at'
+        ]
+        read_only_fields = ['group_order_id', 'order_link', 'created_at']
+    
+    def get_restaurant_name(self, obj):
+        return obj.restaurant.name if obj.restaurant else None
+    
+    def get_created_by_name(self, obj):
+        return obj.created_by.name if obj.created_by else None
+    
+    def get_orders_count(self, obj):
+        return obj.orders.filter(status__in=['Pending', 'Confirmed']).count()
+    
+    def get_total_amount(self, obj):
+        from django.db.models import Sum
+        total = obj.orders.filter(status__in=['Pending', 'Confirmed']).aggregate(
+            total=Sum('total_amount')
+        )['total']
+        return float(total) if total else 0.00
+
+
+class RestaurantSerializer(serializers.ModelSerializer):
+    """
+    店家序列化器
+    """
+    menu_image_url = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Restaurant
+        fields = [
+            'restaurant_id', 'name', 'phone', 'address', 'menu_image_path',
+            'menu_image_url', 'is_active', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['restaurant_id', 'created_at', 'updated_at']
+    
+    def get_menu_image_url(self, obj):
+        if obj.menu_image_path:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(f'/media/{obj.menu_image_path}')
         return None
 

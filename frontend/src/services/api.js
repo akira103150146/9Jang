@@ -268,5 +268,48 @@ export const uploadImageAPI = {
   }
 }
 
+// Restaurant API
+export const restaurantAPI = {
+  getAll: () => api.get('/cramschool/restaurants/'),
+  getById: (id) => api.get(`/cramschool/restaurants/${id}/`),
+  create: (data) => api.post('/cramschool/restaurants/', data),
+  update: (id, data) => api.put(`/cramschool/restaurants/${id}/`, data),
+  delete: (id) => api.delete(`/cramschool/restaurants/${id}/`)
+}
+
+// GroupOrder API
+export const groupOrderAPI = {
+  getAll: () => api.get('/cramschool/group-orders/'),
+  getById: (id) => api.get(`/cramschool/group-orders/${id}/`),
+  create: (data) => api.post('/cramschool/group-orders/', data),
+  update: (id, data) => api.put(`/cramschool/group-orders/${id}/`, data),
+  delete: (id) => api.delete(`/cramschool/group-orders/${id}/`),
+  complete: (id) => api.post(`/cramschool/group-orders/${id}/complete/`)
+}
+
+// Order API
+export const orderAPI = {
+  getAll: (groupOrderId = null, studentId = null) => {
+    const params = new URLSearchParams()
+    if (groupOrderId) params.append('group_order', groupOrderId)
+    if (studentId) params.append('student', studentId)
+    const query = params.toString()
+    return api.get(`/cramschool/orders/${query ? `?${query}` : ''}`)
+  },
+  getById: (id) => api.get(`/cramschool/orders/${id}/`),
+  create: (data) => api.post('/cramschool/orders/', data),
+  update: (id, data) => api.put(`/cramschool/orders/${id}/`, data),
+  delete: (id) => api.delete(`/cramschool/orders/${id}/`)
+}
+
+// OrderItem API
+export const orderItemAPI = {
+  getAll: () => api.get('/cramschool/order-items/'),
+  getById: (id) => api.get(`/cramschool/order-items/${id}/`),
+  create: (data) => api.post('/cramschool/order-items/', data),
+  update: (id, data) => api.put(`/cramschool/order-items/${id}/`, data),
+  delete: (id) => api.delete(`/cramschool/order-items/${id}/`)
+}
+
 export default api
 

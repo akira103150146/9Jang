@@ -13,7 +13,9 @@ import FeeForm from '../views/FeeForm.vue'
 import AttendanceTracker from '../views/AttendanceTracker.vue'
 import LeaveForm from '../views/LeaveForm.vue'
 import QuestionBank from '../views/QuestionBank.vue'
-import StoreInfo from '../views/StoreInfo.vue'
+import LunchOrderSystem from '../views/LunchOrderSystem.vue'
+import GroupOrderDetail from '../views/GroupOrderDetail.vue'
+import JoinGroupOrder from '../views/JoinGroupOrder.vue'
 import StudentErrorLog from '../views/StudentErrorLog.vue'
 
 const router = createRouter({
@@ -153,10 +155,24 @@ const router = createRouter({
       meta: { title: '題庫管理' },
     },
     {
-      path: '/stores',
-      name: 'stores',
-      component: StoreInfo,
-      meta: { title: '校區資訊' },
+      path: '/lunch-orders',
+      name: 'lunch-orders',
+      component: LunchOrderSystem,
+      meta: { title: '訂便當系統' },
+    },
+    {
+      path: '/lunch-orders/:id',
+      name: 'group-order-detail',
+      component: GroupOrderDetail,
+      props: true,
+      meta: { title: '團購詳情' },
+    },
+    {
+      path: '/lunch-orders/join/:link',
+      name: 'join-group-order',
+      component: JoinGroupOrder,
+      props: true,
+      meta: { title: '點餐' },
     },
   ],
 })
