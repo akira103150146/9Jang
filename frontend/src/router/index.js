@@ -14,6 +14,7 @@ import AttendanceTracker from '../views/AttendanceTracker.vue'
 import LeaveForm from '../views/LeaveForm.vue'
 import QuestionBank from '../views/QuestionBank.vue'
 import StoreInfo from '../views/StoreInfo.vue'
+import StudentErrorLog from '../views/StudentErrorLog.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -42,6 +43,13 @@ const router = createRouter({
       component: StudentForm,
       props: true,
       meta: { title: '編輯學生' },
+    },
+    {
+      path: '/students/:id/errors',
+      name: 'student-errors',
+      component: StudentErrorLog,
+      props: true,
+      meta: { title: '學生錯題本' },
     },
     {
       path: '/teachers',

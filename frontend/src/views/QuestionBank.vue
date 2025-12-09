@@ -5,7 +5,7 @@
         <div>
           <p class="text-sm font-semibold text-slate-500">教學模組</p>
           <h2 class="text-2xl font-bold text-slate-900">題庫與標籤系統</h2>
-          <p class="mt-2 text-sm text-slate-500">支援 Markdown + LaTeX，含標籤與錯題追蹤</p>
+          <p class="mt-2 text-sm text-slate-500">支援 Markdown + LaTeX，含標籤管理</p>
         </div>
         <button
           @click="openFormModal()"
@@ -75,53 +75,6 @@
       </article>
       <div v-if="questionBank.length === 0" class="col-span-2 rounded-3xl border border-slate-100 bg-white p-12 text-center">
         <p class="text-slate-500">目前沒有題目，點擊「新增題目」開始建立題庫。</p>
-      </div>
-    </section>
-
-    <!-- 錯題追蹤 -->
-    <section class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
-      <h3 class="text-lg font-semibold text-slate-900">錯題追蹤</h3>
-      <p class="text-sm text-slate-500">掌握學生複習狀態</p>
-
-      <div class="mt-4 overflow-x-auto">
-        <table class="min-w-full divide-y divide-slate-100">
-          <thead class="bg-slate-50">
-            <tr>
-              <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">學生</th>
-              <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">題目</th>
-              <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">錯誤次數</th>
-              <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">狀態</th>
-              <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">操作</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            <tr
-              v-for="log in errorLogs"
-              :key="log.error_log_id"
-              class="transition hover:bg-slate-50/70"
-            >
-              <td class="px-3 py-3 text-sm font-semibold text-slate-900">{{ log.student_name }}</td>
-              <td class="px-3 py-3 text-sm text-slate-600">{{ log.question_chapter || `Q${log.question}` }}</td>
-              <td class="px-3 py-3 text-sm font-semibold text-slate-900">{{ log.error_count }}</td>
-              <td class="px-3 py-3">
-                <span class="rounded-full px-3 py-1 text-xs font-semibold" :class="statusColor(log.review_status)">
-                  {{ getReviewStatusDisplay(log.review_status) }}
-                </span>
-              </td>
-              <td class="px-3 py-3">
-                <button
-                  @click="updateErrorLogStatus(log)"
-                  class="rounded-full bg-sky-500 px-3 py-1 text-xs font-semibold text-white hover:bg-sky-600"
-                >
-                  更新狀態
-                </button>
-              </td>
-            </tr>
-            <tr v-if="errorLogs.length === 0">
-              <td colspan="5" class="px-3 py-4 text-center text-sm text-slate-500">目前沒有錯題記錄。</td>
-            </tr>
-          </tbody>
-        </table>
       </div>
     </section>
 
@@ -451,11 +404,10 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { questionBankAPI, errorLogAPI, hashtagAPI, subjectAPI } from '../services/api'
-import { mockQuestionBank, mockErrorLogs } from '../data/mockData'
+import { questionBankAPI, hashtagAPI, subjectAPI } from '../services/api'
+import { mockQuestionBank } from '../data/mockData'
 
 const questionBank = ref([])
-const errorLogs = ref([])
 const hashtags = ref([])
 const subjects = ref([])
 const loading = ref(false)
@@ -501,24 +453,6 @@ const getLevelDisplay = (level) => {
   return map[level] || level
 }
 
-const getReviewStatusDisplay = (status) => {
-  const map = {
-    'New': '新錯題',
-    'Reviewing': '複習中',
-    'Mastered': '已掌握'
-  }
-  return map[status] || status
-}
-
-const statusColor = (status) => {
-  const map = {
-    New: 'bg-rose-50 text-rose-600',
-    Reviewing: 'bg-amber-50 text-amber-600',
-    Mastered: 'bg-emerald-50 text-emerald-600',
-  }
-  return map[status] ?? 'bg-slate-100 text-slate-700'
-}
-
 const fetchQuestions = async () => {
   loading.value = true
   try {
@@ -532,17 +466,6 @@ const fetchQuestions = async () => {
     usingMock.value = true
   } finally {
     loading.value = false
-  }
-}
-
-const fetchErrorLogs = async () => {
-  try {
-    const response = await errorLogAPI.getAll()
-    const data = response.data.results || response.data
-    errorLogs.value = Array.isArray(data) ? data : []
-  } catch (error) {
-    console.warn('獲取錯題記錄失敗，使用 mock 資料：', error)
-    errorLogs.value = mockErrorLogs
   }
 }
 
@@ -822,27 +745,9 @@ const deleteQuestion = async (id, chapter) => {
   }
 }
 
-const updateErrorLogStatus = async (log) => {
-  const statuses = ['New', 'Reviewing', 'Mastered']
-  const currentIndex = statuses.indexOf(log.review_status)
-  const nextStatus = statuses[(currentIndex + 1) % statuses.length]
-  
-  try {
-    await errorLogAPI.update(log.error_log_id, {
-      ...log,
-      review_status: nextStatus
-    })
-    fetchErrorLogs()
-  } catch (error) {
-    console.error('更新狀態失敗:', error)
-    alert('更新狀態失敗，請稍後再試')
-  }
-}
-
 onMounted(() => {
   fetchSubjects()
   fetchQuestions()
-  fetchErrorLogs()
   fetchHashtags()
 })
 </script>

@@ -194,4 +194,19 @@ class ErrorLogViewSet(viewsets.ModelViewSet):
     queryset = ErrorLog.objects.select_related('student', 'question', 'question__subject').all()
     serializer_class = ErrorLogSerializer
     permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+    
+    def get_queryset(self):
+        """
+        支援按學生 ID 篩選錯題記錄，並優化查詢
+        """
+        queryset = ErrorLog.objects.select_related(
+            'student', 'question', 'question__subject'
+        ).prefetch_related('question__tags__tag')
+        
+        student_id = self.request.query_params.get('student', None)
+        
+        if student_id:
+            queryset = queryset.filter(student_id=student_id)
+        
+        return queryset
 

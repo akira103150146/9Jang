@@ -72,6 +72,12 @@
               <td class="px-4 py-4 text-center">
                 <div class="flex justify-center gap-2">
                   <router-link
+                    :to="`/students/${student.id}/errors`"
+                    class="rounded-full bg-purple-500 px-3 py-1 text-xs font-semibold text-white hover:bg-purple-600"
+                  >
+                    錯題本
+                  </router-link>
+                  <router-link
                     :to="`/students/edit/${student.id}`"
                     class="rounded-full bg-sky-500 px-3 py-1 text-xs font-semibold text-white hover:bg-sky-600"
                   >

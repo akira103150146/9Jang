@@ -215,8 +215,13 @@ export const hashtagAPI = {
 
 // ErrorLog API
 export const errorLogAPI = {
-  // 獲取所有錯題記錄
-  getAll: () => api.get('/cramschool/error-logs/'),
+  // 獲取所有錯題記錄（可選：按學生 ID 篩選）
+  getAll: (studentId = null) => {
+    const url = studentId
+      ? `/cramschool/error-logs/?student=${studentId}`
+      : '/cramschool/error-logs/'
+    return api.get(url)
+  },
 
   // 獲取單個錯題記錄
   getById: (id) => api.get(`/cramschool/error-logs/${id}/`),

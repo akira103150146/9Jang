@@ -319,6 +319,53 @@ class StudentAnswerSerializer(serializers.ModelSerializer):
     
     def get_question_chapter(self, obj):
         return obj.question.chapter if obj.question else None
+    
+    def create(self, validated_data):
+        """
+        創建作答記錄，如果答錯則自動創建或更新錯題記錄
+        """
+        answer = StudentAnswer.objects.create(**validated_data)
+        
+        # 如果答錯，更新錯題記錄
+        if not answer.is_correct:
+            error_log, created = ErrorLog.objects.get_or_create(
+                student=answer.student,
+                question=answer.question,
+                defaults={'error_count': 1, 'review_status': 'New'}
+            )
+            
+            if not created:
+                # 如果錯題記錄已存在，增加錯誤次數
+                error_log.error_count += 1
+                # 如果狀態是已掌握，改回複習中
+                if error_log.review_status == 'Mastered':
+                    error_log.review_status = 'Reviewing'
+                error_log.save()
+        
+        return answer
+    
+    def update(self, instance, validated_data):
+        """
+        更新作答記錄，如果改為答錯則更新錯題記錄
+        """
+        old_is_correct = instance.is_correct
+        answer = super().update(instance, validated_data)
+        
+        # 如果從答對改為答錯，需要創建或更新錯題記錄
+        if old_is_correct and not answer.is_correct:
+            error_log, created = ErrorLog.objects.get_or_create(
+                student=answer.student,
+                question=answer.question,
+                defaults={'error_count': 1, 'review_status': 'New'}
+            )
+            
+            if not created:
+                error_log.error_count += 1
+                if error_log.review_status == 'Mastered':
+                    error_log.review_status = 'Reviewing'
+                error_log.save()
+        
+        return answer
 
 
 class ErrorLogSerializer(serializers.ModelSerializer):
@@ -329,17 +376,18 @@ class ErrorLogSerializer(serializers.ModelSerializer):
     question_chapter = serializers.SerializerMethodField()
     question_subject = serializers.SerializerMethodField()
     question_level = serializers.SerializerMethodField()
+    question_content = serializers.SerializerMethodField()
     
     class Meta:
         model = ErrorLog
         fields = [
             'error_log_id', 'student', 'student_name', 'question', 
             'question_chapter', 'question_subject', 'question_level',
-            'error_count', 'review_status'
+            'question_content', 'error_count', 'review_status'
         ]
         read_only_fields = [
             'error_log_id', 'student_name', 'question_chapter', 
-            'question_subject', 'question_level'
+            'question_subject', 'question_level', 'question_content'
         ]
     
     def get_student_name(self, obj):
@@ -353,4 +401,13 @@ class ErrorLogSerializer(serializers.ModelSerializer):
     
     def get_question_level(self, obj):
         return obj.question.get_level_display() if obj.question else None
+    
+    def get_question_content(self, obj):
+        # 只返回內容的前100個字符作為預覽
+        if obj.question and obj.question.content:
+            content = obj.question.content
+            if len(content) > 100:
+                return content[:100] + '...'
+            return content
+        return None
 
