@@ -11,6 +11,34 @@
 
       <div v-if="loading" class="text-center py-12 text-slate-500">載入中...</div>
       
+      <!-- 團購已關閉或過期提示 -->
+      <div v-else-if="groupOrder && isOrderClosed" class="rounded-3xl border border-red-100 bg-white p-8 shadow-sm">
+        <div class="text-center space-y-4">
+          <div class="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+            <svg class="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <h3 class="text-2xl font-bold text-slate-900">團購已關閉</h3>
+          <div class="space-y-2 text-slate-600">
+            <p class="text-lg">{{ groupOrder.title }}</p>
+            <p class="text-sm">{{ groupOrder.restaurant_name }}</p>
+            <p v-if="isExpired" class="text-sm text-red-600 mt-4">
+              截止時間：<strong>{{ formatDateTime(groupOrder.deadline) }}</strong> 已過期
+            </p>
+            <p v-else-if="groupOrder.status === 'Closed'" class="text-sm text-red-600 mt-4">
+              此團購已由管理員關閉
+            </p>
+            <p v-else-if="groupOrder.status === 'Completed'" class="text-sm text-red-600 mt-4">
+              此團購已完成
+            </p>
+          </div>
+          <div class="pt-4">
+            <p class="text-sm text-slate-500">如有疑問，請聯繫管理員</p>
+          </div>
+        </div>
+      </div>
+      
       <div v-else-if="groupOrder && restaurant" class="grid gap-6 md:grid-cols-2">
         <!-- 菜單圖片 -->
         <div class="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
@@ -181,6 +209,21 @@ const totalAmount = computed(() => {
   return orderForm.value.items.reduce((sum, item) => {
     return sum + (item.quantity * item.unit_price)
   }, 0)
+})
+
+// 檢查團購是否已過期
+const isExpired = computed(() => {
+  if (!groupOrder.value || !groupOrder.value.deadline) return false
+  const deadline = new Date(groupOrder.value.deadline)
+  const now = new Date()
+  return deadline < now
+})
+
+// 檢查團購是否已關閉（包括狀態為 Closed 或 Completed，或已過期）
+const isOrderClosed = computed(() => {
+  if (!groupOrder.value) return false
+  const status = groupOrder.value.status
+  return status === 'Closed' || status === 'Completed' || isExpired.value
 })
 
 const fetchGroupOrder = async () => {
