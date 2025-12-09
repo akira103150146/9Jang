@@ -21,7 +21,8 @@ class CustomUserSerializer(serializers.ModelSerializer):
         # fields 定義了 API 介面將會公開或接收哪些欄位
         fields = (
             'id', 'username', 'email', 'first_name', 'last_name', 
-            'role', 'role_display', 'custom_role', 'custom_role_name', 'is_staff', 'is_active',
+            'role', 'role_display', 'custom_role', 'custom_role_name', 
+            'is_staff', 'is_active', 'must_change_password',
         )
         # read_only_fields = ('is_staff', 'is_active') 
         # extra_kwargs = {'password': {'write_only': True}} # 處理密碼時使用，此處我們先省略密碼相關操作

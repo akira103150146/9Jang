@@ -251,12 +251,19 @@ def login_view(request):
             except:
                 pass  # 如果記錄失敗，不影響登入
             
-            return Response({
+            response_data = {
                 'user': serializer.data,
                 'access': str(access_token),
                 'refresh': str(refresh),
                 'message': '登入成功'
-            })
+            }
+            
+            # 檢查是否需要修改密碼
+            if user.must_change_password:
+                response_data['must_change_password'] = True
+                response_data['message'] = '登入成功，請修改密碼'
+            
+            return Response(response_data)
         else:
             return Response(
                 {'detail': '帳號已被停用'},
@@ -311,3 +318,53 @@ def current_user_view(request):
     """
     serializer = CustomUserSerializer(request.user)
     return Response(serializer.data)
+
+
+# 修改密碼視圖
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def change_password_view(request):
+    """
+    修改當前用戶的密碼
+    如果 must_change_password 為 True，修改後會設為 False
+    """
+    old_password = request.data.get('old_password')
+    new_password = request.data.get('new_password')
+    
+    if not old_password or not new_password:
+        return Response(
+            {'detail': '請提供舊密碼和新密碼'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    user = request.user
+    
+    # 驗證舊密碼
+    if not user.check_password(old_password):
+        return Response(
+            {'detail': '舊密碼錯誤'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # 設置新密碼
+    user.set_password(new_password)
+    
+    # 如果之前需要修改密碼，現在已經修改了，設為 False
+    if user.must_change_password:
+        user.must_change_password = False
+    
+    user.save()
+    
+    # 記錄操作
+    try:
+        log_audit(
+            request, 'update', 'User', 
+            user.id, 
+            user.username,
+            description='修改密碼',
+            response_status=status.HTTP_200_OK
+        )
+    except:
+        pass
+    
+    return Response({'message': '密碼修改成功'})

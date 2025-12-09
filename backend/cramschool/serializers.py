@@ -15,15 +15,48 @@ class StudentSerializer(serializers.ModelSerializer):
     total_fees = serializers.SerializerMethodField()
     unpaid_fees = serializers.SerializerMethodField()
     enrollments_count = serializers.SerializerMethodField()
+    username = serializers.CharField(source='user.username', read_only=True)
+    user_email = serializers.CharField(source='user.email', read_only=True)
+    password = serializers.SerializerMethodField()  # 密碼欄位，僅管理員可見
+    is_account_active = serializers.SerializerMethodField()  # 帳號狀態，僅管理員可見
+    must_change_password = serializers.SerializerMethodField()  # 是否需修改密碼，僅管理員可見
     
     class Meta:
         model = Student
         fields = [
             'student_id', 'name', 'school', 'grade', 'phone', 
             'emergency_contact_name', 'emergency_contact_phone', 'notes',
+            'user', 'username', 'user_email', 'password', 'is_account_active', 'must_change_password',
             'total_fees', 'unpaid_fees', 'enrollments_count'
         ]
-        read_only_fields = ['student_id', 'total_fees', 'unpaid_fees', 'enrollments_count']
+        read_only_fields = ['student_id', 'user', 'username', 'user_email', 'password', 'is_account_active', 'must_change_password', 'total_fees', 'unpaid_fees', 'enrollments_count']
+    
+    def get_password(self, obj):
+        """
+        僅管理員可以看到密碼
+        """
+        request = self.context.get('request')
+        if request and request.user.is_authenticated and request.user.is_admin():
+            return obj.initial_password or ''
+        return None
+    
+    def get_is_account_active(self, obj):
+        """
+        僅管理員可以看到帳號狀態
+        """
+        request = self.context.get('request')
+        if request and request.user.is_authenticated and request.user.is_admin():
+            return obj.user.is_active if obj.user else None
+        return None
+    
+    def get_must_change_password(self, obj):
+        """
+        僅管理員可以看到是否需要修改密碼
+        """
+        request = self.context.get('request')
+        if request and request.user.is_authenticated and request.user.is_admin():
+            return obj.user.must_change_password if obj.user else None
+        return None
     
     def get_total_fees(self, obj):
         """計算學生總費用"""

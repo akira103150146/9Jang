@@ -1,5 +1,8 @@
 from django.db import models
+from django.contrib.auth import get_user_model
 # cramschool/models.py
+
+CustomUser = get_user_model()
 
 class Student(models.Model):
     """
@@ -11,6 +14,25 @@ class Student(models.Model):
     school = models.CharField(max_length=100, verbose_name='學校')
     grade = models.CharField(max_length=20, verbose_name='年級')
     phone = models.CharField(max_length=20, blank=True, null=True, verbose_name='聯絡電話')
+    
+    # 用戶帳號關聯（一對一關係）
+    user = models.OneToOneField(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='student_profile',
+        verbose_name='用戶帳號'
+    )
+    
+    # 初始密碼（用於管理員查看，可選）
+    initial_password = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        verbose_name='初始密碼',
+        help_text='學生帳號的初始密碼，僅供管理員查看'
+    )
     
     # 緊急聯絡人欄位
     emergency_contact_name = models.CharField(max_length=100, blank=True, null=True, verbose_name='緊急聯絡人姓名')

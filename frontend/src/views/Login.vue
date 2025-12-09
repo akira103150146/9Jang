@@ -71,6 +71,13 @@
         </div>
       </div>
     </div>
+    
+    <ChangePasswordModal
+      :show="showChangePasswordModal"
+      :is-first-login="true"
+      @close="showChangePasswordModal = false"
+      @success="handlePasswordChangeSuccess"
+    />
   </div>
 </template>
 
@@ -78,6 +85,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { authAPI } from '../services/api'
+import ChangePasswordModal from '../components/ChangePasswordModal.vue'
 
 const router = useRouter()
 
@@ -88,6 +96,7 @@ const form = ref({
 
 const loading = ref(false)
 const error = ref('')
+const showChangePasswordModal = ref(false)
 
 const handleLogin = async () => {
   loading.value = true
@@ -98,8 +107,15 @@ const handleLogin = async () => {
     
     // authAPI.login 已經處理了 token 和用戶信息的保存
     if (response.data.user && response.data.access) {
-      // 跳轉到首頁
-      router.push('/')
+      // 檢查是否需要修改密碼
+      if (response.data.must_change_password || response.data.user.must_change_password) {
+        // 保存臨時密碼，用於首次登入修改密碼
+        localStorage.setItem('temp_password', form.value.password)
+        showChangePasswordModal.value = true
+      } else {
+        // 跳轉到首頁
+        router.push('/')
+      }
     } else {
       error.value = '登入失敗，請檢查帳號和密碼'
     }
@@ -113,6 +129,22 @@ const handleLogin = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const handlePasswordChangeSuccess = async () => {
+  // 清除臨時密碼
+  localStorage.removeItem('temp_password')
+  // 重新獲取用戶信息
+  try {
+    const response = await authAPI.getCurrentUser()
+    if (response.data) {
+      localStorage.setItem('user', JSON.stringify(response.data))
+    }
+  } catch (error) {
+    console.error('獲取用戶信息失敗:', error)
+  }
+  showChangePasswordModal.value = false
+  router.push('/')
 }
 </script>
 

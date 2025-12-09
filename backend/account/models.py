@@ -124,6 +124,12 @@ class CustomUser(AbstractUser):
         related_name='users',
         verbose_name='自訂角色'
     )
+    # 首次登入強制修改密碼
+    must_change_password = models.BooleanField(
+        default=False,
+        verbose_name='首次登入需修改密碼',
+        help_text='如果為 True，用戶首次登入時必須修改密碼'
+    )
     groups = models.ManyToManyField(
         'auth.Group',
         verbose_name='groups',

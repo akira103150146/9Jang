@@ -50,6 +50,7 @@
               <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">姓名</th>
               <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">學校 / 年級</th>
               <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">手機</th>
+              <th v-if="isAdmin" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">帳號 / 密碼</th>
               <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">總費用 / 待繳</th>
               <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">緊急聯絡人</th>
               <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">操作</th>
@@ -63,6 +64,77 @@
               </td>
               <td class="px-4 py-4 text-sm text-slate-700">{{ student.school }} / {{ student.grade }}</td>
               <td class="px-4 py-4 text-sm text-slate-700">{{ student.phone || student.contact || '—' }}</td>
+              <td v-if="isAdmin" class="px-4 py-4 text-sm">
+                <div v-if="student.username" class="space-y-2">
+                  <div>
+                    <p class="text-xs text-slate-500">帳號</p>
+                    <p class="font-semibold text-slate-900">{{ student.username }}</p>
+                  </div>
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <p class="text-xs text-slate-500">密碼</p>
+                      <button
+                        @click="togglePasswordVisibility(student.id)"
+                        class="text-xs text-sky-600 hover:text-sky-800 font-semibold"
+                      >
+                        {{ visiblePasswords[student.id] ? '隱藏' : '顯示' }}
+                      </button>
+                    </div>
+                    <div v-if="editingPasswords[student.id]" class="mt-1 flex items-center gap-2">
+                      <input
+                        v-model="passwordForms[student.id].password"
+                        type="text"
+                        class="flex-1 rounded border border-slate-300 px-2 py-1 text-xs focus:border-sky-500 focus:outline-none"
+                        placeholder="輸入新密碼"
+                      />
+                      <button
+                        @click="savePassword(student)"
+                        class="rounded bg-green-500 px-2 py-1 text-xs font-semibold text-white hover:bg-green-600"
+                      >
+                        儲存
+                      </button>
+                      <button
+                        @click="cancelEditPassword(student.id)"
+                        class="rounded bg-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-400"
+                      >
+                        取消
+                      </button>
+                    </div>
+                    <div v-else class="mt-1">
+                      <p class="font-mono text-sm text-slate-900">
+                        {{ visiblePasswords[student.id] ? (student.password || '—') : '••••••' }}
+                      </p>
+                      <button
+                        @click="startEditPassword(student)"
+                        class="mt-1 text-xs text-sky-600 hover:text-sky-800 font-semibold"
+                      >
+                        編輯
+                      </button>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span
+                      class="rounded-full px-2 py-1 text-xs font-semibold"
+                      :class="student.is_account_active ? 'bg-green-50 text-green-600' : 'bg-rose-50 text-rose-600'"
+                    >
+                      {{ student.is_account_active ? '啟用' : '停用' }}
+                    </span>
+                    <span
+                      v-if="student.must_change_password"
+                      class="rounded-full bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-600"
+                    >
+                      需修改密碼
+                    </span>
+                    <button
+                      @click="toggleAccountStatus(student)"
+                      class="text-xs text-slate-600 hover:text-slate-800 font-semibold"
+                    >
+                      {{ student.is_account_active ? '停用' : '啟用' }}
+                    </button>
+                  </div>
+                </div>
+                <p v-else class="text-xs text-slate-400">尚未創建帳號</p>
+              </td>
               <td class="px-4 py-4 text-sm">
                 <div>
                   <p class="text-slate-900 font-semibold">總：${{ (student.total_fees || 0).toLocaleString() }}</p>
@@ -113,7 +185,7 @@
               </td>
             </tr>
             <tr v-if="students.length === 0">
-              <td colspan="6" class="py-4 px-4 text-center text-slate-500">目前沒有學生資料。</td>
+              <td :colspan="isAdmin ? 7 : 6" class="py-4 px-4 text-center text-slate-500">目前沒有學生資料。</td>
             </tr>
           </tbody>
         </table>
@@ -227,6 +299,12 @@ const selectedStudent = ref(null)
 const tuitionStatus = ref([])
 const loadingTuition = ref(false)
 const savingTuitions = ref(false)
+const currentUser = ref(null)
+const visiblePasswords = ref({})  // 追蹤哪些學生的密碼是顯示的
+const editingPasswords = ref({})  // 追蹤哪些學生正在編輯密碼
+const passwordForms = ref({})  // 存儲密碼編輯表單數據
+const showPasswordModal = ref(false)
+const passwordModalStudent = ref(null)
 
 const normalizeStudent = (student) => ({
   id: student.student_id || student.id,
@@ -240,6 +318,10 @@ const normalizeStudent = (student) => ({
   total_fees: student.total_fees || 0,
   unpaid_fees: student.unpaid_fees || 0,
   enrollments_count: student.enrollments_count || 0,
+  username: student.username || '',
+  password: student.password || '',
+  is_account_active: student.is_account_active,
+  must_change_password: student.must_change_password,
 })
 
 const totalFees = computed(() => {
@@ -373,7 +455,92 @@ const generateAllTuitions = async () => {
   }
 }
 
+// 檢查是否為管理員
+const isAdmin = computed(() => {
+  return currentUser.value && currentUser.value.role === 'ADMIN'
+})
+
+// 獲取當前用戶信息
+const fetchCurrentUser = async () => {
+  try {
+    const userStr = localStorage.getItem('user')
+    if (userStr) {
+      currentUser.value = JSON.parse(userStr)
+    }
+  } catch (error) {
+    console.error('獲取用戶信息失敗:', error)
+  }
+}
+
+// 切換密碼顯示/隱藏
+const togglePasswordVisibility = (studentId) => {
+  if (visiblePasswords.value[studentId]) {
+    visiblePasswords.value[studentId] = false
+  } else {
+    visiblePasswords.value[studentId] = true
+  }
+}
+
+// 開始編輯密碼
+const startEditPassword = (student) => {
+  passwordForms.value[student.id] = {
+    password: student.password || ''
+  }
+  editingPasswords.value[student.id] = true
+}
+
+// 取消編輯密碼
+const cancelEditPassword = (studentId) => {
+  editingPasswords.value[studentId] = false
+  delete passwordForms.value[studentId]
+}
+
+// 保存密碼
+const savePassword = async (student) => {
+  const newPassword = passwordForms.value[student.id]?.password
+  if (!newPassword) {
+    alert('請輸入新密碼')
+    return
+  }
+
+  try {
+    const response = await studentAPI.resetPassword(student.id, newPassword)
+    alert('密碼已更新')
+    // 更新本地數據
+    student.password = response.data.password
+    student.initial_password = response.data.password
+    editingPasswords.value[student.id] = false
+    delete passwordForms.value[student.id]
+  } catch (error) {
+    console.error('更新密碼失敗:', error)
+    alert('更新密碼失敗，請稍後再試')
+  }
+}
+
+// 切換帳號狀態
+const toggleAccountStatus = async (student) => {
+  if (!student.user) {
+    alert('該學生尚未創建帳號')
+    return
+  }
+
+  const action = student.is_account_active ? '停用' : '啟用'
+  if (!confirm(`確定要${action}學生 ${student.name} 的帳號嗎？`)) {
+    return
+  }
+
+  try {
+    const response = await studentAPI.toggleAccountStatus(student.id)
+    student.is_account_active = response.data.is_active
+    alert(`帳號已${response.data.is_active ? '啟用' : '停用'}`)
+  } catch (error) {
+    console.error('切換帳號狀態失敗:', error)
+    alert('操作失敗，請稍後再試')
+  }
+}
+
 onMounted(() => {
+  fetchCurrentUser()
   fetchStudents()
 })
 </script>

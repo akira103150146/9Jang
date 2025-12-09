@@ -1,7 +1,7 @@
 # cramschool/api_views.py
 
 from rest_framework import viewsets, status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
 from django.db.models import Q, Count, Sum
@@ -11,11 +11,15 @@ from datetime import datetime, timedelta
 import calendar
 import os
 import uuid
+from django.contrib.auth import get_user_model
+from account.models import UserRole
 from .models import (
     Student, Teacher, Course, StudentEnrollment, EnrollmentPeriod, ExtraFee, 
     SessionRecord, Attendance, Leave, Subject, QuestionBank, Hashtag, QuestionTag,
     StudentAnswer, ErrorLog, Restaurant, GroupOrder, Order, OrderItem
 )
+
+CustomUser = get_user_model()
 from .serializers import (
     StudentSerializer, TeacherSerializer, CourseSerializer, 
     StudentEnrollmentSerializer, EnrollmentPeriodSerializer, ExtraFeeSerializer, 
@@ -29,9 +33,152 @@ class StudentViewSet(viewsets.ModelViewSet):
     """
     提供 Student 模型 CRUD 操作的 API 視圖集
     """
-    queryset = Student.objects.prefetch_related('enrollments__course', 'extra_fees').all()
+    queryset = Student.objects.prefetch_related('enrollments__course', 'extra_fees', 'user').all()
     serializer_class = StudentSerializer
     permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+    
+    def get_serializer_context(self):
+        """
+        將 request 傳遞給序列化器，用於判斷是否為管理員
+        """
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+    
+    def create(self, request, *args, **kwargs):
+        """
+        創建學生時自動創建用戶帳號
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # 獲取學生資料
+        student_data = serializer.validated_data
+        name = student_data.get('name')
+        
+        # 先保存學生以獲取 student_id
+        student = serializer.save()
+        
+        # 生成唯一的用戶名
+        base_username = f"student_{student.student_id}"
+        username = base_username
+        counter = 1
+        while CustomUser.objects.filter(username=username).exists():
+            username = f"{base_username}_{counter}"
+            counter += 1
+        
+        # 生成預設密碼（6位數學生ID，不足補0）
+        default_password = str(student.student_id).zfill(6)
+        
+        # 生成 email
+        email = f"{username}@student.local"
+        counter = 1
+        while CustomUser.objects.filter(email=email).exists():
+            email = f"{username}_{counter}@student.local"
+            counter += 1
+        
+        # 創建用戶帳號
+        try:
+            user = CustomUser.objects.create_user(
+                username=username,
+                email=email,
+                password=default_password,
+                role=UserRole.STUDENT,
+                first_name=name,
+                is_active=True,
+                must_change_password=True  # 首次登入需修改密碼
+            )
+            
+            # 關聯學生和用戶，並保存初始密碼
+            student.user = user
+            student.initial_password = default_password
+            student.save()
+            
+            # 更新序列化器數據以包含用戶信息
+            response_serializer = self.get_serializer(student)
+            return Response({
+                **response_serializer.data,
+                'user_account': {
+                    'username': username,
+                    'password': default_password,
+                    'email': email
+                }
+            }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            # 如果創建用戶失敗，刪除已創建的學生記錄
+            student.delete()
+            return Response(
+                {'detail': f'創建學生帳號失敗: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=True, methods=['post'], url_path='reset-password')
+    def reset_password(self, request, pk=None):
+        """
+        重置學生密碼（僅管理員可用）
+        """
+        # 檢查是否為管理員
+        if not request.user.is_authenticated or not request.user.is_admin():
+            return Response(
+                {'detail': '只有管理員可以重置學生密碼'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        student = self.get_object()
+        if not student.user:
+            return Response(
+                {'detail': '該學生尚未創建帳號'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        new_password = request.data.get('password')
+        if not new_password:
+            return Response(
+                {'detail': '請提供新密碼'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 更新密碼
+        student.user.set_password(new_password)
+        student.user.must_change_password = True  # 重置後需要修改密碼
+        student.user.save()
+        
+        # 更新初始密碼記錄
+        student.initial_password = new_password
+        student.save()
+        
+        return Response({
+            'message': '密碼已重置',
+            'password': new_password
+        })
+    
+    @action(detail=True, methods=['post'], url_path='toggle-account-status')
+    def toggle_account_status(self, request, pk=None):
+        """
+        啟用/停用學生帳號（僅管理員可用）
+        """
+        # 檢查是否為管理員
+        if not request.user.is_authenticated or not request.user.is_admin():
+            return Response(
+                {'detail': '只有管理員可以管理帳號狀態'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        student = self.get_object()
+        if not student.user:
+            return Response(
+                {'detail': '該學生尚未創建帳號'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 切換帳號狀態
+        student.user.is_active = not student.user.is_active
+        student.user.save()
+        
+        return Response({
+            'message': f'帳號已{"啟用" if student.user.is_active else "停用"}',
+            'is_active': student.user.is_active
+        })
     
     @action(detail=True, methods=['get'])
     def tuition_status(self, request, pk=None):
@@ -201,10 +348,48 @@ class TeacherViewSet(viewsets.ModelViewSet):
 class CourseViewSet(viewsets.ModelViewSet):
     """
     提供 Course 模型 CRUD 操作的 API 視圖集
+    學生只能看到自己報名的課程
     """
     queryset = Course.objects.select_related('teacher').all()
     serializer_class = CourseSerializer
     permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+    
+    def get_queryset(self):
+        """
+        根據用戶角色過濾課程
+        - 管理員：可以看到所有課程
+        - 老師：可以看到所有課程
+        - 學生：只能看到自己報名的課程
+        """
+        queryset = super().get_queryset()
+        
+        # 如果用戶未認證，返回所有課程
+        if not self.request.user.is_authenticated:
+            return queryset
+        
+        # 管理員和老師可以看到所有課程
+        if self.request.user.is_admin() or self.request.user.is_teacher():
+            return queryset
+        
+        # 學生只能看到自己報名的課程
+        if self.request.user.is_student():
+            # 獲取學生的 Student 記錄
+            try:
+                student = self.request.user.student_profile
+                # 獲取學生報名的課程ID列表
+                enrolled_course_ids = StudentEnrollment.objects.filter(
+                    student=student,
+                    is_active=True
+                ).values_list('course_id', flat=True)
+                
+                # 只返回學生報名的課程
+                return queryset.filter(course_id__in=enrolled_course_ids)
+            except Student.DoesNotExist:
+                # 如果學生沒有對應的 Student 記錄，返回空查詢集
+                return queryset.none()
+        
+        # 其他情況返回所有課程
+        return queryset
 
 
 class EnrollmentPeriodViewSet(viewsets.ModelViewSet):

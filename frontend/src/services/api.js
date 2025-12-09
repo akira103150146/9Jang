@@ -148,7 +148,11 @@ export const studentAPI = {
   getTuitionStatus: (id) => api.get(`/cramschool/students/${id}/tuition_status/`),
 
   // 生成學費
-  generateTuition: (id, data) => api.post(`/cramschool/students/${id}/generate_tuition/`, data)
+  generateTuition: (id, data) => api.post(`/cramschool/students/${id}/generate_tuition/`, data),
+  // 重置學生密碼
+  resetPassword: (id, password) => api.post(`/cramschool/students/${id}/reset-password/`, { password }),
+  // 切換帳號狀態
+  toggleAccountStatus: (id) => api.post(`/cramschool/students/${id}/toggle-account-status/`)
 }
 
 // Teacher API
@@ -522,7 +526,11 @@ export const authAPI = {
     }
   },
   refreshToken: () => api.post('/account/token/refresh/', { refresh: getRefreshToken() }),
-  getCurrentUser: () => api.get('/account/users/me/')
+  getCurrentUser: () => api.get('/account/users/me/'),
+  changePassword: (oldPassword, newPassword) => api.post('/account/change-password/', {
+    old_password: oldPassword,
+    new_password: newPassword
+  })
 }
 
 // User API

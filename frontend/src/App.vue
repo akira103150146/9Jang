@@ -29,16 +29,27 @@
       @click="toggleSidebar"
       class="fixed inset-0 z-30 bg-slate-900/50 backdrop-blur-sm transition-opacity duration-300 md:hidden"
     ></div>
+    
+    <ChangePasswordModal
+      :show="showChangePasswordModal"
+      :is-first-login="false"
+      @close="showChangePasswordModal = false"
+      @success="handlePasswordChangeSuccess"
+    />
   </div>
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, ref, watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import Sidebar from './components/Sidebar.vue'
+import ChangePasswordModal from './components/ChangePasswordModal.vue'
+import { authAPI } from './services/api'
 
 const sidebarOpen = ref(false)
 const route = useRoute()
+const router = useRouter()
+const showChangePasswordModal = ref(false)
 
 const pageTitle = computed(() => route.meta.title || '九章後台管理系統')
 const isLoginPage = computed(() => route.name === 'login')
@@ -51,11 +62,51 @@ const closeSidebar = () => {
   sidebarOpen.value = false
 }
 
+// 檢查是否需要修改密碼
+const checkPasswordChange = async () => {
+  if (isLoginPage.value) return
+  
+  try {
+    const userStr = localStorage.getItem('user')
+    if (userStr) {
+      const user = JSON.parse(userStr)
+      if (user.must_change_password) {
+        showChangePasswordModal.value = true
+      }
+    }
+  } catch (error) {
+    console.error('檢查密碼修改狀態失敗:', error)
+  }
+}
+
+const handlePasswordChangeSuccess = async () => {
+  // 重新獲取用戶信息
+  try {
+    const response = await authAPI.getCurrentUser()
+    if (response.data) {
+      localStorage.setItem('user', JSON.stringify(response.data))
+    }
+  } catch (error) {
+    console.error('獲取用戶信息失敗:', error)
+  }
+  showChangePasswordModal.value = false
+}
+
 watch(
   () => route.fullPath,
   () => {
     closeSidebar()
+    // 路由變化時檢查是否需要修改密碼
+    if (!isLoginPage.value) {
+      checkPasswordChange()
+    }
   }
 )
+
+onMounted(() => {
+  if (!isLoginPage.value) {
+    checkPasswordChange()
+  }
+})
 </script>
 
