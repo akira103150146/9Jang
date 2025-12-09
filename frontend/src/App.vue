@@ -1,5 +1,11 @@
 <template>
-  <div class="flex h-screen overflow-hidden bg-slate-50">
+  <!-- 登入頁面不顯示 Sidebar -->
+  <div v-if="isLoginPage" class="h-screen">
+    <router-view />
+  </div>
+  
+  <!-- 其他頁面顯示 Sidebar -->
+  <div v-else class="flex h-screen overflow-hidden bg-slate-50">
     <Sidebar :is-open="sidebarOpen" @close="closeSidebar" />
     <main class="flex-1 flex flex-col overflow-y-auto">
       <header class="h-16 flex-shrink-0 border-b border-slate-200 bg-white/90 backdrop-blur shadow-sm px-4 flex items-center justify-between">
@@ -35,6 +41,7 @@ const sidebarOpen = ref(false)
 const route = useRoute()
 
 const pageTitle = computed(() => route.meta.title || '九章後台管理系統')
+const isLoginPage = computed(() => route.name === 'login')
 
 const toggleSidebar = () => {
   sidebarOpen.value = !sidebarOpen.value

@@ -40,6 +40,8 @@ INSTALLED_APPS = [
     'cramschool',
     'account',
     'rest_framework',
+    'rest_framework_simplejwt',  # JWT 認證
+    'rest_framework_simplejwt.token_blacklist',  # JWT token 黑名單
     'corsheaders',  # CORS 支援
     
 ]
@@ -51,6 +53,8 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'account.middleware.AuditLogMiddleware',  # 操作記錄中間件
+    # 'account.middleware.PermissionCheckMiddleware',  # 權限檢查中間件（可選，根據需要啟用）
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -137,6 +141,9 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# 自訂用戶模型
+AUTH_USER_MODEL = 'account.CustomUser'
+
 # CORS 設定
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Vite 預設端口
@@ -147,13 +154,57 @@ CORS_ALLOWED_ORIGINS = [
 
 # 允許所有來源（僅開發環境使用，生產環境請移除）
 CORS_ALLOW_ALL_ORIGINS = True  # 開發階段使用，生產環境請設為 False
+CORS_ALLOW_CREDENTIALS = True  # 允許發送 cookies
 
 # REST Framework 設定
 REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',  # 使用 JWT 認證
+    ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',  # 開發階段，生產環境請改為適當的權限
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10
 }
+
+# JWT 設定
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),  # Access token 有效期 1 小時
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),  # Refresh token 有效期 7 天
+    'ROTATE_REFRESH_TOKENS': True,  # 刷新時輪換 refresh token
+    'BLACKLIST_AFTER_ROTATION': True,  # 輪換後將舊 token 加入黑名單
+    'UPDATE_LAST_LOGIN': True,  # 更新最後登入時間
+    
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'VERIFYING_KEY': None,
+    'AUDIENCE': None,
+    'ISSUER': None,
+    
+    'AUTH_HEADER_TYPES': ('Bearer',),  # 使用 Bearer token
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+    
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+    
+    'JTI_CLAIM': 'jti',
+}
+
+# CSRF 設置（開發環境）
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+]
+
+# Session 設置
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SECURE = False  # 開發環境設為 False，生產環境設為 True（HTTPS）
 

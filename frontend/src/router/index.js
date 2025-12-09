@@ -17,10 +17,19 @@ import JoinGroupOrder from '../views/JoinGroupOrder.vue'
 import StudentErrorLog from '../views/StudentErrorLog.vue'
 import TuitionGenerator from '../views/TuitionGenerator.vue'
 import StudentFeeTracker from '../views/StudentFeeTracker.vue'
+import RoleManagement from '../views/RoleManagement.vue'
+import AuditLog from '../views/AuditLog.vue'
+import Login from '../views/Login.vue'
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
+    {
+      path: '/login',
+      name: 'login',
+      component: Login,
+      meta: { title: '登入', requiresAuth: false },
+    },
     {
       path: '/',
       name: 'dashboard',
@@ -169,8 +178,159 @@ const router = createRouter({
       props: true,
       meta: { title: '點餐' },
     },
+    {
+      path: '/roles',
+      name: 'roles',
+      component: RoleManagement,
+      meta: { title: '角色管理', requiresAdmin: true },
+    },
+    {
+      path: '/audit-logs',
+      name: 'audit-logs',
+      component: AuditLog,
+      meta: { title: '操作記錄', requiresAdmin: true },
+    },
   ],
 })
+
+// 路由守衛：檢查權限
+router.beforeEach(async (to, from, next) => {
+  // 登入頁面不需要認證
+  if (to.name === 'login') {
+    // 如果已經登入，跳轉到首頁
+    const user = await getCurrentUser()
+    if (user) {
+      next('/')
+      return
+    }
+    next()
+    return
+  }
+
+  // 檢查是否已登入
+  const user = await getCurrentUser()
+  if (!user) {
+    // 未登入，跳轉到登入頁
+    next('/login')
+    return
+  }
+
+  // 檢查是否需要管理員權限
+  if (to.meta.requiresAdmin) {
+    try {
+      // 獲取當前用戶信息
+      const user = await getCurrentUser()
+      if (!user || user.role !== 'ADMIN') {
+        alert('您沒有權限訪問此頁面')
+        next('/')
+        return
+      }
+    } catch (error) {
+      console.error('獲取用戶信息失敗:', error)
+      alert('無法驗證權限，請重新登入')
+      next('/')
+      return
+    }
+  }
+
+  // 檢查頁面權限（如果不是管理員）
+  if (to.meta.requiresPagePermission) {
+    try {
+      const user = await getCurrentUser()
+      if (user && user.role !== 'ADMIN') {
+        const hasPermission = await checkPagePermission(user, to.path)
+        if (!hasPermission) {
+          alert('您沒有權限訪問此頁面')
+          next('/')
+          return
+        }
+      }
+    } catch (error) {
+      console.error('檢查頁面權限失敗:', error)
+    }
+  }
+
+  next()
+})
+
+// 獲取當前用戶信息
+async function getCurrentUser() {
+  try {
+    // 檢查是否有 access token
+    const accessToken = localStorage.getItem('access_token')
+    if (!accessToken) {
+      return null
+    }
+
+    // 先從 localStorage 獲取用戶信息
+    const userStr = localStorage.getItem('user')
+    if (userStr) {
+      const user = JSON.parse(userStr)
+      // 驗證用戶數據是否有效
+      if (user && user.id) {
+        // 驗證 token 是否仍然有效（可選，因為 API 攔截器會自動處理）
+        try {
+          const { authAPI } = await import('../services/api')
+          const response = await authAPI.getCurrentUser()
+          // 更新用戶信息
+          if (response.data) {
+            localStorage.setItem('user', JSON.stringify(response.data))
+            return response.data
+          }
+          return user
+        } catch (error) {
+          // Token 無效，清除本地存儲
+          const { clearTokens } = await import('../services/api')
+          clearTokens()
+          return null
+        }
+      }
+    }
+
+    // 如果沒有本地存儲，嘗試從 API 獲取
+    try {
+      const { authAPI } = await import('../services/api')
+      const response = await authAPI.getCurrentUser()
+      if (response.data) {
+        localStorage.setItem('user', JSON.stringify(response.data))
+        return response.data
+      }
+    } catch (apiError) {
+      // API 可能不存在或需要認證，忽略錯誤
+      console.warn('無法從 API 獲取用戶信息:', apiError)
+    }
+
+    return null
+  } catch (error) {
+    console.error('獲取用戶信息失敗:', error)
+    return null
+  }
+}
+
+// 檢查頁面權限
+async function checkPagePermission(user, pagePath) {
+  if (user.role === 'ADMIN') {
+    return true
+  }
+
+  // 檢查自訂角色的頁面權限
+  if (user.custom_role) {
+    try {
+      const { roleAPI } = await import('../services/api')
+      const response = await roleAPI.getById(user.custom_role)
+      const role = response.data
+
+      return role.permissions?.some(
+        p => p.permission_type === 'page' && p.resource === pagePath
+      ) || false
+    } catch (error) {
+      console.error('檢查頁面權限失敗:', error)
+      return false
+    }
+  }
+
+  return false
+}
 
 export default router
 

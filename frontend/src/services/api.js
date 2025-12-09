@@ -4,8 +4,128 @@ const api = axios.create({
   baseURL: 'http://localhost:8000/api',
   headers: {
     'Content-Type': 'application/json',
-  }
+  },
 })
+
+// 從 localStorage 獲取 token
+const getToken = () => {
+  return localStorage.getItem('access_token')
+}
+
+const getRefreshToken = () => {
+  return localStorage.getItem('refresh_token')
+}
+
+// 保存 token
+export const setTokens = (access, refresh) => {
+  localStorage.setItem('access_token', access)
+  if (refresh) {
+    localStorage.setItem('refresh_token', refresh)
+  }
+}
+
+// 清除 token
+export const clearTokens = () => {
+  localStorage.removeItem('access_token')
+  localStorage.removeItem('refresh_token')
+  localStorage.removeItem('user')
+}
+
+// 刷新 token
+const refreshAccessToken = async () => {
+  const refreshToken = getRefreshToken()
+  if (!refreshToken) {
+    throw new Error('No refresh token')
+  }
+
+  try {
+    const response = await axios.post('http://localhost:8000/api/account/token/refresh/', {
+      refresh: refreshToken
+    })
+    const { access } = response.data
+    localStorage.setItem('access_token', access)
+    return access
+  } catch (error) {
+    clearTokens()
+    throw error
+  }
+}
+
+// 請求攔截器：添加 JWT token
+api.interceptors.request.use(
+  (config) => {
+    const token = getToken()
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => {
+    return Promise.reject(error)
+  }
+)
+
+// 回應攔截器：處理認證錯誤和 token 刷新
+let isRefreshing = false
+let failedQueue = []
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error)
+    } else {
+      prom.resolve(token)
+    }
+  })
+  failedQueue = []
+}
+
+api.interceptors.response.use(
+  (response) => {
+    return response
+  },
+  async (error) => {
+    const originalRequest = error.config
+
+    // 如果是 401 錯誤且不是登入請求，嘗試刷新 token
+    if (error.response?.status === 401 && !originalRequest._retry && originalRequest.url !== '/api/account/login/') {
+      if (isRefreshing) {
+        // 如果正在刷新，將請求加入隊列
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject })
+        })
+          .then(token => {
+            originalRequest.headers.Authorization = `Bearer ${token}`
+            return api(originalRequest)
+          })
+          .catch(err => {
+            return Promise.reject(err)
+          })
+      }
+
+      originalRequest._retry = true
+      isRefreshing = true
+
+      try {
+        const newToken = await refreshAccessToken()
+        processQueue(null, newToken)
+        originalRequest.headers.Authorization = `Bearer ${newToken}`
+        return api(originalRequest)
+      } catch (refreshError) {
+        processQueue(refreshError, null)
+        clearTokens()
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login'
+        }
+        return Promise.reject(refreshError)
+      } finally {
+        isRefreshing = false
+      }
+    }
+
+    return Promise.reject(error)
+  }
+)
 
 // Student API
 export const studentAPI = {
@@ -339,6 +459,78 @@ export const orderItemAPI = {
   create: (data) => api.post('/cramschool/order-items/', data),
   update: (id, data) => api.put(`/cramschool/order-items/${id}/`, data),
   delete: (id) => api.delete(`/cramschool/order-items/${id}/`)
+}
+
+// Role API
+export const roleAPI = {
+  getAll: () => api.get('/account/roles/'),
+  getById: (id) => api.get(`/account/roles/${id}/`),
+  create: (data) => api.post('/account/roles/', data),
+  update: (id, data) => api.put(`/account/roles/${id}/`, data),
+  delete: (id) => api.delete(`/account/roles/${id}/`),
+  updatePermissions: (id, permissions) => api.post(`/account/roles/${id}/permissions/`, { permissions })
+}
+
+// RolePermission API
+export const rolePermissionAPI = {
+  getAll: (roleId = null) => {
+    const url = roleId ? `/account/role-permissions/?role=${roleId}` : '/account/role-permissions/'
+    return api.get(url)
+  },
+  getById: (id) => api.get(`/account/role-permissions/${id}/`),
+  create: (data) => api.post('/account/role-permissions/', data),
+  update: (id, data) => api.put(`/account/role-permissions/${id}/`, data),
+  delete: (id) => api.delete(`/account/role-permissions/${id}/`)
+}
+
+// AuditLog API
+export const auditLogAPI = {
+  getAll: (filters = {}) => {
+    const params = new URLSearchParams()
+    if (filters.user) params.append('user', filters.user)
+    if (filters.role) params.append('role', filters.role)
+    if (filters.action_type) params.append('action_type', filters.action_type)
+    if (filters.resource_type) params.append('resource_type', filters.resource_type)
+    const query = params.toString()
+    return api.get(`/account/audit-logs/${query ? `?${query}` : ''}`)
+  },
+  getById: (id) => api.get(`/account/audit-logs/${id}/`)
+}
+
+// Auth API
+export const authAPI = {
+  login: async (email, password) => {
+    const response = await api.post('/account/login/', { email, password })
+    // 保存 token 和用戶信息
+    if (response.data.access) {
+      setTokens(response.data.access, response.data.refresh)
+      if (response.data.user) {
+        localStorage.setItem('user', JSON.stringify(response.data.user))
+      }
+    }
+    return response
+  },
+  logout: async () => {
+    const refreshToken = getRefreshToken()
+    try {
+      await api.post('/account/logout/', { refresh: refreshToken })
+    } catch (error) {
+      // 即使登出失敗，也清除本地 token
+      console.error('登出失敗:', error)
+    } finally {
+      clearTokens()
+    }
+  },
+  refreshToken: () => api.post('/account/token/refresh/', { refresh: getRefreshToken() }),
+  getCurrentUser: () => api.get('/account/users/me/')
+}
+
+// User API
+export const userAPI = {
+  getAll: () => api.get('/account/users/'),
+  getById: (id) => api.get(`/account/users/${id}/`),
+  update: (id, data) => api.put(`/account/users/${id}/`, data),
+  getCurrentUser: () => api.get('/account/users/me/')
 }
 
 export default api
