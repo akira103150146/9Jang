@@ -56,46 +56,58 @@
                 <div
                   v-for="(item, index) in orderForm.items"
                   :key="index"
-                  class="flex gap-2 items-end"
+                  class="bg-slate-50 rounded-lg p-3 space-y-2"
                 >
-                  <div class="flex-1">
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">項目名稱 *</label>
                     <input
                       v-model="item.item_name"
                       type="text"
-                      placeholder="項目名稱"
+                      placeholder="例如：雞腿便當"
                       required
                       class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
                     />
                   </div>
-                  <div class="w-20">
-                    <input
-                      v-model.number="item.quantity"
-                      type="number"
-                      min="1"
-                      placeholder="數量"
-                      required
-                      class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
-                    />
+                  <div class="grid grid-cols-2 gap-2">
+                    <div>
+                      <label class="block text-xs font-semibold text-slate-600 mb-1">數量 *</label>
+                      <input
+                        v-model.number="item.quantity"
+                        type="number"
+                        min="1"
+                        placeholder="1"
+                        required
+                        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
+                      />
+                    </div>
+                    <div>
+                      <label class="block text-xs font-semibold text-slate-600 mb-1">單價 (元) *</label>
+                      <input
+                        v-model.number="item.unit_price"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        required
+                        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
+                      />
+                    </div>
                   </div>
-                  <div class="w-24">
-                    <input
-                      v-model.number="item.unit_price"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="單價"
-                      required
-                      class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
-                    />
+                  <div class="flex items-center justify-between text-xs">
+                    <span class="text-slate-600">小計：</span>
+                    <span class="font-semibold text-slate-900">
+                      ${{ (item.quantity * item.unit_price).toFixed(2) }}
+                    </span>
                   </div>
                   <button
                     type="button"
                     @click="removeItem(index)"
-                    class="text-red-500 hover:text-red-700"
+                    class="w-full text-red-500 hover:text-red-700 text-xs font-semibold flex items-center justify-center gap-1"
                   >
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
+                    移除此項目
                   </button>
                 </div>
                 <button
@@ -106,9 +118,12 @@
                   + 新增項目
                 </button>
               </div>
-              <p class="mt-2 text-sm font-semibold text-slate-900">
-                總金額：${{ totalAmount.toFixed(2) }}
-              </p>
+              <div class="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                <div class="flex items-center justify-between">
+                  <span class="text-sm font-semibold text-slate-700">總金額：</span>
+                  <span class="text-lg font-bold text-green-600">${{ totalAmount.toFixed(2) }}</span>
+                </div>
+              </div>
             </div>
 
             <div>

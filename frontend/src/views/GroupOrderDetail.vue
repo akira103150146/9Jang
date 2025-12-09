@@ -83,10 +83,19 @@
               <div
                 v-for="item in order.items"
                 :key="item.order_item_id"
-                class="flex items-center justify-between text-sm"
+                class="flex items-center justify-between text-sm bg-slate-50 rounded-lg px-3 py-2"
               >
-                <span class="text-slate-700">{{ item.item_name }} x{{ item.quantity }}</span>
-                <span class="text-slate-600">${{ item.subtotal }}</span>
+                <div class="flex-1">
+                  <span class="font-semibold text-slate-900">{{ item.item_name }}</span>
+                  <div class="flex items-center gap-3 mt-1 text-xs text-slate-600">
+                    <span>數量：<strong class="text-slate-700">{{ item.quantity }}</strong></span>
+                    <span>單價：<strong class="text-slate-700">${{ item.unit_price }}</strong></span>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <span class="text-xs text-slate-500 block">小計</span>
+                  <span class="font-semibold text-slate-900">${{ item.subtotal }}</span>
+                </div>
               </div>
             </div>
             
