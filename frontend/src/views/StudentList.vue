@@ -19,25 +19,26 @@
       </p>
     </header>
 
-    <section class="grid gap-4 md:grid-cols-3">
+    <section class="grid gap-4 md:grid-cols-4">
       <div class="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
         <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">在籍學生</p>
         <p class="mt-2 text-3xl font-bold text-slate-900">{{ students.length }}</p>
         <p class="text-sm text-slate-500">含高三升學衝刺班 3 人</p>
       </div>
       <div class="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
-        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">緊急聯絡資訊</p>
-        <p class="mt-2 text-3xl font-bold text-slate-900">
-          {{ students.filter((s) => s.emergency_contact_name).length }}
-        </p>
-        <p class="text-sm text-slate-500">已填寫緊急聯絡人的學生數</p>
+        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">總費用</p>
+        <p class="mt-2 text-3xl font-bold text-slate-900">${{ totalFees.toLocaleString() }}</p>
+        <p class="text-sm text-slate-500">所有學生費用總和</p>
       </div>
       <div class="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
-        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">備註提醒</p>
-        <p class="mt-2 text-3xl font-bold text-slate-900">
-          {{ students.filter((s) => s.notes).length }}
-        </p>
-        <p class="text-sm text-slate-500">含個別輔導備註</p>
+        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">待繳費用</p>
+        <p class="mt-2 text-3xl font-bold text-amber-600">${{ unpaidFees.toLocaleString() }}</p>
+        <p class="text-sm text-slate-500">未繳費用總和</p>
+      </div>
+      <div class="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
+        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">需要生成學費</p>
+        <p class="mt-2 text-3xl font-bold text-red-600">{{ studentsWithTuitionNeeded.length }}</p>
+        <p class="text-sm text-slate-500">學生人數</p>
       </div>
     </section>
 
@@ -49,8 +50,8 @@
               <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">姓名</th>
               <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">學校 / 年級</th>
               <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">手機</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">總費用 / 待繳</th>
               <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">緊急聯絡人</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">備註</th>
               <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">操作</th>
             </tr>
           </thead>
@@ -62,15 +63,34 @@
               </td>
               <td class="px-4 py-4 text-sm text-slate-700">{{ student.school }} / {{ student.grade }}</td>
               <td class="px-4 py-4 text-sm text-slate-700">{{ student.phone || student.contact || '—' }}</td>
+              <td class="px-4 py-4 text-sm">
+                <div>
+                  <p class="text-slate-900 font-semibold">總：${{ (student.total_fees || 0).toLocaleString() }}</p>
+                  <p class="text-amber-600" :class="{'font-semibold': student.unpaid_fees > 0}">
+                    待繳：${{ (student.unpaid_fees || 0).toLocaleString() }}
+                  </p>
+                  <div v-if="student.enrollments_count > 0" class="mt-1">
+                    <button
+                      @click="openTuitionModal(student)"
+                      class="text-xs text-red-600 hover:text-red-800 font-semibold underline"
+                    >
+                      生成學費
+                    </button>
+                  </div>
+                </div>
+              </td>
               <td class="px-4 py-4 text-sm text-slate-700">
                 <p>{{ student.emergency_contact_name || '—' }}</p>
                 <p class="text-xs text-slate-500">{{ student.emergency_contact_phone || '' }}</p>
               </td>
-              <td class="px-4 py-4 text-sm text-slate-700">
-                <p class="max-w-xs truncate">{{ student.notes || '—' }}</p>
-              </td>
               <td class="px-4 py-4 text-center">
                 <div class="flex justify-center gap-2">
+                  <router-link
+                    :to="`/students/${student.id}/fees`"
+                    class="rounded-full bg-green-500 px-3 py-1 text-xs font-semibold text-white hover:bg-green-600"
+                  >
+                    費用
+                  </router-link>
                   <router-link
                     :to="`/students/${student.id}/errors`"
                     class="rounded-full bg-purple-500 px-3 py-1 text-xs font-semibold text-white hover:bg-purple-600"
@@ -99,17 +119,114 @@
         </table>
       </div>
     </div>
+
+    <!-- 學費生成模態框 -->
+    <div
+      v-if="showTuitionModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+      @click.self="closeTuitionModal"
+    >
+      <div class="bg-white rounded-3xl shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="p-6 border-b border-slate-200">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xl font-bold text-slate-900">
+              生成學費 - {{ selectedStudent?.name }}
+            </h3>
+            <button
+              @click="closeTuitionModal"
+              class="text-slate-400 hover:text-slate-600"
+            >
+              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="p-6">
+          <div v-if="loadingTuition" class="text-center py-8 text-slate-500">載入中...</div>
+          <div v-else-if="tuitionStatus.length === 0" class="text-center py-8 text-slate-500">
+            該學生尚未報名任何課程
+          </div>
+          <div v-else class="space-y-4">
+            <div
+              v-for="(item, index) in tuitionStatus"
+              :key="index"
+              class="border border-slate-200 rounded-lg p-4"
+              :class="{'bg-amber-50': !item.has_fee, 'bg-green-50': item.has_fee}"
+            >
+              <div class="flex items-center justify-between mb-3">
+                <div>
+                  <p class="font-semibold text-slate-900">{{ item.course_name }}</p>
+                  <p class="text-sm text-slate-600">{{ item.year }}年{{ item.month }}月</p>
+                </div>
+                <div class="text-right">
+                  <p class="text-sm text-slate-600">每週費用：${{ item.weekly_fee.toLocaleString() }}</p>
+                  <p v-if="item.has_fee" class="text-sm text-green-600 font-semibold">
+                    已生成：${{ item.current_fee.toLocaleString() }}
+                  </p>
+                </div>
+              </div>
+              <div class="grid grid-cols-3 gap-4 items-end">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-600 mb-1">週數</label>
+                  <input
+                    v-model.number="item.weeks"
+                    type="number"
+                    min="1"
+                    max="8"
+                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-600 mb-1">總費用</label>
+                  <p class="text-lg font-bold text-slate-900">
+                    ${{ (item.weekly_fee * item.weeks).toLocaleString() }}
+                  </p>
+                </div>
+                <div class="flex items-center">
+                  <label class="flex items-center gap-2 text-sm text-slate-700">
+                    <input
+                      v-model="item.selected"
+                      type="checkbox"
+                      class="rounded border-slate-300 text-blue-500 focus:ring-blue-500"
+                    />
+                    <span>{{ item.has_fee ? '更新' : '生成' }}</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div class="pt-4 border-t border-slate-200">
+              <button
+                @click="generateAllTuitions"
+                :disabled="savingTuitions || !hasSelectedTuitions"
+                class="w-full rounded-full bg-blue-500 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {{ savingTuitions ? '生成中...' : `一鍵生成 (${selectedCount} 項)` }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { studentAPI } from '../services/api'
 import { mockStudents } from '../data/mockData'
+
+const router = useRouter()
 
 const students = ref([])
 const loading = ref(false)
 const usingMock = ref(false)
+const showTuitionModal = ref(false)
+const selectedStudent = ref(null)
+const tuitionStatus = ref([])
+const loadingTuition = ref(false)
+const savingTuitions = ref(false)
 
 const normalizeStudent = (student) => ({
   id: student.student_id || student.id,
@@ -120,6 +237,21 @@ const normalizeStudent = (student) => ({
   emergency_contact_name: student.emergency_contact_name || student.emergencyContactName || '',
   emergency_contact_phone: student.emergency_contact_phone || student.emergencyContactPhone || '',
   notes: student.notes || '',
+  total_fees: student.total_fees || 0,
+  unpaid_fees: student.unpaid_fees || 0,
+  enrollments_count: student.enrollments_count || 0,
+})
+
+const totalFees = computed(() => {
+  return students.value.reduce((sum, s) => sum + (s.total_fees || 0), 0)
+})
+
+const unpaidFees = computed(() => {
+  return students.value.reduce((sum, s) => sum + (s.unpaid_fees || 0), 0)
+})
+
+const studentsWithTuitionNeeded = computed(() => {
+  return students.value.filter(s => s.enrollments_count > 0)
 })
 
 const fetchStudents = async () => {
@@ -155,6 +287,89 @@ const deleteStudent = async (id, name) => {
   } catch (error) {
     console.error('刪除失敗:', error)
     alert('刪除失敗，請稍後再試')
+  }
+}
+
+const openTuitionModal = async (student) => {
+  selectedStudent.value = student
+  showTuitionModal.value = true
+  loadingTuition.value = true
+  
+  try {
+    const response = await studentAPI.getTuitionStatus(student.id)
+    const months = response.data.tuition_months || []
+    // 初始化每個項目，添加 selected 和 weeks 屬性
+    tuitionStatus.value = months.map(item => ({
+      ...item,
+      selected: !item.has_fee, // 預設選中未生成的項目
+      weeks: item.weeks || 4, // 預設4週
+    }))
+  } catch (error) {
+    console.error('獲取學費狀態失敗：', error)
+    alert('獲取學費狀態失敗')
+    tuitionStatus.value = []
+  } finally {
+    loadingTuition.value = false
+  }
+}
+
+const closeTuitionModal = () => {
+  showTuitionModal.value = false
+  selectedStudent.value = null
+  tuitionStatus.value = []
+}
+
+const hasSelectedTuitions = computed(() => {
+  return tuitionStatus.value.some(item => item.selected)
+})
+
+const selectedCount = computed(() => {
+  return tuitionStatus.value.filter(item => item.selected).length
+})
+
+const generateAllTuitions = async () => {
+  if (!hasSelectedTuitions.value) {
+    alert('請至少選擇一個項目')
+    return
+  }
+
+  if (!confirm(`確定要生成/更新 ${selectedCount.value} 項學費嗎？`)) {
+    return
+  }
+
+  savingTuitions.value = true
+  const selectedItems = tuitionStatus.value.filter(item => item.selected)
+  let successCount = 0
+  let failCount = 0
+
+  try {
+    for (const item of selectedItems) {
+      try {
+        await studentAPI.generateTuition(selectedStudent.value.id, {
+          year: item.year,
+          month: item.month,
+          enrollment_id: item.enrollment_id,
+          weeks: item.weeks,
+        })
+        successCount++
+      } catch (error) {
+        console.error(`生成 ${item.year}年${item.month}月學費失敗：`, error)
+        failCount++
+      }
+    }
+
+    if (failCount === 0) {
+      alert(`成功生成 ${successCount} 項學費！`)
+      closeTuitionModal()
+      fetchStudents() // 刷新學生列表
+    } else {
+      alert(`成功生成 ${successCount} 項，失敗 ${failCount} 項`)
+    }
+  } catch (error) {
+    console.error('批量生成學費失敗：', error)
+    alert('批量生成學費時發生錯誤')
+  } finally {
+    savingTuitions.value = false
   }
 }
 

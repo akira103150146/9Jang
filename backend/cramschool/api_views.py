@@ -4,11 +4,13 @@ from rest_framework import viewsets, status
 from rest_framework.permissions import AllowAny
 from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Sum
 from django.conf import settings
+from django.utils import timezone
+from datetime import datetime, timedelta
+import calendar
 import os
 import uuid
-from datetime import datetime
 from .models import (
     Student, Teacher, Course, StudentEnrollment, ExtraFee, 
     SessionRecord, Attendance, Leave, Subject, QuestionBank, Hashtag, QuestionTag,
@@ -27,9 +29,133 @@ class StudentViewSet(viewsets.ModelViewSet):
     """
     提供 Student 模型 CRUD 操作的 API 視圖集
     """
-    queryset = Student.objects.all()
+    queryset = Student.objects.prefetch_related('enrollments__course', 'extra_fees').all()
     serializer_class = StudentSerializer
     permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+    
+    @action(detail=True, methods=['get'])
+    def tuition_status(self, request, pk=None):
+        """
+        檢查學生需要生成的學費月份
+        返回從報名時間起到現在，每個月是否需要生成學費
+        """
+        student = self.get_object()
+        enrollments = student.enrollments.all()
+        
+        now = timezone.now().date()
+        tuition_months = []
+        
+        for enrollment in enrollments:
+            enroll_date = enrollment.enroll_date
+            course = enrollment.course
+            
+            # 計算從報名月份到現在的每個月
+            current = enroll_date.replace(day=1)  # 從報名月份的第一天開始
+            
+            while current <= now:
+                year_month = current.strftime('%Y-%m')
+                
+                # 檢查該月份是否已經有學費記錄
+                existing_fee = ExtraFee.objects.filter(
+                    student=student,
+                    item='Tuition',
+                    fee_date__year=current.year,
+                    fee_date__month=current.month,
+                    notes__icontains=f"{course.course_name}"
+                ).first()
+                
+                # 每週費用 = 課程費用 / 4
+                weekly_fee = float(course.fee_per_session) / 4
+                monthly_fee_4weeks = weekly_fee * 4  # 預設4週
+                
+                tuition_months.append({
+                    'year': current.year,
+                    'month': current.month,
+                    'year_month': year_month,
+                    'enrollment_id': enrollment.enrollment_id,
+                    'course_id': course.course_id,
+                    'course_name': course.course_name,
+                    'enroll_date': enroll_date.isoformat(),
+                    'weekly_fee': weekly_fee,
+                    'default_fee': monthly_fee_4weeks,
+                    'has_fee': existing_fee is not None,
+                    'fee_id': existing_fee.fee_id if existing_fee else None,
+                    'current_fee': float(existing_fee.amount) if existing_fee else None,
+                    'weeks': 4  # 預設4週
+                })
+                
+                # 移到下一個月
+                if current.month == 12:
+                    current = current.replace(year=current.year + 1, month=1)
+                else:
+                    current = current.replace(month=current.month + 1)
+        
+        return Response({
+            'student_id': student.student_id,
+            'student_name': student.name,
+            'tuition_months': tuition_months
+        })
+    
+    @action(detail=True, methods=['post'])
+    def generate_tuition(self, request, pk=None):
+        """
+        生成學費記錄
+        需要提供：
+        - year: 年份
+        - month: 月份
+        - enrollment_id: 報名ID
+        - weeks: 週數（預設4週）
+        """
+        student = self.get_object()
+        year = int(request.data.get('year'))
+        month = int(request.data.get('month'))
+        enrollment_id = int(request.data.get('enrollment_id'))
+        weeks = int(request.data.get('weeks', 4))
+        
+        try:
+            enrollment = StudentEnrollment.objects.get(
+                enrollment_id=enrollment_id,
+                student=student
+            )
+        except StudentEnrollment.DoesNotExist:
+            return Response({'error': '找不到報名記錄'}, status=status.HTTP_404_NOT_FOUND)
+        
+        course = enrollment.course
+        weekly_fee = float(course.fee_per_session) / 4
+        total_fee = weekly_fee * weeks
+        
+        # 計算費用日期（該月第一天）
+        from datetime import date
+        fee_date = date(year, month, 1)
+        
+        # 檢查是否已經有該月的學費記錄
+        existing_fee = ExtraFee.objects.filter(
+            student=student,
+            item='Tuition',
+            fee_date__year=year,
+            fee_date__month=month,
+            notes__icontains=f"{course.course_name}"
+        ).first()
+        
+        if existing_fee:
+            # 更新現有記錄
+            existing_fee.amount = total_fee
+            existing_fee.notes = f"{course.course_name} - {year}年{month}月 ({weeks}週)"
+            existing_fee.save()
+            fee = existing_fee
+        else:
+            # 創建新記錄
+            fee = ExtraFee.objects.create(
+                student=student,
+                item='Tuition',
+                amount=total_fee,
+                fee_date=fee_date,
+                payment_status='Unpaid',
+                notes=f"{course.course_name} - {year}年{month}月 ({weeks}週)"
+            )
+        
+        serializer = ExtraFeeSerializer(fee)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class TeacherViewSet(viewsets.ModelViewSet):
@@ -66,6 +192,13 @@ class ExtraFeeViewSet(viewsets.ModelViewSet):
     queryset = ExtraFee.objects.select_related('student').all()
     serializer_class = ExtraFeeSerializer
     permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        student_id = self.request.query_params.get('student', None)
+        if student_id:
+            queryset = queryset.filter(student_id=student_id)
+        return queryset
 
 
 class SessionRecordViewSet(viewsets.ModelViewSet):

@@ -22,7 +22,13 @@ export const studentAPI = {
   update: (id, data) => api.put(`/cramschool/students/${id}/`, data),
 
   // 刪除學生
-  delete: (id) => api.delete(`/cramschool/students/${id}/`)
+  delete: (id) => api.delete(`/cramschool/students/${id}/`),
+
+  // 獲取學生學費狀態
+  getTuitionStatus: (id) => api.get(`/cramschool/students/${id}/tuition_status/`),
+
+  // 生成學費
+  generateTuition: (id, data) => api.post(`/cramschool/students/${id}/generate_tuition/`, data)
 }
 
 // Teacher API
@@ -86,6 +92,9 @@ export const feeAPI = {
 
   // 獲取單個費用記錄
   getById: (id) => api.get(`/cramschool/fees/${id}/`),
+
+  // 獲取特定學生的費用記錄
+  getByStudent: (studentId) => api.get(`/cramschool/fees/?student=${studentId}`),
 
   // 創建費用記錄
   create: (data) => api.post('/cramschool/fees/', data),

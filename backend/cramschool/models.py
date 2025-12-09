@@ -159,10 +159,11 @@ class ExtraFee(models.Model):
     學生額外收費模型
     """
     ITEM_CHOICES = [
-        ('Transport', 'Transport'),
-        ('Meal', 'Meal'),
-        ('Book', 'Book'),
-        ('Other', 'Other'),
+        ('Tuition', '學費'),
+        ('Transport', '交通費'),
+        ('Meal', '餐費'),
+        ('Book', '書籍費'),
+        ('Other', '其他'),
     ]
     
     PAYMENT_STATUS_CHOICES = [

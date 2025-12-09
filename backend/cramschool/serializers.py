@@ -12,11 +12,36 @@ class StudentSerializer(serializers.ModelSerializer):
     """
     學生資料序列化器
     """
+    total_fees = serializers.SerializerMethodField()
+    unpaid_fees = serializers.SerializerMethodField()
+    enrollments_count = serializers.SerializerMethodField()
     
     class Meta:
         model = Student
-        fields = ['student_id', 'name', 'school', 'grade', 'phone', 'emergency_contact_name', 'emergency_contact_phone', 'notes']
-        read_only_fields = ['student_id']
+        fields = [
+            'student_id', 'name', 'school', 'grade', 'phone', 
+            'emergency_contact_name', 'emergency_contact_phone', 'notes',
+            'total_fees', 'unpaid_fees', 'enrollments_count'
+        ]
+        read_only_fields = ['student_id', 'total_fees', 'unpaid_fees', 'enrollments_count']
+    
+    def get_total_fees(self, obj):
+        """計算學生總費用"""
+        from django.db.models import Sum
+        result = obj.extra_fees.aggregate(total=Sum('amount'))
+        return float(result['total'] or 0)
+    
+    def get_unpaid_fees(self, obj):
+        """計算學生未繳費用"""
+        from django.db.models import Sum, Q
+        result = obj.extra_fees.filter(
+            Q(payment_status='Unpaid') | Q(payment_status='Partial')
+        ).aggregate(total=Sum('amount'))
+        return float(result['total'] or 0)
+    
+    def get_enrollments_count(self, obj):
+        """獲取學生報名的課程數量"""
+        return obj.enrollments.count()
 
 
 class TeacherSerializer(serializers.ModelSerializer):

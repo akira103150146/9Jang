@@ -17,6 +17,8 @@ import LunchOrderSystem from '../views/LunchOrderSystem.vue'
 import GroupOrderDetail from '../views/GroupOrderDetail.vue'
 import JoinGroupOrder from '../views/JoinGroupOrder.vue'
 import StudentErrorLog from '../views/StudentErrorLog.vue'
+import TuitionGenerator from '../views/TuitionGenerator.vue'
+import StudentFeeTracker from '../views/StudentFeeTracker.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -52,6 +54,20 @@ const router = createRouter({
       component: StudentErrorLog,
       props: true,
       meta: { title: '學生錯題本' },
+    },
+    {
+      path: '/students/:studentId/tuition',
+      name: 'tuition-generator',
+      component: TuitionGenerator,
+      props: true,
+      meta: { title: '生成學費' },
+    },
+    {
+      path: '/students/:studentId/fees',
+      name: 'student-fees',
+      component: StudentFeeTracker,
+      props: true,
+      meta: { title: '學生費用核銷' },
     },
     {
       path: '/teachers',
