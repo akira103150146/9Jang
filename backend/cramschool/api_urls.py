@@ -4,7 +4,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .api_views import (
     StudentViewSet, TeacherViewSet, CourseViewSet, 
-    StudentEnrollmentViewSet, ExtraFeeViewSet,
+    StudentEnrollmentViewSet, EnrollmentPeriodViewSet, ExtraFeeViewSet,
     SessionRecordViewSet, AttendanceViewSet, LeaveViewSet,
     SubjectViewSet, QuestionBankViewSet, HashtagViewSet, QuestionTagViewSet,
     StudentAnswerViewSet, ErrorLogViewSet,
@@ -30,6 +30,9 @@ router.register(r'courses', CourseViewSet)
 # 將 StudentEnrollmentViewSet 註冊到 'enrollments' 這個 URL 前綴下
 # 註冊後會自動產生 /api/cramschool/enrollments/, /api/cramschool/enrollments/{id}/ 等路由
 router.register(r'enrollments', StudentEnrollmentViewSet)
+
+# 將 EnrollmentPeriodViewSet 註冊到 'enrollment-periods' 這個 URL 前綴下
+router.register(r'enrollment-periods', EnrollmentPeriodViewSet)
 
 # 將 ExtraFeeViewSet 註冊到 'fees' 這個 URL 前綴下
 # 註冊後會自動產生 /api/cramschool/fees/, /api/cramschool/fees/{id}/ 等路由

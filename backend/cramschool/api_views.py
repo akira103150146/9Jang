@@ -12,13 +12,13 @@ import calendar
 import os
 import uuid
 from .models import (
-    Student, Teacher, Course, StudentEnrollment, ExtraFee, 
+    Student, Teacher, Course, StudentEnrollment, EnrollmentPeriod, ExtraFee, 
     SessionRecord, Attendance, Leave, Subject, QuestionBank, Hashtag, QuestionTag,
     StudentAnswer, ErrorLog, Restaurant, GroupOrder, Order, OrderItem
 )
 from .serializers import (
     StudentSerializer, TeacherSerializer, CourseSerializer, 
-    StudentEnrollmentSerializer, ExtraFeeSerializer, 
+    StudentEnrollmentSerializer, EnrollmentPeriodSerializer, ExtraFeeSerializer, 
     SessionRecordSerializer, AttendanceSerializer, LeaveSerializer,
     SubjectSerializer, QuestionBankSerializer, HashtagSerializer, QuestionTagSerializer,
     StudentAnswerSerializer, ErrorLogSerializer,
@@ -38,9 +38,10 @@ class StudentViewSet(viewsets.ModelViewSet):
         """
         檢查學生需要生成的學費月份
         返回從報名時間起到現在，每個月是否需要生成學費
+        考慮學生的上課期間（EnrollmentPeriod），只在上課期間生成學費
         """
         student = self.get_object()
-        enrollments = student.enrollments.all()
+        enrollments = student.enrollments.filter(is_active=True).prefetch_related('periods')
         
         now = timezone.now().date()
         tuition_months = []
@@ -48,41 +49,71 @@ class StudentViewSet(viewsets.ModelViewSet):
         for enrollment in enrollments:
             enroll_date = enrollment.enroll_date
             course = enrollment.course
+            periods = enrollment.periods.filter(is_active=True).order_by('start_date')
             
-            # 計算從報名月份到現在的每個月
-            current = enroll_date.replace(day=1)  # 從報名月份的第一天開始
+            # 如果沒有定義期間，則使用報名日期作為起始
+            if not periods.exists():
+                # 沒有期間記錄，使用報名日期開始
+                start_date = enroll_date.replace(day=1)
+            else:
+                # 使用最早的上課期間開始日期
+                start_date = periods.first().start_date.replace(day=1)
+            
+            # 計算從最早開始月份到現在的每個月
+            current = start_date
             
             while current <= now:
                 year_month = current.strftime('%Y-%m')
+                current_year = current.year
+                current_month = current.month
                 
-                # 檢查該月份是否已經有學費記錄
-                existing_fee = ExtraFee.objects.filter(
-                    student=student,
-                    item='Tuition',
-                    fee_date__year=current.year,
-                    fee_date__month=current.month,
-                    notes__icontains=f"{course.course_name}"
-                ).first()
+                # 檢查該月份是否在任何上課期間內
+                is_in_active_period = False
+                if periods.exists():
+                    for period in periods:
+                        period_start = period.start_date.replace(day=1)
+                        period_end = period.end_date.replace(day=1) if period.end_date else None
+                        
+                        # 檢查當前月份是否在期間內
+                        if current >= period_start:
+                            if period_end is None or current <= period_end:
+                                is_in_active_period = True
+                                break
+                else:
+                    # 沒有期間記錄，視為從報名日期起持續有效
+                    if current >= enroll_date.replace(day=1):
+                        is_in_active_period = True
                 
-                # 每週費用 = 課程費用 / 4
-                weekly_fee = float(course.fee_per_session) / 4
-                monthly_fee_4weeks = weekly_fee * 4  # 預設4週
-                
-                tuition_months.append({
-                    'year': current.year,
-                    'month': current.month,
-                    'year_month': year_month,
-                    'enrollment_id': enrollment.enrollment_id,
-                    'course_id': course.course_id,
-                    'course_name': course.course_name,
-                    'enroll_date': enroll_date.isoformat(),
-                    'weekly_fee': weekly_fee,
-                    'default_fee': monthly_fee_4weeks,
-                    'has_fee': existing_fee is not None,
-                    'fee_id': existing_fee.fee_id if existing_fee else None,
-                    'current_fee': float(existing_fee.amount) if existing_fee else None,
-                    'weeks': 4  # 預設4週
-                })
+                # 只有在上課期間內的月份才需要生成學費
+                if is_in_active_period:
+                    # 檢查該月份是否已經有學費記錄
+                    existing_fee = ExtraFee.objects.filter(
+                        student=student,
+                        item='Tuition',
+                        fee_date__year=current_year,
+                        fee_date__month=current_month,
+                        notes__icontains=f"{course.course_name}"
+                    ).first()
+                    
+                    # 每週費用 = 課程費用 / 4
+                    weekly_fee = float(course.fee_per_session) / 4
+                    monthly_fee_4weeks = weekly_fee * 4  # 預設4週
+                    
+                    tuition_months.append({
+                        'year': current_year,
+                        'month': current_month,
+                        'year_month': year_month,
+                        'enrollment_id': enrollment.enrollment_id,
+                        'course_id': course.course_id,
+                        'course_name': course.course_name,
+                        'enroll_date': enroll_date.isoformat(),
+                        'weekly_fee': weekly_fee,
+                        'default_fee': monthly_fee_4weeks,
+                        'has_fee': existing_fee is not None,
+                        'fee_id': existing_fee.fee_id if existing_fee else None,
+                        'current_fee': float(existing_fee.amount) if existing_fee else None,
+                        'weeks': 4  # 預設4週
+                    })
                 
                 # 移到下一個月
                 if current.month == 12:
@@ -176,13 +207,40 @@ class CourseViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
 
 
+class EnrollmentPeriodViewSet(viewsets.ModelViewSet):
+    """
+    提供 EnrollmentPeriod 模型 CRUD 操作的 API 視圖集
+    """
+    queryset = EnrollmentPeriod.objects.select_related('enrollment', 'enrollment__student', 'enrollment__course').all()
+    serializer_class = EnrollmentPeriodSerializer
+    permission_classes = [AllowAny]
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        enrollment_id = self.request.query_params.get('enrollment', None)
+        if enrollment_id:
+            queryset = queryset.filter(enrollment_id=enrollment_id)
+        return queryset
+
+
 class StudentEnrollmentViewSet(viewsets.ModelViewSet):
     """
     提供 StudentEnrollment 模型 CRUD 操作的 API 視圖集
     """
-    queryset = StudentEnrollment.objects.select_related('student', 'course').all()
+    queryset = StudentEnrollment.objects.select_related('student', 'course').prefetch_related('periods').all()
     serializer_class = StudentEnrollmentSerializer
     permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+    
+    def perform_create(self, serializer):
+        enrollment = serializer.save()
+        # 自動創建初始上課期間（從報名日期開始）
+        EnrollmentPeriod.objects.create(
+            enrollment=enrollment,
+            start_date=enrollment.enroll_date,
+            end_date=None,  # 沒有結束日期表示持續中
+            is_active=True,
+            notes=f'初始上課期間（從報名日期開始）'
+        )
 
 
 class ExtraFeeViewSet(viewsets.ModelViewSet):

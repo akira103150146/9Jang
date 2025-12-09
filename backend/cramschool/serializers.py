@@ -3,7 +3,7 @@
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
 from .models import (
-    Student, Teacher, Course, StudentEnrollment, ExtraFee, 
+    Student, Teacher, Course, StudentEnrollment, EnrollmentPeriod, ExtraFee, 
     SessionRecord, Attendance, Leave, Subject, QuestionBank, Hashtag, QuestionTag,
     StudentAnswer, ErrorLog, Restaurant, GroupOrder, Order, OrderItem
 )
@@ -91,18 +91,31 @@ class CourseSerializer(serializers.ModelSerializer):
         return obj.teacher.name if obj.teacher else None
 
 
+class EnrollmentPeriodSerializer(serializers.ModelSerializer):
+    """
+    報名期間序列化器
+    """
+    class Meta:
+        model = EnrollmentPeriod
+        fields = [
+            'period_id', 'enrollment', 'start_date', 'end_date', 'is_active', 'notes'
+        ]
+        read_only_fields = ['period_id']
+
+
 class StudentEnrollmentSerializer(serializers.ModelSerializer):
     """
     學生課程報名序列化器
     """
     student_name = serializers.SerializerMethodField()
     course_name = serializers.SerializerMethodField()
+    periods = EnrollmentPeriodSerializer(many=True, read_only=True)
     
     class Meta:
         model = StudentEnrollment
         fields = [
             'enrollment_id', 'student', 'student_name', 'course', 'course_name',
-            'enroll_date', 'discount_rate'
+            'enroll_date', 'discount_rate', 'is_active', 'periods'
         ]
         read_only_fields = ['enrollment_id', 'student_name', 'course_name']
     

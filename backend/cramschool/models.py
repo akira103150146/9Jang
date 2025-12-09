@@ -143,6 +143,7 @@ class StudentEnrollment(models.Model):
         default=0.0,
         verbose_name='折扣百分比'
     )
+    is_active = models.BooleanField(default=True, verbose_name='是否有效')
 
     class Meta:
         verbose_name = '學生報名'
@@ -152,6 +153,33 @@ class StudentEnrollment(models.Model):
 
     def __str__(self):
         return f"{self.student.name} - {self.course.course_name}"
+
+
+class EnrollmentPeriod(models.Model):
+    """
+    學生報名的上課期間模型
+    用於記錄學生在報名期間的多個上課階段（例如：1-3月、5-8月，中間4月暫停）
+    """
+    period_id = models.AutoField(primary_key=True, verbose_name='期間ID')
+    enrollment = models.ForeignKey(
+        StudentEnrollment,
+        on_delete=models.CASCADE,
+        related_name='periods',
+        verbose_name='報名記錄'
+    )
+    start_date = models.DateField(verbose_name='開始日期')
+    end_date = models.DateField(blank=True, null=True, verbose_name='結束日期')
+    is_active = models.BooleanField(default=True, verbose_name='是否進行中')
+    notes = models.TextField(blank=True, null=True, verbose_name='備註')
+
+    class Meta:
+        verbose_name = '報名期間'
+        verbose_name_plural = '報名期間'
+        ordering = ['start_date']
+
+    def __str__(self):
+        end_str = self.end_date.strftime('%Y-%m-%d') if self.end_date else '進行中'
+        return f"{self.enrollment.student.name} - {self.enrollment.course.course_name} ({self.start_date} ~ {end_str})"
 
 
 class ExtraFee(models.Model):

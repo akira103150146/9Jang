@@ -85,6 +85,27 @@ export const enrollmentAPI = {
   delete: (id) => api.delete(`/cramschool/enrollments/${id}/`)
 }
 
+// Enrollment Period API
+export const enrollmentPeriodAPI = {
+  // 獲取所有上課期間記錄
+  getAll: () => api.get('/cramschool/enrollment-periods/'),
+
+  // 獲取單個上課期間記錄
+  getById: (id) => api.get(`/cramschool/enrollment-periods/${id}/`),
+
+  // 根據報名ID獲取期間記錄
+  getByEnrollment: (enrollmentId) => api.get(`/cramschool/enrollment-periods/?enrollment=${enrollmentId}`),
+
+  // 創建上課期間記錄
+  create: (data) => api.post('/cramschool/enrollment-periods/', data),
+
+  // 更新上課期間記錄
+  update: (id, data) => api.put(`/cramschool/enrollment-periods/${id}/`, data),
+
+  // 刪除上課期間記錄
+  delete: (id) => api.delete(`/cramschool/enrollment-periods/${id}/`)
+}
+
 // Fee API
 export const feeAPI = {
   // 獲取所有費用記錄

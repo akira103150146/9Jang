@@ -41,12 +41,29 @@
         <p class="mt-3 text-sm font-semibold text-slate-600">{{ record.course_name }}</p>
         <p class="text-sm text-slate-500">折扣：{{ record.discount_rate }}%</p>
         
+        <!-- 上課期間 -->
+        <div v-if="record.periods && record.periods.length > 0" class="mt-3 p-3 bg-slate-50 rounded-lg">
+          <p class="text-xs font-semibold text-slate-600 mb-2">上課期間：</p>
+          <div class="space-y-1">
+            <div
+              v-for="period in record.periods"
+              :key="period.period_id"
+              class="text-xs text-slate-700"
+            >
+              <span v-if="period.is_active" class="inline-block w-2 h-2 rounded-full bg-green-500 mr-1"></span>
+              <span v-else class="inline-block w-2 h-2 rounded-full bg-slate-400 mr-1"></span>
+              {{ formatDate(period.start_date) }} ~ 
+              {{ period.end_date ? formatDate(period.end_date) : '進行中' }}
+            </div>
+          </div>
+        </div>
+        
         <div class="mt-4 flex gap-2">
           <router-link
             :to="`/enrollments/edit/${record.enrollment_id || record.id}`"
             class="flex-1 rounded-full bg-sky-500 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-600 text-center"
           >
-            編輯
+            管理期間
           </router-link>
           <button
             @click="deleteEnrollment(record.enrollment_id || record.id, record.student_name, record.course_name)"
@@ -81,6 +98,8 @@ const normalizeEnrollment = (enrollment) => ({
   course_name: enrollment.course_name || enrollment.course?.course_name || '',
   enroll_date: enrollment.enroll_date,
   discount_rate: enrollment.discount_rate || 0,
+  is_active: enrollment.is_active !== undefined ? enrollment.is_active : true,
+  periods: enrollment.periods || [],
 })
 
 const formatDate = (date) => {
