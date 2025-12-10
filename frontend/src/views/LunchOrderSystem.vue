@@ -426,7 +426,10 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { restaurantAPI, groupOrderAPI, uploadImageAPI } from '../services/api'
+import { restaurantAPI, groupOrderAPI, uploadImageAPI, getBackendBaseURL } from '../services/api'
+
+// 獲取後端基礎 URL（用於圖片顯示）
+const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL || getBackendBaseURL()
 
 const restaurants = ref([])
 const groupOrders = ref([])
@@ -515,7 +518,7 @@ const handleMenuImageSelect = async (event) => {
     const response = await uploadImageAPI.upload(file)
     restaurantForm.value.menu_image_path = response.data.image_path
     if (response.data.image_url) {
-      menuImagePreview.value = `http://localhost:8000${response.data.image_url}`
+      menuImagePreview.value = `${BACKEND_BASE_URL}${response.data.image_url}`
     }
   } catch (error) {
     console.error('上傳圖片失敗：', error)
@@ -674,7 +677,7 @@ const copyLink = (link) => {
 
 const getImageUrl = (path) => {
   if (!path) return ''
-  return `http://localhost:8000/media/${path}`
+  return `${BACKEND_BASE_URL}/media/${path}`
 }
 
 const formatDateTime = (datetime) => {

@@ -185,7 +185,10 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { groupOrderAPI, orderAPI, orderItemAPI, restaurantAPI, studentAPI } from '../services/api'
+import { groupOrderAPI, orderAPI, orderItemAPI, restaurantAPI, studentAPI, getBackendBaseURL } from '../services/api'
+
+// 獲取後端基礎 URL（用於圖片顯示）
+const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL || getBackendBaseURL()
 
 const route = useRoute()
 const orderLink = route.params.link
@@ -321,7 +324,7 @@ const submitOrder = async () => {
 
 const getImageUrl = (path) => {
   if (!path) return ''
-  return `http://localhost:8000/media/${path}`
+  return `${BACKEND_BASE_URL}/media/${path}`
 }
 
 const formatDateTime = (datetime) => {

@@ -11,21 +11,28 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# 載入環境變數
+# 優先載入專案根目錄的 .env，然後載入後端目錄的 .env
+load_dotenv(BASE_DIR.parent / '.env')  # 根目錄的 .env
+load_dotenv(BASE_DIR.parent / 'backend' / '.env')  # 後端目錄的 .env
+load_dotenv(BASE_DIR / '.env')  # config 目錄的 .env（如果存在）
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-k#&ll@igxrfb*g=la9c9g=r_@thy06_10wywdsysaxzr2v!@el'
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-k#&ll@igxrfb*g=la9c9g=r_@thy06_10wywdsysaxzr2v!@el')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # Application definition
@@ -88,12 +95,27 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+DATABASE_ENGINE = os.getenv('DATABASE_ENGINE', 'django.db.backends.sqlite3')
+
+if DATABASE_ENGINE == 'django.db.backends.sqlite3':
+    DATABASES = {
+        'default': {
+            'ENGINE': DATABASE_ENGINE,
+            'NAME': BASE_DIR / os.getenv('DATABASE_NAME', 'db.sqlite3'),
+        }
     }
-}
+else:
+    # PostgreSQL 或其他資料庫
+    DATABASES = {
+        'default': {
+            'ENGINE': DATABASE_ENGINE,
+            'NAME': os.getenv('DATABASE_NAME', ''),
+            'USER': os.getenv('DATABASE_USER', ''),
+            'PASSWORD': os.getenv('DATABASE_PASSWORD', ''),
+            'HOST': os.getenv('DATABASE_HOST', 'localhost'),
+            'PORT': os.getenv('DATABASE_PORT', '5432'),
+        }
+    }
 
 
 # Password validation
@@ -118,9 +140,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = os.getenv('LANGUAGE_CODE', 'zh-hant')
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = os.getenv('TIME_ZONE', 'Asia/Taipei')
 
 USE_I18N = True
 
@@ -133,8 +155,8 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 # Media files (User uploaded files)
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = os.getenv('MEDIA_URL', '/media/')
+MEDIA_ROOT = os.path.join(BASE_DIR, os.getenv('MEDIA_ROOT', 'media'))
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -145,16 +167,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'account.CustomUser'
 
 # CORS 設定
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # Vite 預設端口
-    "http://localhost:3000",  # 其他可能的開發端口
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:3000",
-]
-
-# 允許所有來源（僅開發環境使用，生產環境請移除）
-CORS_ALLOW_ALL_ORIGINS = True  # 開發階段使用，生產環境請設為 False
+CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'True').lower() == 'true'
 CORS_ALLOW_CREDENTIALS = True  # 允許發送 cookies
+
+# 如果 CORS_ALLOW_ALL_ORIGINS 為 False，則使用 CORS_ALLOWED_ORIGINS
+if not CORS_ALLOW_ALL_ORIGINS:
+    cors_origins = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000')
+    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins.split(',')]
 
 # REST Framework 設定
 REST_FRAMEWORK = {
@@ -172,10 +191,10 @@ REST_FRAMEWORK = {
 from datetime import timedelta
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),  # Access token 有效期 1 小時
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),  # Refresh token 有效期 7 天
-    'ROTATE_REFRESH_TOKENS': True,  # 刷新時輪換 refresh token
-    'BLACKLIST_AFTER_ROTATION': True,  # 輪換後將舊 token 加入黑名單
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=int(os.getenv('JWT_ACCESS_TOKEN_LIFETIME_HOURS', '1'))),  # Access token 有效期
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=int(os.getenv('JWT_REFRESH_TOKEN_LIFETIME_DAYS', '7'))),  # Refresh token 有效期
+    'ROTATE_REFRESH_TOKENS': os.getenv('JWT_ROTATE_REFRESH_TOKENS', 'True').lower() == 'true',  # 刷新時輪換 refresh token
+    'BLACKLIST_AFTER_ROTATION': os.getenv('JWT_BLACKLIST_AFTER_ROTATION', 'True').lower() == 'true',  # 輪換後將舊 token 加入黑名單
     'UPDATE_LAST_LOGIN': True,  # 更新最後登入時間
     
     'ALGORITHM': 'HS256',
@@ -195,16 +214,12 @@ SIMPLE_JWT = {
     'JTI_CLAIM': 'jti',
 }
 
-# CSRF 設置（開發環境）
-CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-]
+# CSRF 設置
+csrf_origins = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000')
+CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in csrf_origins.split(',')]
 
 # Session 設置
-SESSION_COOKIE_SAMESITE = 'Lax'
-SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SECURE = False  # 開發環境設為 False，生產環境設為 True（HTTPS）
+SESSION_COOKIE_SAMESITE = os.getenv('SESSION_COOKIE_SAMESITE', 'Lax')
+SESSION_COOKIE_HTTPONLY = os.getenv('SESSION_COOKIE_HTTPONLY', 'True').lower() == 'true'
+SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'False').lower() == 'true'  # 開發環境設為 False，生產環境設為 True（HTTPS）
 

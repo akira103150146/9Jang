@@ -622,6 +622,9 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
 import { questionBankAPI, hashtagAPI, subjectAPI, uploadImageAPI, getBackendBaseURL } from '../services/api'
+
+// 獲取後端基礎 URL（用於圖片顯示）
+const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL || getBackendBaseURL()
 import { mockQuestionBank } from '../data/mockData'
 import MarkdownIt from 'markdown-it'
 import katex from 'katex'
@@ -937,7 +940,7 @@ const processImageFile = async (file) => {
     formData.value.image_path = response.data.image_path
     // 更新預覽 URL 為伺服器 URL
     if (response.data.image_url) {
-      imagePreview.value = `http://localhost:8000${response.data.image_url}`
+      imagePreview.value = `${BACKEND_BASE_URL}${response.data.image_url}`
     }
   } catch (error) {
     console.error('上傳圖片失敗：', error)
@@ -1108,7 +1111,7 @@ const capturePhoto = async () => {
         const response = await uploadImageAPI.upload(file)
         formData.value.image_path = response.data.image_path
         if (response.data.image_url) {
-          imagePreview.value = `http://localhost:8000${response.data.image_url}`
+          imagePreview.value = `${BACKEND_BASE_URL}${response.data.image_url}`
         }
       } catch (error) {
         console.error('上傳圖片失敗：', error)
@@ -1256,7 +1259,7 @@ const openFormModal = async (question = null) => {
     
     // 如果有圖片路徑，顯示預覽
     if (question.image_path) {
-      imagePreview.value = `http://localhost:8000/media/${question.image_path}`
+      imagePreview.value = `${BACKEND_BASE_URL}/media/${question.image_path}`
     }
   } else {
     formData.value = {

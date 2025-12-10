@@ -1,7 +1,10 @@
 import axios from 'axios'
 
+// 從環境變數獲取 API 基礎 URL，如果沒有則使用默認值
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
+
 const api = axios.create({
-  baseURL: 'http://localhost:8000/api',
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -39,7 +42,7 @@ const refreshAccessToken = async () => {
   }
 
   try {
-    const response = await axios.post('http://localhost:8000/api/account/token/refresh/', {
+    const response = await axios.post(`${API_BASE_URL}/account/token/refresh/`, {
       refresh: refreshToken
     })
     const { access } = response.data
@@ -543,8 +546,16 @@ export const userAPI = {
 
 // 導出後端基礎 URL（用於圖片等靜態資源）
 export const getBackendBaseURL = () => {
+  // 優先使用環境變數中的後端 URL
+  const backendURL = import.meta.env.VITE_BACKEND_URL
+
+  if (backendURL) {
+    return backendURL
+  }
+
+  // 否則從 API baseURL 中提取
   try {
-    const baseURL = api.defaults.baseURL || 'http://localhost:8000/api'
+    const baseURL = api.defaults.baseURL || API_BASE_URL
     const url = new URL(baseURL)
     return `${url.protocol}//${url.host}`
   } catch (e) {

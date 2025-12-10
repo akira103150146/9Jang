@@ -2,3 +2,10 @@ __pycache__
 db.sqlite3
 venv
 media
+
+# 環境變數文件
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env
