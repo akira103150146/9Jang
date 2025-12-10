@@ -340,13 +340,30 @@
 
           <div>
             <label class="block text-sm font-semibold text-slate-700 mb-1">題目內容 (Markdown + LaTeX) *</label>
-            <textarea
-              v-model="formData.content"
-              required
-              rows="6"
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-              placeholder="輸入題目內容..."
-            ></textarea>
+            <div class="space-y-3">
+              <!-- 編輯區域 -->
+              <div class="relative">
+                <MarkdownEditor
+                  v-model="formData.content"
+                  :placeholder="'輸入題目內容...\n\n支援 Markdown 語法：\n- **粗體**\n- *斜體*\n- `程式碼`\n\n支援 LaTeX 數學公式：\n- 行內公式：$x^2 + y^2 = r^2$\n- 區塊公式：$$\n\\int_0^1 x^2 dx = \\frac{1}{3}\n$$'"
+                />
+              </div>
+              
+              <!-- 預覽區域 -->
+              <div class="border-t border-slate-200 pt-3">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">即時預覽</span>
+                  <span class="text-xs text-slate-400">下方顯示渲染效果</span>
+                </div>
+                <div
+                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-slate-50 min-h-[150px] max-h-[300px] overflow-y-auto markdown-preview"
+                  v-html="renderedContent"
+                ></div>
+              </div>
+            </div>
+            <p class="mt-1 text-xs text-slate-500">
+              提示：使用 $$...$$ 表示區塊公式，使用 $...$ 表示行內公式
+            </p>
           </div>
 
           <div>
@@ -504,10 +521,103 @@
   </div>
 </template>
 
+<style scoped>
+/* Markdown 預覽樣式 */
+:deep(.markdown-preview) {
+  line-height: 1.6;
+}
+
+:deep(.markdown-preview h1),
+:deep(.markdown-preview h2),
+:deep(.markdown-preview h3),
+:deep(.markdown-preview h4),
+:deep(.markdown-preview h5),
+:deep(.markdown-preview h6) {
+  font-weight: 600;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+}
+
+:deep(.markdown-preview h1) { font-size: 1.5em; }
+:deep(.markdown-preview h2) { font-size: 1.3em; }
+:deep(.markdown-preview h3) { font-size: 1.1em; }
+
+:deep(.markdown-preview p) {
+  margin-bottom: 0.75em;
+}
+
+:deep(.markdown-preview ul),
+:deep(.markdown-preview ol) {
+  margin-left: 1.5em;
+  margin-bottom: 0.75em;
+}
+
+:deep(.markdown-preview code) {
+  background-color: #f1f5f9;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.875em;
+}
+
+:deep(.markdown-preview pre) {
+  background-color: #f1f5f9;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin-bottom: 0.75em;
+}
+
+:deep(.markdown-preview pre code) {
+  background-color: transparent;
+  padding: 0;
+}
+
+:deep(.markdown-preview blockquote) {
+  border-left: 4px solid #cbd5e1;
+  padding-left: 1em;
+  margin-left: 0;
+  color: #64748b;
+  font-style: italic;
+}
+
+:deep(.markdown-preview table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 0.75em;
+}
+
+:deep(.markdown-preview table th),
+:deep(.markdown-preview table td) {
+  border: 1px solid #cbd5e1;
+  padding: 0.5rem;
+  text-align: left;
+}
+
+:deep(.markdown-preview table th) {
+  background-color: #f1f5f9;
+  font-weight: 600;
+}
+
+/* LaTeX 樣式 */
+:deep(.katex) {
+  font-size: 1.1em;
+}
+
+:deep(.katex-display) {
+  margin: 1em 0;
+  text-align: center;
+}
+</style>
+
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
 import { questionBankAPI, hashtagAPI, subjectAPI, uploadImageAPI } from '../services/api'
 import { mockQuestionBank } from '../data/mockData'
+import MarkdownIt from 'markdown-it'
+import katex from 'katex'
+import 'katex/dist/katex.min.css'
+import MarkdownEditor from '../components/MarkdownEditor.vue'
 
 const questionBank = ref([])
 const hashtags = ref([])
@@ -532,6 +642,75 @@ const videoRef = ref(null)
 const videoStream = ref(null)
 const canvasRef = ref(null)
 const formModalRef = ref(null)
+
+// 初始化 Markdown-it
+const md = new MarkdownIt({
+  html: true,
+  linkify: true,
+  typographer: true
+})
+
+// 渲染 Markdown + LaTeX
+const renderMarkdownWithLatex = (text) => {
+  if (!text) return ''
+  
+  const latexData = []
+  let index = 0
+  
+  // 先處理 LaTeX 區塊公式 $$...$$，用特殊標記替換
+  let processed = text.replace(/\$\$([\s\S]*?)\$\$/g, (match, formula) => {
+    const placeholder = `<span data-latex-block="${index}"></span>`
+    try {
+      const rendered = katex.renderToString(formula.trim(), {
+        displayMode: true,
+        throwOnError: false
+      })
+      latexData[index] = rendered
+    } catch (e) {
+      latexData[index] = `<span class="text-red-500">LaTeX 錯誤: ${e.message}</span>`
+    }
+    index++
+    return placeholder
+  })
+  
+  // 再處理行內公式 $...$
+  processed = processed.replace(/\$([^\$\n]+?)\$/g, (match, formula) => {
+    // 跳過已經處理過的標記
+    if (match.includes('data-latex')) {
+      return match
+    }
+    const placeholder = `<span data-latex-inline="${index}"></span>`
+    try {
+      const rendered = katex.renderToString(formula.trim(), {
+        displayMode: false,
+        throwOnError: false
+      })
+      latexData[index] = rendered
+    } catch (e) {
+      latexData[index] = `<span class="text-red-500">LaTeX 錯誤: ${e.message}</span>`
+    }
+    index++
+    return placeholder
+  })
+  
+  // 渲染 Markdown
+  let html = md.render(processed)
+  
+  // 替換所有 LaTeX 佔位符
+  for (let i = 0; i < index; i++) {
+    const blockRegex = new RegExp(`<span data-latex-block="${i}"></span>`, 'g')
+    const inlineRegex = new RegExp(`<span data-latex-inline="${i}"></span>`, 'g')
+    html = html.replace(blockRegex, latexData[i])
+    html = html.replace(inlineRegex, latexData[i])
+  }
+  
+  return html
+}
+
+// 計算渲染後的內容
+const renderedContent = computed(() => {
+  return renderMarkdownWithLatex(formData.value.content)
+})
 
 const formData = ref({
   subject: '',
