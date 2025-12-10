@@ -73,7 +73,15 @@ class StudentViewSet(viewsets.ModelViewSet):
         """
         恢復已刪除的學生記錄及其所有相關聯的資料
         """
-        student = self.get_object()
+        # 直接從資料庫查找，不過濾已刪除的記錄
+        try:
+            student = Student.objects.get(pk=pk)
+        except Student.DoesNotExist:
+            return Response(
+                {'detail': '找不到該學生記錄'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
         if not student.is_deleted:
             return Response(
                 {'detail': '該學生記錄未被刪除'},
@@ -529,7 +537,15 @@ class StudentEnrollmentViewSet(viewsets.ModelViewSet):
         """
         恢復已刪除的報名記錄
         """
-        enrollment = self.get_object()
+        # 直接從資料庫查找，不過濾已刪除的記錄
+        try:
+            enrollment = StudentEnrollment.objects.get(pk=pk)
+        except StudentEnrollment.DoesNotExist:
+            return Response(
+                {'detail': '找不到該報名記錄'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
         if not enrollment.is_deleted:
             return Response(
                 {'detail': '該報名記錄未被刪除'},
@@ -580,7 +596,15 @@ class ExtraFeeViewSet(viewsets.ModelViewSet):
         """
         恢復已刪除的收費記錄
         """
-        fee = self.get_object()
+        # 直接從資料庫查找，不過濾已刪除的記錄
+        try:
+            fee = ExtraFee.objects.get(pk=pk)
+        except ExtraFee.DoesNotExist:
+            return Response(
+                {'detail': '找不到該收費記錄'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
         if not fee.is_deleted:
             return Response(
                 {'detail': '該收費記錄未被刪除'},
@@ -636,7 +660,15 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         """
         恢復已刪除的出席記錄
         """
-        attendance = self.get_object()
+        # 直接從資料庫查找，不過濾已刪除的記錄
+        try:
+            attendance = Attendance.objects.get(pk=pk)
+        except Attendance.DoesNotExist:
+            return Response(
+                {'detail': '找不到該出席記錄'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
         if not attendance.is_deleted:
             return Response(
                 {'detail': '該出席記錄未被刪除'},
@@ -683,7 +715,15 @@ class LeaveViewSet(viewsets.ModelViewSet):
         """
         恢復已刪除的請假記錄
         """
-        leave = self.get_object()
+        # 直接從資料庫查找，不過濾已刪除的記錄
+        try:
+            leave = Leave.objects.get(pk=pk)
+        except Leave.DoesNotExist:
+            return Response(
+                {'detail': '找不到該請假記錄'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
         if not leave.is_deleted:
             return Response(
                 {'detail': '該請假記錄未被刪除'},
@@ -818,7 +858,15 @@ class StudentAnswerViewSet(viewsets.ModelViewSet):
         """
         恢復已刪除的作答記錄
         """
-        answer = self.get_object()
+        # 直接從資料庫查找，不過濾已刪除的記錄
+        try:
+            answer = StudentAnswer.objects.get(pk=pk)
+        except StudentAnswer.DoesNotExist:
+            return Response(
+                {'detail': '找不到該作答記錄'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
         if not answer.is_deleted:
             return Response(
                 {'detail': '該作答記錄未被刪除'},
@@ -873,7 +921,15 @@ class ErrorLogViewSet(viewsets.ModelViewSet):
         """
         恢復已刪除的錯題記錄
         """
-        error_log = self.get_object()
+        # 直接從資料庫查找，不過濾已刪除的記錄
+        try:
+            error_log = ErrorLog.objects.get(pk=pk)
+        except ErrorLog.DoesNotExist:
+            return Response(
+                {'detail': '找不到該錯題記錄'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
         if not error_log.is_deleted:
             return Response(
                 {'detail': '該錯題記錄未被刪除'},
@@ -1090,7 +1146,15 @@ class OrderViewSet(viewsets.ModelViewSet):
         """
         恢復已刪除的訂單記錄
         """
-        order = self.get_object()
+        # 直接從資料庫查找，不過濾已刪除的記錄
+        try:
+            order = Order.objects.get(pk=pk)
+        except Order.DoesNotExist:
+            return Response(
+                {'detail': '找不到該訂單記錄'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
         if not order.is_deleted:
             return Response(
                 {'detail': '該訂單記錄未被刪除'},
