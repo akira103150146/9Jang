@@ -156,7 +156,13 @@
                 <p class="text-xs text-slate-500">{{ student.emergency_contact_phone || '' }}</p>
               </td>
               <td class="px-4 py-4 text-center">
-                <div class="flex justify-center gap-2">
+                <div class="flex justify-center gap-2 flex-wrap">
+                  <button
+                    @click="openEnrollmentModal(student)"
+                    class="rounded-full bg-indigo-500 px-3 py-1 text-xs font-semibold text-white hover:bg-indigo-600"
+                  >
+                    報名課程
+                  </button>
                   <router-link
                     :to="`/students/${student.id}/fees`"
                     class="rounded-full bg-green-500 px-3 py-1 text-xs font-semibold text-white hover:bg-green-600"
@@ -189,6 +195,97 @@
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- 課程報名模態框 -->
+    <div
+      v-if="showEnrollmentModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm"
+      @click.self="closeEnrollmentModal"
+    >
+      <div class="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-xl font-bold text-slate-900">
+            為 {{ selectedStudent?.name }} 報名課程
+          </h3>
+          <button @click="closeEnrollmentModal" class="text-slate-400 hover:text-slate-600">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <form @submit.prevent="saveEnrollment" class="space-y-4">
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1">學生</label>
+            <input
+              :value="selectedStudent?.name"
+              type="text"
+              disabled
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-slate-100 text-slate-600"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1">課程 *</label>
+            <select
+              v-model="enrollmentForm.course"
+              required
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+            >
+              <option value="">請選擇課程</option>
+              <option
+                v-for="course in courses"
+                :key="course.course_id || course.id"
+                :value="course.course_id || course.id"
+              >
+                {{ course.course_name }} ({{ getDayDisplay(course.day_of_week) }} {{ formatTime(course.start_time) }}-{{ formatTime(course.end_time) }})
+              </option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1">報名日期 *</label>
+            <input
+              v-model="enrollmentForm.enroll_date"
+              type="date"
+              required
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1">折扣百分比 (%)</label>
+            <input
+              v-model.number="enrollmentForm.discount_rate"
+              type="number"
+              step="0.01"
+              min="0"
+              max="100"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+              placeholder="0.00"
+            />
+            <p class="mt-1 text-xs text-slate-500">輸入折扣百分比，例如：10 表示 10% 折扣</p>
+          </div>
+
+          <div class="flex justify-end gap-3 pt-4">
+            <button
+              type="button"
+              @click="closeEnrollmentModal"
+              class="rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              :disabled="savingEnrollment"
+              class="rounded-full bg-sky-500 px-5 py-2 text-sm font-semibold text-white hover:bg-sky-600 disabled:opacity-50"
+            >
+              {{ savingEnrollment ? '處理中...' : '報名' }}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
 
@@ -286,7 +383,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { studentAPI } from '../services/api'
+import { studentAPI, enrollmentAPI, courseAPI } from '../services/api'
 import { mockStudents } from '../data/mockData'
 
 const router = useRouter()
@@ -305,6 +402,14 @@ const editingPasswords = ref({})  // 追蹤哪些學生正在編輯密碼
 const passwordForms = ref({})  // 存儲密碼編輯表單數據
 const showPasswordModal = ref(false)
 const passwordModalStudent = ref(null)
+const showEnrollmentModal = ref(false)
+const courses = ref([])
+const savingEnrollment = ref(false)
+const enrollmentForm = ref({
+  course: '',
+  enroll_date: new Date().toISOString().split('T')[0],
+  discount_rate: 0
+})
 
 const normalizeStudent = (student) => ({
   id: student.student_id || student.id,
@@ -539,9 +644,89 @@ const toggleAccountStatus = async (student) => {
   }
 }
 
+const dayMap = {
+  'Mon': '週一',
+  'Tue': '週二',
+  'Wed': '週三',
+  'Thu': '週四',
+  'Fri': '週五',
+  'Sat': '週六',
+  'Sun': '週日',
+}
+
+const getDayDisplay = (day) => {
+  return dayMap[day] || day
+}
+
+const formatTime = (time) => {
+  if (!time) return ''
+  return typeof time === 'string' ? time.substring(0, 5) : time
+}
+
+const fetchCourses = async () => {
+  try {
+    const response = await courseAPI.getAll()
+    const data = response.data.results || response.data
+    courses.value = Array.isArray(data) ? data : []
+  } catch (error) {
+    console.warn('獲取課程列表失敗:', error)
+    courses.value = []
+  }
+}
+
+const openEnrollmentModal = (student) => {
+  selectedStudent.value = student
+  enrollmentForm.value = {
+    course: '',
+    enroll_date: new Date().toISOString().split('T')[0],
+    discount_rate: 0
+  }
+  showEnrollmentModal.value = true
+}
+
+const closeEnrollmentModal = () => {
+  showEnrollmentModal.value = false
+  selectedStudent.value = null
+  enrollmentForm.value = {
+    course: '',
+    enroll_date: new Date().toISOString().split('T')[0],
+    discount_rate: 0
+  }
+}
+
+const saveEnrollment = async () => {
+  if (!selectedStudent.value) return
+
+  savingEnrollment.value = true
+  try {
+    const submitData = {
+      student: selectedStudent.value.id,
+      course: parseInt(enrollmentForm.value.course),
+      enroll_date: enrollmentForm.value.enroll_date,
+      discount_rate: parseFloat(enrollmentForm.value.discount_rate) || 0
+    }
+
+    await enrollmentAPI.create(submitData)
+    alert('報名成功！')
+    closeEnrollmentModal()
+    fetchStudents() // 刷新學生列表
+  } catch (error) {
+    console.error('報名失敗:', error)
+    if (error.response?.data) {
+      const errorMsg = error.response.data.detail || JSON.stringify(error.response.data)
+      alert(`報名失敗：${errorMsg}`)
+    } else {
+      alert('報名失敗，請稍後再試')
+    }
+  } finally {
+    savingEnrollment.value = false
+  }
+}
+
 onMounted(() => {
   fetchCurrentUser()
   fetchStudents()
+  fetchCourses()
 })
 </script>
 

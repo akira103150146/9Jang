@@ -53,6 +53,73 @@
             rows="4"
           ></textarea>
 
+          <!-- 課程報名區塊 -->
+          <div v-if="!isEdit" class="mt-6 pt-6 border-t border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">課程報名（選填）</h3>
+            <p class="text-sm text-gray-600 mb-4">可以在新增學生時同時報名課程，或稍後再報名</p>
+            
+            <div class="space-y-4">
+              <div v-for="(enrollment, index) in enrollments" :key="index" class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div class="flex items-center justify-between mb-3">
+                  <h4 class="font-semibold text-gray-900">報名 {{ index + 1 }}</h4>
+                  <button
+                    v-if="enrollments.length > 1"
+                    type="button"
+                    @click="removeEnrollment(index)"
+                    class="text-xs text-red-600 hover:text-red-800 font-semibold"
+                  >
+                    移除
+                  </button>
+                </div>
+                
+                <div class="space-y-3">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">課程</label>
+                    <select 
+                      v-model="enrollment.course"
+                      class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 w-full focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150"
+                    >
+                      <option value="">選擇課程（選填）</option>
+                      <option v-for="course in courses" :key="course.course_id || course.id" :value="course.course_id || course.id">
+                        {{ course.course_name }} ({{ getDayDisplay(course.day_of_week) }} {{ formatTime(course.start_time) }}-{{ formatTime(course.end_time) }})
+                      </option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">報名日期</label>
+                    <input 
+                      v-model="enrollment.enroll_date"
+                      type="date" 
+                      class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 w-full focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">折扣百分比 (%)</label>
+                    <input 
+                      v-model.number="enrollment.discount_rate"
+                      type="number" 
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 w-full focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150" 
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <button
+                type="button"
+                @click="addEnrollment"
+                class="w-full rounded-lg border-2 border-dashed border-gray-300 px-4 py-2 text-sm font-semibold text-gray-600 hover:border-blue-500 hover:text-blue-600"
+              >
+                + 新增課程報名
+              </button>
+            </div>
+          </div>
+
           <div class="flex space-x-4">
             <button 
               type="submit" 
@@ -77,13 +144,21 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { studentAPI } from '../services/api'
+import { studentAPI, enrollmentAPI, courseAPI } from '../services/api'
 
 const route = useRoute()
 const router = useRouter()
 
 const isEdit = computed(() => !!route.params.id)
 const loading = ref(false)
+const courses = ref([])
+const enrollments = ref([
+  {
+    course: '',
+    enroll_date: new Date().toISOString().split('T')[0],
+    discount_rate: 0
+  }
+])
 
 const form = ref({
   name: '',
@@ -94,6 +169,50 @@ const form = ref({
   emergency_contact_phone: '',
   notes: ''
 })
+
+const dayMap = {
+  'Mon': '週一',
+  'Tue': '週二',
+  'Wed': '週三',
+  'Thu': '週四',
+  'Fri': '週五',
+  'Sat': '週六',
+  'Sun': '週日',
+}
+
+const getDayDisplay = (day) => {
+  return dayMap[day] || day
+}
+
+const formatTime = (time) => {
+  if (!time) return ''
+  return typeof time === 'string' ? time.substring(0, 5) : time
+}
+
+const addEnrollment = () => {
+  enrollments.value.push({
+    course: '',
+    enroll_date: new Date().toISOString().split('T')[0],
+    discount_rate: 0
+  })
+}
+
+const removeEnrollment = (index) => {
+  if (enrollments.value.length > 1) {
+    enrollments.value.splice(index, 1)
+  }
+}
+
+const fetchCourses = async () => {
+  try {
+    const response = await courseAPI.getAll()
+    const data = response.data.results || response.data
+    courses.value = Array.isArray(data) ? data : []
+  } catch (error) {
+    console.warn('獲取課程列表失敗:', error)
+    courses.value = []
+  }
+}
 
 const fetchStudent = async () => {
   if (!isEdit.value) return
@@ -119,23 +238,66 @@ const fetchStudent = async () => {
 const handleSubmit = async () => {
   loading.value = true
   try {
+    let studentId = null
+    
     if (isEdit.value) {
       await studentAPI.update(route.params.id, form.value)
+      studentId = route.params.id
       alert('更新成功')
     } else {
-      await studentAPI.create(form.value)
+      const response = await studentAPI.create(form.value)
+      studentId = response.data.student_id || response.data.id
       alert('新增成功')
+      
+      // 如果有課程報名，創建報名記錄
+      if (enrollments.value.length > 0) {
+        const validEnrollments = enrollments.value.filter(e => e.course)
+        if (validEnrollments.length > 0) {
+          let successCount = 0
+          let failCount = 0
+          
+          for (const enrollment of validEnrollments) {
+            try {
+              await enrollmentAPI.create({
+                student: studentId,
+                course: parseInt(enrollment.course),
+                enroll_date: enrollment.enroll_date,
+                discount_rate: parseFloat(enrollment.discount_rate) || 0
+              })
+              successCount++
+            } catch (error) {
+              console.error('創建報名記錄失敗:', error)
+              failCount++
+            }
+          }
+          
+          if (failCount === 0) {
+            if (successCount > 0) {
+              alert(`學生資料已新增，並成功報名 ${successCount} 門課程`)
+            }
+          } else {
+            alert(`學生資料已新增，成功報名 ${successCount} 門課程，失敗 ${failCount} 門`)
+          }
+        }
+      }
     }
+    
     router.push('/students')
   } catch (error) {
     console.error('操作失敗:', error)
-    alert('操作失敗，請稍後再試')
+    if (error.response?.data) {
+      const errorMsg = error.response.data.detail || JSON.stringify(error.response.data)
+      alert(`操作失敗：${errorMsg}`)
+    } else {
+      alert('操作失敗，請稍後再試')
+    }
   } finally {
     loading.value = false
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await fetchCourses()
   if (isEdit.value) {
     fetchStudent()
   }
