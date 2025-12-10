@@ -541,5 +541,16 @@ export const userAPI = {
   getCurrentUser: () => api.get('/account/users/me/')
 }
 
+// 導出後端基礎 URL（用於圖片等靜態資源）
+export const getBackendBaseURL = () => {
+  try {
+    const baseURL = api.defaults.baseURL || 'http://localhost:8000/api'
+    const url = new URL(baseURL)
+    return `${url.protocol}//${url.host}`
+  } catch (e) {
+    return 'http://localhost:8000'
+  }
+}
+
 export default api
 

@@ -1,5 +1,10 @@
 <template>
-  <div ref="editorContainer" class="markdown-editor-wrapper"></div>
+  <div class="markdown-editor-wrapper">
+    <div ref="editorContainer" class="editor-container"></div>
+    <div v-if="uploadingImage" class="upload-indicator">
+      <span class="text-xs text-indigo-600">上傳圖片中...</span>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -10,6 +15,7 @@ import { history, defaultKeymap, historyKeymap } from '@codemirror/commands'
 import { markdown } from '@codemirror/lang-markdown'
 import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete'
 import { bracketMatching, foldGutter, indentOnInput, syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
+import { uploadImageAPI, getBackendBaseURL } from '../services/api'
 
 const props = defineProps({
   modelValue: {
@@ -26,6 +32,120 @@ const emit = defineEmits(['update:modelValue'])
 
 const editorContainer = ref(null)
 let view = null
+const uploadingImage = ref(false)
+
+// 處理圖片貼上
+const handlePaste = async (event) => {
+  const items = event.clipboardData?.items
+  if (!items) return
+  
+  // 查找圖片
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]
+    
+    if (item.type.startsWith('image/')) {
+      event.preventDefault()
+      
+      const file = item.getAsFile()
+      if (!file) continue
+      
+      // 檢查文件大小（5MB）
+      if (file.size > 5 * 1024 * 1024) {
+        alert('圖片文件大小不能超過 5MB')
+        return
+      }
+      
+      uploadingImage.value = true
+      
+      try {
+        // 上傳圖片
+        const response = await uploadImageAPI.upload(file)
+        const imagePath = response.data.image_path
+        let imageUrl = response.data.image_url || `/media/${imagePath}`
+        
+        // 從實際的 API 請求中提取後端基礎 URL
+        // 這樣可以確保使用正確的後端 IP 地址
+        let backendBaseURL
+        
+        // 方法1: 如果響應已經包含完整 URL，直接使用
+        if (response.data.image_url && response.data.image_url.startsWith('http')) {
+          try {
+            const url = new URL(response.data.image_url)
+            backendBaseURL = `${url.protocol}//${url.host}`
+            console.log('從響應中獲取後端 URL:', backendBaseURL)
+          } catch (e) {
+            backendBaseURL = getBackendBaseURL()
+          }
+        } else {
+          // 方法2: 從 API 請求的實際 URL 中提取
+          // 通過檢查 response.config.url 或 response.request.responseURL
+          try {
+            // 嘗試從響應對象中獲取請求 URL
+            const requestURL = response.config?.url || response.request?.responseURL
+            if (requestURL) {
+              const url = new URL(requestURL, window.location.origin)
+              backendBaseURL = `${url.protocol}//${url.host}`
+              console.log('從 API 請求中提取後端 URL:', backendBaseURL)
+            } else {
+              // 方法3: 從 API 配置中獲取
+              backendBaseURL = getBackendBaseURL()
+              console.log('從 API 配置獲取後端 URL:', backendBaseURL)
+            }
+          } catch (e) {
+            console.error('無法從請求中提取 URL:', e)
+            backendBaseURL = getBackendBaseURL()
+          }
+        }
+        
+        console.log('最終使用的後端 URL:', backendBaseURL)
+        
+        // 確保圖片 URL 指向後端伺服器
+        if (imageUrl.startsWith('/media/')) {
+          imageUrl = `${backendBaseURL}${imageUrl}`
+        } else if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+          imageUrl = `${backendBaseURL}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`
+        } else if (imageUrl.includes(':5173')) {
+          // 如果 URL 錯誤地包含了前端端口（5173），替換為後端 URL
+          imageUrl = imageUrl.replace(/https?:\/\/[^:]+:\d+/, backendBaseURL)
+        }
+        
+        // 在游標位置插入 Markdown 圖片語法
+        if (view) {
+          const selection = view.state.selection.main
+          const pos = selection.head
+          
+          // 生成 Markdown 圖片語法
+          const imageMarkdown = `![${file.name || 'image'}](${imageUrl})`
+          
+          console.log('插入圖片 Markdown:', imageMarkdown)
+          console.log('圖片 URL:', imageUrl)
+          
+          // 插入到游標位置
+          view.dispatch({
+            changes: {
+              from: pos,
+              insert: imageMarkdown
+            },
+            selection: {
+              anchor: pos + imageMarkdown.length
+            }
+          })
+          
+          // 觸發更新事件
+          const newContent = view.state.doc.toString()
+          emit('update:modelValue', newContent)
+        }
+      } catch (error) {
+        console.error('上傳圖片失敗：', error)
+        alert('上傳圖片失敗，請稍後再試')
+      } finally {
+        uploadingImage.value = false
+      }
+      
+      break
+    }
+  }
+}
 
 // LaTeX 自動完成選項
 const latexCompletions = [
@@ -202,6 +322,10 @@ onMounted(() => {
     state: startState,
     parent: editorContainer.value
   })
+  
+  // 添加 paste 事件監聽器
+  const dom = view.dom
+  dom.addEventListener('paste', handlePaste)
 })
 
 watch(() => props.modelValue, (newValue) => {
@@ -218,6 +342,9 @@ watch(() => props.modelValue, (newValue) => {
 
 onUnmounted(() => {
   if (view) {
+    // 移除事件監聽器
+    const dom = view.dom
+    dom.removeEventListener('paste', handlePaste)
     view.destroy()
   }
 })
@@ -226,6 +353,22 @@ onUnmounted(() => {
 <style scoped>
 .markdown-editor-wrapper {
   width: 100%;
+  position: relative;
+}
+
+.editor-container {
+  width: 100%;
+}
+
+.upload-indicator {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 10;
 }
 
 :deep(.cm-editor) {
