@@ -126,6 +126,17 @@ const isActive = (name) => {
 // 獲取當前用戶和權限
 const fetchUserInfo = async () => {
   try {
+    // 檢查是否在登入頁面
+    if (route.name === 'login') {
+      return
+    }
+
+    // 檢查是否有 access token，如果沒有則不發起請求
+    const accessToken = localStorage.getItem('access_token')
+    if (!accessToken) {
+      return
+    }
+
     // 從 localStorage 獲取用戶信息
     const userStr = localStorage.getItem('user')
     if (userStr) {
@@ -152,7 +163,16 @@ const fetchUserInfo = async () => {
       }
     }
   } catch (error) {
-    console.error('獲取用戶信息失敗:', error)
+    // 如果是 401 錯誤，可能是 token 過期或無效，靜默處理
+    if (error.response?.status === 401) {
+      // 清除可能無效的 token 和用戶信息
+      const { clearTokens } = await import('../services/api')
+      clearTokens()
+      currentUser.value = null
+      userPermissions.value = []
+    } else {
+      console.error('獲取用戶信息失敗:', error)
+    }
   }
 }
 

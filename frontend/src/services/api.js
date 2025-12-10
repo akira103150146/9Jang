@@ -92,6 +92,21 @@ api.interceptors.response.use(
 
     // 如果是 401 錯誤且不是登入請求，嘗試刷新 token
     if (error.response?.status === 401 && !originalRequest._retry && originalRequest.url !== '/api/account/login/') {
+      // 如果當前在登入頁面，不嘗試刷新 token
+      if (window.location.pathname === '/login') {
+        return Promise.reject(error)
+      }
+
+      // 檢查是否有 refresh token，如果沒有則不嘗試刷新
+      const refreshToken = getRefreshToken()
+      if (!refreshToken) {
+        clearTokens()
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login'
+        }
+        return Promise.reject(error)
+      }
+
       if (isRefreshing) {
         // 如果正在刷新，將請求加入隊列
         return new Promise((resolve, reject) => {
