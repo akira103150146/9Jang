@@ -1,2 +1,1 @@
-# Management commands package
-
+# cramschool/management/commands/__init__.py
