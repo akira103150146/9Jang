@@ -70,7 +70,7 @@ const userPermissions = ref([])
 
 const allNavItems = [
   { name: 'dashboard', label: '儀表板', path: '/', requiresAdmin: false },
-  { name: 'student-list', label: '學生資訊', path: '/students', requiresAdmin: false },
+  { name: 'student-list', label: '學生管理', path: '/students', requiresAdmin: false },
   { name: 'teachers', label: '老師管理', path: '/teachers', requiresAdmin: false },
   { name: 'courses', label: '課程管理', path: '/courses', requiresAdmin: false },
   { name: 'attendance', label: '出缺勤', path: '/attendance', requiresAdmin: false },
