@@ -334,6 +334,35 @@ class StudentViewSet(viewsets.ModelViewSet):
         
         serializer = ExtraFeeSerializer(fee)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    @action(detail=True, methods=['get'])
+    def attendance_and_leaves(self, request, pk=None):
+        """
+        獲取學生的出缺勤和請假記錄
+        返回該學生的所有出席記錄和請假記錄
+        """
+        student = self.get_object()
+        
+        # 獲取出席記錄
+        attendances = Attendance.objects.filter(
+            student=student
+        ).select_related('session', 'session__course').order_by('-session__session_date')
+        
+        # 獲取請假記錄
+        leaves = Leave.objects.filter(
+            student=student
+        ).select_related('course').order_by('-leave_date')
+        
+        # 序列化數據
+        attendance_serializer = AttendanceSerializer(attendances, many=True)
+        leave_serializer = LeaveSerializer(leaves, many=True)
+        
+        return Response({
+            'student_id': student.student_id,
+            'student_name': student.name,
+            'attendances': attendance_serializer.data,
+            'leaves': leave_serializer.data
+        })
 
 
 class TeacherViewSet(viewsets.ModelViewSet):

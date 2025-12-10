@@ -155,7 +155,9 @@ export const studentAPI = {
   // 重置學生密碼
   resetPassword: (id, password) => api.post(`/cramschool/students/${id}/reset-password/`, { password }),
   // 切換帳號狀態
-  toggleAccountStatus: (id) => api.post(`/cramschool/students/${id}/toggle-account-status/`)
+  toggleAccountStatus: (id) => api.post(`/cramschool/students/${id}/toggle-account-status/`),
+  // 獲取學生出缺勤和請假記錄
+  getAttendanceAndLeaves: (id) => api.get(`/cramschool/students/${id}/attendance_and_leaves/`)
 }
 
 // Teacher API

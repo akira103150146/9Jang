@@ -175,6 +175,12 @@
                   >
                     錯題本
                   </router-link>
+                  <button
+                    @click="openLeaveModal(student)"
+                    class="rounded-full bg-orange-500 px-3 py-1 text-xs font-semibold text-white hover:bg-orange-600"
+                  >
+                    請假
+                  </button>
                   <router-link
                     :to="`/students/edit/${student.id}`"
                     class="rounded-full bg-sky-500 px-3 py-1 text-xs font-semibold text-white hover:bg-sky-600"
@@ -204,10 +210,10 @@
       class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm"
       @click.self="closeEnrollmentModal"
     >
-      <div class="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
+      <div class="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-xl font-bold text-slate-900">
-            為 {{ selectedStudent?.name }} 報名課程
+            {{ selectedStudent?.name }} - 課程報名管理
           </h3>
           <button @click="closeEnrollmentModal" class="text-slate-400 hover:text-slate-600">
             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -216,7 +222,62 @@
           </button>
         </div>
 
-        <form @submit.prevent="saveEnrollment" class="space-y-4">
+        <div v-if="loadingEnrollments" class="text-center py-12 text-slate-500">載入中...</div>
+        
+        <div v-else class="space-y-6">
+          <!-- 已報名課程列表 -->
+          <section v-if="studentEnrollments.length > 0">
+            <h4 class="text-lg font-semibold text-slate-900 mb-3">已報名課程</h4>
+            <div class="space-y-3">
+              <div
+                v-for="enrollment in studentEnrollments"
+                :key="enrollment.enrollment_id"
+                class="rounded-lg border border-slate-200 bg-slate-50 p-4"
+              >
+                <div class="flex items-start justify-between mb-2">
+                  <div class="flex-1">
+                    <p class="font-semibold text-slate-900">{{ enrollment.course_name }}</p>
+                    <p class="text-sm text-slate-600">報名日期：{{ formatDate(enrollment.enroll_date) }}</p>
+                    <p class="text-sm text-slate-600">折扣：{{ enrollment.discount_rate }}%</p>
+                    <div v-if="enrollment.periods && enrollment.periods.length > 0" class="mt-2">
+                      <p class="text-xs font-semibold text-slate-600 mb-1">上課期間：</p>
+                      <div class="space-y-1">
+                        <div
+                          v-for="period in enrollment.periods"
+                          :key="period.period_id"
+                          class="text-xs text-slate-700"
+                        >
+                          <span v-if="period.is_active" class="inline-block w-2 h-2 rounded-full bg-green-500 mr-1"></span>
+                          <span v-else class="inline-block w-2 h-2 rounded-full bg-slate-400 mr-1"></span>
+                          {{ formatDate(period.start_date) }} ~ 
+                          {{ period.end_date ? formatDate(period.end_date) : '進行中' }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="flex gap-2 ml-4">
+                    <button
+                      @click="openPeriodModal(enrollment)"
+                      class="rounded-full bg-indigo-500 px-3 py-1 text-xs font-semibold text-white hover:bg-indigo-600"
+                    >
+                      管理期間
+                    </button>
+                    <button
+                      @click="deleteEnrollment(enrollment.enrollment_id, enrollment.course_name)"
+                      class="rounded-full bg-rose-500 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-600"
+                    >
+                      刪除
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 新增報名表單 -->
+          <section class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <h4 class="text-lg font-semibold text-slate-900 mb-4">新增課程報名</h4>
+            <form @submit.prevent="saveEnrollment" class="space-y-4">
           <div>
             <label class="block text-sm font-semibold text-slate-700 mb-1">學生</label>
             <input
@@ -269,23 +330,130 @@
             <p class="mt-1 text-xs text-slate-500">輸入折扣百分比，例如：10 表示 10% 折扣</p>
           </div>
 
+              <div class="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  @click="closeEnrollmentModal"
+                  class="rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  關閉
+                </button>
+                <button
+                  type="submit"
+                  :disabled="savingEnrollment"
+                  class="rounded-full bg-sky-500 px-5 py-2 text-sm font-semibold text-white hover:bg-sky-600 disabled:opacity-50"
+                >
+                  {{ savingEnrollment ? '處理中...' : '新增報名' }}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <!-- 管理期間模態框 -->
+    <div
+      v-if="showPeriodModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm"
+      @click.self="closePeriodModal"
+    >
+      <div class="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-xl font-bold text-slate-900">
+            管理上課期間 - {{ selectedEnrollment?.course_name }}
+          </h3>
+          <button @click="closePeriodModal" class="text-slate-400 hover:text-slate-600">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div v-if="loadingPeriods" class="text-center py-12 text-slate-500">載入中...</div>
+        
+        <div v-else class="space-y-4">
+          <p class="text-sm text-slate-600 mb-4">管理學生的上課期間，系統會根據期間生成學費</p>
+          
+          <div
+            v-for="(period, index) in periods"
+            :key="period.period_id || index"
+            class="p-4 bg-slate-50 rounded-lg border border-slate-200"
+          >
+            <div class="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">開始日期 *</label>
+                <input
+                  v-model="period.start_date"
+                  type="date"
+                  required
+                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+                />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">結束日期（可選）</label>
+                <input
+                  v-model="period.end_date"
+                  type="date"
+                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+                />
+                <p class="text-xs text-slate-500 mt-1">留空表示持續中</p>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="block text-xs font-semibold text-slate-700 mb-1">備註</label>
+              <textarea
+                v-model="period.notes"
+                rows="2"
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+                placeholder="例如：請假中、恢復上課等..."
+              ></textarea>
+            </div>
+            <div class="flex items-center justify-between">
+              <label class="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  v-model="period.is_active"
+                  type="checkbox"
+                  class="rounded border-slate-300 text-sky-500 focus:ring-sky-500"
+                />
+                <span>啟用此期間</span>
+              </label>
+              <button
+                type="button"
+                @click="removePeriod(index)"
+                class="px-3 py-1 text-xs font-semibold text-rose-600 hover:text-rose-800"
+              >
+                刪除期間
+              </button>
+            </div>
+          </div>
+          
+          <button
+            type="button"
+            @click="addPeriod"
+            class="w-full rounded-lg border-2 border-dashed border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-sky-500 hover:text-sky-600"
+          >
+            + 新增上課期間
+          </button>
+
           <div class="flex justify-end gap-3 pt-4">
             <button
               type="button"
-              @click="closeEnrollmentModal"
+              @click="closePeriodModal"
               class="rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
               取消
             </button>
             <button
-              type="submit"
-              :disabled="savingEnrollment"
+              type="button"
+              @click="savePeriods"
+              :disabled="savingPeriods"
               class="rounded-full bg-sky-500 px-5 py-2 text-sm font-semibold text-white hover:bg-sky-600 disabled:opacity-50"
             >
-              {{ savingEnrollment ? '處理中...' : '報名' }}
+              {{ savingPeriods ? '處理中...' : '儲存' }}
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
 
@@ -377,13 +545,174 @@
         </div>
       </div>
     </div>
+
+    <!-- 請假記錄模態框 -->
+    <div
+      v-if="showLeaveModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm"
+      @click.self="closeLeaveModal"
+    >
+      <div class="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-xl font-bold text-slate-900">
+            {{ selectedStudent?.name }} - 請假記錄
+          </h3>
+          <button @click="closeLeaveModal" class="text-slate-400 hover:text-slate-600">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div v-if="loadingLeave" class="text-center py-12 text-slate-500">載入中...</div>
+        
+        <div v-else class="space-y-6">
+          <!-- 新增請假按鈕 -->
+          <div class="flex justify-end">
+            <button
+              @click="showLeaveForm = !showLeaveForm"
+              class="rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-5 py-2 text-sm font-semibold text-white shadow-md hover:from-sky-600 hover:to-indigo-600"
+            >
+              {{ showLeaveForm ? '取消新增' : '新增請假' }}
+            </button>
+          </div>
+
+          <!-- 新增請假表單 -->
+          <section v-if="showLeaveForm" class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <h4 class="text-lg font-semibold text-slate-900 mb-4">新增請假記錄</h4>
+            <form @submit.prevent="submitLeave" class="space-y-4">
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">學生</label>
+                <input
+                  :value="selectedStudent?.name"
+                  type="text"
+                  disabled
+                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-slate-100 text-slate-600"
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">課程 *</label>
+                <select
+                  v-model="leaveForm.course"
+                  required
+                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+                >
+                  <option value="">請選擇課程</option>
+                  <option
+                    v-for="course in courses"
+                    :key="course.course_id || course.id"
+                    :value="course.course_id || course.id"
+                  >
+                    {{ course.course_name }} ({{ getDayDisplay(course.day_of_week) }} {{ formatTime(course.start_time) }}-{{ formatTime(course.end_time) }})
+                  </option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">請假日期 *</label>
+                <input
+                  v-model="leaveForm.leave_date"
+                  type="date"
+                  required
+                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">請假原因 *</label>
+                <textarea
+                  v-model="leaveForm.reason"
+                  required
+                  rows="3"
+                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+                  placeholder="請輸入請假原因"
+                ></textarea>
+              </div>
+
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">審核狀態 *</label>
+                <select
+                  v-model="leaveForm.approval_status"
+                  required
+                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+                >
+                  <option value="Pending">待審核</option>
+                  <option value="Approved">已核准</option>
+                  <option value="Rejected">已拒絕</option>
+                </select>
+              </div>
+
+              <div class="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  @click="showLeaveForm = false"
+                  class="rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  :disabled="savingLeave"
+                  class="rounded-full bg-sky-500 px-5 py-2 text-sm font-semibold text-white hover:bg-sky-600 disabled:opacity-50"
+                >
+                  {{ savingLeave ? '處理中...' : '新增' }}
+                </button>
+              </div>
+            </form>
+          </section>
+
+          <!-- 請假記錄區塊 -->
+          <section>
+            <h4 class="text-lg font-semibold text-slate-900 mb-3">請假記錄</h4>
+            <div v-if="leaveData.leaves && leaveData.leaves.length > 0" class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-slate-100">
+                <thead class="bg-slate-50">
+                  <tr>
+                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">日期</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">課程</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">原因</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">審核狀態</th>
+                    <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">操作</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  <tr v-for="leave in leaveData.leaves" :key="leave.leave_id" class="transition hover:bg-slate-50/70">
+                    <td class="px-4 py-4 text-sm text-slate-700">{{ formatDate(leave.leave_date) }}</td>
+                    <td class="px-4 py-4 text-sm text-slate-700">{{ leave.course_name }}</td>
+                    <td class="px-4 py-4 text-sm text-slate-700">{{ leave.reason }}</td>
+                    <td class="px-4 py-4">
+                      <span 
+                        class="rounded-full px-3 py-1 text-xs font-semibold" 
+                        :class="getLeaveStatusColor(leave.approval_status)"
+                      >
+                        {{ getLeaveStatusDisplay(leave.approval_status) }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-4 text-center">
+                      <button
+                        @click="deleteLeave(leave.leave_id, selectedStudent?.name)"
+                        class="rounded-full bg-rose-500 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-600"
+                      >
+                        刪除
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p v-else class="text-sm text-slate-500 py-4">目前沒有請假記錄</p>
+          </section>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { studentAPI, enrollmentAPI, courseAPI } from '../services/api'
+import { studentAPI, enrollmentAPI, enrollmentPeriodAPI, courseAPI, leaveAPI } from '../services/api'
 import { mockStudents } from '../data/mockData'
 
 const router = useRouter()
@@ -405,10 +734,30 @@ const passwordModalStudent = ref(null)
 const showEnrollmentModal = ref(false)
 const courses = ref([])
 const savingEnrollment = ref(false)
+const loadingEnrollments = ref(false)
+const studentEnrollments = ref([])
 const enrollmentForm = ref({
   course: '',
   enroll_date: new Date().toISOString().split('T')[0],
   discount_rate: 0
+})
+const showPeriodModal = ref(false)
+const selectedEnrollment = ref(null)
+const loadingPeriods = ref(false)
+const savingPeriods = ref(false)
+const periods = ref([])
+const showLeaveModal = ref(false)
+const loadingLeave = ref(false)
+const showLeaveForm = ref(false)
+const savingLeave = ref(false)
+const leaveData = ref({
+  leaves: []
+})
+const leaveForm = ref({
+  course: '',
+  leave_date: new Date().toISOString().split('T')[0],
+  reason: '',
+  approval_status: 'Pending'
 })
 
 const normalizeStudent = (student) => ({
@@ -674,7 +1023,7 @@ const fetchCourses = async () => {
   }
 }
 
-const openEnrollmentModal = (student) => {
+const openEnrollmentModal = async (student) => {
   selectedStudent.value = student
   enrollmentForm.value = {
     course: '',
@@ -682,11 +1031,39 @@ const openEnrollmentModal = (student) => {
     discount_rate: 0
   }
   showEnrollmentModal.value = true
+  loadingEnrollments.value = true
+  
+  // 獲取學生的報名記錄
+  try {
+    const response = await enrollmentAPI.getAll()
+    const data = response.data.results || response.data
+    const allEnrollments = Array.isArray(data) ? data : []
+    
+    // 過濾出該學生的報名記錄
+    studentEnrollments.value = allEnrollments
+      .filter(e => {
+        const enrollmentStudentId = e.student || e.student_id || (e.student && typeof e.student === 'object' ? e.student.student_id || e.student.id : null)
+        return enrollmentStudentId === student.id || enrollmentStudentId === student.student_id
+      })
+      .map(e => ({
+        enrollment_id: e.enrollment_id || e.id,
+        course_name: e.course_name || e.course?.course_name || '',
+        enroll_date: e.enroll_date,
+        discount_rate: e.discount_rate || 0,
+        periods: e.periods || []
+      }))
+  } catch (error) {
+    console.error('獲取報名記錄失敗:', error)
+    studentEnrollments.value = []
+  } finally {
+    loadingEnrollments.value = false
+  }
 }
 
 const closeEnrollmentModal = () => {
   showEnrollmentModal.value = false
   selectedStudent.value = null
+  studentEnrollments.value = []
   enrollmentForm.value = {
     course: '',
     enroll_date: new Date().toISOString().split('T')[0],
@@ -708,7 +1085,16 @@ const saveEnrollment = async () => {
 
     await enrollmentAPI.create(submitData)
     alert('報名成功！')
-    closeEnrollmentModal()
+    
+    // 重置表單
+    enrollmentForm.value = {
+      course: '',
+      enroll_date: new Date().toISOString().split('T')[0],
+      discount_rate: 0
+    }
+    
+    // 重新載入報名記錄
+    await openEnrollmentModal(selectedStudent.value)
     fetchStudents() // 刷新學生列表
   } catch (error) {
     console.error('報名失敗:', error)
@@ -721,6 +1107,266 @@ const saveEnrollment = async () => {
   } finally {
     savingEnrollment.value = false
   }
+}
+
+const deleteEnrollment = async (enrollmentId, courseName) => {
+  if (!confirm(`確定要刪除「${courseName}」的報名記錄嗎？`)) {
+    return
+  }
+
+  try {
+    await enrollmentAPI.delete(enrollmentId)
+    alert('刪除成功')
+    // 重新載入報名記錄
+    if (selectedStudent.value) {
+      await openEnrollmentModal(selectedStudent.value)
+    }
+    fetchStudents() // 刷新學生列表
+  } catch (error) {
+    console.error('刪除報名記錄失敗:', error)
+    alert('刪除報名記錄失敗，請稍後再試')
+  }
+}
+
+const openPeriodModal = async (enrollment) => {
+  selectedEnrollment.value = enrollment
+  showPeriodModal.value = true
+  loadingPeriods.value = true
+  
+  try {
+    const response = await enrollmentPeriodAPI.getByEnrollment(enrollment.enrollment_id)
+    const data = response.data.results || response.data
+    periods.value = Array.isArray(data) 
+      ? data.map(p => ({
+          period_id: p.period_id,
+          start_date: p.start_date ? p.start_date.split('T')[0] : '',
+          end_date: p.end_date ? p.end_date.split('T')[0] : '',
+          is_active: p.is_active !== undefined ? p.is_active : true,
+          notes: p.notes || '',
+        }))
+      : []
+    
+    // 如果沒有期間記錄，創建一個初始期間
+    if (periods.value.length === 0 && enrollment.enroll_date) {
+      periods.value = [{
+        period_id: null,
+        start_date: enrollment.enroll_date.split('T')[0] || enrollment.enroll_date,
+        end_date: '',
+        is_active: true,
+        notes: '初始上課期間',
+      }]
+    }
+  } catch (error) {
+    console.error('獲取上課期間失敗:', error)
+    periods.value = []
+  } finally {
+    loadingPeriods.value = false
+  }
+}
+
+const closePeriodModal = () => {
+  showPeriodModal.value = false
+  selectedEnrollment.value = null
+  periods.value = []
+}
+
+const addPeriod = () => {
+  periods.value.push({
+    period_id: null,
+    start_date: '',
+    end_date: '',
+    is_active: true,
+    notes: '',
+  })
+}
+
+const removePeriod = (index) => {
+  if (periods.value.length > 1) {
+    periods.value.splice(index, 1)
+  } else {
+    alert('至少需要保留一個上課期間')
+  }
+}
+
+const savePeriods = async () => {
+  if (!selectedEnrollment.value) return
+
+  savingPeriods.value = true
+  try {
+    const enrollmentId = selectedEnrollment.value.enrollment_id
+    
+    // 獲取現有的期間記錄
+    const existingResponse = await enrollmentPeriodAPI.getByEnrollment(enrollmentId)
+    const existingData = existingResponse.data.results || existingResponse.data
+    const existingPeriods = Array.isArray(existingData) ? existingData : []
+    const existingIds = existingPeriods.map(p => p.period_id)
+    
+    // 保存或更新期間
+    for (const period of periods.value) {
+      const periodData = {
+        enrollment: enrollmentId,
+        start_date: period.start_date,
+        end_date: period.end_date || null,
+        is_active: period.is_active,
+        notes: period.notes || '',
+      }
+      
+      if (period.period_id && existingIds.includes(period.period_id)) {
+        // 更新現有期間
+        await enrollmentPeriodAPI.update(period.period_id, periodData)
+      } else if (!period.period_id) {
+        // 創建新期間
+        await enrollmentPeriodAPI.create(periodData)
+      }
+    }
+    
+    // 刪除已移除的期間
+    const currentIds = periods.value.filter(p => p.period_id).map(p => p.period_id)
+    for (const existing of existingPeriods) {
+      if (!currentIds.includes(existing.period_id)) {
+        await enrollmentPeriodAPI.delete(existing.period_id)
+      }
+    }
+    
+    alert('儲存成功！')
+    closePeriodModal()
+    
+    // 重新載入報名記錄
+    if (selectedStudent.value) {
+      await openEnrollmentModal(selectedStudent.value)
+    }
+  } catch (error) {
+    console.error('儲存期間失敗:', error)
+    if (error.response?.data) {
+      const errorMsg = error.response.data.detail || JSON.stringify(error.response.data)
+      alert(`儲存失敗：${errorMsg}`)
+    } else {
+      alert('儲存失敗，請稍後再試')
+    }
+  } finally {
+    savingPeriods.value = false
+  }
+}
+
+const openLeaveModal = async (student) => {
+  selectedStudent.value = student
+  showLeaveModal.value = true
+  showLeaveForm.value = false
+  loadingLeave.value = true
+  
+  try {
+    const response = await studentAPI.getAttendanceAndLeaves(student.id)
+    leaveData.value = {
+      leaves: response.data.leaves || []
+    }
+  } catch (error) {
+    console.error('獲取請假記錄失敗：', error)
+    alert('獲取請假記錄失敗')
+    leaveData.value = {
+      leaves: []
+    }
+  } finally {
+    loadingLeave.value = false
+  }
+}
+
+const closeLeaveModal = () => {
+  showLeaveModal.value = false
+  showLeaveForm.value = false
+  selectedStudent.value = null
+  leaveData.value = {
+    leaves: []
+  }
+  leaveForm.value = {
+    course: '',
+    leave_date: new Date().toISOString().split('T')[0],
+    reason: '',
+    approval_status: 'Pending'
+  }
+}
+
+const submitLeave = async () => {
+  if (!selectedStudent.value) return
+
+  savingLeave.value = true
+  try {
+    const submitData = {
+      student: selectedStudent.value.id,
+      course: parseInt(leaveForm.value.course),
+      leave_date: leaveForm.value.leave_date,
+      reason: leaveForm.value.reason,
+      approval_status: leaveForm.value.approval_status
+    }
+
+    await leaveAPI.create(submitData)
+    alert('新增請假記錄成功！')
+    showLeaveForm.value = false
+    
+    // 重置表單
+    leaveForm.value = {
+      course: '',
+      leave_date: new Date().toISOString().split('T')[0],
+      reason: '',
+      approval_status: 'Pending'
+    }
+    
+    // 重新載入請假記錄
+    await openLeaveModal(selectedStudent.value)
+  } catch (error) {
+    console.error('新增請假記錄失敗:', error)
+    if (error.response?.data) {
+      const errorMsg = error.response.data.detail || JSON.stringify(error.response.data)
+      alert(`新增請假記錄失敗：${errorMsg}`)
+    } else {
+      alert('新增請假記錄失敗，請稍後再試')
+    }
+  } finally {
+    savingLeave.value = false
+  }
+}
+
+const deleteLeave = async (leaveId, studentName) => {
+  if (!confirm(`確定要刪除 ${studentName} 的這筆請假記錄嗎？`)) {
+    return
+  }
+
+  try {
+    await leaveAPI.delete(leaveId)
+    alert('刪除成功')
+    // 重新載入請假記錄
+    if (selectedStudent.value) {
+      await openLeaveModal(selectedStudent.value)
+    }
+  } catch (error) {
+    console.error('刪除請假記錄失敗:', error)
+    alert('刪除請假記錄失敗，請稍後再試')
+  }
+}
+
+const getLeaveStatusColor = (status) => {
+  const colorMap = {
+    'Pending': 'bg-amber-50 text-amber-600',
+    'Approved': 'bg-green-50 text-green-600',
+    'Rejected': 'bg-rose-50 text-rose-600'
+  }
+  return colorMap[status] || 'bg-slate-50 text-slate-600'
+}
+
+const getLeaveStatusDisplay = (status) => {
+  const statusMap = {
+    'Pending': '待審核',
+    'Approved': '已核准',
+    'Rejected': '已拒絕'
+  }
+  return statusMap[status] || status
+}
+
+const formatDate = (date) => {
+  if (!date) return ''
+  if (typeof date === 'string') {
+    return date.replace(/-/g, '/')
+  }
+  return date
 }
 
 onMounted(() => {

@@ -9,7 +9,7 @@
         </div>
         <div class="flex flex-wrap gap-3">
           <router-link
-            to="/enrollments"
+            to="/students"
             class="rounded-full border border-white/60 bg-white/70 px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm backdrop-blur hover:bg-white"
           >
             報名記錄 {{ totalEnrollments }} 筆
@@ -48,7 +48,7 @@
             <h3 class="text-xl font-semibold text-slate-900">課程報名記錄</h3>
           </div>
           <router-link
-            to="/enrollments"
+            to="/students"
             class="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-600 hover:bg-sky-100"
           >
             查看全部

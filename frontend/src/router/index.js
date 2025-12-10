@@ -6,7 +6,6 @@ import TeacherList from '../views/TeacherList.vue'
 import TeacherForm from '../views/TeacherForm.vue'
 import CourseList from '../views/CourseList.vue'
 import CourseForm from '../views/CourseForm.vue'
-import EnrollmentBoard from '../views/EnrollmentBoard.vue'
 import EnrollmentForm from '../views/EnrollmentForm.vue'
 import AttendanceTracker from '../views/AttendanceTracker.vue'
 import LeaveForm from '../views/LeaveForm.vue'
@@ -113,25 +112,6 @@ const router = createRouter({
       component: CourseForm,
       props: true,
       meta: { title: '編輯課程' },
-    },
-    {
-      path: '/enrollments',
-      name: 'enrollments',
-      component: EnrollmentBoard,
-      meta: { title: '報名紀錄' },
-    },
-    {
-      path: '/enrollments/add',
-      name: 'enrollment-add',
-      component: EnrollmentForm,
-      meta: { title: '新增報名記錄' },
-    },
-    {
-      path: '/enrollments/edit/:id',
-      name: 'enrollment-edit',
-      component: EnrollmentForm,
-      props: true,
-      meta: { title: '編輯報名記錄' },
     },
     {
       path: '/attendance',

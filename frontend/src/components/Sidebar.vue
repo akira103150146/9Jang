@@ -73,7 +73,6 @@ const allNavItems = [
   { name: 'student-list', label: '學生資訊', path: '/students', requiresAdmin: false },
   { name: 'teachers', label: '老師管理', path: '/teachers', requiresAdmin: false },
   { name: 'courses', label: '課程管理', path: '/courses', requiresAdmin: false },
-  { name: 'enrollments', label: '課程報名', path: '/enrollments', requiresAdmin: false },
   { name: 'attendance', label: '出缺勤', path: '/attendance', requiresAdmin: false },
   { name: 'questions', label: '題庫系統', path: '/questions', requiresAdmin: false },
   { name: 'lunch-orders', label: '訂便當系統', path: '/lunch-orders', requiresAdmin: false },
