@@ -237,8 +237,11 @@
     <!-- 題目表單對話框 -->
     <div
       v-if="showFormModal"
+      ref="formModalRef"
       class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm"
       @click.self="closeFormModal"
+      @paste="handlePaste"
+      tabindex="-1"
     >
       <div class="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
         <div class="flex items-center justify-between mb-4">
@@ -252,7 +255,7 @@
           </button>
         </div>
 
-        <form @submit.prevent="saveQuestion" class="space-y-4">
+        <form @submit.prevent="saveQuestion" @paste="handlePaste" class="space-y-4">
           <div>
             <div class="flex items-center justify-between mb-1">
               <label class="block text-sm font-semibold text-slate-700">科目 *</label>
@@ -410,6 +413,18 @@
                 
                 <button
                   type="button"
+                  @click="handlePasteClick"
+                  class="rounded-lg border-2 border-dashed border-slate-300 px-4 py-3 text-center cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 transition-colors"
+                  title="從剪貼簿貼上圖片（點擊此按鈕或直接按 Ctrl+V / Cmd+V）"
+                >
+                  <svg class="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  <span class="text-xs text-slate-600 block mt-1">貼上</span>
+                </button>
+                
+                <button
+                  type="button"
                   @click="openCamera"
                   class="rounded-lg border-2 border-dashed border-slate-300 px-4 py-3 text-center cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 transition-colors"
                 >
@@ -490,7 +505,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { questionBankAPI, hashtagAPI, subjectAPI, uploadImageAPI } from '../services/api'
 import { mockQuestionBank } from '../data/mockData'
 
@@ -516,6 +531,7 @@ const showCameraModal = ref(false)
 const videoRef = ref(null)
 const videoStream = ref(null)
 const canvasRef = ref(null)
+const formModalRef = ref(null)
 
 const formData = ref({
   subject: '',
@@ -638,6 +654,10 @@ const handleImageSelect = async (event) => {
   const file = event.target.files?.[0]
   if (!file) return
   
+  await processImageFile(file)
+}
+
+const processImageFile = async (file) => {
   // 檢查文件類型
   if (!file.type.startsWith('image/')) {
     alert('請選擇圖片文件')
@@ -676,6 +696,77 @@ const handleImageSelect = async (event) => {
     // 清空 input 值，以便可以重新選擇同一個文件
     if (fileInput.value) fileInput.value.value = ''
   }
+}
+
+const handlePasteClick = async () => {
+  // 檢查 Clipboard API 是否可用
+  if (!navigator.clipboard || !navigator.clipboard.read) {
+    alert('您的瀏覽器不支援剪貼簿 API，請使用以下方式：\n1. 直接按 Ctrl+V (或 Cmd+V) 貼上圖片\n2. 使用「選擇圖片」功能上傳圖片\n\n提示：Clipboard API 需要 HTTPS 連線，HTTP 環境下請使用快捷鍵貼上')
+    return
+  }
+
+  try {
+    // 嘗試從剪貼簿讀取圖片
+    const clipboardItems = await navigator.clipboard.read()
+    
+    for (const clipboardItem of clipboardItems) {
+      // 檢查是否有圖片類型
+      for (const type of clipboardItem.types) {
+        if (type.startsWith('image/')) {
+          const blob = await clipboardItem.getType(type)
+          const file = new File([blob], `paste_${Date.now()}.${type.split('/')[1]}`, { type })
+          await processImageFile(file)
+          return
+        }
+      }
+    }
+    
+    // 如果沒有找到圖片，提示用戶
+    alert('剪貼簿中沒有圖片，請先複製圖片後再試，或直接按 Ctrl+V (或 Cmd+V) 貼上')
+  } catch (error) {
+    console.error('讀取剪貼簿失敗：', error)
+    
+    // 根據錯誤類型提供不同的提示
+    if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+      alert('需要剪貼簿權限，請允許瀏覽器訪問剪貼簿，或直接按 Ctrl+V (或 Cmd+V) 貼上圖片')
+    } else if (error.name === 'SecurityError') {
+      alert('安全限制：Clipboard API 需要 HTTPS 連線。\n請使用以下方式：\n1. 直接按 Ctrl+V (或 Cmd+V) 貼上圖片\n2. 使用「選擇圖片」功能上傳圖片')
+    } else {
+      alert('無法讀取剪貼簿，請使用以下方式：\n1. 直接按 Ctrl+V (或 Cmd+V) 貼上圖片\n2. 使用「選擇圖片」功能上傳圖片')
+    }
+  }
+}
+
+const handlePaste = async (event) => {
+  // 只在表單對話框打開時處理
+  if (!showFormModal.value) return
+  
+  const items = event.clipboardData?.items
+  if (!items || items.length === 0) {
+    // 如果沒有剪貼簿項目，可能是文字貼上，不處理
+    return
+  }
+  
+  // 檢查是否有圖片
+  let hasImage = false
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]
+    
+    // 檢查是否為圖片類型
+    if (item.type.startsWith('image/')) {
+      hasImage = true
+      event.preventDefault() // 阻止默認貼上行為
+      
+      const file = item.getAsFile()
+      if (file) {
+        await processImageFile(file)
+      }
+      break
+    }
+  }
+  
+  // 如果沒有圖片，允許默認的貼上行為（例如文字貼上到 textarea）
+  // 不阻止事件，讓瀏覽器正常處理文字貼上
 }
 
 const clearImage = () => {
@@ -879,7 +970,7 @@ const saveTag = async () => {
   }
 }
 
-const openFormModal = (question = null) => {
+const openFormModal = async (question = null) => {
   editingQuestion.value = question
   imagePreview.value = ''
   
@@ -927,6 +1018,12 @@ const openFormModal = (question = null) => {
     }
   }
   showFormModal.value = true
+  
+  // 等待 DOM 更新後聚焦對話框，以便接收 paste 事件
+  await new Promise(resolve => setTimeout(resolve, 100))
+  if (formModalRef.value) {
+    formModalRef.value.focus()
+  }
 }
 
 const closeFormModal = () => {
