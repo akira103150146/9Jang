@@ -133,7 +133,10 @@ api.interceptors.response.use(
 // Student API
 export const studentAPI = {
   // 獲取所有學生
-  getAll: () => api.get('/cramschool/students/'),
+  getAll: (includeDeleted = false) => {
+    const params = includeDeleted ? '?include_deleted=true' : ''
+    return api.get(`/cramschool/students/${params}`)
+  },
 
   // 獲取單個學生
   getById: (id) => api.get(`/cramschool/students/${id}/`),
@@ -157,7 +160,9 @@ export const studentAPI = {
   // 切換帳號狀態
   toggleAccountStatus: (id) => api.post(`/cramschool/students/${id}/toggle-account-status/`),
   // 獲取學生出缺勤和請假記錄
-  getAttendanceAndLeaves: (id) => api.get(`/cramschool/students/${id}/attendance_and_leaves/`)
+  getAttendanceAndLeaves: (id) => api.get(`/cramschool/students/${id}/attendance_and_leaves/`),
+  // 恢復已刪除的學生
+  restore: (id) => api.post(`/cramschool/students/${id}/restore/`)
 }
 
 // Teacher API
@@ -199,7 +204,10 @@ export const courseAPI = {
 // Enrollment API
 export const enrollmentAPI = {
   // 獲取所有報名記錄
-  getAll: () => api.get('/cramschool/enrollments/'),
+  getAll: (includeDeleted = false) => {
+    const params = includeDeleted ? '?include_deleted=true' : ''
+    return api.get(`/cramschool/enrollments/${params}`)
+  },
 
   // 獲取單個報名記錄
   getById: (id) => api.get(`/cramschool/enrollments/${id}/`),
@@ -211,7 +219,9 @@ export const enrollmentAPI = {
   update: (id, data) => api.put(`/cramschool/enrollments/${id}/`, data),
 
   // 刪除報名記錄
-  delete: (id) => api.delete(`/cramschool/enrollments/${id}/`)
+  delete: (id) => api.delete(`/cramschool/enrollments/${id}/`),
+  // 恢復已刪除的報名記錄
+  restore: (id) => api.post(`/cramschool/enrollments/${id}/restore/`)
 }
 
 // Enrollment Period API
@@ -238,13 +248,20 @@ export const enrollmentPeriodAPI = {
 // Fee API
 export const feeAPI = {
   // 獲取所有費用記錄
-  getAll: () => api.get('/cramschool/fees/'),
+  getAll: (includeDeleted = false) => {
+    const params = includeDeleted ? '?include_deleted=true' : ''
+    return api.get(`/cramschool/fees/${params}`)
+  },
 
   // 獲取單個費用記錄
   getById: (id) => api.get(`/cramschool/fees/${id}/`),
 
   // 獲取特定學生的費用記錄
-  getByStudent: (studentId) => api.get(`/cramschool/fees/?student=${studentId}`),
+  getByStudent: (studentId, includeDeleted = false) => {
+    const params = new URLSearchParams({ student: studentId })
+    if (includeDeleted) params.append('include_deleted', 'true')
+    return api.get(`/cramschool/fees/?${params.toString()}`)
+  },
 
   // 創建費用記錄
   create: (data) => api.post('/cramschool/fees/', data),
@@ -252,8 +269,11 @@ export const feeAPI = {
   // 更新費用記錄
   update: (id, data) => api.put(`/cramschool/fees/${id}/`, data),
 
-  // 刪除費用記錄
-  delete: (id) => api.delete(`/cramschool/fees/${id}/`)
+  // 刪除費用記錄（軟刪除）
+  delete: (id) => api.delete(`/cramschool/fees/${id}/`),
+  
+  // 恢復已刪除的費用記錄
+  restore: (id) => api.post(`/cramschool/fees/${id}/restore/`)
 }
 
 // Session API
@@ -277,7 +297,10 @@ export const sessionAPI = {
 // Attendance API
 export const attendanceAPI = {
   // 獲取所有出席記錄
-  getAll: () => api.get('/cramschool/attendances/'),
+  getAll: (includeDeleted = false) => {
+    const params = includeDeleted ? '?include_deleted=true' : ''
+    return api.get(`/cramschool/attendances/${params}`)
+  },
 
   // 獲取單個出席記錄
   getById: (id) => api.get(`/cramschool/attendances/${id}/`),
@@ -289,13 +312,18 @@ export const attendanceAPI = {
   update: (id, data) => api.put(`/cramschool/attendances/${id}/`, data),
 
   // 刪除出席記錄
-  delete: (id) => api.delete(`/cramschool/attendances/${id}/`)
+  delete: (id) => api.delete(`/cramschool/attendances/${id}/`),
+  // 恢復已刪除的出席記錄
+  restore: (id) => api.post(`/cramschool/attendances/${id}/restore/`)
 }
 
 // Leave API
 export const leaveAPI = {
   // 獲取所有請假記錄
-  getAll: () => api.get('/cramschool/leaves/'),
+  getAll: (includeDeleted = false) => {
+    const params = includeDeleted ? '?include_deleted=true' : ''
+    return api.get(`/cramschool/leaves/${params}`)
+  },
 
   // 獲取單個請假記錄
   getById: (id) => api.get(`/cramschool/leaves/${id}/`),
@@ -307,7 +335,9 @@ export const leaveAPI = {
   update: (id, data) => api.put(`/cramschool/leaves/${id}/`, data),
 
   // 刪除請假記錄
-  delete: (id) => api.delete(`/cramschool/leaves/${id}/`)
+  delete: (id) => api.delete(`/cramschool/leaves/${id}/`),
+  // 恢復已刪除的請假記錄
+  restore: (id) => api.post(`/cramschool/leaves/${id}/restore/`)
 }
 
 // Subject API
@@ -375,10 +405,12 @@ export const hashtagAPI = {
 // ErrorLog API
 export const errorLogAPI = {
   // 獲取所有錯題記錄（可選：按學生 ID 篩選）
-  getAll: (studentId = null) => {
-    const url = studentId
-      ? `/cramschool/error-logs/?student=${studentId}`
-      : '/cramschool/error-logs/'
+  getAll: (studentId = null, includeDeleted = false) => {
+    const params = new URLSearchParams()
+    if (studentId) params.append('student', studentId)
+    if (includeDeleted) params.append('include_deleted', 'true')
+    const query = params.toString()
+    const url = query ? `/cramschool/error-logs/?${query}` : '/cramschool/error-logs/'
     return api.get(url)
   },
 
@@ -391,14 +423,20 @@ export const errorLogAPI = {
   // 更新錯題記錄
   update: (id, data) => api.put(`/cramschool/error-logs/${id}/`, data),
 
-  // 刪除錯題記錄
-  delete: (id) => api.delete(`/cramschool/error-logs/${id}/`)
+  // 刪除錯題記錄（軟刪除）
+  delete: (id) => api.delete(`/cramschool/error-logs/${id}/`),
+  
+  // 恢復已刪除的錯題記錄
+  restore: (id) => api.post(`/cramschool/error-logs/${id}/restore/`)
 }
 
 // StudentAnswer API
 export const studentAnswerAPI = {
   // 獲取所有作答記錄
-  getAll: () => api.get('/cramschool/student-answers/'),
+  getAll: (includeDeleted = false) => {
+    const params = includeDeleted ? '?include_deleted=true' : ''
+    return api.get(`/cramschool/student-answers/${params}`)
+  },
 
   // 獲取單個作答記錄
   getById: (id) => api.get(`/cramschool/student-answers/${id}/`),
@@ -409,8 +447,11 @@ export const studentAnswerAPI = {
   // 更新作答記錄
   update: (id, data) => api.put(`/cramschool/student-answers/${id}/`, data),
 
-  // 刪除作答記錄
-  delete: (id) => api.delete(`/cramschool/student-answers/${id}/`)
+  // 刪除作答記錄（軟刪除）
+  delete: (id) => api.delete(`/cramschool/student-answers/${id}/`),
+  
+  // 恢復已刪除的作答記錄
+  restore: (id) => api.post(`/cramschool/student-answers/${id}/restore/`)
 }
 
 // Image Upload API
@@ -448,17 +489,19 @@ export const groupOrderAPI = {
 
 // Order API
 export const orderAPI = {
-  getAll: (groupOrderId = null, studentId = null) => {
+  getAll: (groupOrderId = null, studentId = null, includeDeleted = false) => {
     const params = new URLSearchParams()
     if (groupOrderId) params.append('group_order', groupOrderId)
     if (studentId) params.append('student', studentId)
+    if (includeDeleted) params.append('include_deleted', 'true')
     const query = params.toString()
     return api.get(`/cramschool/orders/${query ? `?${query}` : ''}`)
   },
   getById: (id) => api.get(`/cramschool/orders/${id}/`),
   create: (data) => api.post('/cramschool/orders/', data),
   update: (id, data) => api.put(`/cramschool/orders/${id}/`, data),
-  delete: (id) => api.delete(`/cramschool/orders/${id}/`)
+  delete: (id) => api.delete(`/cramschool/orders/${id}/`),
+  restore: (id) => api.post(`/cramschool/orders/${id}/restore/`)
 }
 
 // OrderItem API

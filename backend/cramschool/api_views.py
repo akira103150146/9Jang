@@ -33,9 +33,24 @@ class StudentViewSet(viewsets.ModelViewSet):
     """
     提供 Student 模型 CRUD 操作的 API 視圖集
     """
-    queryset = Student.objects.prefetch_related('enrollments__course', 'extra_fees', 'user').all()
+    queryset = Student.objects.all()  # 用於路由器確定 basename，實際查詢由 get_queryset() 處理
     serializer_class = StudentSerializer
     permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+    
+    def get_queryset(self):
+        """
+        根據查詢參數決定是否包含已刪除的記錄
+        """
+        queryset = Student.objects.prefetch_related('enrollments__course', 'extra_fees', 'user').all()
+        
+        # 檢查是否有 include_deleted 參數
+        include_deleted = self.request.query_params.get('include_deleted', 'false').lower() == 'true'
+        
+        if not include_deleted:
+            # 預設過濾掉已刪除的記錄
+            queryset = queryset.filter(is_deleted=False)
+        
+        return queryset
     
     def get_serializer_context(self):
         """
@@ -44,6 +59,30 @@ class StudentViewSet(viewsets.ModelViewSet):
         context = super().get_serializer_context()
         context['request'] = self.request
         return context
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        軟刪除學生記錄
+        """
+        instance = self.get_object()
+        instance.soft_delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    @action(detail=True, methods=['post'])
+    def restore(self, request, pk=None):
+        """
+        恢復已刪除的學生記錄及其所有相關聯的資料
+        """
+        student = self.get_object()
+        if not student.is_deleted:
+            return Response(
+                {'detail': '該學生記錄未被刪除'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        # 這會自動恢復所有相關聯的資料（enrollments, attendances, leaves, extra_fees, answers, error_logs, orders）
+        student.restore()
+        serializer = self.get_serializer(student)
+        return Response(serializer.data)
     
     def create(self, request, *args, **kwargs):
         """
@@ -441,9 +480,24 @@ class StudentEnrollmentViewSet(viewsets.ModelViewSet):
     """
     提供 StudentEnrollment 模型 CRUD 操作的 API 視圖集
     """
-    queryset = StudentEnrollment.objects.select_related('student', 'course').prefetch_related('periods').all()
+    queryset = StudentEnrollment.objects.all()  # 用於路由器確定 basename，實際查詢由 get_queryset() 處理
     serializer_class = StudentEnrollmentSerializer
     permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+    
+    def get_queryset(self):
+        """
+        根據查詢參數決定是否包含已刪除的記錄
+        """
+        queryset = StudentEnrollment.objects.select_related('student', 'course').prefetch_related('periods').all()
+        
+        # 檢查是否有 include_deleted 參數
+        include_deleted = self.request.query_params.get('include_deleted', 'false').lower() == 'true'
+        
+        if not include_deleted:
+            # 預設過濾掉已刪除的記錄
+            queryset = queryset.filter(is_deleted=False)
+        
+        return queryset
     
     def perform_create(self, serializer):
         enrollment = serializer.save()
@@ -455,22 +509,80 @@ class StudentEnrollmentViewSet(viewsets.ModelViewSet):
             is_active=True,
             notes=f'初始上課期間（從報名日期開始）'
         )
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        軟刪除報名記錄
+        """
+        instance = self.get_object()
+        instance.soft_delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    @action(detail=True, methods=['post'])
+    def restore(self, request, pk=None):
+        """
+        恢復已刪除的報名記錄
+        """
+        enrollment = self.get_object()
+        if not enrollment.is_deleted:
+            return Response(
+                {'detail': '該報名記錄未被刪除'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        enrollment.restore()
+        serializer = self.get_serializer(enrollment)
+        return Response(serializer.data)
 
 
 class ExtraFeeViewSet(viewsets.ModelViewSet):
     """
     提供 ExtraFee 模型 CRUD 操作的 API 視圖集
     """
-    queryset = ExtraFee.objects.select_related('student').all()
+    queryset = ExtraFee.objects.all()  # 用於路由器確定 basename，實際查詢由 get_queryset() 處理
     serializer_class = ExtraFeeSerializer
     permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
     
     def get_queryset(self):
-        queryset = super().get_queryset()
+        """
+        根據查詢參數決定是否包含已刪除的記錄
+        """
+        queryset = ExtraFee.objects.select_related('student').all()
+        
+        # 檢查是否有 include_deleted 參數
+        include_deleted = self.request.query_params.get('include_deleted', 'false').lower() == 'true'
+        
+        if not include_deleted:
+            # 預設過濾掉已刪除的記錄
+            queryset = queryset.filter(is_deleted=False)
+        
         student_id = self.request.query_params.get('student', None)
         if student_id:
             queryset = queryset.filter(student_id=student_id)
+        
         return queryset
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        軟刪除收費記錄
+        """
+        instance = self.get_object()
+        instance.soft_delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    @action(detail=True, methods=['post'])
+    def restore(self, request, pk=None):
+        """
+        恢復已刪除的收費記錄
+        """
+        fee = self.get_object()
+        if not fee.is_deleted:
+            return Response(
+                {'detail': '該收費記錄未被刪除'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        fee.restore()
+        serializer = self.get_serializer(fee)
+        return Response(serializer.data)
 
 
 class SessionRecordViewSet(viewsets.ModelViewSet):
@@ -486,18 +598,94 @@ class AttendanceViewSet(viewsets.ModelViewSet):
     """
     提供 Attendance 模型 CRUD 操作的 API 視圖集
     """
-    queryset = Attendance.objects.select_related('session', 'session__course', 'student').all()
+    queryset = Attendance.objects.all()  # 用於路由器確定 basename，實際查詢由 get_queryset() 處理
     serializer_class = AttendanceSerializer
     permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+    
+    def get_queryset(self):
+        """
+        根據查詢參數決定是否包含已刪除的記錄
+        """
+        queryset = Attendance.objects.select_related('session', 'session__course', 'student').all()
+        
+        # 檢查是否有 include_deleted 參數
+        include_deleted = self.request.query_params.get('include_deleted', 'false').lower() == 'true'
+        
+        if not include_deleted:
+            # 預設過濾掉已刪除的記錄
+            queryset = queryset.filter(is_deleted=False)
+        
+        return queryset
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        軟刪除出席記錄
+        """
+        instance = self.get_object()
+        instance.soft_delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    @action(detail=True, methods=['post'])
+    def restore(self, request, pk=None):
+        """
+        恢復已刪除的出席記錄
+        """
+        attendance = self.get_object()
+        if not attendance.is_deleted:
+            return Response(
+                {'detail': '該出席記錄未被刪除'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        attendance.restore()
+        serializer = self.get_serializer(attendance)
+        return Response(serializer.data)
 
 
 class LeaveViewSet(viewsets.ModelViewSet):
     """
     提供 Leave 模型 CRUD 操作的 API 視圖集
     """
-    queryset = Leave.objects.select_related('student', 'course').all()
+    queryset = Leave.objects.all()  # 用於路由器確定 basename，實際查詢由 get_queryset() 處理
     serializer_class = LeaveSerializer
     permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+    
+    def get_queryset(self):
+        """
+        根據查詢參數決定是否包含已刪除的記錄
+        """
+        queryset = Leave.objects.select_related('student', 'course').all()
+        
+        # 檢查是否有 include_deleted 參數
+        include_deleted = self.request.query_params.get('include_deleted', 'false').lower() == 'true'
+        
+        if not include_deleted:
+            # 預設過濾掉已刪除的記錄
+            queryset = queryset.filter(is_deleted=False)
+        
+        return queryset
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        軟刪除請假記錄
+        """
+        instance = self.get_object()
+        instance.soft_delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    @action(detail=True, methods=['post'])
+    def restore(self, request, pk=None):
+        """
+        恢復已刪除的請假記錄
+        """
+        leave = self.get_object()
+        if not leave.is_deleted:
+            return Response(
+                {'detail': '該請假記錄未被刪除'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        leave.restore()
+        serializer = self.get_serializer(leave)
+        return Response(serializer.data)
 
 
 class SubjectViewSet(viewsets.ModelViewSet):
@@ -592,26 +780,72 @@ class StudentAnswerViewSet(viewsets.ModelViewSet):
     """
     提供 StudentAnswer 模型 CRUD 操作的 API 視圖集
     """
-    queryset = StudentAnswer.objects.select_related('student', 'question').all()
+    queryset = StudentAnswer.objects.all()  # 用於路由器確定 basename，實際查詢由 get_queryset() 處理
     serializer_class = StudentAnswerSerializer
     permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+    
+    def get_queryset(self):
+        """
+        根據查詢參數決定是否包含已刪除的記錄
+        """
+        queryset = StudentAnswer.objects.select_related('student', 'question').all()
+        
+        # 檢查是否有 include_deleted 參數
+        include_deleted = self.request.query_params.get('include_deleted', 'false').lower() == 'true'
+        
+        if not include_deleted:
+            # 預設過濾掉已刪除的記錄
+            queryset = queryset.filter(is_deleted=False)
+        
+        return queryset
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        軟刪除作答記錄
+        """
+        instance = self.get_object()
+        instance.soft_delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    @action(detail=True, methods=['post'])
+    def restore(self, request, pk=None):
+        """
+        恢復已刪除的作答記錄
+        """
+        answer = self.get_object()
+        if not answer.is_deleted:
+            return Response(
+                {'detail': '該作答記錄未被刪除'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        answer.restore()
+        serializer = self.get_serializer(answer)
+        return Response(serializer.data)
 
 
 class ErrorLogViewSet(viewsets.ModelViewSet):
     """
     提供 ErrorLog 模型 CRUD 操作的 API 視圖集
     """
-    queryset = ErrorLog.objects.select_related('student', 'question', 'question__subject').all()
+    queryset = ErrorLog.objects.all()  # 用於路由器確定 basename，實際查詢由 get_queryset() 處理
     serializer_class = ErrorLogSerializer
     permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
     
     def get_queryset(self):
         """
         支援按學生 ID 篩選錯題記錄，並優化查詢
+        根據查詢參數決定是否包含已刪除的記錄
         """
         queryset = ErrorLog.objects.select_related(
             'student', 'question', 'question__subject'
         ).prefetch_related('question__tags__tag')
+        
+        # 檢查是否有 include_deleted 參數
+        include_deleted = self.request.query_params.get('include_deleted', 'false').lower() == 'true'
+        
+        if not include_deleted:
+            # 預設過濾掉已刪除的記錄
+            queryset = queryset.filter(is_deleted=False)
         
         student_id = self.request.query_params.get('student', None)
         
@@ -619,6 +853,29 @@ class ErrorLogViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(student_id=student_id)
         
         return queryset
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        軟刪除錯題記錄
+        """
+        instance = self.get_object()
+        instance.soft_delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    @action(detail=True, methods=['post'])
+    def restore(self, request, pk=None):
+        """
+        恢復已刪除的錯題記錄
+        """
+        error_log = self.get_object()
+        if not error_log.is_deleted:
+            return Response(
+                {'detail': '該錯題記錄未被刪除'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        error_log.restore()
+        serializer = self.get_serializer(error_log)
+        return Response(serializer.data)
 
 
 @api_view(['POST'])
@@ -785,15 +1042,24 @@ class OrderViewSet(viewsets.ModelViewSet):
     """
     提供 Order 模型 CRUD 操作的 API 視圖集
     """
-    queryset = Order.objects.select_related('group_order', 'student').prefetch_related('items').all()
+    queryset = Order.objects.all()  # 用於路由器確定 basename，實際查詢由 get_queryset() 處理
     serializer_class = OrderSerializer
     permission_classes = [AllowAny]
     
     def get_queryset(self):
         """
         支援按團購 ID 和學生 ID 篩選
+        根據查詢參數決定是否包含已刪除的記錄
         """
-        queryset = super().get_queryset()
+        queryset = Order.objects.select_related('group_order', 'student').prefetch_related('items').all()
+        
+        # 檢查是否有 include_deleted 參數
+        include_deleted = self.request.query_params.get('include_deleted', 'false').lower() == 'true'
+        
+        if not include_deleted:
+            # 預設過濾掉已刪除的記錄
+            queryset = queryset.filter(is_deleted=False)
+        
         group_order_id = self.request.query_params.get('group_order', None)
         student_id = self.request.query_params.get('student', None)
         
@@ -803,6 +1069,29 @@ class OrderViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(student_id=student_id)
         
         return queryset
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        軟刪除訂單記錄
+        """
+        instance = self.get_object()
+        instance.soft_delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    @action(detail=True, methods=['post'])
+    def restore(self, request, pk=None):
+        """
+        恢復已刪除的訂單記錄
+        """
+        order = self.get_object()
+        if not order.is_deleted:
+            return Response(
+                {'detail': '該訂單記錄未被刪除'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        order.restore()
+        serializer = self.get_serializer(order)
+        return Response(serializer.data)
     
     def perform_create(self, serializer):
         """

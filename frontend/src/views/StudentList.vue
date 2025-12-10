@@ -3,16 +3,29 @@
     <header class="rounded-3xl border border-blue-100 bg-gradient-to-r from-white to-sky-50 p-6 shadow-sm">
       <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p class="text-sm font-semibold text-slate-500">學生資訊</p>
+          <p class="text-sm font-semibold text-slate-500">學生管理</p>
           <h2 class="text-2xl font-bold text-slate-900">學生資料與緊急聯絡資訊</h2>
           <p class="text-sm text-slate-500">根據規格書顯示電話、緊急聯絡人與備註</p>
         </div>
-        <router-link
-          to="/students/add"
-          class="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-5 py-2 text-sm font-semibold text-white shadow-md hover:from-sky-600 hover:to-indigo-600"
-        >
-          新增學生資料
-        </router-link>
+        <div class="flex gap-3">
+          <div class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2">
+            <label class="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+              <input
+                v-model="showDeleted"
+                type="checkbox"
+                @change="fetchStudents"
+                class="rounded border-slate-300 text-sky-500 focus:ring-sky-500"
+              />
+              <span>顯示已刪除</span>
+            </label>
+          </div>
+          <router-link
+            to="/students/add"
+            class="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-5 py-2 text-sm font-semibold text-white shadow-md hover:from-sky-600 hover:to-indigo-600"
+          >
+            新增學生資料
+          </router-link>
+        </div>
       </div>
       <p v-if="usingMock" class="mt-3 text-sm text-amber-600">
         目前顯示示意資料（mock data），待後端欄位完善後即可串接。
@@ -57,7 +70,7 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
-            <tr v-for="student in students" :key="student.id" class="transition hover:bg-slate-50/70">
+            <tr v-for="student in students" :key="student.id" :class="{'opacity-50 bg-slate-50': student.is_deleted}" class="transition hover:bg-slate-50/70">
               <td class="px-4 py-4">
                 <p class="font-semibold text-slate-900">{{ student.name }}</p>
                 <p class="text-xs text-slate-500">ID: {{ student.id ?? '—' }}</p>
@@ -188,10 +201,18 @@
                     編輯
                   </router-link>
                   <button
+                    v-if="!student.is_deleted"
                     @click="deleteStudent(student.id, student.name)"
                     class="rounded-full bg-rose-500 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-600"
                   >
                     刪除
+                  </button>
+                  <button
+                    v-else
+                    @click="restoreStudent(student.id, student.name)"
+                    class="rounded-full bg-green-500 px-3 py-1 text-xs font-semibold text-white hover:bg-green-600"
+                  >
+                    恢復
                   </button>
                 </div>
               </td>
@@ -232,6 +253,7 @@
               <div
                 v-for="enrollment in studentEnrollments"
                 :key="enrollment.enrollment_id"
+                :class="{'opacity-50 bg-slate-100': enrollment.is_deleted}"
                 class="rounded-lg border border-slate-200 bg-slate-50 p-4"
               >
                 <div class="flex items-start justify-between mb-2">
@@ -263,10 +285,18 @@
                       管理期間
                     </button>
                     <button
+                      v-if="!enrollment.is_deleted"
                       @click="deleteEnrollment(enrollment.enrollment_id, enrollment.course_name)"
                       class="rounded-full bg-rose-500 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-600"
                     >
                       刪除
+                    </button>
+                    <button
+                      v-else
+                      @click="restoreEnrollment(enrollment.enrollment_id, enrollment.course_name)"
+                      class="rounded-full bg-green-500 px-3 py-1 text-xs font-semibold text-white hover:bg-green-600"
+                    >
+                      恢復
                     </button>
                   </div>
                 </div>
@@ -691,10 +721,18 @@
                     </td>
                     <td class="px-4 py-4 text-center">
                       <button
+                        v-if="!leave.is_deleted"
                         @click="deleteLeave(leave.leave_id, selectedStudent?.name)"
                         class="rounded-full bg-rose-500 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-600"
                       >
                         刪除
+                      </button>
+                      <button
+                        v-else
+                        @click="restoreLeave(leave.leave_id, selectedStudent?.name)"
+                        class="rounded-full bg-green-500 px-3 py-1 text-xs font-semibold text-white hover:bg-green-600"
+                      >
+                        恢復
                       </button>
                     </td>
                   </tr>
@@ -720,6 +758,7 @@ const router = useRouter()
 const students = ref([])
 const loading = ref(false)
 const usingMock = ref(false)
+const showDeleted = ref(false)  // 是否顯示已刪除的學生
 const showTuitionModal = ref(false)
 const selectedStudent = ref(null)
 const tuitionStatus = ref([])
@@ -736,6 +775,7 @@ const courses = ref([])
 const savingEnrollment = ref(false)
 const loadingEnrollments = ref(false)
 const studentEnrollments = ref([])
+const showDeletedEnrollments = ref(false)  // 是否顯示已刪除的報名記錄
 const enrollmentForm = ref({
   course: '',
   enroll_date: new Date().toISOString().split('T')[0],
@@ -750,6 +790,7 @@ const showLeaveModal = ref(false)
 const loadingLeave = ref(false)
 const showLeaveForm = ref(false)
 const savingLeave = ref(false)
+const showDeletedLeaves = ref(false)  // 是否顯示已刪除的請假記錄
 const leaveData = ref({
   leaves: []
 })
@@ -776,6 +817,8 @@ const normalizeStudent = (student) => ({
   password: student.password || '',
   is_account_active: student.is_account_active,
   must_change_password: student.must_change_password,
+  is_deleted: student.is_deleted || false,
+  deleted_at: student.deleted_at || null,
 })
 
 const totalFees = computed(() => {
@@ -793,7 +836,7 @@ const studentsWithTuitionNeeded = computed(() => {
 const fetchStudents = async () => {
   loading.value = true
   try {
-    const response = await studentAPI.getAll()
+    const response = await studentAPI.getAll(showDeleted.value)
     const data = response.data.results || response.data
     students.value = data.map((item) => normalizeStudent(item))
     usingMock.value = false
@@ -812,17 +855,32 @@ const deleteStudent = async (id, name) => {
     return
   }
 
-  if (!confirm(`確定要刪除學生 ${name} 的資料嗎？`)) {
+  if (!confirm(`確定要刪除學生 ${name} 的資料嗎？\n（此操作為軟刪除，資料將被隱藏但不會真正刪除）`)) {
     return
   }
 
   try {
     await studentAPI.delete(id)
-    alert('刪除成功')
+    alert('刪除成功（已隱藏）')
     fetchStudents()
   } catch (error) {
     console.error('刪除失敗:', error)
     alert('刪除失敗，請稍後再試')
+  }
+}
+
+const restoreStudent = async (id, name) => {
+  if (!confirm(`確定要恢復學生 ${name} 的資料嗎？`)) {
+    return
+  }
+
+  try {
+    await studentAPI.restore(id)
+    alert('恢復成功')
+    fetchStudents()
+  } catch (error) {
+    console.error('恢復失敗:', error)
+    alert('恢復失敗，請稍後再試')
   }
 }
 
@@ -1035,7 +1093,7 @@ const openEnrollmentModal = async (student) => {
   
   // 獲取學生的報名記錄
   try {
-    const response = await enrollmentAPI.getAll()
+    const response = await enrollmentAPI.getAll(showDeletedEnrollments.value)
     const data = response.data.results || response.data
     const allEnrollments = Array.isArray(data) ? data : []
     
@@ -1050,7 +1108,9 @@ const openEnrollmentModal = async (student) => {
         course_name: e.course_name || e.course?.course_name || '',
         enroll_date: e.enroll_date,
         discount_rate: e.discount_rate || 0,
-        periods: e.periods || []
+        periods: e.periods || [],
+        is_deleted: e.is_deleted || false,
+        deleted_at: e.deleted_at || null,
       }))
   } catch (error) {
     console.error('獲取報名記錄失敗:', error)
@@ -1110,13 +1170,13 @@ const saveEnrollment = async () => {
 }
 
 const deleteEnrollment = async (enrollmentId, courseName) => {
-  if (!confirm(`確定要刪除「${courseName}」的報名記錄嗎？`)) {
+  if (!confirm(`確定要刪除「${courseName}」的報名記錄嗎？\n（此操作為軟刪除，資料將被隱藏但不會真正刪除）`)) {
     return
   }
 
   try {
     await enrollmentAPI.delete(enrollmentId)
-    alert('刪除成功')
+    alert('刪除成功（已隱藏）')
     // 重新載入報名記錄
     if (selectedStudent.value) {
       await openEnrollmentModal(selectedStudent.value)
@@ -1125,6 +1185,25 @@ const deleteEnrollment = async (enrollmentId, courseName) => {
   } catch (error) {
     console.error('刪除報名記錄失敗:', error)
     alert('刪除報名記錄失敗，請稍後再試')
+  }
+}
+
+const restoreEnrollment = async (enrollmentId, courseName) => {
+  if (!confirm(`確定要恢復「${courseName}」的報名記錄嗎？`)) {
+    return
+  }
+
+  try {
+    await enrollmentAPI.restore(enrollmentId)
+    alert('恢復成功')
+    // 重新載入報名記錄
+    if (selectedStudent.value) {
+      await openEnrollmentModal(selectedStudent.value)
+    }
+    fetchStudents() // 刷新學生列表
+  } catch (error) {
+    console.error('恢復報名記錄失敗:', error)
+    alert('恢復報名記錄失敗，請稍後再試')
   }
 }
 
@@ -1255,9 +1334,28 @@ const openLeaveModal = async (student) => {
   loadingLeave.value = true
   
   try {
-    const response = await studentAPI.getAttendanceAndLeaves(student.id)
+    // 獲取請假記錄（根據 filter 決定是否包含已刪除）
+    const leavesResponse = await leaveAPI.getAll(showDeletedLeaves.value)
+    const leavesData = leavesResponse.data.results || leavesResponse.data
+    const allLeaves = Array.isArray(leavesData) ? leavesData : []
+    
+    // 過濾出該學生的請假記錄
     leaveData.value = {
-      leaves: response.data.leaves || []
+      leaves: allLeaves
+        .filter(l => {
+          const leaveStudentId = l.student || l.student_id || (l.student && typeof l.student === 'object' ? l.student.student_id || l.student.id : null)
+          return leaveStudentId === student.id || leaveStudentId === student.student_id
+        })
+        .map(l => ({
+          leave_id: l.leave_id || l.id,
+          student_name: l.student_name || l.student?.name || '',
+          course_name: l.course_name || l.course?.course_name || '',
+          leave_date: l.leave_date,
+          reason: l.reason || '',
+          approval_status: l.approval_status || 'Pending',
+          is_deleted: l.is_deleted || false,
+          deleted_at: l.deleted_at || null,
+        }))
     }
   } catch (error) {
     console.error('獲取請假記錄失敗：', error)
@@ -1326,13 +1424,13 @@ const submitLeave = async () => {
 }
 
 const deleteLeave = async (leaveId, studentName) => {
-  if (!confirm(`確定要刪除 ${studentName} 的這筆請假記錄嗎？`)) {
+  if (!confirm(`確定要刪除 ${studentName} 的這筆請假記錄嗎？\n（此操作為軟刪除，資料將被隱藏但不會真正刪除）`)) {
     return
   }
 
   try {
     await leaveAPI.delete(leaveId)
-    alert('刪除成功')
+    alert('刪除成功（已隱藏）')
     // 重新載入請假記錄
     if (selectedStudent.value) {
       await openLeaveModal(selectedStudent.value)
@@ -1340,6 +1438,24 @@ const deleteLeave = async (leaveId, studentName) => {
   } catch (error) {
     console.error('刪除請假記錄失敗:', error)
     alert('刪除請假記錄失敗，請稍後再試')
+  }
+}
+
+const restoreLeave = async (leaveId, studentName) => {
+  if (!confirm(`確定要恢復 ${studentName} 的這筆請假記錄嗎？`)) {
+    return
+  }
+
+  try {
+    await leaveAPI.restore(leaveId)
+    alert('恢復成功')
+    // 重新載入請假記錄
+    if (selectedStudent.value) {
+      await openLeaveModal(selectedStudent.value)
+    }
+  } catch (error) {
+    console.error('恢復請假記錄失敗:', error)
+    alert('恢復請假記錄失敗，請稍後再試')
   }
 }
 

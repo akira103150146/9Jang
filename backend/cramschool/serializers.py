@@ -27,9 +27,10 @@ class StudentSerializer(serializers.ModelSerializer):
             'student_id', 'name', 'school', 'grade', 'phone', 
             'emergency_contact_name', 'emergency_contact_phone', 'notes',
             'user', 'username', 'user_email', 'password', 'is_account_active', 'must_change_password',
-            'total_fees', 'unpaid_fees', 'enrollments_count'
+            'total_fees', 'unpaid_fees', 'enrollments_count',
+            'is_deleted', 'deleted_at'
         ]
-        read_only_fields = ['student_id', 'user', 'username', 'user_email', 'password', 'is_account_active', 'must_change_password', 'total_fees', 'unpaid_fees', 'enrollments_count']
+        read_only_fields = ['student_id', 'user', 'username', 'user_email', 'password', 'is_account_active', 'must_change_password', 'total_fees', 'unpaid_fees', 'enrollments_count', 'is_deleted', 'deleted_at']
     
     def get_password(self, obj):
         """
@@ -176,9 +177,10 @@ class StudentEnrollmentSerializer(serializers.ModelSerializer):
         model = StudentEnrollment
         fields = [
             'enrollment_id', 'student', 'student_name', 'course', 'course_name',
-            'enroll_date', 'discount_rate', 'is_active', 'periods'
+            'enroll_date', 'discount_rate', 'is_active', 'periods',
+            'is_deleted', 'deleted_at'
         ]
-        read_only_fields = ['enrollment_id', 'student_name', 'course_name']
+        read_only_fields = ['enrollment_id', 'student_name', 'course_name', 'is_deleted', 'deleted_at']
     
     def get_student_name(self, obj):
         return obj.student.name if obj.student else None
@@ -196,9 +198,10 @@ class ExtraFeeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExtraFee
         fields = [
-            'fee_id', 'student', 'student_name', 'item', 'amount', 'fee_date', 'payment_status', 'notes'
+            'fee_id', 'student', 'student_name', 'item', 'amount', 'fee_date', 'payment_status', 'notes',
+            'is_deleted', 'deleted_at'
         ]
-        read_only_fields = ['fee_id', 'student_name']
+        read_only_fields = ['fee_id', 'student_name', 'is_deleted', 'deleted_at']
     
     def get_student_name(self, obj):
         return obj.student.name if obj.student else None
@@ -232,9 +235,10 @@ class AttendanceSerializer(serializers.ModelSerializer):
         model = Attendance
         fields = [
             'attendance_id', 'session', 'session_id_display', 'student', 'student_name',
-            'status', 'course_name', 'session_date'
+            'status', 'course_name', 'session_date',
+            'is_deleted', 'deleted_at'
         ]
-        read_only_fields = ['attendance_id', 'student_name', 'session_id_display', 'course_name', 'session_date']
+        read_only_fields = ['attendance_id', 'student_name', 'session_id_display', 'course_name', 'session_date', 'is_deleted', 'deleted_at']
     
     def get_student_name(self, obj):
         return obj.student.name if obj.student else None
@@ -260,9 +264,10 @@ class LeaveSerializer(serializers.ModelSerializer):
         model = Leave
         fields = [
             'leave_id', 'student', 'student_name', 'course', 'course_name',
-            'leave_date', 'reason', 'approval_status'
+            'leave_date', 'reason', 'approval_status',
+            'is_deleted', 'deleted_at'
         ]
-        read_only_fields = ['leave_id', 'student_name', 'course_name']
+        read_only_fields = ['leave_id', 'student_name', 'course_name', 'is_deleted', 'deleted_at']
     
     def get_student_name(self, obj):
         return obj.student.name if obj.student else None
@@ -409,9 +414,10 @@ class StudentAnswerSerializer(serializers.ModelSerializer):
         model = StudentAnswer
         fields = [
             'answer_id', 'student', 'student_name', 'question', 'question_chapter',
-            'test_name', 'is_correct', 'scanned_file_path'
+            'test_name', 'is_correct', 'scanned_file_path',
+            'is_deleted', 'deleted_at'
         ]
-        read_only_fields = ['answer_id', 'student_name', 'question_chapter']
+        read_only_fields = ['answer_id', 'student_name', 'question_chapter', 'is_deleted', 'deleted_at']
     
     def get_student_name(self, obj):
         return obj.student.name if obj.student else None
@@ -482,11 +488,13 @@ class ErrorLogSerializer(serializers.ModelSerializer):
         fields = [
             'error_log_id', 'student', 'student_name', 'question', 
             'question_chapter', 'question_subject', 'question_level',
-            'question_content', 'error_count', 'review_status'
+            'question_content', 'error_count', 'review_status',
+            'is_deleted', 'deleted_at'
         ]
         read_only_fields = [
             'error_log_id', 'student_name', 'question_chapter', 
-            'question_subject', 'question_level', 'question_content'
+            'question_subject', 'question_level', 'question_content',
+            'is_deleted', 'deleted_at'
         ]
     
     def get_student_name(self, obj):
@@ -533,9 +541,10 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = [
             'order_id', 'group_order', 'group_order_title', 'student', 'student_name',
-            'status', 'total_amount', 'notes', 'items', 'created_at', 'updated_at'
+            'status', 'total_amount', 'notes', 'items', 'created_at', 'updated_at',
+            'is_deleted', 'deleted_at'
         ]
-        read_only_fields = ['order_id', 'created_at', 'updated_at']
+        read_only_fields = ['order_id', 'created_at', 'updated_at', 'is_deleted', 'deleted_at']
         extra_kwargs = {
             'group_order': {'required': False},
             'student': {'required': False},

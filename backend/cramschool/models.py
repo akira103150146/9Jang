@@ -40,6 +40,10 @@ class Student(models.Model):
     
     # 備註欄位 (可為空)
     notes = models.TextField(blank=True, null=True, verbose_name='備註')
+    
+    # Soft delete 欄位
+    is_deleted = models.BooleanField(default=False, verbose_name='是否已刪除')
+    deleted_at = models.DateTimeField(blank=True, null=True, verbose_name='刪除時間')
 
     class Meta:
         verbose_name = '學生資料'
@@ -48,6 +52,67 @@ class Student(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.school} - {self.grade})"
+    
+    def soft_delete(self):
+        """軟刪除學生及其所有相關聯的資料"""
+        from django.utils import timezone
+        delete_time = timezone.now()
+        
+        # 軟刪除學生本身
+        self.is_deleted = True
+        self.deleted_at = delete_time
+        self.save()
+        
+        # 軟刪除所有相關聯的資料
+        # 1. 學生報名記錄
+        self.enrollments.filter(is_deleted=False).update(is_deleted=True, deleted_at=delete_time)
+        
+        # 2. 出席記錄
+        self.attendances.filter(is_deleted=False).update(is_deleted=True, deleted_at=delete_time)
+        
+        # 3. 請假記錄
+        self.leaves.filter(is_deleted=False).update(is_deleted=True, deleted_at=delete_time)
+        
+        # 4. 額外收費記錄
+        self.extra_fees.filter(is_deleted=False).update(is_deleted=True, deleted_at=delete_time)
+        
+        # 5. 學生作答記錄
+        self.answers.filter(is_deleted=False).update(is_deleted=True, deleted_at=delete_time)
+        
+        # 6. 錯題本記錄
+        self.error_logs.filter(is_deleted=False).update(is_deleted=True, deleted_at=delete_time)
+        
+        # 7. 訂單記錄
+        self.orders.filter(is_deleted=False).update(is_deleted=True, deleted_at=delete_time)
+    
+    def restore(self):
+        """恢復學生及其所有相關聯的資料"""
+        # 恢復學生本身
+        self.is_deleted = False
+        self.deleted_at = None
+        self.save()
+        
+        # 恢復所有相關聯的資料
+        # 1. 學生報名記錄
+        self.enrollments.filter(is_deleted=True).update(is_deleted=False, deleted_at=None)
+        
+        # 2. 出席記錄
+        self.attendances.filter(is_deleted=True).update(is_deleted=False, deleted_at=None)
+        
+        # 3. 請假記錄
+        self.leaves.filter(is_deleted=True).update(is_deleted=False, deleted_at=None)
+        
+        # 4. 額外收費記錄
+        self.extra_fees.filter(is_deleted=True).update(is_deleted=False, deleted_at=None)
+        
+        # 5. 學生作答記錄
+        self.answers.filter(is_deleted=True).update(is_deleted=False, deleted_at=None)
+        
+        # 6. 錯題本記錄
+        self.error_logs.filter(is_deleted=True).update(is_deleted=False, deleted_at=None)
+        
+        # 7. 訂單記錄
+        self.orders.filter(is_deleted=True).update(is_deleted=False, deleted_at=None)
 
 
 class Teacher(models.Model):
@@ -166,6 +231,10 @@ class StudentEnrollment(models.Model):
         verbose_name='折扣百分比'
     )
     is_active = models.BooleanField(default=True, verbose_name='是否有效')
+    
+    # Soft delete 欄位
+    is_deleted = models.BooleanField(default=False, verbose_name='是否已刪除')
+    deleted_at = models.DateTimeField(blank=True, null=True, verbose_name='刪除時間')
 
     class Meta:
         verbose_name = '學生報名'
@@ -175,6 +244,19 @@ class StudentEnrollment(models.Model):
 
     def __str__(self):
         return f"{self.student.name} - {self.course.course_name}"
+    
+    def soft_delete(self):
+        """軟刪除報名記錄"""
+        from django.utils import timezone
+        self.is_deleted = True
+        self.deleted_at = timezone.now()
+        self.save()
+    
+    def restore(self):
+        """恢復報名記錄"""
+        self.is_deleted = False
+        self.deleted_at = None
+        self.save()
 
 
 class EnrollmentPeriod(models.Model):
@@ -252,6 +334,10 @@ class ExtraFee(models.Model):
         null=True,
         verbose_name='備註'
     )
+    
+    # Soft delete 欄位
+    is_deleted = models.BooleanField(default=False, verbose_name='是否已刪除')
+    deleted_at = models.DateTimeField(blank=True, null=True, verbose_name='刪除時間')
 
     class Meta:
         verbose_name = '額外收費'
@@ -260,6 +346,19 @@ class ExtraFee(models.Model):
 
     def __str__(self):
         return f"{self.student.name} - {self.get_item_display()} - ${self.amount}"
+    
+    def soft_delete(self):
+        """軟刪除收費記錄"""
+        from django.utils import timezone
+        self.is_deleted = True
+        self.deleted_at = timezone.now()
+        self.save()
+    
+    def restore(self):
+        """恢復收費記錄"""
+        self.is_deleted = False
+        self.deleted_at = None
+        self.save()
 
 
 class SessionRecord(models.Model):
@@ -317,6 +416,10 @@ class Attendance(models.Model):
         default='Absent',
         verbose_name='出席狀態'
     )
+    
+    # Soft delete 欄位
+    is_deleted = models.BooleanField(default=False, verbose_name='是否已刪除')
+    deleted_at = models.DateTimeField(blank=True, null=True, verbose_name='刪除時間')
 
     class Meta:
         verbose_name = '出席記錄'
@@ -326,6 +429,19 @@ class Attendance(models.Model):
 
     def __str__(self):
         return f"{self.student.name} - {self.session.course.course_name} ({self.session.session_date}) - {self.get_status_display()}"
+    
+    def soft_delete(self):
+        """軟刪除出席記錄"""
+        from django.utils import timezone
+        self.is_deleted = True
+        self.deleted_at = timezone.now()
+        self.save()
+    
+    def restore(self):
+        """恢復出席記錄"""
+        self.is_deleted = False
+        self.deleted_at = None
+        self.save()
 
 
 class Leave(models.Model):
@@ -360,6 +476,10 @@ class Leave(models.Model):
         default='Pending',
         verbose_name='審核狀態'
     )
+    
+    # Soft delete 欄位
+    is_deleted = models.BooleanField(default=False, verbose_name='是否已刪除')
+    deleted_at = models.DateTimeField(blank=True, null=True, verbose_name='刪除時間')
 
     class Meta:
         verbose_name = '請假記錄'
@@ -368,6 +488,19 @@ class Leave(models.Model):
 
     def __str__(self):
         return f"{self.student.name} - {self.course.course_name} ({self.leave_date}) - {self.get_approval_status_display()}"
+    
+    def soft_delete(self):
+        """軟刪除請假記錄"""
+        from django.utils import timezone
+        self.is_deleted = True
+        self.deleted_at = timezone.now()
+        self.save()
+    
+    def restore(self):
+        """恢復請假記錄"""
+        self.is_deleted = False
+        self.deleted_at = None
+        self.save()
 
 
 class Subject(models.Model):
@@ -532,6 +665,10 @@ class StudentAnswer(models.Model):
         null=True,
         verbose_name='考卷掃描檔路徑'
     )
+    
+    # Soft delete 欄位
+    is_deleted = models.BooleanField(default=False, verbose_name='是否已刪除')
+    deleted_at = models.DateTimeField(blank=True, null=True, verbose_name='刪除時間')
 
     class Meta:
         verbose_name = '學生作答記錄'
@@ -540,6 +677,19 @@ class StudentAnswer(models.Model):
 
     def __str__(self):
         return f"{self.student.name} - Q{self.question.question_id} - {self.test_name}"
+    
+    def soft_delete(self):
+        """軟刪除作答記錄"""
+        from django.utils import timezone
+        self.is_deleted = True
+        self.deleted_at = timezone.now()
+        self.save()
+    
+    def restore(self):
+        """恢復作答記錄"""
+        self.is_deleted = False
+        self.deleted_at = None
+        self.save()
 
 
 class ErrorLog(models.Model):
@@ -572,6 +722,10 @@ class ErrorLog(models.Model):
         default='New',
         verbose_name='掌握狀態'
     )
+    
+    # Soft delete 欄位
+    is_deleted = models.BooleanField(default=False, verbose_name='是否已刪除')
+    deleted_at = models.DateTimeField(blank=True, null=True, verbose_name='刪除時間')
 
     class Meta:
         verbose_name = '錯題本'
@@ -581,6 +735,19 @@ class ErrorLog(models.Model):
 
     def __str__(self):
         return f"{self.student.name} - Q{self.question.question_id} - 錯誤{self.error_count}次"
+    
+    def soft_delete(self):
+        """軟刪除錯題記錄"""
+        from django.utils import timezone
+        self.is_deleted = True
+        self.deleted_at = timezone.now()
+        self.save()
+    
+    def restore(self):
+        """恢復錯題記錄"""
+        self.is_deleted = False
+        self.deleted_at = None
+        self.save()
 
 
 class Restaurant(models.Model):
@@ -697,6 +864,10 @@ class Order(models.Model):
     notes = models.TextField(blank=True, null=True, verbose_name='備註')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='建立時間')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新時間')
+    
+    # Soft delete 欄位
+    is_deleted = models.BooleanField(default=False, verbose_name='是否已刪除')
+    deleted_at = models.DateTimeField(blank=True, null=True, verbose_name='刪除時間')
 
     class Meta:
         verbose_name = '訂單'
@@ -705,6 +876,19 @@ class Order(models.Model):
 
     def __str__(self):
         return f"{self.student.name} - {self.group_order.title}"
+    
+    def soft_delete(self):
+        """軟刪除訂單記錄"""
+        from django.utils import timezone
+        self.is_deleted = True
+        self.deleted_at = timezone.now()
+        self.save()
+    
+    def restore(self):
+        """恢復訂單記錄"""
+        self.is_deleted = False
+        self.deleted_at = None
+        self.save()
 
 
 class OrderItem(models.Model):
