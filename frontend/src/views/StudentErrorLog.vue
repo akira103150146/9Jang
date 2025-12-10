@@ -94,9 +94,7 @@
               <h4 class="text-lg font-semibold text-slate-900 mb-1">
                 {{ errorLog.question_chapter || `題目 #${errorLog.question}` }}
               </h4>
-              <p class="text-sm text-slate-600 mb-3 line-clamp-2">
-                {{ errorLog.question_content || getQuestionContent(errorLog.question) }}
-              </p>
+              <div class="text-sm text-slate-600 mb-3 line-clamp-2 markdown-preview" v-html="renderMarkdownWithLatex(errorLog.question_content || getQuestionContent(errorLog.question))"></div>
               <div class="flex items-center gap-4 text-xs text-slate-500">
                 <span>錯誤次數：<strong class="text-slate-900">{{ errorLog.error_count }}</strong></span>
               </div>
@@ -267,13 +265,30 @@
           <!-- 題目內容 -->
           <div>
             <label class="block text-sm font-semibold text-slate-700 mb-1">題目內容 (Markdown + LaTeX) *</label>
-            <textarea
-              v-model="errorFormData.content"
-              required
-              rows="6"
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
-              placeholder="輸入題目內容..."
-            ></textarea>
+            <div class="space-y-3">
+              <!-- 編輯區域 -->
+              <div class="relative">
+                <MarkdownEditor
+                  v-model="errorFormData.content"
+                  :placeholder="'輸入題目內容...\n\n支援 Markdown 語法：\n- **粗體**\n- *斜體*\n- `程式碼`\n\n支援 LaTeX 數學公式：\n- 行內公式：$x^2 + y^2 = r^2$\n- 區塊公式：$$\n\\int_0^1 x^2 dx = \\frac{1}{3}\n$$'"
+                />
+              </div>
+              
+              <!-- 預覽區域 -->
+              <div class="border-t border-slate-200 pt-3">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">即時預覽</span>
+                  <span class="text-xs text-slate-400">下方顯示渲染效果</span>
+                </div>
+                <div
+                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-slate-50 min-h-[150px] max-h-[300px] overflow-y-auto markdown-preview"
+                  v-html="renderedContent"
+                ></div>
+              </div>
+            </div>
+            <p class="mt-1 text-xs text-slate-500">
+              提示：使用 $$...$$ 表示區塊公式，使用 $...$ 表示行內公式
+            </p>
           </div>
 
           <!-- 正確答案 -->
@@ -628,9 +643,10 @@
               <span class="text-sm text-slate-600">錯誤次數：<strong>{{ selectedError.error_count }}</strong></span>
             </div>
             <h4 class="text-lg font-semibold text-slate-900 mb-2">{{ questionDetail.chapter }}</h4>
-            <div class="text-sm text-slate-700 whitespace-pre-wrap mb-3">{{ questionDetail.content }}</div>
-            <div v-if="questionDetail.correct_answer" class="text-sm text-slate-600">
-              <span class="font-semibold">正確答案：</span>{{ questionDetail.correct_answer }}
+            <div class="text-sm text-slate-700 mb-3 markdown-preview" v-html="renderMarkdownWithLatex(questionDetail.content)"></div>
+            <div v-if="questionDetail.correct_answer" class="text-sm text-slate-600 markdown-preview">
+              <span class="font-semibold">正確答案：</span>
+              <span v-html="renderMarkdownWithLatex(questionDetail.correct_answer)"></span>
             </div>
           </div>
 
@@ -654,13 +670,22 @@
   </div>
 </template>
 
+
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { errorLogAPI, questionBankAPI, studentAPI, subjectAPI, hashtagAPI, uploadImageAPI, getBackendBaseURL } from '../services/api'
+import MarkdownEditor from '../components/MarkdownEditor.vue'
+import { useMarkdownRenderer } from '../composables/useMarkdownRenderer'
 
 // 獲取後端基礎 URL（用於圖片顯示）
 const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL || getBackendBaseURL()
+
+// 使用 Markdown 渲染 composable
+const { renderMarkdownWithLatex } = useMarkdownRenderer()
+
+// 計算渲染後的內容（用於即時預覽）
+const renderedContent = computed(() => renderMarkdownWithLatex(errorFormData.value.content))
 
 const route = useRoute()
 const studentId = parseInt(route.params.id)

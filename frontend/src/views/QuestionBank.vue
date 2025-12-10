@@ -415,112 +415,13 @@
   </div>
 </template>
 
-<style scoped>
-/* Markdown 預覽樣式 */
-:deep(.markdown-preview) {
-  line-height: 1.6;
-}
-
-:deep(.markdown-preview h1),
-:deep(.markdown-preview h2),
-:deep(.markdown-preview h3),
-:deep(.markdown-preview h4),
-:deep(.markdown-preview h5),
-:deep(.markdown-preview h6) {
-  font-weight: 600;
-  margin-top: 1em;
-  margin-bottom: 0.5em;
-}
-
-:deep(.markdown-preview h1) { font-size: 1.5em; }
-:deep(.markdown-preview h2) { font-size: 1.3em; }
-:deep(.markdown-preview h3) { font-size: 1.1em; }
-
-:deep(.markdown-preview p) {
-  margin-bottom: 0.75em;
-}
-
-:deep(.markdown-preview ul),
-:deep(.markdown-preview ol) {
-  margin-left: 1.5em;
-  margin-bottom: 0.75em;
-}
-
-:deep(.markdown-preview code) {
-  background-color: #f1f5f9;
-  padding: 0.125rem 0.375rem;
-  border-radius: 0.25rem;
-  font-family: 'Courier New', monospace;
-  font-size: 0.875em;
-}
-
-:deep(.markdown-preview pre) {
-  background-color: #f1f5f9;
-  padding: 0.75rem;
-  border-radius: 0.5rem;
-  overflow-x: auto;
-  margin-bottom: 0.75em;
-}
-
-:deep(.markdown-preview pre code) {
-  background-color: transparent;
-  padding: 0;
-}
-
-:deep(.markdown-preview blockquote) {
-  border-left: 4px solid #cbd5e1;
-  padding-left: 1em;
-  margin-left: 0;
-  color: #64748b;
-  font-style: italic;
-}
-
-:deep(.markdown-preview table) {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 0.75em;
-}
-
-:deep(.markdown-preview table th),
-:deep(.markdown-preview table td) {
-  border: 1px solid #cbd5e1;
-  padding: 0.5rem;
-  text-align: left;
-}
-
-:deep(.markdown-preview table th) {
-  background-color: #f1f5f9;
-  font-weight: 600;
-}
-
-/* 圖片樣式 */
-:deep(.markdown-preview img) {
-  max-width: 100%;
-  height: auto;
-  border-radius: 0.5rem;
-  margin: 1em 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-/* LaTeX 樣式 */
-:deep(.katex) {
-  font-size: 1.1em;
-}
-
-:deep(.katex-display) {
-  margin: 1em 0;
-  text-align: center;
-}
-</style>
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { questionBankAPI, hashtagAPI, subjectAPI, getBackendBaseURL } from '../services/api'
+import { questionBankAPI, hashtagAPI, subjectAPI } from '../services/api'
 import { mockQuestionBank } from '../data/mockData'
-import MarkdownIt from 'markdown-it'
-import katex from 'katex'
-import 'katex/dist/katex.min.css'
 import MarkdownEditor from '../components/MarkdownEditor.vue'
+import { useMarkdownRenderer } from '../composables/useMarkdownRenderer'
 
 const questionBank = ref([])
 const hashtags = ref([])
@@ -539,139 +440,11 @@ const showChapterSuggestions = ref(false)
 const searchChapterTimeout = ref(null)
 const formModalRef = ref(null)
 
-// 初始化 Markdown-it
-const md = new MarkdownIt({
-  html: true,
-  linkify: true,
-  typographer: true
-})
+// 使用 Markdown 渲染 composable
+const { renderMarkdownWithLatex } = useMarkdownRenderer()
 
-// 獲取後端伺服器 URL（從 API 配置中獲取，而不是硬編碼）
-const getBackendURL = () => {
-  return getBackendBaseURL()
-}
-
-// 配置圖片 URL 處理，確保相對路徑轉換為絕對路徑
-md.renderer.rules.image = (tokens, idx, options, env, self) => {
-  const token = tokens[idx]
-  const src = token.attrGet('src')
-  
-  // 處理所有圖片 URL，確保是完整的絕對路徑
-  if (src) {
-    let absoluteSrc = src
-    
-    // 如果是相對路徑，轉換為絕對路徑
-    if (!src.startsWith('http://') && !src.startsWith('https://')) {
-      const backendURL = getBackendURL()
-      
-      if (src.startsWith('/media/') || src.startsWith('media/')) {
-        absoluteSrc = src.startsWith('/') ? `${backendURL}${src}` : `${backendURL}/${src}`
-      } else if (src.startsWith('/')) {
-        absoluteSrc = `${backendURL}${src}`
-      } else {
-        absoluteSrc = `${backendURL}/${src}`
-      }
-      
-      token.attrSet('src', absoluteSrc)
-    } else if (src.includes(':5173')) {
-      // 如果 URL 錯誤地包含了前端端口（5173），替換為後端 URL（8000）
-      const backendURL = getBackendURL()
-      absoluteSrc = src.replace(/https?:\/\/[^:]+:\d+/, backendURL)
-      token.attrSet('src', absoluteSrc)
-    }
-  }
-  
-  // 使用默認的圖片渲染邏輯
-  return self.renderToken(tokens, idx, options)
-}
-
-// 渲染 Markdown + LaTeX
-const renderMarkdownWithLatex = (text) => {
-  if (!text) return ''
-  
-  const latexData = []
-  let index = 0
-  
-  // 先處理 LaTeX 區塊公式 $$...$$，用特殊標記替換
-  let processed = text.replace(/\$\$([\s\S]*?)\$\$/g, (match, formula) => {
-    const placeholder = `<span data-latex-block="${index}"></span>`
-    try {
-      const rendered = katex.renderToString(formula.trim(), {
-        displayMode: true,
-        throwOnError: false
-      })
-      latexData[index] = rendered
-    } catch (e) {
-      latexData[index] = `<span class="text-red-500">LaTeX 錯誤: ${e.message}</span>`
-    }
-    index++
-    return placeholder
-  })
-  
-  // 再處理行內公式 $...$
-  processed = processed.replace(/\$([^\$\n]+?)\$/g, (match, formula) => {
-    // 跳過已經處理過的標記
-    if (match.includes('data-latex')) {
-      return match
-    }
-    const placeholder = `<span data-latex-inline="${index}"></span>`
-    try {
-      const rendered = katex.renderToString(formula.trim(), {
-        displayMode: false,
-        throwOnError: false
-      })
-      latexData[index] = rendered
-    } catch (e) {
-      latexData[index] = `<span class="text-red-500">LaTeX 錯誤: ${e.message}</span>`
-    }
-    index++
-    return placeholder
-  })
-  
-  // 渲染 Markdown
-  let html = md.render(processed)
-  
-  // 替換所有 LaTeX 佔位符
-  for (let i = 0; i < index; i++) {
-    const blockRegex = new RegExp(`<span data-latex-block="${i}"></span>`, 'g')
-    const inlineRegex = new RegExp(`<span data-latex-inline="${i}"></span>`, 'g')
-    html = html.replace(blockRegex, latexData[i])
-    html = html.replace(inlineRegex, latexData[i])
-  }
-  
-  // 再次處理圖片 URL（確保所有圖片都是絕對路徑，指向後端伺服器）
-  const backendURL = getBackendURL()
-  
-  // 使用正則表達式替換所有圖片 URL
-  html = html.replace(/<img([^>]+)src="([^"]+)"/g, (match, attrs, src) => {
-    let absoluteSrc = src
-    
-    // 如果已經是絕對路徑
-    if (src.startsWith('http://') || src.startsWith('https://')) {
-      // 檢查是否錯誤地指向前端伺服器（端口 5173）
-      if (src.includes(':5173')) {
-        absoluteSrc = src.replace(/https?:\/\/[^:]+:\d+/, backendURL)
-        console.log('修正圖片 URL（前端端口）:', src, '->', absoluteSrc)
-      } else {
-        // 已經是正確的 URL，不處理
-        return match
-      }
-    } else {
-      // 轉換相對路徑為絕對路徑
-      absoluteSrc = src.startsWith('/') ? `${backendURL}${src}` : `${backendURL}/${src}`
-      console.log('轉換圖片 URL（相對路徑）:', src, '->', absoluteSrc)
-    }
-    
-    return `<img${attrs}src="${absoluteSrc}"`
-  })
-  
-  return html
-}
-
-// 計算渲染後的內容
-const renderedContent = computed(() => {
-  return renderMarkdownWithLatex(formData.value.content)
-})
+// 計算渲染後的內容（用於即時預覽）
+const renderedContent = computed(() => renderMarkdownWithLatex(formData.value.content))
 
 const formData = ref({
   subject: '',
