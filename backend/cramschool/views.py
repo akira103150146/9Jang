@@ -9,7 +9,7 @@ def student_list(request):
     """
     顯示所有學生資料的視圖
     """
-    students = Student.objects.all() # 取得所有學生資料
+    students = Student.objects.filter(is_deleted=False) # 取得所有未刪除的學生資料
     return render(request, 'cramschool/student_list.html', {'students': students})
 
 def student_create(request):
@@ -54,8 +54,8 @@ def student_update(request, pk):
     Args:
         pk (int): URL 中傳入的學生主鍵 (Primary Key)
     """
-    # 1. 獲取要編輯的學生實例，如果不存在則返回 404
-    student = get_object_or_404(Student, pk=pk)
+    # 1. 獲取要編輯的學生實例，如果不存在則返回 404（排除已刪除的記錄）
+    student = get_object_or_404(Student, pk=pk, is_deleted=False)
 
     if request.method == 'POST':
         # 這是處理表單提交 (POST) 的部分
@@ -95,11 +95,11 @@ def student_delete(request, pk):
     Args:
         pk (int): URL 中傳入的學生主鍵 (Primary Key)
     """
-    # 1. 獲取要刪除的學生實例，如果不存在則返回 404
-    student = get_object_or_404(Student, pk=pk)
+    # 1. 獲取要刪除的學生實例，如果不存在則返回 404（排除已刪除的記錄）
+    student = get_object_or_404(Student, pk=pk, is_deleted=False)
 
-    # 2. 執行刪除操作
-    student.delete()
+    # 2. 執行軟刪除操作
+    student.soft_delete()
     
     # 3. 重定向：成功後導航回學生列表頁面
     return redirect(reverse('student_list'))

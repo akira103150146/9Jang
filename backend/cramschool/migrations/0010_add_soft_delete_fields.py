@@ -22,6 +22,39 @@ class Migration(migrations.Migration):
             name='deleted_at',
             field=models.DateTimeField(blank=True, null=True, verbose_name='刪除時間'),
         ),
+        # 為 StudentEnrollment 模型添加 soft delete 欄位
+        migrations.AddField(
+            model_name='studentenrollment',
+            name='is_deleted',
+            field=models.BooleanField(default=False, verbose_name='是否已刪除'),
+        ),
+        migrations.AddField(
+            model_name='studentenrollment',
+            name='deleted_at',
+            field=models.DateTimeField(blank=True, null=True, verbose_name='刪除時間'),
+        ),
+        # 為 Attendance 模型添加 soft delete 欄位
+        migrations.AddField(
+            model_name='attendance',
+            name='is_deleted',
+            field=models.BooleanField(default=False, verbose_name='是否已刪除'),
+        ),
+        migrations.AddField(
+            model_name='attendance',
+            name='deleted_at',
+            field=models.DateTimeField(blank=True, null=True, verbose_name='刪除時間'),
+        ),
+        # 為 Leave 模型添加 soft delete 欄位
+        migrations.AddField(
+            model_name='leave',
+            name='is_deleted',
+            field=models.BooleanField(default=False, verbose_name='是否已刪除'),
+        ),
+        migrations.AddField(
+            model_name='leave',
+            name='deleted_at',
+            field=models.DateTimeField(blank=True, null=True, verbose_name='刪除時間'),
+        ),
         # 為 ExtraFee 模型添加 soft delete 欄位
         migrations.AddField(
             model_name='extrafee',

@@ -62,20 +62,21 @@ class StudentSerializer(serializers.ModelSerializer):
     def get_total_fees(self, obj):
         """計算學生總費用"""
         from django.db.models import Sum
-        result = obj.extra_fees.aggregate(total=Sum('amount'))
+        result = obj.extra_fees.filter(is_deleted=False).aggregate(total=Sum('amount'))
         return float(result['total'] or 0)
     
     def get_unpaid_fees(self, obj):
         """計算學生未繳費用"""
         from django.db.models import Sum, Q
         result = obj.extra_fees.filter(
-            Q(payment_status='Unpaid') | Q(payment_status='Partial')
+            Q(payment_status='Unpaid') | Q(payment_status='Partial'),
+            is_deleted=False
         ).aggregate(total=Sum('amount'))
         return float(result['total'] or 0)
     
     def get_enrollments_count(self, obj):
         """獲取學生報名的課程數量"""
-        return obj.enrollments.count()
+        return obj.enrollments.filter(is_deleted=False).count()
 
 
 class TeacherSerializer(serializers.ModelSerializer):
@@ -433,19 +434,43 @@ class StudentAnswerSerializer(serializers.ModelSerializer):
         
         # 如果答錯，更新錯題記錄
         if not answer.is_correct:
-            error_log, created = ErrorLog.objects.get_or_create(
+            # 先查找未刪除的記錄
+            error_log = ErrorLog.objects.filter(
                 student=answer.student,
                 question=answer.question,
-                defaults={'error_count': 1, 'review_status': 'New'}
-            )
+                is_deleted=False
+            ).first()
             
-            if not created:
-                # 如果錯題記錄已存在，增加錯誤次數
+            if error_log:
+                # 如果錯題記錄已存在且未刪除，增加錯誤次數
                 error_log.error_count += 1
                 # 如果狀態是已掌握，改回複習中
                 if error_log.review_status == 'Mastered':
                     error_log.review_status = 'Reviewing'
                 error_log.save()
+            else:
+                # 檢查是否有已刪除的記錄
+                deleted_log = ErrorLog.objects.filter(
+                    student=answer.student,
+                    question=answer.question,
+                    is_deleted=True
+                ).first()
+                
+                if deleted_log:
+                    # 恢復已刪除的記錄
+                    deleted_log.restore()
+                    deleted_log.error_count += 1
+                    if deleted_log.review_status == 'Mastered':
+                        deleted_log.review_status = 'Reviewing'
+                    deleted_log.save()
+                else:
+                    # 創建新記錄
+                    ErrorLog.objects.create(
+                        student=answer.student,
+                        question=answer.question,
+                        error_count=1,
+                        review_status='New'
+                    )
         
         return answer
     
@@ -458,17 +483,42 @@ class StudentAnswerSerializer(serializers.ModelSerializer):
         
         # 如果從答對改為答錯，需要創建或更新錯題記錄
         if old_is_correct and not answer.is_correct:
-            error_log, created = ErrorLog.objects.get_or_create(
+            # 先查找未刪除的記錄
+            error_log = ErrorLog.objects.filter(
                 student=answer.student,
                 question=answer.question,
-                defaults={'error_count': 1, 'review_status': 'New'}
-            )
+                is_deleted=False
+            ).first()
             
-            if not created:
+            if error_log:
+                # 如果錯題記錄已存在且未刪除，增加錯誤次數
                 error_log.error_count += 1
                 if error_log.review_status == 'Mastered':
                     error_log.review_status = 'Reviewing'
                 error_log.save()
+            else:
+                # 檢查是否有已刪除的記錄
+                deleted_log = ErrorLog.objects.filter(
+                    student=answer.student,
+                    question=answer.question,
+                    is_deleted=True
+                ).first()
+                
+                if deleted_log:
+                    # 恢復已刪除的記錄
+                    deleted_log.restore()
+                    deleted_log.error_count += 1
+                    if deleted_log.review_status == 'Mastered':
+                        deleted_log.review_status = 'Reviewing'
+                    deleted_log.save()
+                else:
+                    # 創建新記錄
+                    ErrorLog.objects.create(
+                        student=answer.student,
+                        question=answer.question,
+                        error_count=1,
+                        review_status='New'
+                    )
         
         return answer
 
@@ -583,11 +633,11 @@ class GroupOrderSerializer(serializers.ModelSerializer):
         return obj.created_by.name if obj.created_by else None
     
     def get_orders_count(self, obj):
-        return obj.orders.filter(status__in=['Pending', 'Confirmed']).count()
+        return obj.orders.filter(status__in=['Pending', 'Confirmed'], is_deleted=False).count()
     
     def get_total_amount(self, obj):
         from django.db.models import Sum
-        total = obj.orders.filter(status__in=['Pending', 'Confirmed']).aggregate(
+        total = obj.orders.filter(status__in=['Pending', 'Confirmed'], is_deleted=False).aggregate(
             total=Sum('total_amount')
         )['total']
         return float(total) if total else 0.00

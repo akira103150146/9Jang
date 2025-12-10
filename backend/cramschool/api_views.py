@@ -227,7 +227,7 @@ class StudentViewSet(viewsets.ModelViewSet):
         考慮學生的上課期間（EnrollmentPeriod），只在上課期間生成學費
         """
         student = self.get_object()
-        enrollments = student.enrollments.filter(is_active=True).prefetch_related('periods')
+        enrollments = student.enrollments.filter(is_active=True, is_deleted=False).prefetch_related('periods')
         
         now = timezone.now().date()
         tuition_months = []
@@ -278,7 +278,8 @@ class StudentViewSet(viewsets.ModelViewSet):
                         item='Tuition',
                         fee_date__year=current_year,
                         fee_date__month=current_month,
-                        notes__icontains=f"{course.course_name}"
+                        notes__icontains=f"{course.course_name}",
+                        is_deleted=False
                     ).first()
                     
                     # 每週費用 = 課程費用 / 4
@@ -332,7 +333,8 @@ class StudentViewSet(viewsets.ModelViewSet):
         try:
             enrollment = StudentEnrollment.objects.get(
                 enrollment_id=enrollment_id,
-                student=student
+                student=student,
+                is_deleted=False
             )
         except StudentEnrollment.DoesNotExist:
             return Response({'error': '找不到報名記錄'}, status=status.HTTP_404_NOT_FOUND)
@@ -351,7 +353,8 @@ class StudentViewSet(viewsets.ModelViewSet):
             item='Tuition',
             fee_date__year=year,
             fee_date__month=month,
-            notes__icontains=f"{course.course_name}"
+            notes__icontains=f"{course.course_name}",
+            is_deleted=False
         ).first()
         
         if existing_fee:
@@ -384,12 +387,14 @@ class StudentViewSet(viewsets.ModelViewSet):
         
         # 獲取出席記錄
         attendances = Attendance.objects.filter(
-            student=student
+            student=student,
+            is_deleted=False
         ).select_related('session', 'session__course').order_by('-session__session_date')
         
         # 獲取請假記錄
         leaves = Leave.objects.filter(
-            student=student
+            student=student,
+            is_deleted=False
         ).select_related('course').order_by('-leave_date')
         
         # 序列化數據
@@ -447,7 +452,8 @@ class CourseViewSet(viewsets.ModelViewSet):
                 # 獲取學生報名的課程ID列表
                 enrolled_course_ids = StudentEnrollment.objects.filter(
                     student=student,
-                    is_active=True
+                    is_active=True,
+                    is_deleted=False
                 ).values_list('course_id', flat=True)
                 
                 # 只返回學生報名的課程
@@ -996,8 +1002,8 @@ class GroupOrderViewSet(viewsets.ModelViewSet):
         group_order.save()
         
         # 為每個已確認和待確認的訂單生成費用
-        # 包括 Pending 和 Confirmed 狀態的訂單
-        orders_to_process = group_order.orders.filter(status__in=['Pending', 'Confirmed'])
+        # 包括 Pending 和 Confirmed 狀態的訂單（排除已刪除的訂單）
+        orders_to_process = group_order.orders.filter(status__in=['Pending', 'Confirmed'], is_deleted=False)
         created_fees = []
         
         for order in orders_to_process:
@@ -1008,7 +1014,8 @@ class GroupOrderViewSet(viewsets.ModelViewSet):
                 student=order.student,
                 item='Meal',
                 amount=order.total_amount,
-                fee_date=today
+                fee_date=today,
+                is_deleted=False
             ).first()
             
             if not existing_fee:
