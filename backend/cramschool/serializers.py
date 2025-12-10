@@ -88,20 +88,48 @@ class TeacherSerializer(serializers.ModelSerializer):
         fields = ['teacher_id', 'name', 'username', 'password', 'password_hash', 'permission_level', 'phone', 'hire_date']
         read_only_fields = ['teacher_id', 'password_hash']
         extra_kwargs = {
-            'password': {'write_only': True}
+            'password': {'write_only': True},
+            'name': {'required': True},
+            'username': {'required': True},
         }
     
+    def validate_username(self, value):
+        """驗證帳號唯一性"""
+        if not value or not value.strip():
+            raise serializers.ValidationError('帳號不能為空')
+        
+        # 檢查是否已存在（編輯時排除自己）
+        queryset = Teacher.objects.filter(username=value.strip())
+        if self.instance:  # 編輯模式
+            queryset = queryset.exclude(teacher_id=self.instance.teacher_id)
+        if queryset.exists():
+            raise serializers.ValidationError('此帳號已被使用，請選擇其他帳號')
+        
+        return value.strip()
+    
+    def validate_name(self, value):
+        """驗證姓名"""
+        if not value or not value.strip():
+            raise serializers.ValidationError('姓名不能為空')
+        return value.strip()
+    
     def create(self, validated_data):
-        # 如果有提供密碼，則進行雜湊處理
+        # 創建時必須提供密碼
         password = validated_data.pop('password', None)
-        if password:
-            validated_data['password_hash'] = make_password(password)
+        if not password or (isinstance(password, str) and password.strip() == ''):
+            raise serializers.ValidationError({'password': ['創建老師時必須提供密碼']})
+        
+        # 確保密碼是字符串
+        if not isinstance(password, str):
+            password = str(password)
+        
+        validated_data['password_hash'] = make_password(password.strip())
         return super().create(validated_data)
     
     def update(self, instance, validated_data):
-        # 如果有提供密碼，則進行雜湊處理
+        # 更新時如果提供了密碼，則進行雜湊處理
         password = validated_data.pop('password', None)
-        if password:
+        if password and password.strip() != '':
             validated_data['password_hash'] = make_password(password)
         return super().update(instance, validated_data)
 

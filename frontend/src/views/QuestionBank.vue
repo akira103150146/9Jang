@@ -42,9 +42,13 @@
             難度 {{ question.difficulty }}
           </span>
         </div>
-        <div class="mt-3 text-sm text-slate-700 whitespace-pre-wrap">{{ question.content }}</div>
-        <div v-if="question.correct_answer" class="mt-3 text-xs text-slate-600">
-          <span class="font-semibold">答案：</span>{{ question.correct_answer }}
+        <div
+          class="mt-3 text-sm text-slate-700 markdown-preview"
+          v-html="renderMarkdownWithLatex(question.content)"
+        ></div>
+        <div v-if="question.correct_answer" class="mt-3 text-xs text-slate-600 markdown-preview">
+          <span class="font-semibold">答案：</span>
+          <span v-html="renderMarkdownWithLatex(question.correct_answer)"></span>
         </div>
         <div class="mt-4 flex flex-wrap gap-2">
           <span

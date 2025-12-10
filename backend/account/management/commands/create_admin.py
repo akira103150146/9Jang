@@ -11,7 +11,7 @@ class Command(BaseCommand):
     help = '創建預設管理員帳號'
 
     def handle(self, *args, **options):
-        email = 'admin'
+        email = 'admin123@gmail.com'
         password = 'admin123'
         username = email.split('@')[0]  # 使用 email 的前綴作為 username
 
