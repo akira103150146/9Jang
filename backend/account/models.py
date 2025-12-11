@@ -80,6 +80,7 @@ class AuditLog(models.Model):
 
     user = models.ForeignKey('account.CustomUser', on_delete=models.SET_NULL, null=True, related_name='audit_logs', verbose_name='使用者')
     role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, blank=True, related_name='audit_logs', verbose_name='角色')
+    impersonated_by = models.ForeignKey('account.CustomUser', on_delete=models.SET_NULL, null=True, blank=True, related_name='impersonated_audit_logs', verbose_name='代理操作的管理員')
     action_type = models.CharField(max_length=10, choices=ACTION_TYPE_CHOICES, verbose_name='操作類型')
     resource_type = models.CharField(max_length=100, verbose_name='資源類型')  # 例如: 'Student', 'Teacher'
     resource_id = models.CharField(max_length=100, blank=True, null=True, verbose_name='資源ID')

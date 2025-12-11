@@ -69,6 +69,19 @@ api.interceptors.request.use(
       config.headers['X-Temp-Role'] = tempRole
     }
 
+    // 添加原始管理員 ID header（如果存在，表示當前處於模擬狀態）
+    const originalUser = localStorage.getItem('original_user')
+    if (originalUser) {
+      try {
+        const adminUser = JSON.parse(originalUser)
+        if (adminUser.id) {
+          config.headers['X-Impersonated-By'] = adminUser.id.toString()
+        }
+      } catch (e) {
+        // 如果解析失敗，忽略
+      }
+    }
+
     return config
   },
   (error) => {
@@ -127,6 +140,18 @@ api.interceptors.response.use(
             if (tempRole) {
               originalRequest.headers['X-Temp-Role'] = tempRole
             }
+            // 重新設置原始管理員 header（如果存在）
+            const originalUser = localStorage.getItem('original_user')
+            if (originalUser) {
+              try {
+                const adminUser = JSON.parse(originalUser)
+                if (adminUser.id) {
+                  originalRequest.headers['X-Impersonated-By'] = adminUser.id.toString()
+                }
+              } catch (e) {
+                // 如果解析失敗，忽略
+              }
+            }
             return api(originalRequest)
           })
           .catch(err => {
@@ -145,6 +170,18 @@ api.interceptors.response.use(
         const tempRole = localStorage.getItem('temp_role')
         if (tempRole) {
           originalRequest.headers['X-Temp-Role'] = tempRole
+        }
+        // 重新設置原始管理員 header（如果存在）
+        const originalUser = localStorage.getItem('original_user')
+        if (originalUser) {
+          try {
+            const adminUser = JSON.parse(originalUser)
+            if (adminUser.id) {
+              originalRequest.headers['X-Impersonated-By'] = adminUser.id.toString()
+            }
+          } catch (e) {
+            // 如果解析失敗，忽略
+          }
         }
         return api(originalRequest)
       } catch (refreshError) {
@@ -685,6 +722,30 @@ export const courseMaterialAPI = {
   delete: (id) => api.delete(`/cramschool/materials/${id}/`)
 }
 
+// ContentTemplate API
+export const contentTemplateAPI = {
+  getAll: (params = {}) => {
+    const query = new URLSearchParams(params).toString()
+    return api.get(`/cramschool/templates/?${query}`)
+  },
+  getById: (id) => api.get(`/cramschool/templates/${id}/`),
+  create: (data) => api.post('/cramschool/templates/', data),
+  update: (id, data) => api.put(`/cramschool/templates/${id}/`, data),
+  delete: (id) => api.delete(`/cramschool/templates/${id}/`)
+}
+
+// LearningResource API
+export const learningResourceAPI = {
+  getAll: (params = {}) => {
+    const query = new URLSearchParams(params).toString()
+    return api.get(`/cramschool/resources/?${query}`)
+  },
+  getById: (id) => api.get(`/cramschool/resources/${id}/`),
+  create: (data) => api.post('/cramschool/resources/', data),
+  update: (id, data) => api.put(`/cramschool/resources/${id}/`, data),
+  delete: (id) => api.delete(`/cramschool/resources/${id}/`)
+}
+
 // Generation API
 export const generationAPI = {
   generateQuiz: (data) => api.post('/cramschool/generate-quiz/', data),
@@ -719,4 +780,3 @@ export const getBackendBaseURL = () => {
 }
 
 export default api
-

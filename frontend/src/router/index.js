@@ -19,12 +19,10 @@ import StudentFeeTracker from '../views/StudentFeeTracker.vue'
 import RoleManagement from '../views/RoleManagement.vue'
 import AuditLog from '../views/AuditLog.vue'
 import Login from '../views/Login.vue'
-import QuizManagement from '../views/QuizManagement.vue'
-import ExamManagement from '../views/ExamManagement.vue'
-import CourseMaterialManagement from '../views/CourseMaterialManagement.vue'
 import StudentGroupManagement from '../views/StudentGroupManagement.vue'
 import AssessmentGenerator from '../views/AssessmentGenerator.vue'
 import StudentHome from '../views/StudentHome.vue'
+import ResourceEditor from '../views/ResourceEditor.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -148,7 +146,20 @@ const router = createRouter({
       path: '/questions',
       name: 'questions',
       component: QuestionBank,
-      meta: { title: '題庫管理' },
+      meta: { title: '題庫與資源管理' },
+    },
+    {
+      path: '/resources/new',
+      name: 'resource-new',
+      component: ResourceEditor,
+      meta: { title: '新增教學資源', allowedRoles: ['ADMIN', 'TEACHER'] },
+    },
+    {
+      path: '/resources/edit/:id',
+      name: 'resource-edit',
+      component: ResourceEditor,
+      props: true,
+      meta: { title: '編輯教學資源', allowedRoles: ['ADMIN', 'TEACHER'] },
     },
     {
       path: '/lunch-orders',
@@ -181,24 +192,6 @@ const router = createRouter({
       name: 'audit-logs',
       component: AuditLog,
       meta: { title: '操作記錄', requiresAdmin: true },
-    },
-    {
-      path: '/quizzes',
-      name: 'quizzes',
-      component: QuizManagement,
-      meta: { title: 'Quiz 管理', allowedRoles: ['ADMIN', 'TEACHER'] },
-    },
-    {
-      path: '/exams',
-      name: 'exams',
-      component: ExamManagement,
-      meta: { title: '考卷管理', allowedRoles: ['ADMIN', 'TEACHER'] },
-    },
-    {
-      path: '/materials',
-      name: 'materials',
-      component: CourseMaterialManagement,
-      meta: { title: '講義管理', allowedRoles: ['ADMIN', 'TEACHER'] },
     },
     {
       path: '/student-groups',
@@ -311,9 +304,9 @@ function getRoleBasedRouteFilter(role) {
 
   if (role === 'TEACHER') {
     return (path) => {
-      // 老師可以訪問：課程、題庫、Quiz、Exam、講義、學生群組、生成器
+      // 老師可以訪問：課程、題庫、資源、學生群組、生成器
       const allowedPaths = [
-        '/', '/courses', '/questions', '/quizzes', '/exams', '/materials',
+        '/', '/courses', '/questions', '/resources',
         '/student-groups', '/generator'
       ]
       return allowedPaths.some(allowed => path.startsWith(allowed))
@@ -322,8 +315,10 @@ function getRoleBasedRouteFilter(role) {
 
   if (role === 'STUDENT') {
     return (path) => {
-      // 學生只能訪問：自己報名的課程、相關考卷、訂便當、學生首頁、費用詳情
-      const allowedPaths = ['/', '/courses', '/exams', '/lunch-orders', '/student-home', '/students']
+      // 學生只能訪問：自己報名的課程、相關考卷(資源)、訂便當、學生首頁、費用詳情
+      // 注意：學生可能需要訪問 /resources 來查看考卷，但具體權限在 API 層控制
+      // 這裡允許訪問 /courses 和 /resources (如果有的話)
+      const allowedPaths = ['/', '/courses', '/resources', '/lunch-orders', '/student-home', '/students']
       return allowedPaths.some(allowed => path.startsWith(allowed))
     }
   }
@@ -333,7 +328,7 @@ function getRoleBasedRouteFilter(role) {
       // 會計可以訪問：帳務、訂便當、學生基本資料（僅查看）
       const allowedPaths = ['/', '/students', '/lunch-orders']
       // 排除教學相關模組
-      const excludedPaths = ['/questions', '/quizzes', '/exams', '/materials', '/student-groups', '/generator', '/courses']
+      const excludedPaths = ['/questions', '/resources', '/student-groups', '/generator', '/courses']
       if (excludedPaths.some(excluded => path.startsWith(excluded))) {
         return false
       }
@@ -424,4 +419,3 @@ async function checkPagePermission(user, pagePath) {
 }
 
 export default router
-

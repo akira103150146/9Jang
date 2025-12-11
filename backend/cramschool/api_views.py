@@ -17,7 +17,8 @@ from .models import (
     Student, Teacher, Course, StudentEnrollment, EnrollmentPeriod, ExtraFee, 
     SessionRecord, Attendance, Leave, Subject, QuestionBank, Hashtag, QuestionTag,
     StudentAnswer, ErrorLog, Restaurant, GroupOrder, Order, OrderItem,
-    StudentGroup, Quiz, Exam, CourseMaterial, AssessmentSubmission
+    StudentGroup, Quiz, Exam, CourseMaterial, AssessmentSubmission,
+    ContentTemplate, LearningResource
 )
 
 CustomUser = get_user_model()
@@ -28,7 +29,8 @@ from .serializers import (
     SubjectSerializer, QuestionBankSerializer, HashtagSerializer, QuestionTagSerializer,
     StudentAnswerSerializer, ErrorLogSerializer,
     RestaurantSerializer, GroupOrderSerializer, OrderSerializer, OrderItemSerializer,
-    StudentGroupSerializer, QuizSerializer, ExamSerializer, CourseMaterialSerializer
+    StudentGroupSerializer, QuizSerializer, ExamSerializer, CourseMaterialSerializer,
+    ContentTemplateSerializer, LearningResourceSerializer
 )
 
 class StudentViewSet(viewsets.ModelViewSet):
@@ -1887,3 +1889,116 @@ def generate_material(request):
         'total_count': len(question_data)
     })
 
+
+class ContentTemplateViewSet(viewsets.ModelViewSet):
+    """
+    提供 ContentTemplate 模型 CRUD 操作的 API 視圖集
+    """
+    queryset = ContentTemplate.objects.select_related('created_by').prefetch_related('tags').all()
+    serializer_class = ContentTemplateSerializer
+    permission_classes = [AllowAny] # Dev phase
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # 如果未認證，只返回公開模板 (或者不返回，看需求，目前 AllowAny)
+        if not self.request.user.is_authenticated:
+            return queryset.filter(is_public=True)
+            
+        # 返回公開的 或 自己創建的
+        return queryset.filter(
+            Q(is_public=True) | Q(created_by=self.request.user)
+        )
+
+    def perform_create(self, serializer):
+        if self.request.user.is_authenticated:
+            serializer.save(created_by=self.request.user)
+        else:
+            serializer.save()
+
+    def update(self, request, *args, **kwargs):
+        # 檢查權限：只有創建者可以修改
+        instance = self.get_object()
+        if request.user.is_authenticated and instance.created_by != request.user and not request.user.is_admin():
+             return Response({'detail': '只有創建者可以修改此模板'}, status=status.HTTP_403_FORBIDDEN)
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        # 檢查權限：只有創建者可以刪除
+        instance = self.get_object()
+        if request.user.is_authenticated and instance.created_by != request.user and not request.user.is_admin():
+             return Response({'detail': '只有創建者可以刪除此模板'}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
+
+
+class LearningResourceViewSet(viewsets.ModelViewSet):
+    """
+    提供 LearningResource 模型 CRUD 操作的 API 視圖集
+    """
+    queryset = LearningResource.objects.select_related('course', 'created_by').prefetch_related('tags', 'student_groups').all()
+    serializer_class = LearningResourceSerializer
+    permission_classes = [AllowAny] # Dev phase
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        user = self.request.user
+        
+        # 1. 未登入：不顯示
+        if not user.is_authenticated:
+            return queryset # 暫時允許
+            
+        # 2. 管理員/老師：顯示所有
+        if user.is_admin() or user.is_teacher():
+            # 支援篩選
+            resource_type = self.request.query_params.get('resource_type')
+            if resource_type:
+                queryset = queryset.filter(resource_type=resource_type)
+            return queryset
+            
+        # 3. 學生：只顯示可見的
+        if user.is_student():
+            try:
+                student = user.student_profile
+                now = timezone.now()
+                
+                # 時間過濾
+                time_filter = Q(available_from__lte=now) | Q(available_from__isnull=True)
+                time_filter &= Q(available_until__gte=now) | Q(available_until__isnull=True)
+                
+                queryset = queryset.filter(time_filter)
+                
+                # 綁定課程
+                enrolled_course_ids = StudentEnrollment.objects.filter(
+                    student=student, is_active=True, is_deleted=False
+                ).values_list('course_id', flat=True)
+                
+                # 學生群組
+                student_group_ids = student.student_groups.values_list('group_id', flat=True)
+                
+                queryset = queryset.filter(
+                    # 課程匹配
+                    Q(course__in=enrolled_course_ids) |
+                    # 群組匹配
+                    Q(student_groups__in=student_group_ids) |
+                    # 既沒綁課程也沒綁群組 (公開資源?)
+                    (Q(course__isnull=True) & Q(student_groups__isnull=True))
+                ).distinct()
+                
+                # 再次過濾 resource_type
+                resource_type = self.request.query_params.get('resource_type')
+                if resource_type:
+                    queryset = queryset.filter(resource_type=resource_type)
+                    
+                return queryset
+                
+            except Student.DoesNotExist:
+                return queryset.none()
+                
+        return queryset
+
+    def perform_create(self, serializer):
+        if self.request.user.is_authenticated:
+            serializer.save(created_by=self.request.user)
+        else:
+            serializer.save()

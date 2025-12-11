@@ -217,7 +217,7 @@ AUTH_USER_MODEL = 'account.CustomUser'
 CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'True').lower() == 'true'
 CORS_ALLOW_CREDENTIALS = True  # 允許發送 cookies
 
-# 允許的自定義 header（包括 X-Temp-Role）
+# 允許的自定義 header（包括 X-Temp-Role 和 X-Impersonated-By）
 CORS_ALLOW_HEADERS = [
     'accept',
     'accept-encoding',
@@ -229,6 +229,7 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
     'x-temp-role',  # 允許自定義 header X-Temp-Role
+    'x-impersonated-by',  # 允許自定義 header X-Impersonated-By（用於標記管理員代理操作）
 ]
 
 # 如果 CORS_ALLOW_ALL_ORIGINS 為 False，則使用 CORS_ALLOWED_ORIGINS

@@ -5,6 +5,9 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
 from .models import AuditLog, Role
+from django.contrib.auth import get_user_model
+
+CustomUser = get_user_model()
 
 
 def get_client_ip(request):
@@ -33,6 +36,16 @@ def log_audit(request, action_type, resource_type, resource_id=None, resource_na
     user = request.user if hasattr(request, 'user') and request.user.is_authenticated else None
     role = user.custom_role if user and hasattr(user, 'custom_role') else None
     
+    # 檢查是否處於模擬狀態（從 header 中獲取原始管理員 ID）
+    impersonated_by = None
+    impersonated_by_id = request.META.get('HTTP_X_IMPERSONATED_BY')
+    if impersonated_by_id:
+        try:
+            impersonated_by_id = int(impersonated_by_id)
+            impersonated_by = CustomUser.objects.filter(id=impersonated_by_id, role='ADMIN').first()
+        except (ValueError, TypeError):
+            pass
+    
     # 獲取請求數據（排除敏感信息）
     request_data = {}
     if hasattr(request, 'data'):
@@ -45,6 +58,7 @@ def log_audit(request, action_type, resource_type, resource_id=None, resource_na
     AuditLog.objects.create(
         user=user,
         role=role,
+        impersonated_by=impersonated_by,
         action_type=action_type,
         resource_type=resource_type,
         resource_id=str(resource_id) if resource_id else None,

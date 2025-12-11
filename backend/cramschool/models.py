@@ -1070,6 +1070,116 @@ class StudentGroup(models.Model):
         return f"{self.name} ({self.students.count()} 位學生)"
 
 
+class ContentTemplate(models.Model):
+    """
+    內容模板模型
+    用於儲存可重複使用的區塊結構
+    """
+    template_id = models.AutoField(primary_key=True, verbose_name='模板ID')
+    title = models.CharField(max_length=200, verbose_name='標題')
+    structure = models.JSONField(default=list, verbose_name='結構內容')
+    created_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_templates',
+        verbose_name='建立者'
+    )
+    is_public = models.BooleanField(default=False, verbose_name='是否公開')
+    tags = models.ManyToManyField(
+        'Hashtag',
+        related_name='templates',
+        blank=True,
+        verbose_name='標籤'
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='建立時間')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新時間')
+
+    class Meta:
+        verbose_name = '內容模板'
+        verbose_name_plural = '內容模板'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.title
+
+
+class LearningResource(models.Model):
+    """
+    教學資源模型 (統一 Quiz, Exam, Handout)
+    """
+    RESOURCE_TYPE_CHOICES = [
+        ('QUIZ', '小考'),
+        ('EXAM', '段考卷'),
+        ('HANDOUT', '講義'),
+        ('DOCUMENT', '一般文件'),
+    ]
+
+    resource_id = models.AutoField(primary_key=True, verbose_name='資源ID')
+    title = models.CharField(max_length=200, verbose_name='標題')
+    resource_type = models.CharField(
+        max_length=20,
+        choices=RESOURCE_TYPE_CHOICES,
+        default='DOCUMENT',
+        verbose_name='資源類型'
+    )
+    course = models.ForeignKey(
+        'Course',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='learning_resources',
+        verbose_name='所屬課程'
+    )
+    student_groups = models.ManyToManyField(
+        'StudentGroup',
+        related_name='learning_resources',
+        blank=True,
+        verbose_name='可見學生群組'
+    )
+    structure = models.JSONField(default=list, verbose_name='內容結構')
+    settings = models.JSONField(default=dict, verbose_name='設定 (版面/紙張)')
+    tags = models.ManyToManyField(
+        'Hashtag',
+        related_name='learning_resources',
+        blank=True,
+        verbose_name='標籤'
+    )
+    created_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_resources',
+        verbose_name='建立者'
+    )
+    is_individualized = models.BooleanField(
+        default=False,
+        verbose_name='是否為個別化教材'
+    )
+    available_from = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='開放時間'
+    )
+    available_until = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='截止時間'
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='建立時間')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新時間')
+
+    class Meta:
+        verbose_name = '教學資源'
+        verbose_name_plural = '教學資源'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.title} ({self.get_resource_type_display()})"
+
+
 class Quiz(models.Model):
     """
     Quiz 模型

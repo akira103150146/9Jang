@@ -10,10 +10,10 @@
 <script setup>
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { EditorView, keymap, highlightSpecialChars, drawSelection, highlightActiveLine, lineNumbers, highlightActiveLineGutter } from '@codemirror/view'
-import { EditorState, Compartment } from '@codemirror/state'
+import { EditorState, Compartment, Prec } from '@codemirror/state'
 import { history, defaultKeymap, historyKeymap } from '@codemirror/commands'
 import { markdown } from '@codemirror/lang-markdown'
-import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete'
+import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap, acceptCompletion } from '@codemirror/autocomplete'
 import { bracketMatching, foldGutter, indentOnInput, syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 import { uploadImageAPI, getBackendBaseURL } from '../services/api'
 
@@ -33,6 +33,22 @@ const emit = defineEmits(['update:modelValue'])
 const editorContainer = ref(null)
 let view = null
 const uploadingImage = ref(false)
+
+// 暴露 focus 方法給父組件
+const focus = () => {
+  if (view) {
+    view.focus()
+    // 將游標移動到文檔末尾
+    const length = view.state.doc.length
+    view.dispatch({
+      selection: { anchor: length, head: length }
+    })
+  }
+}
+
+defineExpose({
+  focus
+})
 
 // 處理圖片貼上
 const handlePaste = async (event) => {
@@ -191,13 +207,127 @@ const markdownCompletions = [
   { label: '---', type: 'separator', info: '分隔線' },
 ]
 
+// Slash 命令選項（類似 Notion）
+const slashCommands = [
+  { 
+    label: '/latex', 
+    type: 'latex', 
+    info: '插入 LaTeX 區塊公式 $$...$$',
+    insert: '$$\n\n$$',
+    cursorOffset: -3
+  },
+  { 
+    label: '/equation', 
+    type: 'latex', 
+    info: '插入 LaTeX 區塊公式（同 /latex）',
+    insert: '$$\n\n$$',
+    cursorOffset: -3
+  },
+  { 
+    label: '/inline-latex', 
+    type: 'latex', 
+    info: '插入行內 LaTeX 公式 $...$',
+    insert: '$$',
+    cursorOffset: -1
+  },
+  { 
+    label: '/math', 
+    type: 'latex', 
+    info: '插入行內數學公式（同 /inline-latex）',
+    insert: '$$',
+    cursorOffset: -1
+  },
+  { 
+    label: '/heading', 
+    type: 'heading', 
+    info: '插入標題',
+    insert: '## ',
+    cursorOffset: 0
+  },
+  { 
+    label: '/bold', 
+    type: 'text', 
+    info: '插入粗體文字',
+    insert: '****',
+    cursorOffset: -2
+  },
+  { 
+    label: '/italic', 
+    type: 'text', 
+    info: '插入斜體文字',
+    insert: '**',
+    cursorOffset: -1
+  },
+  { 
+    label: '/code', 
+    type: 'code', 
+    info: '插入程式碼區塊',
+    insert: '```\n\n```',
+    cursorOffset: -4
+  },
+  { 
+    label: '/list', 
+    type: 'list', 
+    info: '插入無序列表',
+    insert: '- ',
+    cursorOffset: 0
+  },
+  { 
+    label: '/quote', 
+    type: 'quote', 
+    info: '插入引用',
+    insert: '> ',
+    cursorOffset: 0
+  },
+]
+
 // 自定義自動完成
 const customCompletions = (context) => {
-  const word = context.matchBefore(/\\?\w*/)
+  const word = context.matchBefore(/[\/\\]?\w*/)
   if (!word) return null
   
   const before = context.state.doc.sliceString(Math.max(0, context.pos - 100), context.pos)
   const completions = []
+  
+  // Slash 命令（當輸入 / 時）
+  if (word.text.startsWith('/')) {
+    const query = word.text.slice(1).toLowerCase()
+    slashCommands.forEach(item => {
+      if (item.label.slice(1).toLowerCase().includes(query) || query === '') {
+        completions.push({
+          label: item.label,
+          type: item.type,
+          info: item.info,
+          apply: (view, completion, from, to) => {
+            // 插入命令對應的內容
+            const command = slashCommands.find(cmd => cmd.label === completion.label)
+            if (command) {
+              const insertText = command.insert.replace(/\\n/g, '\n')
+              const insertFrom = from - 1 // 包含 '/' 字符
+              const insertTo = to
+              
+              view.dispatch({
+                changes: {
+                  from: insertFrom,
+                  to: insertTo,
+                  insert: insertText
+                },
+                selection: {
+                  anchor: insertFrom + insertText.length + command.cursorOffset
+                }
+              })
+            }
+          }
+        })
+      }
+    })
+    if (completions.length > 0) {
+      return {
+        from: word.from,
+        options: completions.slice(0, 10)
+      }
+    }
+  }
   
   // LaTeX 自動完成（當輸入 \ 時）
   if (word.text.startsWith('\\') || before.endsWith('\\')) {
@@ -220,7 +350,7 @@ const customCompletions = (context) => {
   }
   
   // Markdown 自動完成（當輸入特定字符時）
-  if (word.text.length > 0 && !word.text.startsWith('\\')) {
+  if (word.text.length > 0 && !word.text.startsWith('\\') && !word.text.startsWith('/')) {
     const query = word.text.toLowerCase()
     markdownCompletions.forEach(item => {
       if (item.label.toLowerCase().startsWith(query) || query === '') {
@@ -264,11 +394,25 @@ onMounted(() => {
       highlightActiveLineGutter(),
       syntaxHighlighting(defaultHighlightStyle),
       markdown(),
+      // 使用 Prec.highest 確保自動完成的 Enter 鍵處理有最高優先級
+      Prec.highest(keymap.of([
+        {
+          key: 'Enter',
+          run: (view) => {
+            // 直接嘗試接受自動完成，acceptCompletion 會自動檢查面板是否打開
+            const accepted = acceptCompletion(view)
+            // 如果成功接受自動完成，返回 true 阻止默認行為（換行）
+            // 如果沒有自動完成面板打開，返回 false 讓其他 keymap 處理（插入換行）
+            return accepted
+          }
+        }
+      ])),
+      // completionKeymap 已經包含在 defaultKeymap 中，但我們的自定義處理器優先級更高
+      Prec.high(keymap.of(completionKeymap)),
       keymap.of([
         ...closeBracketsKeymap,
         ...defaultKeymap,
-        ...historyKeymap,
-        ...completionKeymap
+        ...historyKeymap
       ]),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {

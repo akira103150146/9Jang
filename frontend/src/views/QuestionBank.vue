@@ -3,207 +3,235 @@
     <header class="rounded-3xl border border-blue-100 bg-gradient-to-r from-white to-indigo-50 p-6 shadow-sm">
       <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-      <p class="text-sm font-semibold text-slate-500">教學模組</p>
-      <h2 class="text-2xl font-bold text-slate-900">題庫與標籤系統</h2>
-          <p class="mt-2 text-sm text-slate-500">支援 Markdown + LaTeX，含標籤管理</p>
+          <p class="text-sm font-semibold text-slate-500">教學模組</p>
+          <h2 class="text-2xl font-bold text-slate-900">{{ headerTitle }}</h2>
+          <p class="mt-2 text-sm text-slate-500">{{ headerDescription }}</p>
         </div>
         <button
+          v-if="currentTab === 'questions'"
           @click="openFormModal()"
           class="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 px-5 py-2 text-sm font-semibold text-white shadow-md hover:from-indigo-600 hover:to-purple-600"
         >
           新增題目
         </button>
       </div>
-      <p v-if="usingMock" class="mt-3 text-sm text-amber-600">
+      
+      <!-- Tabs -->
+      <div class="mt-6 flex space-x-4 border-b border-slate-200">
+        <button
+          v-for="tab in tabs"
+          :key="tab.id"
+          @click="currentTab = tab.id"
+          class="pb-2 text-sm font-medium transition-colors border-b-2"
+          :class="currentTab === tab.id ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+        >
+          {{ tab.name }}
+        </button>
+      </div>
+      
+      <p v-if="usingMock && currentTab === 'questions'" class="mt-3 text-sm text-amber-600">
         目前顯示示意資料（mock data），待後端 API 可用後即可串接。
       </p>
     </header>
 
-    <!-- 篩選器 -->
-    <section class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold text-slate-900">篩選條件</h3>
-        <button
-          @click="resetFilters"
-          class="text-sm text-slate-600 hover:text-slate-800 font-semibold"
+    <!-- 題目庫 Tab -->
+    <div v-show="currentTab === 'questions'">
+      <!-- 篩選器 -->
+      <section class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold text-slate-900">篩選條件</h3>
+          <button
+            @click="resetFilters"
+            class="text-sm text-slate-600 hover:text-slate-800 font-semibold"
+          >
+            清除篩選
+          </button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <!-- 科目篩選 -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">科目</label>
+            <select
+              v-model="filters.subject"
+              @change="applyFilters"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            >
+              <option value="">全部</option>
+              <option
+                v-for="subject in subjects"
+                :key="subject.subject_id"
+                :value="subject.subject_id"
+              >
+                {{ subject.name }}
+              </option>
+            </select>
+          </div>
+
+          <!-- 年級篩選 -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">年級</label>
+            <select
+              v-model="filters.level"
+              @change="applyFilters"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            >
+              <option value="">全部</option>
+              <option value="JHS">國中</option>
+              <option value="SHS">高中</option>
+              <option value="VCS">高職</option>
+            </select>
+          </div>
+
+          <!-- 章節篩選 -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">章節</label>
+            <input
+              v-model="filters.chapter"
+              @input="applyFilters"
+              type="text"
+              placeholder="輸入章節關鍵字"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            />
+          </div>
+
+          <!-- 難度篩選 -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">難度</label>
+            <select
+              v-model="filters.difficulty"
+              @change="applyFilters"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            >
+              <option value="">全部</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+            </select>
+          </div>
+
+          <!-- 標籤篩選 -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">標籤</label>
+            <select
+              v-model="filters.tags"
+              @change="applyFilters"
+              multiple
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 min-h-[80px]"
+            >
+              <option
+                v-for="tag in hashtags"
+                :key="tag.tag_id"
+                :value="tag.tag_id"
+              >
+                #{{ tag.tag_name }}
+              </option>
+            </select>
+          </div>
+
+          <!-- 來源篩選 -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">題目來源</label>
+            <select
+              v-model="filters.source"
+              @change="applyFilters"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            >
+              <option value="">全部</option>
+              <option value="teacher_created">老師新增</option>
+              <option value="imported_from_error_log">從錯題本匯入</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- 載入中 -->
+      <div v-if="loading" class="flex items-center justify-center py-12">
+        <div class="text-slate-500">載入中...</div>
+      </div>
+
+      <!-- 題目列表 -->
+      <section v-else class="grid gap-4 lg:grid-cols-2">
+        <article
+          v-for="question in filteredQuestions"
+          :key="question.question_id"
+          class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm"
         >
-          清除篩選
-        </button>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <!-- 科目篩選 -->
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">科目</label>
-          <select
-            v-model="filters.subject"
-            @change="applyFilters"
-            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-          >
-            <option value="">全部</option>
-            <option
-              v-for="subject in subjects"
-              :key="subject.subject_id"
-              :value="subject.subject_id"
+          <div class="flex items-start justify-between">
+            <div class="flex-1">
+              <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">
+                Q{{ question.question_id }} ・ {{ question.subject_name || question.subject?.name || '無科目' }} / {{ getLevelDisplay(question.level) }}
+              </p>
+              <h3 class="mt-1 text-lg font-semibold text-slate-900">{{ question.chapter }}</h3>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="ml-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">
+                難度 {{ question.difficulty }}
+              </span>
+              <span
+                v-if="question.source"
+                class="rounded-full px-3 py-1 text-xs font-semibold"
+                :class="question.source === 'teacher_created' ? 'bg-green-50 text-green-600' : 'bg-purple-50 text-purple-600'"
+              >
+                {{ question.source === 'teacher_created' ? '老師新增' : '錯題本匯入' }}
+              </span>
+            </div>
+          </div>
+          <div
+            class="mt-3 text-sm text-slate-700 markdown-preview"
+            v-html="renderMarkdownWithLatex(question.content)"
+          ></div>
+          <div v-if="question.correct_answer" class="mt-3 text-xs text-slate-600 markdown-preview">
+            <span class="font-semibold">答案：</span>
+            <span v-html="renderMarkdownWithLatex(question.correct_answer)"></span>
+          </div>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <span
+              v-for="tag in question.tags || []"
+              :key="tag"
+              class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600"
             >
-              {{ subject.name }}
-            </option>
-          </select>
-        </div>
-
-        <!-- 年級篩選 -->
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">年級</label>
-          <select
-            v-model="filters.level"
-            @change="applyFilters"
-            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-          >
-            <option value="">全部</option>
-            <option value="JHS">國中</option>
-            <option value="SHS">高中</option>
-            <option value="VCS">高職</option>
-          </select>
-        </div>
-
-        <!-- 章節篩選 -->
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">章節</label>
-          <input
-            v-model="filters.chapter"
-            @input="applyFilters"
-            type="text"
-            placeholder="輸入章節關鍵字"
-            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-          />
-        </div>
-
-        <!-- 難度篩選 -->
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">難度</label>
-          <select
-            v-model="filters.difficulty"
-            @change="applyFilters"
-            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-          >
-            <option value="">全部</option>
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-            <option value="5">5</option>
-          </select>
-        </div>
-
-        <!-- 標籤篩選 -->
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">標籤</label>
-          <select
-            v-model="filters.tags"
-            @change="applyFilters"
-            multiple
-            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 min-h-[80px]"
-          >
-            <option
-              v-for="tag in hashtags"
-              :key="tag.tag_id"
-              :value="tag.tag_id"
+              #{{ tag }}
+            </span>
+            <span v-if="!question.tags || question.tags.length === 0" class="text-xs text-slate-400">
+              無標籤
+            </span>
+          </div>
+          <div class="mt-4 flex gap-2">
+            <button
+              @click="openFormModal(question)"
+              class="rounded-full bg-indigo-500 px-3 py-1 text-xs font-semibold text-white hover:bg-indigo-600"
             >
-              #{{ tag.tag_name }}
-            </option>
-          </select>
+              編輯
+            </button>
+            <button
+              @click="deleteQuestion(question.question_id, question.chapter)"
+              class="rounded-full bg-rose-500 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-600"
+            >
+              刪除
+            </button>
+          </div>
+        </article>
+        <div v-if="filteredQuestions.length === 0" class="col-span-2 rounded-3xl border border-slate-100 bg-white p-12 text-center">
+          <p class="text-slate-500">
+            {{ questionBank.length === 0 ? '目前沒有題目，點擊「新增題目」開始建立題庫。' : '沒有符合篩選條件的題目，請調整篩選條件。' }}
+          </p>
         </div>
-
-        <!-- 來源篩選 -->
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">題目來源</label>
-          <select
-            v-model="filters.source"
-            @change="applyFilters"
-            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-          >
-            <option value="">全部</option>
-            <option value="teacher_created">老師新增</option>
-            <option value="imported_from_error_log">從錯題本匯入</option>
-          </select>
-        </div>
-      </div>
-    </section>
-
-    <!-- 載入中 -->
-    <div v-if="loading" class="flex items-center justify-center py-12">
-      <div class="text-slate-500">載入中...</div>
+      </section>
     </div>
 
-    <!-- 題目列表 -->
-    <section v-else class="grid gap-4 lg:grid-cols-2">
-      <article
-        v-for="question in filteredQuestions"
-        :key="question.question_id"
-        class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm"
-      >
-        <div class="flex items-start justify-between">
-          <div class="flex-1">
-            <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">
-              Q{{ question.question_id }} ・ {{ question.subject_name || question.subject?.name || '無科目' }} / {{ getLevelDisplay(question.level) }}
-            </p>
-            <h3 class="mt-1 text-lg font-semibold text-slate-900">{{ question.chapter }}</h3>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="ml-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">
-              難度 {{ question.difficulty }}
-            </span>
-            <span
-              v-if="question.source"
-              class="rounded-full px-3 py-1 text-xs font-semibold"
-              :class="question.source === 'teacher_created' ? 'bg-green-50 text-green-600' : 'bg-purple-50 text-purple-600'"
-            >
-              {{ question.source === 'teacher_created' ? '老師新增' : '錯題本匯入' }}
-            </span>
-          </div>
-        </div>
-        <div
-          class="mt-3 text-sm text-slate-700 markdown-preview"
-          v-html="renderMarkdownWithLatex(question.content)"
-        ></div>
-        <div v-if="question.correct_answer" class="mt-3 text-xs text-slate-600 markdown-preview">
-          <span class="font-semibold">答案：</span>
-          <span v-html="renderMarkdownWithLatex(question.correct_answer)"></span>
-        </div>
-        <div class="mt-4 flex flex-wrap gap-2">
-          <span
-            v-for="tag in question.tags || []"
-            :key="tag"
-            class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600"
-          >
-            #{{ tag }}
-          </span>
-          <span v-if="!question.tags || question.tags.length === 0" class="text-xs text-slate-400">
-            無標籤
-          </span>
-        </div>
-        <div class="mt-4 flex gap-2">
-          <button
-            @click="openFormModal(question)"
-            class="rounded-full bg-indigo-500 px-3 py-1 text-xs font-semibold text-white hover:bg-indigo-600"
-          >
-            編輯
-          </button>
-          <button
-            @click="deleteQuestion(question.question_id, question.chapter)"
-            class="rounded-full bg-rose-500 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-600"
-          >
-            刪除
-          </button>
-        </div>
-      </article>
-      <div v-if="filteredQuestions.length === 0" class="col-span-2 rounded-3xl border border-slate-100 bg-white p-12 text-center">
-        <p class="text-slate-500">
-          {{ questionBank.length === 0 ? '目前沒有題目，點擊「新增題目」開始建立題庫。' : '沒有符合篩選條件的題目，請調整篩選條件。' }}
-        </p>
-      </div>
-    </section>
+    <!-- 文件庫 Tab -->
+    <div v-show="currentTab === 'resources'">
+      <ResourceList />
+    </div>
 
-    <!-- 新增標籤對話框 -->
+    <!-- 模板庫 Tab -->
+    <div v-show="currentTab === 'templates'">
+      <TemplateList />
+    </div>
+
+    <!-- 新增標籤對話框 (Shared) -->
     <div
       v-if="showTagForm"
       class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm"
@@ -253,7 +281,7 @@
       </div>
     </div>
 
-    <!-- 新增科目對話框 -->
+    <!-- 新增科目對話框 (Shared) -->
     <div
       v-if="showSubjectForm"
       class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm"
@@ -560,6 +588,34 @@ import { questionBankAPI, hashtagAPI, subjectAPI } from '../services/api'
 import { mockQuestionBank } from '../data/mockData'
 import MarkdownEditor from '../components/MarkdownEditor.vue'
 import { useMarkdownRenderer } from '../composables/useMarkdownRenderer'
+import ResourceList from '../components/ResourceList.vue'
+import TemplateList from '../components/TemplateList.vue'
+
+// Tabs Configuration
+const currentTab = ref('questions')
+const tabs = [
+  { id: 'questions', name: '題目庫' },
+  { id: 'resources', name: '文件庫' },
+  { id: 'templates', name: '模板庫' }
+]
+
+const headerTitle = computed(() => {
+  const map = {
+    'questions': '題庫與標籤系統',
+    'resources': '教學資源管理',
+    'templates': '內容模板管理'
+  }
+  return map[currentTab.value]
+})
+
+const headerDescription = computed(() => {
+  const map = {
+    'questions': '支援 Markdown + LaTeX，含標籤管理',
+    'resources': '創建、編輯與管理 Quiz、考卷與講義',
+    'templates': '管理可重複使用的內容模板'
+  }
+  return map[currentTab.value]
+})
 
 const questionBank = ref([])
 const filteredQuestions = ref([])

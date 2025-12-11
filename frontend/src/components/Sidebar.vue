@@ -163,14 +163,12 @@ const allNavItems = [
   // 學生不顯示課程管理側邊欄入口，改由首頁入口進入
   { name: 'courses', label: '課程管理', path: '/courses', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
   { name: 'attendance', label: '出缺勤', path: '/attendance', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
-  { name: 'questions', label: '題庫系統', path: '/questions', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
-  { name: 'quizzes', label: 'Quiz 管理', path: '/quizzes', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
-  { name: 'exams', label: '考卷管理', path: '/exams', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
-  { name: 'materials', label: '講義管理', path: '/materials', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
+  { name: 'questions', label: '題庫與資源', path: '/questions', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
   { name: 'student-groups', label: '學生群組', path: '/student-groups', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
   { name: 'generator', label: '生成器', path: '/generator', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
   // 學生不顯示訂便當系統側邊欄入口，改由首頁入口進入
-  { name: 'lunch-orders', label: '訂便當系統', path: '/lunch-orders', requiresAdmin: false, allowedRoles: ['ADMIN', 'ACCOUNTANT'] },
+  // 管理員也不應該顯示訂便當系統
+  { name: 'lunch-orders', label: '訂便當系統', path: '/lunch-orders', requiresAdmin: false, allowedRoles: ['ACCOUNTANT'] },
   { name: 'roles', label: '角色管理', path: '/roles', requiresAdmin: true, allowedRoles: ['ADMIN'] },
   { name: 'audit-logs', label: '操作記錄', path: '/audit-logs', requiresAdmin: true, allowedRoles: ['ADMIN'] },
 ]
@@ -183,16 +181,11 @@ const navItems = computed(() => {
 
   const role = currentUser.value.role
 
-  // 管理員可以看到所有頁面
-  if (role === 'ADMIN') {
-    return allNavItems
-  }
-
-  // 根據角色過濾
+  // 根據角色過濾（包括管理員）
   return allNavItems.filter(item => {
-    // 管理員專用頁面
+    // 管理員專用頁面：只有管理員可以看到
     if (item.requiresAdmin) {
-      return false
+      return role === 'ADMIN'
     }
 
     // 檢查 allowedRoles
@@ -200,7 +193,7 @@ const navItems = computed(() => {
       return item.allowedRoles.includes(role)
     }
 
-    // 檢查頁面權限
+    // 檢查頁面權限（用於自定義角色）
     if (userPermissions.value.length > 0) {
       return userPermissions.value.some(
         p => p.permission_type === 'page' && p.resource === item.path
@@ -215,6 +208,7 @@ const navItems = computed(() => {
 const childMatchMap = {
   'student-list': ['student-list', 'student-add', 'student-edit', 'student-fees'],
   'lunch-orders': ['lunch-orders', 'group-order-detail', 'join-group-order'],
+  'questions': ['questions', 'resource-new', 'resource-edit'], // Keep sidebar active for editor
 }
 
 const isActive = (name) => {

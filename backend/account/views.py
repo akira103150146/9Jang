@@ -60,10 +60,33 @@ class RoleViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # 只有管理員可以查看所有角色
+        # 管理員可以查看所有角色
         if self.request.user.is_admin():
             return Role.objects.all()
+        # 非管理員只能查看自己的角色（如果有的話）
+        user = self.request.user
+        if hasattr(user, 'custom_role') and user.custom_role:
+            return Role.objects.filter(id=user.custom_role.id)
         return Role.objects.none()
+    
+    def retrieve(self, request, *args, **kwargs):
+        """
+        允許用戶查看自己的角色，即使不是管理員
+        """
+        # 如果是管理員，允許查看任何角色
+        if request.user.is_admin():
+            return super().retrieve(request, *args, **kwargs)
+        
+        # 非管理員只能查看自己的角色
+        role_id = kwargs.get('pk')
+        user = request.user
+        if hasattr(user, 'custom_role') and user.custom_role and str(user.custom_role.id) == str(role_id):
+            # 使用 get_object_or_404 來獲取角色對象
+            role = get_object_or_404(Role, id=role_id)
+            serializer = self.get_serializer(role)
+            return Response(serializer.data)
+        
+        return Response({'detail': '您沒有權限查看此角色'}, status=status.HTTP_403_FORBIDDEN)
 
     def create(self, request, *args, **kwargs):
         if not request.user.is_admin():

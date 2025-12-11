@@ -10,6 +10,7 @@ from .api_views import (
     StudentAnswerViewSet, ErrorLogViewSet,
     RestaurantViewSet, GroupOrderViewSet, OrderViewSet, OrderItemViewSet,
     StudentGroupViewSet, QuizViewSet, ExamViewSet, CourseMaterialViewSet,
+    ContentTemplateViewSet, LearningResourceViewSet,
     upload_image, generate_quiz, generate_exam, generate_material
 )
 
@@ -99,6 +100,12 @@ router.register(r'exams', ExamViewSet)
 # 將 CourseMaterialViewSet 註冊到 'materials' 這個 URL 前綴下
 router.register(r'materials', CourseMaterialViewSet)
 
+# 將 ContentTemplateViewSet 註冊到 'templates' 這個 URL 前綴下
+router.register(r'templates', ContentTemplateViewSet)
+
+# 將 LearningResourceViewSet 註冊到 'resources' 這個 URL 前綴下
+router.register(r'resources', LearningResourceViewSet)
+
 # 應用程式的 URL 模式
 urlpatterns = [
     path('', include(router.urls)),
@@ -107,4 +114,3 @@ urlpatterns = [
     path('generate-exam/', generate_exam, name='generate-exam'),
     path('generate-material/', generate_material, name='generate-material'),
 ]
-

@@ -6,7 +6,8 @@ from .models import (
     Student, Teacher, Course, StudentEnrollment, EnrollmentPeriod, ExtraFee, 
     SessionRecord, Attendance, Leave, Subject, QuestionBank, Hashtag, QuestionTag,
     StudentAnswer, ErrorLog, Restaurant, GroupOrder, Order, OrderItem,
-    StudentGroup, Quiz, Exam, CourseMaterial, AssessmentSubmission
+    StudentGroup, Quiz, Exam, CourseMaterial, AssessmentSubmission,
+    ContentTemplate, LearningResource
 )
 
 class StudentSerializer(serializers.ModelSerializer):
@@ -1222,3 +1223,150 @@ class CourseMaterialSerializer(serializers.ModelSerializer):
         
         return instance
 
+
+class ContentTemplateSerializer(serializers.ModelSerializer):
+    """
+    內容模板序列化器
+    """
+    created_by_name = serializers.SerializerMethodField()
+    tags = serializers.SerializerMethodField()
+    tag_ids = serializers.SerializerMethodField()
+    tag_ids_input = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False,
+        help_text='標籤ID列表（寫入用）'
+    )
+
+    class Meta:
+        model = ContentTemplate
+        fields = [
+            'template_id', 'title', 'structure', 'created_by', 'created_by_name',
+            'is_public', 'tags', 'tag_ids', 'tag_ids_input',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['template_id', 'created_by', 'created_by_name', 'tags', 'tag_ids', 'created_at', 'updated_at']
+
+    def get_created_by_name(self, obj):
+        return obj.created_by.username if obj.created_by else None
+
+    def get_tags(self, obj):
+        return [tag.tag_name for tag in obj.tags.all()]
+
+    def get_tag_ids(self, obj):
+        return [tag.tag_id for tag in obj.tags.all()]
+
+    def create(self, validated_data):
+        tag_ids = validated_data.pop('tag_ids_input', [])
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            validated_data['created_by'] = request.user
+        
+        template = ContentTemplate.objects.create(**validated_data)
+        
+        if tag_ids:
+            tags = Hashtag.objects.filter(tag_id__in=tag_ids)
+            template.tags.set(tags)
+            
+        return template
+
+    def update(self, instance, validated_data):
+        tag_ids = validated_data.pop('tag_ids_input', None)
+        
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        
+        if tag_ids is not None:
+            tags = Hashtag.objects.filter(tag_id__in=tag_ids)
+            instance.tags.set(tags)
+            
+        return instance
+
+
+class LearningResourceSerializer(serializers.ModelSerializer):
+    """
+    教學資源序列化器
+    """
+    course_name = serializers.SerializerMethodField()
+    created_by_name = serializers.SerializerMethodField()
+    tags = serializers.SerializerMethodField()
+    tag_ids = serializers.SerializerMethodField()
+    student_group_names = serializers.SerializerMethodField()
+    tag_ids_input = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False
+    )
+    student_group_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False
+    )
+
+    class Meta:
+        model = LearningResource
+        fields = [
+            'resource_id', 'title', 'resource_type', 'course', 'course_name',
+            'student_groups', 'student_group_ids', 'student_group_names',
+            'structure', 'settings', 'tags', 'tag_ids', 'tag_ids_input',
+            'created_by', 'created_by_name', 'is_individualized',
+            'available_from', 'available_until', 'created_at', 'updated_at'
+        ]
+        read_only_fields = [
+            'resource_id', 'course_name', 'student_groups', 'student_group_names',
+            'tags', 'tag_ids', 'created_by', 'created_by_name',
+            'created_at', 'updated_at'
+        ]
+
+    def get_course_name(self, obj):
+        return obj.course.course_name if obj.course else None
+
+    def get_created_by_name(self, obj):
+        return obj.created_by.username if obj.created_by else None
+
+    def get_tags(self, obj):
+        return [tag.tag_name for tag in obj.tags.all()]
+
+    def get_tag_ids(self, obj):
+        return [tag.tag_id for tag in obj.tags.all()]
+
+    def get_student_group_names(self, obj):
+        return [g.name for g in obj.student_groups.all()]
+
+    def create(self, validated_data):
+        tag_ids = validated_data.pop('tag_ids_input', [])
+        student_group_ids = validated_data.pop('student_group_ids', [])
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            validated_data['created_by'] = request.user
+        
+        resource = LearningResource.objects.create(**validated_data)
+        
+        if tag_ids:
+            tags = Hashtag.objects.filter(tag_id__in=tag_ids)
+            resource.tags.set(tags)
+            
+        if student_group_ids:
+            groups = StudentGroup.objects.filter(group_id__in=student_group_ids)
+            resource.student_groups.set(groups)
+            
+        return resource
+
+    def update(self, instance, validated_data):
+        tag_ids = validated_data.pop('tag_ids_input', None)
+        student_group_ids = validated_data.pop('student_group_ids', None)
+        
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        
+        if tag_ids is not None:
+            tags = Hashtag.objects.filter(tag_id__in=tag_ids)
+            instance.tags.set(tags)
+            
+        if student_group_ids is not None:
+            groups = StudentGroup.objects.filter(group_id__in=student_group_ids)
+            instance.student_groups.set(groups)
+            
+        return instance

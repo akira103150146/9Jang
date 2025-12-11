@@ -3,10 +3,98 @@ alwaysApply: true
 ---
 # Project Rules
 
-1. **Virtual Environment**:
-   - This project uses a Python virtual environment located at `./venv` (or `./.venv`).
-   - ALWAYS activate the environment before running terminal commands, OR use the direct path to the python executable.
-   - Example: Instead of `python manage.py runserver`, use `./venv/bin/python manage.py runserver` or ensure `source venv/bin/activate` is run first.
+# Django Project Rules & Context
+- **Backend (Django)**: Located in `./backend` directory.
+- **Frontend (Vue)**: Located in `./frontend` directory.
+## 1. Environment & Execution (Crucial)
+- **Virtual Environment**: ALWAYS use the python executable located at `./venv/bin/python` (or `.\venv\Scripts\python.exe` on Windows) for all commands.
+- **Manage.py**: Run all Django commands through `python manage.py`.
+  - Example: `./venv/bin/python manage.py runserver`
+  - Never run `pip install` without ensuring the venv is active.
 
-2. **Django Commands**:
-   - When running manage.py commands, ensure the virtual environment is active.
+## 2. Coding Standards
+- **Style**: Follow PEP 8 guidelines.
+- **Imports**: Organize imports in this order:
+  1. Standard library imports
+  2. Django core imports
+  3. Third-party app imports (e.g., rest_framework)
+  4. Local app imports (relative imports preferred within the same app)
+
+## 3. Django Best Practices (The "Django Way")
+- **Fat Models, Thin Views**: 
+  - Keep logic out of views.py and forms.py.
+  - Encapsulate business logic in Model methods or a separate `services.py` / `selectors.py` layer.
+- **ORM Optimization**:
+  - Always use `select_related` (for ForeignKey) and `prefetch_related` (for M2M) to avoid N+1 queries.
+  - Use `F()` expressions for database-level operations.
+  - Use `db_index=True` on fields frequently used in filters.
+- **Models**:
+  - Always define a `__str__` method for every model.
+  - Always define a `Meta` class with `verbose_name` and `verbose_name_plural`.
+  - Use `get_absolute_url` where applicable.
+
+## 4. Project Structure
+- **Templates**: Place templates in `templates/[app_name]/` to avoid namespace collisions.
+- **Static**: Keep static files organized by app.
+- **Settings**: Use `django-environ` or `.env` files for secrets (DEBUG, SECRET_KEY, DB_CREDENTIALS). NEVER hardcode secrets.
+
+## 5. Error Handling & Debugging
+- When fixing bugs, analyze the `traceback` carefully.
+- If a migration fails, suggest checking `makemigrations` or dependency conflicts.
+
+## 6. Specific Tech Stack (Customize this)
+- Python Version: 3.x
+- Database: PostgreSQL (or SQLite for dev)
+- Frontend: Django Templates + Tailwind CSS (Modify if using React/Vue)
+- API: Django Rest Framework (DRF)
+## 7. Django Rest Framework (DRF) Rules
+- **Serializers**: Use `ModelSerializer` wherever possible.
+- **Views**: 
+  - Prefer `ViewSet` and `Router` for standard CRUD operations.
+  - Use `APIView` only for complex, non-standard actions.
+- **Permissions**: Always specify `permission_classes` explicitly.
+- **Standard**: Follow JSON API standards or the project's specific response structure.
+
+# Vue.js & Frontend Rules
+
+## 1. Tech Stack & Syntax
+- **Framework**: Vue 3 with Vite.
+- **Style**: Use `<script setup>` with the Composition API. Avoid Options API.
+- **Language**: TypeScript (preferred) or JavaScript.
+- **CSS**: Scoped CSS or Tailwind CSS (specify which one you use).
+
+## 2. Component Structure
+- **File Name**: Use PascalCase for component files (e.g., `UserProfile.vue`).
+- **Template Order**:
+  1. `<script setup>`
+  2. `<template>`
+  3. `<style scoped>`
+- **Directives**: ALWAYS use shorthands (`:` for `v-bind`, `@` for `v-on`, `#` for `v-slot`).
+- **Props**: Use `defineProps` with type validation.
+- **Emits**: Use `defineEmits` to strictly type emitted events.
+
+## 3. State Management (Pinia)
+- Use **Pinia** for global state, not Vuex.
+- Keep stores modular (e.g., `useUserStore`, `useProductStore`).
+- Avoid "Prop Drilling" (passing data through too many layers); use Pinia or Provide/Inject instead.
+
+## 4. Integration with Django (Crucial)
+- **API Requests**:
+  - Use **Axios** for HTTP requests.
+  - configure Axios to handle Django's CSRF token automatically:
+    ```javascript
+    axios.defaults.xsrfCookieName = 'csrftoken';
+    axios.defaults.xsrfHeaderName = 'X-CSRFTOKEN';
+    ```
+- **Data Fetching**:
+  - Create a dedicated `services/` or `api/` directory for API calls. Do NOT write `axios.get()` directly inside components.
+  - Example: `api/auth.js` should contain `login`, `logout` functions.
+- **Naming Convention**:
+  - Frontend uses **camelCase** (e.g., `userProfile`).
+  - Backend API returns **snake_case** (e.g., `user_profile`).
+  - Be mindful of this conversion when mapping API responses to component state.
+
+## 5. Performance & Best Practices
+- **Routing**: Use standard Vue Router. Use lazy loading for routes (`component: () => import(...)`).
+- **Composables**: Extract reusable logic into "Composables" (functions starting with `use...`) instead of Mixins.
+- **Images**: Use standard `<img>` or optimized components; put static assets in `public/` or `assets/` correctly.

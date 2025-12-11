@@ -70,8 +70,9 @@ class AuditLogSerializer(serializers.ModelSerializer):
     user_username = serializers.CharField(source='user.username', read_only=True)
     role_name = serializers.CharField(source='role.name', read_only=True)
     action_type_display = serializers.CharField(source='get_action_type_display', read_only=True)
+    impersonated_by_username = serializers.CharField(source='impersonated_by.username', read_only=True)
 
     class Meta:
         model = AuditLog
         fields = '__all__'
-        read_only_fields = ['user', 'role', 'created_at']
+        read_only_fields = ['user', 'role', 'impersonated_by', 'created_at']
