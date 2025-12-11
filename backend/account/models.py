@@ -22,6 +22,7 @@ class Role(models.Model):
     """
     動態角色定義模型，允許管理員創建自定義角色
     """
+    code = models.CharField(max_length=20, unique=True, null=True, verbose_name='角色代碼')
     name = models.CharField(max_length=100, unique=True, verbose_name='角色名稱')
     description = models.TextField(blank=True, verbose_name='角色描述')
     is_active = models.BooleanField(default=True, verbose_name='是否啟用')
@@ -166,6 +167,16 @@ class CustomUser(AbstractUser):
     def is_accountant(self):
         """檢查是否為會計"""
         return self.role == UserRole.ACCOUNTANT
+
+    def save(self, *args, **kwargs):
+        # 如果有設定 role 但沒有設定 custom_role (或是兩者不一致)，自動同步
+        if self.role and (not self.custom_role or (hasattr(self.custom_role, 'code') and self.custom_role.code != self.role)):
+            try:
+                # 這裡假設 Role 模型已經有 code 欄位
+                self.custom_role = Role.objects.get(code=self.role)
+            except Role.DoesNotExist:
+                pass
+        super().save(*args, **kwargs)
 
     def has_page_permission(self, page_path):
         """

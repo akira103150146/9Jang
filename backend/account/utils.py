@@ -104,18 +104,24 @@ def check_api_permission(user, api_path, method='GET', request=None):
     if not user or not user.is_authenticated:
         return False
     
-    # 獲取有效角色
-    effective_role = get_effective_role(user, request)
+    # 獲取有效角色代碼
+    effective_role_code = get_effective_role(user, request)
     
     # 如果有效角色是管理員，擁有所有權限
-    if effective_role == 'ADMIN':
+    if effective_role_code == 'ADMIN':
         return True
     
-    # 檢查自訂角色的權限
-    if user.custom_role:
-        return user.has_api_permission(api_path, method)
-    
-    return False
+    # 使用 code 查詢 Role 物件並檢查權限
+    try:
+        # 直接查詢資料庫中 code=effective_role_code 的 Role 權限
+        role = Role.objects.get(code=effective_role_code)
+        return role.permissions.filter(
+            permission_type='api',
+            resource=api_path,
+            method=method
+        ).exists()
+    except Role.DoesNotExist:
+        return False
 
 
 def filter_queryset_by_role(queryset, user, request=None, model_name=None):

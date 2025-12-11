@@ -11,11 +11,13 @@ class Command(BaseCommand):
         # 定義預設角色
         default_roles = [
             {
+                'code': 'ADMIN',
                 'name': '系統管理員',
                 'description': '擁有所有權限，可以管理系統的所有功能，包括切換角色視角',
                 'permissions': []  # 管理員不需要權限設定，因為在代碼中會檢查 is_admin()
             },
             {
+                'code': 'TEACHER',
                 'name': '老師',
                 'description': '可以管理課程、題庫、Quiz、考卷、講義，查看學生學習狀況',
                 'permissions': [
@@ -60,6 +62,7 @@ class Command(BaseCommand):
                 ]
             },
             {
+                'code': 'STUDENT',
                 'name': '學生',
                 'description': '只能看到自己報名的課程、相關考卷，以及訂便當團購連結頁面',
                 'permissions': [
@@ -76,6 +79,7 @@ class Command(BaseCommand):
                 ]
             },
             {
+                'code': 'ACCOUNTANT',
                 'name': '會計',
                 'description': '主要處理帳務、訂便當，排除教學相關模組',
                 'permissions': [
@@ -101,11 +105,13 @@ class Command(BaseCommand):
 
         for role_data in default_roles:
             role_name = role_data['name']
+            role_code = role_data['code']
             
-            # 檢查角色是否已存在
-            role, created = Role.objects.get_or_create(
+            # 檢查角色是否已存在，優先使用 name 查找以更新現有資料
+            role, created = Role.objects.update_or_create(
                 name=role_name,
                 defaults={
+                    'code': role_code,
                     'description': role_data['description'],
                     'is_active': True
                 }
@@ -114,23 +120,13 @@ class Command(BaseCommand):
             if created:
                 created_count += 1
                 self.stdout.write(
-                    self.style.SUCCESS(f'✓ 成功創建角色: {role_name}')
+                    self.style.SUCCESS(f'✓ 成功創建角色: {role_name} ({role_code})')
                 )
             else:
-                # 如果角色已存在，更新描述（如果需要）
-                if role.description != role_data['description']:
-                    role.description = role_data['description']
-                    role.is_active = True
-                    role.save()
-                    updated_count += 1
-                    self.stdout.write(
-                        self.style.WARNING(f'↻ 更新角色描述: {role_name}')
-                    )
-                else:
-                    skipped_count += 1
-                    self.stdout.write(
-                        self.style.NOTICE(f'⊘ 角色已存在，跳過: {role_name}')
-                    )
+                updated_count += 1
+                self.stdout.write(
+                    self.style.WARNING(f'↻ 更新角色: {role_name} ({role_code})')
+                )
 
             # 為角色創建權限（如果角色是新創建的，或者需要更新權限）
             if role_data.get('permissions'):
