@@ -96,6 +96,7 @@ class TeacherSerializer(serializers.ModelSerializer):
             'username': {'required': True},
         }
     
+    
     def validate_username(self, value):
         """驗證帳號唯一性"""
         if not value or not value.strip():

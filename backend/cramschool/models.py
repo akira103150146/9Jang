@@ -122,6 +122,7 @@ class Teacher(models.Model):
     PERMISSION_CHOICES = [
         ('Teacher', 'Teacher'),
         ('Admin', 'Admin'),
+        ('Accountant', 'Accountant'),
     ]
     
     # 核心欄位

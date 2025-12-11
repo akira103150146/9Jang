@@ -53,6 +53,7 @@
           >
             <option value="Teacher">老師</option>
             <option value="Admin">管理員</option>
+            <option value="Accountant">會計</option>
           </select>
           <input 
             v-model="form.phone"
