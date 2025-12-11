@@ -257,9 +257,61 @@ gcloud run domain-mappings create \
 
 ## 環境變數配置
 
+### 使用 Secret Manager（推薦，生產環境）
+
+**重要**: 敏感信息（如密鑰、密碼）應該存儲在 Google Cloud Secret Manager 中，而不是直接作為環境變數。
+
+#### 設置 Secret Manager
+
+```bash
+# 運行設置腳本
+export GCP_PROJECT_ID=your-project-id
+./deploy/setup-secrets.sh
+
+# 創建 secrets（使用腳本中顯示的命令）
+# 1. Django Secret Key
+echo -n 'your-secret-key-here' | gcloud secrets create django-secret-key \
+    --data-file=- \
+    --project=$PROJECT_ID
+
+# 2. 資料庫密碼
+echo -n 'your-database-password' | gcloud secrets create database-password \
+    --data-file=- \
+    --project=$PROJECT_ID
+
+# 3. 資料庫用戶名（可選）
+echo -n 'your-database-user' | gcloud secrets create database-user \
+    --data-file=- \
+    --project=$PROJECT_ID
+
+# 4. 資料庫名稱（可選）
+echo -n 'your-database-name' | gcloud secrets create database-name \
+    --data-file=- \
+    --project=$PROJECT_ID
+
+# 授予 Cloud Run 服務帳戶訪問權限
+PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format='value(projectNumber)')
+SERVICE_ACCOUNT=$PROJECT_NUMBER-compute@developer.gserviceaccount.com
+
+for secret in django-secret-key database-password database-user database-name; do
+    gcloud secrets add-iam-policy-binding $secret \
+        --member="serviceAccount:$SERVICE_ACCOUNT" \
+        --role="roles/secretmanager.secretAccessor" \
+        --project=$PROJECT_ID
+done
+```
+
+然後在 Cloud Run 環境變數中設置：
+```
+USE_SECRET_MANAGER=True
+GOOGLE_CLOUD_PROJECT=your-project-id
+```
+
+應用會自動從 Secret Manager 讀取這些密鑰。
+
 ### Cloud Run 環境變數
 
-在 Cloud Run 服務中設置以下環境變數（可通過控制台或命令行）：
+如果**不使用** Secret Manager，在 Cloud Run 服務中設置以下環境變數（可通過控制台或命令行）：
 
 ```bash
 # 核心配置

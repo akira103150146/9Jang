@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from .secret_manager import get_env_or_secret
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,7 +28,12 @@ load_dotenv(BASE_DIR / '.env')  # config 目錄的 .env（如果存在）
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-k#&ll@igxrfb*g=la9c9g=r_@thy06_10wywdsysaxzr2v!@el')
+# 優先從環境變數讀取，如果啟用了 Secret Manager，則從 Secret Manager 讀取
+SECRET_KEY = get_env_or_secret(
+    'DJANGO_SECRET_KEY',
+    secret_id='django-secret-key',
+    default='django-insecure-k#&ll@igxrfb*g=la9c9g=r_@thy06_10wywdsysaxzr2v!@el'
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() == 'true'
@@ -106,9 +112,9 @@ if os.getenv('CLOUD_SQL_CONNECTION_NAME'):
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.getenv('DATABASE_NAME', ''),
-            'USER': os.getenv('DATABASE_USER', ''),
-            'PASSWORD': os.getenv('DATABASE_PASSWORD', ''),
+            'NAME': get_env_or_secret('DATABASE_NAME', secret_id='database-name', default=''),
+            'USER': get_env_or_secret('DATABASE_USER', secret_id='database-user', default=''),
+            'PASSWORD': get_env_or_secret('DATABASE_PASSWORD', secret_id='database-password', default=''),
             'HOST': f'/cloudsql/{os.getenv("CLOUD_SQL_CONNECTION_NAME")}',
         }
     }
@@ -124,9 +130,9 @@ else:
     DATABASES = {
         'default': {
             'ENGINE': DATABASE_ENGINE,
-            'NAME': os.getenv('DATABASE_NAME', ''),
-            'USER': os.getenv('DATABASE_USER', ''),
-            'PASSWORD': os.getenv('DATABASE_PASSWORD', ''),
+            'NAME': get_env_or_secret('DATABASE_NAME', secret_id='database-name', default=''),
+            'USER': get_env_or_secret('DATABASE_USER', secret_id='database-user', default=''),
+            'PASSWORD': get_env_or_secret('DATABASE_PASSWORD', secret_id='database-password', default=''),
             'HOST': os.getenv('DATABASE_HOST', 'localhost'),
             'PORT': os.getenv('DATABASE_PORT', '5432'),
             'OPTIONS': {
