@@ -1,0 +1,12 @@
+---
+alwaysApply: true
+---
+# Project Rules
+
+1. **Virtual Environment**:
+   - This project uses a Python virtual environment located at `./venv` (or `./.venv`).
+   - ALWAYS activate the environment before running terminal commands, OR use the direct path to the python executable.
+   - Example: Instead of `python manage.py runserver`, use `./venv/bin/python manage.py runserver` or ensure `source venv/bin/activate` is run first.
+
+2. **Django Commands**:
+   - When running manage.py commands, ensure the virtual environment is active.
