@@ -17,7 +17,7 @@ from .models import (
     Student, Teacher, Course, StudentEnrollment, EnrollmentPeriod, ExtraFee, 
     SessionRecord, Attendance, Leave, Subject, QuestionBank, Hashtag, QuestionTag,
     StudentAnswer, ErrorLog, Restaurant, GroupOrder, Order, OrderItem,
-    StudentGroup, Quiz, Exam, CourseMaterial
+    StudentGroup, Quiz, Exam, CourseMaterial, AssessmentSubmission
 )
 
 CustomUser = get_user_model()

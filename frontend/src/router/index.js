@@ -217,10 +217,6 @@ const router = createRouter({
 
 // 路由守衛：檢查權限
 router.beforeEach(async (to, from, next) => {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'router/index.js:212', message: 'Router beforeEach', data: { to: to.path }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H1' }) }).catch(() => { });
-  // #endregion
-
   // 登入頁面不需要認證
   if (to.name === 'login') {
     // 如果已經登入，跳轉到首頁
@@ -235,10 +231,6 @@ router.beforeEach(async (to, from, next) => {
 
   // 檢查是否已登入
   const user = await getCurrentUser()
-
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'router/index.js:226', message: 'User check', data: { hasUser: !!user, role: user?.role }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H1' }) }).catch(() => { });
-  // #endregion
 
   if (!user) {
     // 未登入，跳轉到登入頁

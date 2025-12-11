@@ -177,6 +177,8 @@ class TeacherSerializer(serializers.ModelSerializer):
         
         # 創建 Teacher 並關聯 CustomUser
         validated_data['user'] = user
+        # 移除 password 欄位，因為 Teacher 模型沒有此欄位（密碼存儲在關聯的 CustomUser 中）
+        validated_data.pop('password', None)
         return super().create(validated_data)
     
     def update(self, instance, validated_data):
@@ -237,6 +239,8 @@ class TeacherSerializer(serializers.ModelSerializer):
             )
             validated_data['user'] = user
         
+        # 移除 password 欄位，因為 Teacher 模型沒有此欄位（密碼存儲在關聯的 CustomUser 中）
+        validated_data.pop('password', None)
         return super().update(instance, validated_data)
 
 
@@ -732,7 +736,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItem
         fields = ['order_item_id', 'order', 'item_name', 'quantity', 'unit_price', 'subtotal']
-        read_only_fields = ['order_item_id']
+        read_only_fields = ['order_item_id', 'subtotal']
 
 
 class OrderSerializer(serializers.ModelSerializer):
