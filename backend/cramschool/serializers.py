@@ -6,7 +6,7 @@ from .models import (
     Student, Teacher, Course, StudentEnrollment, EnrollmentPeriod, ExtraFee, 
     SessionRecord, Attendance, Leave, Subject, QuestionBank, Hashtag, QuestionTag,
     StudentAnswer, ErrorLog, Restaurant, GroupOrder, Order, OrderItem,
-    StudentGroup, Quiz, Exam, CourseMaterial
+    StudentGroup, Quiz, Exam, CourseMaterial, AssessmentSubmission
 )
 
 class StudentSerializer(serializers.ModelSerializer):
@@ -431,6 +431,32 @@ class QuestionBankSerializer(serializers.ModelSerializer):
         return instance
 
 
+class AssessmentSubmissionSerializer(serializers.ModelSerializer):
+    """
+    測驗提交記錄序列化器
+    """
+    student_name = serializers.SerializerMethodField()
+    quiz_title = serializers.SerializerMethodField()
+    exam_title = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = AssessmentSubmission
+        fields = [
+            'submission_id', 'student', 'student_name', 'quiz', 'quiz_title',
+            'exam', 'exam_title', 'score', 'status', 'submitted_at'
+        ]
+        read_only_fields = ['submission_id', 'student_name', 'quiz_title', 'exam_title', 'submitted_at']
+    
+    def get_student_name(self, obj):
+        return obj.student.name if obj.student else None
+    
+    def get_quiz_title(self, obj):
+        return obj.quiz.title if obj.quiz else None
+    
+    def get_exam_title(self, obj):
+        return obj.exam.title if obj.exam else None
+
+
 class StudentAnswerSerializer(serializers.ModelSerializer):
     """
     學生作答記錄序列化器
@@ -763,21 +789,35 @@ class QuizSerializer(serializers.ModelSerializer):
     created_by_name = serializers.SerializerMethodField()
     questions_count = serializers.SerializerMethodField()
     question_details = serializers.SerializerMethodField()
+    student_groups_count = serializers.SerializerMethodField()
+    student_group_names = serializers.SerializerMethodField()
     question_ids = serializers.ListField(
         child=serializers.IntegerField(),
         write_only=True,
         required=False,
         help_text='題目ID列表（寫入用）'
     )
+    student_group_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False,
+        help_text='學生群組ID列表（寫入用）'
+    )
     
     class Meta:
         model = Quiz
         fields = [
             'quiz_id', 'title', 'course', 'course_name', 'questions', 'question_ids',
-            'questions_count', 'question_details', 'created_by', 'created_by_name',
+            'questions_count', 'question_details', 'student_groups', 'student_group_ids',
+            'student_groups_count', 'student_group_names', 'is_individualized',
+            'created_by', 'created_by_name',
             'created_at', 'updated_at'
         ]
-        read_only_fields = ['quiz_id', 'course_name', 'questions_count', 'question_details', 'created_by_name', 'created_at', 'updated_at']
+        read_only_fields = [
+            'quiz_id', 'course_name', 'questions_count', 'question_details', 
+            'student_groups_count', 'student_group_names', 'created_by_name', 
+            'created_at', 'updated_at', 'questions'
+        ]
     
     def get_course_name(self, obj):
         return obj.course.course_name if obj.course else None
@@ -799,8 +839,15 @@ class QuizSerializer(serializers.ModelSerializer):
             for q in obj.questions.all()
         ]
     
+    def get_student_groups_count(self, obj):
+        return obj.student_groups.count()
+    
+    def get_student_group_names(self, obj):
+        return [g.name for g in obj.student_groups.all()]
+    
     def create(self, validated_data):
         question_ids = validated_data.pop('question_ids', [])
+        student_group_ids = validated_data.pop('student_group_ids', [])
         request = self.context.get('request')
         if request and request.user.is_authenticated:
             validated_data['created_by'] = request.user
@@ -811,11 +858,17 @@ class QuizSerializer(serializers.ModelSerializer):
         if question_ids:
             questions = QuestionBank.objects.filter(question_id__in=question_ids)
             quiz.questions.set(questions)
+            
+        # 關聯學生群組
+        if student_group_ids:
+            groups = StudentGroup.objects.filter(group_id__in=student_group_ids)
+            quiz.student_groups.set(groups)
         
         return quiz
     
     def update(self, instance, validated_data):
         question_ids = validated_data.pop('question_ids', None)
+        student_group_ids = validated_data.pop('student_group_ids', None)
         
         # 更新基本資訊
         for attr, value in validated_data.items():
@@ -826,8 +879,21 @@ class QuizSerializer(serializers.ModelSerializer):
         if question_ids is not None:
             questions = QuestionBank.objects.filter(question_id__in=question_ids)
             instance.questions.set(questions)
+            
+        # 如果提供了 student_group_ids，則更新學生群組關聯
+        if student_group_ids is not None:
+            groups = StudentGroup.objects.filter(group_id__in=student_group_ids)
+            instance.student_groups.set(groups)
         
         return instance
+
+
+class QuizDetailSerializer(QuizSerializer):
+    """
+    Quiz 詳細序列化器 (包含完整題目內容)
+    """
+    questions = QuestionBankSerializer(many=True, read_only=True)
+
 
 
 class ExamSerializer(serializers.ModelSerializer):
@@ -865,7 +931,7 @@ class ExamSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'exam_id', 'course_name', 'questions_count', 'question_details',
             'student_groups_count', 'student_group_names', 'created_by_name',
-            'created_at', 'updated_at'
+            'created_at', 'updated_at', 'questions'
         ]
     
     def get_course_name(self, obj):
@@ -937,6 +1003,13 @@ class ExamSerializer(serializers.ModelSerializer):
         return instance
 
 
+class ExamDetailSerializer(ExamSerializer):
+    """
+    Exam 詳細序列化器 (包含完整題目內容)
+    """
+    questions = QuestionBankSerializer(many=True, read_only=True)
+
+
 class CourseMaterialSerializer(serializers.ModelSerializer):
     """
     上課講義序列化器
@@ -945,11 +1018,19 @@ class CourseMaterialSerializer(serializers.ModelSerializer):
     created_by_name = serializers.SerializerMethodField()
     questions_count = serializers.SerializerMethodField()
     question_details = serializers.SerializerMethodField()
+    student_groups_count = serializers.SerializerMethodField()
+    student_group_names = serializers.SerializerMethodField()
     question_ids = serializers.ListField(
         child=serializers.IntegerField(),
         write_only=True,
         required=False,
         help_text='題目ID列表（寫入用）'
+    )
+    student_group_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False,
+        help_text='學生群組ID列表（寫入用）'
     )
     
     class Meta:
@@ -957,11 +1038,13 @@ class CourseMaterialSerializer(serializers.ModelSerializer):
         fields = [
             'material_id', 'title', 'course', 'course_name', 'content',
             'questions', 'question_ids', 'questions_count', 'question_details',
+            'student_groups', 'student_group_ids', 'student_groups_count', 'student_group_names', 'is_individualized',
             'created_by', 'created_by_name', 'created_at', 'updated_at'
         ]
         read_only_fields = [
             'material_id', 'course_name', 'questions_count', 'question_details',
-            'created_by_name', 'created_at', 'updated_at'
+            'student_groups_count', 'student_group_names', 'created_by_name', 
+            'created_at', 'updated_at'
         ]
     
     def get_course_name(self, obj):
@@ -984,8 +1067,15 @@ class CourseMaterialSerializer(serializers.ModelSerializer):
             for q in obj.questions.all()
         ]
     
+    def get_student_groups_count(self, obj):
+        return obj.student_groups.count()
+    
+    def get_student_group_names(self, obj):
+        return [g.name for g in obj.student_groups.all()]
+    
     def create(self, validated_data):
         question_ids = validated_data.pop('question_ids', [])
+        student_group_ids = validated_data.pop('student_group_ids', [])
         request = self.context.get('request')
         if request and request.user.is_authenticated:
             validated_data['created_by'] = request.user
@@ -996,11 +1086,17 @@ class CourseMaterialSerializer(serializers.ModelSerializer):
         if question_ids:
             questions = QuestionBank.objects.filter(question_id__in=question_ids)
             material.questions.set(questions)
+            
+        # 關聯學生群組
+        if student_group_ids:
+            groups = StudentGroup.objects.filter(group_id__in=student_group_ids)
+            material.student_groups.set(groups)
         
         return material
     
     def update(self, instance, validated_data):
         question_ids = validated_data.pop('question_ids', None)
+        student_group_ids = validated_data.pop('student_group_ids', None)
         
         # 更新基本資訊
         for attr, value in validated_data.items():
@@ -1011,6 +1107,11 @@ class CourseMaterialSerializer(serializers.ModelSerializer):
         if question_ids is not None:
             questions = QuestionBank.objects.filter(question_id__in=question_ids)
             instance.questions.set(questions)
+            
+        # 如果提供了 student_group_ids，則更新學生群組關聯
+        if student_group_ids is not None:
+            groups = StudentGroup.objects.filter(group_id__in=student_group_ids)
+            instance.student_groups.set(groups)
         
         return instance
 

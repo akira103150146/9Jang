@@ -106,14 +106,29 @@
                 {{ getCourseStatusDisplay(course.status) }}
              </span>
           </div>
+          <button 
+            @click="openCourseModal(course)"
+            class="mt-3 w-full bg-indigo-50 text-indigo-600 py-2 rounded-lg text-sm font-medium hover:bg-indigo-100 transition"
+          >
+            查看課程內容
+          </button>
         </div>
       </div>
     </section>
+
+    <!-- Course Detail Modal -->
+    <StudentCourseDetailModal 
+      v-if="selectedCourse"
+      :is-open="isModalOpen"
+      :course="selectedCourse"
+      @close="closeModal"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import StudentCourseDetailModal from '../components/StudentCourseDetailModal.vue'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -147,6 +162,18 @@ const activeGroupOrders = ref([])
 const courses = ref([])
 const loadingOrders = ref(false)
 const loadingCourses = ref(false)
+const isModalOpen = ref(false)
+const selectedCourse = ref(null)
+
+const openCourseModal = (course) => {
+  selectedCourse.value = course
+  isModalOpen.value = true
+}
+
+const closeModal = () => {
+  isModalOpen.value = false
+  selectedCourse.value = null
+}
 
 // 模擬圖表數據 (之後可替換為真實數據)
 const chartData = ref({

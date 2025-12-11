@@ -1352,10 +1352,16 @@ class QuizViewSet(viewsets.ModelViewSet):
     """
     提供 Quiz 模型 CRUD 操作的 API 視圖集
     """
-    queryset = Quiz.objects.select_related('course', 'created_by').prefetch_related('questions').all()
+    queryset = Quiz.objects.select_related('course', 'created_by').prefetch_related('questions', 'student_groups__students').all()
     serializer_class = QuizSerializer
     permission_classes = [AllowAny]
     
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            from .serializers import QuizDetailSerializer
+            return QuizDetailSerializer
+        return self.serializer_class
+
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context['request'] = self.request
@@ -1375,7 +1381,7 @@ class QuizViewSet(viewsets.ModelViewSet):
         if self.request.user.is_admin() or self.request.user.is_teacher():
             return queryset
         
-        # 學生只能看到自己報名課程的 Quiz
+        # 學生只能看到自己報名課程的 Quiz，且符合群組可見性
         if self.request.user.is_student():
             try:
                 student = self.request.user.student_profile
@@ -1384,7 +1390,16 @@ class QuizViewSet(viewsets.ModelViewSet):
                     is_active=True,
                     is_deleted=False
                 ).values_list('course_id', flat=True)
-                return queryset.filter(course_id__in=enrolled_course_ids)
+                
+                queryset = queryset.filter(course_id__in=enrolled_course_ids)
+                
+                # 過濾個別化測驗
+                queryset = queryset.filter(
+                    Q(is_individualized=False) |
+                    Q(student_groups__students=student)
+                ).distinct()
+                
+                return queryset
             except Student.DoesNotExist:
                 return queryset.none()
         
@@ -1393,6 +1408,90 @@ class QuizViewSet(viewsets.ModelViewSet):
             return queryset.none()
         
         return queryset
+
+    @action(detail=True, methods=['post'])
+    def submit(self, request, pk=None):
+        """
+        提交測驗作答
+        request.data: {
+            'answers': [
+                {'question_id': 1, 'answer_text': 'A', 'image_path': 'path/to/image.jpg'}
+            ]
+        }
+        """
+        if not request.user.is_authenticated or not request.user.is_student():
+            return Response({'detail': '只有學生可以提交測驗'}, status=status.HTTP_403_FORBIDDEN)
+            
+        try:
+            student = request.user.student_profile
+        except Student.DoesNotExist:
+            return Response({'detail': '找不到學生資料'}, status=status.HTTP_404_NOT_FOUND)
+            
+        quiz = self.get_object()
+        answers_data = request.data.get('answers', [])
+        
+        # 檢查是否已經提交過 (可選：是否允許重複提交)
+        # 這裡假設每次提交都是新的 AssessmentSubmission
+        
+        submission = AssessmentSubmission.objects.create(
+            student=student,
+            quiz=quiz,
+            status='Pending' # 待批改 (或如果有自動批改則設為 Graded)
+        )
+        
+        total_score = 0
+        is_fully_graded = True
+        
+        for ans_data in answers_data:
+            question_id = ans_data.get('question_id')
+            answer_text = ans_data.get('answer_text')
+            image_path = ans_data.get('image_path')
+            
+            try:
+                question = QuestionBank.objects.get(question_id=question_id)
+            except QuestionBank.DoesNotExist:
+                continue
+                
+            is_correct = False
+            # 自動批改邏輯 (僅針對選擇題或簡單填空)
+            # 假設 correct_answer 存的是標準答案
+            if answer_text and question.correct_answer:
+                # 簡單比對 (去除空白與大小寫)
+                if answer_text.strip().lower() == question.correct_answer.strip().lower():
+                    is_correct = True
+                    total_score += 1 # 假設每題1分，或者需要題目分數欄位 (目前沒有，暫定1分)
+            
+            # 創建單題作答記錄
+            StudentAnswer.objects.create(
+                student=student,
+                question=question,
+                test_name=quiz.title,
+                submission=submission,
+                is_correct=is_correct,
+                scanned_file_path=image_path
+            )
+            
+            # 更新錯題本
+            if not is_correct:
+                error_log, created = ErrorLog.objects.get_or_create(
+                    student=student,
+                    question=question,
+                    defaults={'error_count': 1, 'review_status': 'New'}
+                )
+                if not created:
+                    error_log.error_count += 1
+                    error_log.review_status = 'Reviewing'
+                    error_log.save()
+        
+        submission.score = total_score
+        submission.status = 'Graded' # 簡單邏輯：全部自動批改完成
+        submission.save()
+        
+        return Response({
+            'message': '測驗提交成功',
+            'submission_id': submission.submission_id,
+            'score': total_score
+        })
 
 
 class ExamViewSet(viewsets.ModelViewSet):
@@ -1403,6 +1502,12 @@ class ExamViewSet(viewsets.ModelViewSet):
     queryset = Exam.objects.select_related('course', 'created_by').prefetch_related('questions', 'student_groups__students').all()
     serializer_class = ExamSerializer
     permission_classes = [AllowAny]
+    
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            from .serializers import ExamDetailSerializer
+            return ExamDetailSerializer
+        return self.serializer_class
     
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -1437,7 +1542,6 @@ class ExamViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(course_id__in=enrolled_course_ids)
                 
                 # 過濾個別化考卷：只顯示學生所屬群組的考卷，或非個別化的考卷
-                from django.db.models import Q
                 queryset = queryset.filter(
                     Q(is_individualized=False) |  # 非個別化考卷，所有學生可見
                     Q(student_groups__students=student)  # 個別化考卷，但學生在群組中
@@ -1452,6 +1556,76 @@ class ExamViewSet(viewsets.ModelViewSet):
             return queryset.none()
         
         return queryset
+
+    @action(detail=True, methods=['post'])
+    def submit(self, request, pk=None):
+        """
+        提交考卷作答
+        """
+        if not request.user.is_authenticated or not request.user.is_student():
+            return Response({'detail': '只有學生可以提交考卷'}, status=status.HTTP_403_FORBIDDEN)
+            
+        try:
+            student = request.user.student_profile
+        except Student.DoesNotExist:
+            return Response({'detail': '找不到學生資料'}, status=status.HTTP_404_NOT_FOUND)
+            
+        exam = self.get_object()
+        answers_data = request.data.get('answers', [])
+        
+        submission = AssessmentSubmission.objects.create(
+            student=student,
+            exam=exam,
+            status='Pending'
+        )
+        
+        total_score = 0
+        
+        for ans_data in answers_data:
+            question_id = ans_data.get('question_id')
+            answer_text = ans_data.get('answer_text')
+            image_path = ans_data.get('image_path')
+            
+            try:
+                question = QuestionBank.objects.get(question_id=question_id)
+            except QuestionBank.DoesNotExist:
+                continue
+                
+            is_correct = False
+            if answer_text and question.correct_answer:
+                if answer_text.strip().lower() == question.correct_answer.strip().lower():
+                    is_correct = True
+                    total_score += 1
+            
+            StudentAnswer.objects.create(
+                student=student,
+                question=question,
+                test_name=exam.title,
+                submission=submission,
+                is_correct=is_correct,
+                scanned_file_path=image_path
+            )
+            
+            if not is_correct:
+                error_log, created = ErrorLog.objects.get_or_create(
+                    student=student,
+                    question=question,
+                    defaults={'error_count': 1, 'review_status': 'New'}
+                )
+                if not created:
+                    error_log.error_count += 1
+                    error_log.review_status = 'Reviewing'
+                    error_log.save()
+        
+        submission.score = total_score
+        submission.status = 'Graded'
+        submission.save()
+        
+        return Response({
+            'message': '考卷提交成功',
+            'submission_id': submission.submission_id,
+            'score': total_score
+        })
 
 
 class CourseMaterialViewSet(viewsets.ModelViewSet):
@@ -1490,7 +1664,16 @@ class CourseMaterialViewSet(viewsets.ModelViewSet):
                     is_active=True,
                     is_deleted=False
                 ).values_list('course_id', flat=True)
-                return queryset.filter(course_id__in=enrolled_course_ids)
+                
+                queryset = queryset.filter(course_id__in=enrolled_course_ids)
+                
+                # 過濾個別化講義
+                queryset = queryset.filter(
+                    Q(is_individualized=False) |
+                    Q(student_groups__students=student)
+                ).distinct()
+                
+                return queryset
             except Student.DoesNotExist:
                 return queryset.none()
         

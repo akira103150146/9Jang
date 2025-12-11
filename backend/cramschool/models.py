@@ -671,6 +671,62 @@ class QuestionTag(models.Model):
         return f"{self.question} - {self.tag}"
 
 
+class AssessmentSubmission(models.Model):
+    """
+    測驗/考卷提交記錄模型
+    """
+    STATUS_CHOICES = [
+        ('Pending', 'Pending'),
+        ('Graded', 'Graded'),
+    ]
+
+    submission_id = models.AutoField(primary_key=True, verbose_name='提交ID')
+    student = models.ForeignKey(
+        Student,
+        on_delete=models.CASCADE,
+        related_name='submissions',
+        verbose_name='學生'
+    )
+    quiz = models.ForeignKey(
+        'Quiz',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='submissions',
+        verbose_name='測驗'
+    )
+    exam = models.ForeignKey(
+        'Exam',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='submissions',
+        verbose_name='考卷'
+    )
+    score = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0.0,
+        verbose_name='總分'
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default='Pending',
+        verbose_name='狀態'
+    )
+    submitted_at = models.DateTimeField(auto_now_add=True, verbose_name='提交時間')
+
+    class Meta:
+        verbose_name = '測驗提交'
+        verbose_name_plural = '測驗提交'
+        ordering = ['-submitted_at']
+
+    def __str__(self):
+        source = self.quiz.title if self.quiz else (self.exam.title if self.exam else 'Unknown')
+        return f"{self.student.name} - {source} - {self.score}"
+
+
 class StudentAnswer(models.Model):
     """
     學生作答記錄模型
@@ -689,6 +745,14 @@ class StudentAnswer(models.Model):
         verbose_name='題目'
     )
     test_name = models.CharField(max_length=100, verbose_name='測驗/作業名稱')
+    submission = models.ForeignKey(
+        AssessmentSubmission,
+        on_delete=models.CASCADE,
+        related_name='answers',
+        null=True,
+        blank=True,
+        verbose_name='提交記錄'
+    )
     is_correct = models.BooleanField(default=False, verbose_name='是否答對')
     scanned_file_path = models.CharField(
         max_length=255,
@@ -1006,6 +1070,16 @@ class Quiz(models.Model):
         related_name='quizzes',
         verbose_name='題目'
     )
+    student_groups = models.ManyToManyField(
+        StudentGroup,
+        related_name='quizzes',
+        blank=True,
+        verbose_name='學生群組'
+    )
+    is_individualized = models.BooleanField(
+        default=False,
+        verbose_name='是否為個別化測驗'
+    )
     created_by = models.ForeignKey(
         CustomUser,
         on_delete=models.SET_NULL,
@@ -1102,6 +1176,16 @@ class CourseMaterial(models.Model):
         related_name='materials',
         blank=True,
         verbose_name='引用的題目'
+    )
+    student_groups = models.ManyToManyField(
+        StudentGroup,
+        related_name='materials',
+        blank=True,
+        verbose_name='學生群組'
+    )
+    is_individualized = models.BooleanField(
+        default=False,
+        verbose_name='是否為個別化講義'
     )
     created_by = models.ForeignKey(
         CustomUser,

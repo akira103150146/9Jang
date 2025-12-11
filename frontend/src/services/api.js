@@ -62,13 +62,13 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
-    
+
     // 添加臨時角色 header（如果存在）
     const tempRole = localStorage.getItem('temp_role')
     if (tempRole) {
       config.headers['X-Temp-Role'] = tempRole
     }
-    
+
     return config
   },
   (error) => {
@@ -304,7 +304,7 @@ export const feeAPI = {
 
   // 刪除費用記錄（軟刪除）
   delete: (id) => api.delete(`/cramschool/fees/${id}/`),
-  
+
   // 恢復已刪除的費用記錄
   restore: (id) => api.post(`/cramschool/fees/${id}/restore/`)
 }
@@ -471,7 +471,7 @@ export const errorLogAPI = {
 
   // 刪除錯題記錄（軟刪除）
   delete: (id) => api.delete(`/cramschool/error-logs/${id}/`),
-  
+
   // 恢復已刪除的錯題記錄
   restore: (id) => api.post(`/cramschool/error-logs/${id}/restore/`)
 }
@@ -495,7 +495,7 @@ export const studentAnswerAPI = {
 
   // 刪除作答記錄（軟刪除）
   delete: (id) => api.delete(`/cramschool/student-answers/${id}/`),
-  
+
   // 恢復已刪除的作答記錄
   restore: (id) => api.post(`/cramschool/student-answers/${id}/restore/`)
 }
@@ -649,25 +649,36 @@ export const studentGroupAPI = {
 
 // Quiz API
 export const quizAPI = {
-  getAll: () => api.get('/cramschool/quizzes/'),
+  getAll: (params = {}) => {
+    const query = new URLSearchParams(params).toString()
+    return api.get(`/cramschool/quizzes/?${query}`)
+  },
   getById: (id) => api.get(`/cramschool/quizzes/${id}/`),
   create: (data) => api.post('/cramschool/quizzes/', data),
   update: (id, data) => api.put(`/cramschool/quizzes/${id}/`, data),
-  delete: (id) => api.delete(`/cramschool/quizzes/${id}/`)
+  delete: (id) => api.delete(`/cramschool/quizzes/${id}/`),
+  submit: (id, data) => api.post(`/cramschool/quizzes/${id}/submit/`, data)
 }
 
 // Exam API
 export const examAPI = {
-  getAll: () => api.get('/cramschool/exams/'),
+  getAll: (params = {}) => {
+    const query = new URLSearchParams(params).toString()
+    return api.get(`/cramschool/exams/?${query}`)
+  },
   getById: (id) => api.get(`/cramschool/exams/${id}/`),
   create: (data) => api.post('/cramschool/exams/', data),
   update: (id, data) => api.put(`/cramschool/exams/${id}/`, data),
-  delete: (id) => api.delete(`/cramschool/exams/${id}/`)
+  delete: (id) => api.delete(`/cramschool/exams/${id}/`),
+  submit: (id, data) => api.post(`/cramschool/exams/${id}/submit/`, data)
 }
 
 // CourseMaterial API
 export const courseMaterialAPI = {
-  getAll: () => api.get('/cramschool/materials/'),
+  getAll: (params = {}) => {
+    const query = new URLSearchParams(params).toString()
+    return api.get(`/cramschool/materials/?${query}`)
+  },
   getById: (id) => api.get(`/cramschool/materials/${id}/`),
   create: (data) => api.post('/cramschool/materials/', data),
   update: (id, data) => api.put(`/cramschool/materials/${id}/`, data),
