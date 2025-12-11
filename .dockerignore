@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# 虛擬環境
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 環境變數文件（生產環境應該通過 GCP 環境變數設置）
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env
+
+# 資料庫
+*.sqlite3
+*.db
+
+# 媒體文件（應該使用 Cloud Storage）
+media/
+
+# Git
+.git/
+.gitignore
+
+# 前端（將單獨部署到 Cloud Storage）
+frontend/
+
+# 文檔
+*.md
+!README.md
+
+# 日誌
+*.log
+
+# 測試
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 作業系統
+.DS_Store
+Thumbs.db
+
+# 臨時文件
+*.tmp
+*.bak
+

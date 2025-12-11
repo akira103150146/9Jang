@@ -44,6 +44,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'whitenoise.runserver_nostatic',  # WhiteNoise 用於靜態文件服務
+    'storages',  # django-storages 用於 Cloud Storage
     'cramschool',
     'account',
     'rest_framework',
@@ -55,6 +57,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # WhiteNoise 靜態文件中間件（放在 SecurityMiddleware 之後）
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',  # CORS 中間件應該放在 CommonMiddleware 之前
     'django.middleware.common.CommonMiddleware',
@@ -97,7 +100,19 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASE_ENGINE = os.getenv('DATABASE_ENGINE', 'django.db.backends.sqlite3')
 
-if DATABASE_ENGINE == 'django.db.backends.sqlite3':
+# 支持 Cloud SQL 連接（通過 Unix Socket 或 TCP）
+if os.getenv('CLOUD_SQL_CONNECTION_NAME'):
+    # Cloud SQL 通過 Unix Socket 連接
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('DATABASE_NAME', ''),
+            'USER': os.getenv('DATABASE_USER', ''),
+            'PASSWORD': os.getenv('DATABASE_PASSWORD', ''),
+            'HOST': f'/cloudsql/{os.getenv("CLOUD_SQL_CONNECTION_NAME")}',
+        }
+    }
+elif DATABASE_ENGINE == 'django.db.backends.sqlite3':
     DATABASES = {
         'default': {
             'ENGINE': DATABASE_ENGINE,
@@ -105,7 +120,7 @@ if DATABASE_ENGINE == 'django.db.backends.sqlite3':
         }
     }
 else:
-    # PostgreSQL 或其他資料庫
+    # PostgreSQL 或其他資料庫（TCP 連接）
     DATABASES = {
         'default': {
             'ENGINE': DATABASE_ENGINE,
@@ -114,6 +129,9 @@ else:
             'PASSWORD': os.getenv('DATABASE_PASSWORD', ''),
             'HOST': os.getenv('DATABASE_HOST', 'localhost'),
             'PORT': os.getenv('DATABASE_PORT', '5432'),
+            'OPTIONS': {
+                'connect_timeout': 10,
+            }
         }
     }
 
@@ -153,10 +171,33 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # 生產環境靜態文件收集目錄
+
+# WhiteNoise 配置
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Media files (User uploaded files)
-MEDIA_URL = os.getenv('MEDIA_URL', '/media/')
-MEDIA_ROOT = os.path.join(BASE_DIR, os.getenv('MEDIA_ROOT', 'media'))
+# 如果設置了 GS_BUCKET_NAME，使用 Cloud Storage；否則使用本地文件系統
+GS_BUCKET_NAME = os.getenv('GS_BUCKET_NAME', '')  # Cloud Storage bucket 名稱
+
+if GS_BUCKET_NAME:
+    # 使用 Cloud Storage 存儲媒體文件
+    DEFAULT_FILE_STORAGE = 'storages.backends.gcloud.GoogleCloudStorage'
+    GS_PROJECT_ID = os.getenv('GS_PROJECT_ID', os.getenv('GCP_PROJECT_ID', ''))
+    GS_DEFAULT_ACL = 'publicRead'  # 公開讀取權限
+    GS_FILE_OVERWRITE = False  # 不覆蓋同名文件
+    GS_QUERYSTRING_AUTH = False  # URL 不需要認證參數
+    
+    # MEDIA_URL 設置為 Cloud Storage 的公開 URL
+    MEDIA_URL = os.getenv(
+        'MEDIA_URL',
+        f'https://storage.googleapis.com/{GS_BUCKET_NAME}/'
+    )
+    MEDIA_ROOT = ''  # 使用 Cloud Storage 時不需要本地根目錄
+else:
+    # 使用本地文件系統（開發環境）
+    MEDIA_URL = os.getenv('MEDIA_URL', '/media/')
+    MEDIA_ROOT = os.path.join(BASE_DIR, os.getenv('MEDIA_ROOT', 'media'))
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -222,4 +263,18 @@ CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in csrf_origins.split(',')]
 SESSION_COOKIE_SAMESITE = os.getenv('SESSION_COOKIE_SAMESITE', 'Lax')
 SESSION_COOKIE_HTTPONLY = os.getenv('SESSION_COOKIE_HTTPONLY', 'True').lower() == 'true'
 SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'False').lower() == 'true'  # 開發環境設為 False，生產環境設為 True（HTTPS）
+
+# 安全設置（生產環境）
+if not DEBUG:
+    SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'True').lower() == 'true'
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_HSTS_SECONDS = 31536000  # 1 年
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_BROWSER_XSS_FILTER = True
+    X_FRAME_OPTIONS = 'DENY'
+
+# Cloud Run 會自動設置 PORT 環境變數
+PORT = os.getenv('PORT', '8080')
 

@@ -972,37 +972,38 @@ def upload_image(request):
     
     # 創建保存路徑
     # 使用日期和 UUID 來組織文件結構，避免文件名衝突
+    from django.core.files.storage import default_storage
+    
     now = datetime.now()
     date_folder = now.strftime('%Y/%m/%d')
-    upload_dir = os.path.join(settings.MEDIA_ROOT, 'question_images', date_folder)
-    
-    # 確保目錄存在
-    os.makedirs(upload_dir, exist_ok=True)
     
     # 生成唯一的文件名
     unique_filename = f"{uuid.uuid4().hex}.{file_ext}"
-    file_path = os.path.join(upload_dir, unique_filename)
     
-    # 保存文件
+    # 構建相對路徑（相對於 MEDIA_ROOT 或 Cloud Storage bucket）
+    relative_path = f'question_images/{date_folder}/{unique_filename}'
+    
+    # 使用 Django 的默認文件存儲保存文件（自動支持 Cloud Storage 或本地文件系統）
     try:
-        with open(file_path, 'wb+') as destination:
-            for chunk in image_file.chunks():
-                destination.write(chunk)
+        saved_path = default_storage.save(relative_path, image_file)
+        
+        # 獲取文件 URL（自動處理 Cloud Storage 或本地 URL）
+        image_url = default_storage.url(saved_path)
+        
+        # 如果 MEDIA_URL 是相對路徑，構建絕對 URL
+        if not image_url.startswith('http'):
+            from django.urls import reverse
+            image_url = request.build_absolute_uri(image_url)
+            
     except Exception as e:
         return Response(
             {'error': f'保存文件失敗：{str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
     
-    # 返回相對路徑（相對於 MEDIA_ROOT）
-    relative_path = os.path.join('question_images', date_folder, unique_filename)
-    
-    # 返回完整的 URL 路徑
-    image_url = f"{settings.MEDIA_URL}{relative_path}"
-    
     return Response({
-        'image_path': relative_path,
-        'image_url': image_url
+        'image_path': saved_path,  # 使用實際保存的路徑
+        'image_url': image_url  # 完整的訪問 URL（支持 Cloud Storage）
     }, status=status.HTTP_201_CREATED)
 
 
