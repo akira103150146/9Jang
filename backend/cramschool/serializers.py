@@ -740,7 +740,7 @@ class StudentGroupSerializer(serializers.ModelSerializer):
             'students_count', 'student_names', 'created_by', 'created_by_name',
             'created_at', 'updated_at'
         ]
-        read_only_fields = ['group_id', 'students_count', 'student_names', 'created_by_name', 'created_at', 'updated_at']
+        read_only_fields = ['group_id', 'students', 'students_count', 'student_names', 'created_by_name', 'created_at', 'updated_at']
     
     def get_students_count(self, obj):
         return obj.students.count()

@@ -1307,6 +1307,9 @@ class StudentGroupViewSet(viewsets.ModelViewSet):
         context['request'] = self.request
         return context
     
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+    
     @action(detail=True, methods=['post'], url_path='add-students')
     def add_students(self, request, pk=None):
         """
