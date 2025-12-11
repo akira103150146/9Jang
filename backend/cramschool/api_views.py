@@ -135,7 +135,7 @@ class StudentViewSet(viewsets.ModelViewSet):
                 role=UserRole.STUDENT,
                 first_name=name,
                 is_active=True,
-                must_change_password=True  # 首次登入需修改密碼
+                must_change_password=False  # 首次登入不強制修改密碼
             )
             
             # 關聯學生和用戶，並保存初始密碼

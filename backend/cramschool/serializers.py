@@ -170,7 +170,7 @@ class TeacherSerializer(serializers.ModelSerializer):
                 role=user_role,
                 first_name=name,
                 is_active=True,
-                must_change_password=True
+                must_change_password=False
             )
         except Exception as e:
             raise serializers.ValidationError({'username': f'創建用戶帳號失敗: {str(e)}'})
@@ -235,7 +235,7 @@ class TeacherSerializer(serializers.ModelSerializer):
                 role=user_role,
                 first_name=name,
                 is_active=True,
-                must_change_password=True
+                must_change_password=False
             )
             validated_data['user'] = user
         
