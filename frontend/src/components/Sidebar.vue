@@ -157,7 +157,7 @@ const getUserInitials = (user) => {
 
 const allNavItems = [
   { name: 'student-home', label: '首頁', path: '/student-home', requiresAdmin: false, allowedRoles: ['STUDENT'] },
-  { name: 'dashboard', label: '營運儀表板', path: '/', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER', 'ACCOUNTANT'] },
+  { name: 'dashboard', label: '營運儀表板', path: '/', requiresAdmin: false, allowedRoles: ['ADMIN', 'ACCOUNTANT'] },
   { name: 'student-list', label: '學生管理', path: '/students', requiresAdmin: false, allowedRoles: ['ADMIN', 'ACCOUNTANT'] },
   { name: 'teachers', label: '老師管理', path: '/teachers', requiresAdmin: false, allowedRoles: ['ADMIN'] },
   // 學生不顯示課程管理側邊欄入口，改由首頁入口進入

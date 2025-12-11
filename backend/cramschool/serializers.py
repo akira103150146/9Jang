@@ -84,32 +84,44 @@ class TeacherSerializer(serializers.ModelSerializer):
     """
     老師資料序列化器
     """
+    username = serializers.SerializerMethodField()
     password = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    user_email = serializers.SerializerMethodField()
     
     class Meta:
         model = Teacher
-        fields = ['teacher_id', 'name', 'username', 'password', 'password_hash', 'permission_level', 'phone', 'hire_date']
-        read_only_fields = ['teacher_id', 'password_hash']
+        fields = ['teacher_id', 'name', 'username', 'password', 'permission_level', 'phone', 'hire_date', 'user', 'user_email']
+        read_only_fields = ['teacher_id', 'user', 'username', 'user_email']
         extra_kwargs = {
             'password': {'write_only': True},
             'name': {'required': True},
-            'username': {'required': True},
         }
     
+    def get_username(self, obj):
+        """獲取用戶名（從關聯的 user 獲取）"""
+        return obj.user.username if obj.user else None
     
-    def validate_username(self, value):
-        """驗證帳號唯一性"""
-        if not value or not value.strip():
-            raise serializers.ValidationError('帳號不能為空')
+    def get_user_email(self, obj):
+        """獲取用戶郵箱"""
+        if obj.user:
+            return obj.user.email
+        return None
+    
+    def validate(self, data):
+        """驗證數據"""
+        # 在創建時，如果提供了 username，驗證唯一性
+        if not self.instance and 'username' in self.initial_data:
+            username = self.initial_data.get('username', '').strip()
+            if not username:
+                raise serializers.ValidationError({'username': '帳號不能為空'})
+            
+            # 檢查 CustomUser 中是否已存在該帳號
+            from django.contrib.auth import get_user_model
+            CustomUser = get_user_model()
+            if CustomUser.objects.filter(username=username).exists():
+                raise serializers.ValidationError({'username': '此帳號已被使用，請選擇其他帳號'})
         
-        # 檢查是否已存在（編輯時排除自己）
-        queryset = Teacher.objects.filter(username=value.strip())
-        if self.instance:  # 編輯模式
-            queryset = queryset.exclude(teacher_id=self.instance.teacher_id)
-        if queryset.exists():
-            raise serializers.ValidationError('此帳號已被使用，請選擇其他帳號')
-        
-        return value.strip()
+        return data
     
     def validate_name(self, value):
         """驗證姓名"""
@@ -118,23 +130,113 @@ class TeacherSerializer(serializers.ModelSerializer):
         return value.strip()
     
     def create(self, validated_data):
-        # 創建時必須提供密碼
-        password = validated_data.pop('password', None)
-        if not password or (isinstance(password, str) and password.strip() == ''):
-            raise serializers.ValidationError({'password': ['創建老師時必須提供密碼']})
+        """創建老師時自動創建 CustomUser"""
+        from django.contrib.auth import get_user_model
+        from account.models import UserRole
+        CustomUser = get_user_model()
         
-        # 確保密碼是字符串
-        if not isinstance(password, str):
-            password = str(password)
+        # 獲取創建時的數據
+        password = self.initial_data.get('password', '').strip()
+        username = self.initial_data.get('username', '').strip()
+        permission_level = validated_data.get('permission_level', 'Teacher')
+        name = validated_data.get('name')
         
-        validated_data['password_hash'] = make_password(password.strip())
+        if not username:
+            raise serializers.ValidationError({'username': '帳號不能為空'})
+        if not password:
+            raise serializers.ValidationError({'password': '創建老師時必須提供密碼'})
+        
+        # 根據 permission_level 決定 role
+        if permission_level == 'Admin':
+            user_role = UserRole.ADMIN
+        elif permission_level == 'Accountant':
+            user_role = UserRole.ACCOUNTANT
+        else:
+            user_role = UserRole.TEACHER
+        
+        # 生成 email
+        email = f"{username}@teacher.local"
+        counter = 1
+        while CustomUser.objects.filter(email=email).exists():
+            email = f"{username}_{counter}@teacher.local"
+            counter += 1
+        
+        # 創建 CustomUser
+        try:
+            user = CustomUser.objects.create_user(
+                username=username,
+                email=email,
+                password=password,
+                role=user_role,
+                first_name=name,
+                is_active=True,
+                must_change_password=True
+            )
+        except Exception as e:
+            raise serializers.ValidationError({'username': f'創建用戶帳號失敗: {str(e)}'})
+        
+        # 創建 Teacher 並關聯 CustomUser
+        validated_data['user'] = user
         return super().create(validated_data)
     
     def update(self, instance, validated_data):
-        # 更新時如果提供了密碼，則進行雜湊處理
-        password = validated_data.pop('password', None)
-        if password and password.strip() != '':
-            validated_data['password_hash'] = make_password(password)
+        """更新老師時同步更新 CustomUser"""
+        from django.contrib.auth import get_user_model
+        from account.models import UserRole
+        CustomUser = get_user_model()
+        
+        # 獲取更新數據
+        password = self.initial_data.get('password', '').strip()
+        username = self.initial_data.get('username', '').strip()
+        permission_level = validated_data.get('permission_level', instance.permission_level)
+        name = validated_data.get('name', instance.name)
+        
+        # 根據 permission_level 決定 role
+        if permission_level == 'Admin':
+            user_role = UserRole.ADMIN
+        elif permission_level == 'Accountant':
+            user_role = UserRole.ACCOUNTANT
+        else:
+            user_role = UserRole.TEACHER
+        
+        # 處理用戶帳號
+        if instance.user:
+            # 如果已有用戶，更新用戶資訊
+            user = instance.user
+            if username and username != user.username:
+                # 檢查新 username 是否已被使用
+                if CustomUser.objects.filter(username=username).exclude(id=user.id).exists():
+                    raise serializers.ValidationError({'username': '此帳號已被使用'})
+                user.username = username
+            user.role = user_role
+            user.first_name = name
+            if password:
+                user.set_password(password)
+            user.save()
+        else:
+            # 如果沒有用戶，創建新的用戶
+            if not username:
+                raise serializers.ValidationError({'username': '帳號不能為空'})
+            if not password:
+                raise serializers.ValidationError({'password': '必須提供密碼'})
+            
+            email = f"{username}@teacher.local"
+            counter = 1
+            while CustomUser.objects.filter(email=email).exists():
+                email = f"{username}_{counter}@teacher.local"
+                counter += 1
+            
+            user = CustomUser.objects.create_user(
+                username=username,
+                email=email,
+                password=password,
+                role=user_role,
+                first_name=name,
+                is_active=True,
+                must_change_password=True
+            )
+            validated_data['user'] = user
+        
         return super().update(instance, validated_data)
 
 

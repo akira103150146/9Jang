@@ -6,6 +6,73 @@ from django.apps import apps
 from django.contrib.contenttypes.models import ContentType
 
 
+def sort_models_by_dependencies(models):
+    """
+    根據外鍵依賴關係對模型進行排序
+    返回排序後的模型列表，確保先刪除子模型（有外鍵指向父模型的），
+    最後刪除父模型（被其他模型引用的）
+    
+    例如：QuestionBank 有外鍵指向 Subject (PROTECT)，
+    我們必須先刪除 QuestionBank，然後才能刪除 Subject
+    
+    使用拓撲排序：找出沒有被其他模型引用的模型（葉節點），
+    最後刪除它們；先刪除引用它們的模型
+    """
+    from django.db import models as django_models
+    
+    model_set = set(models)
+    
+    # 構建依賴圖：parent_model -> [child_models_that_reference_it]
+    # 如果 Model A 有外鍵指向 Model B (PROTECT)，那麼：
+    # - A 是子模型，B 是父模型
+    # - 我們必須先刪除 A，然後才能刪除 B
+    # - parent_to_children[B] = {A} 表示 B 被 A 引用
+    parent_to_children = {}  # {parent_model: set of child models that reference it}
+    
+    for model in models:
+        parent_to_children[model] = set()
+    
+    for model in models:
+        # 檢查所有外鍵關係
+        for field in model._meta.get_fields():
+            if isinstance(field, django_models.ForeignKey):
+                related_model = field.related_model
+                # 如果相關模型在要刪除的列表中
+                if related_model in model_set and related_model != model:
+                    # 當前 model 有外鍵指向 related_model
+                    # 所以當前 model 是子模型，related_model 是父模型
+                    # 如果外鍵是 PROTECT，我們必須先刪除子模型
+                    if field.remote_field.on_delete == django_models.PROTECT:
+                        parent_to_children[related_model].add(model)
+    
+    # 拓撲排序：找出沒有被其他模型引用的模型（葉節點），最後刪除它們
+    # 先刪除引用它們的模型（子模型），最後刪除被引用的模型（父模型）
+    sorted_models = []
+    remaining = set(models)
+    
+    while remaining:
+        # 找出沒有被其他模型引用的模型（或所有引用它的模型都已處理）
+        # 這些是可以安全刪除的模型（父模型，葉節點）
+        ready_to_delete = [
+            model for model in remaining
+            if not any(child in remaining for child in parent_to_children.get(model, set()))
+        ]
+        
+        if not ready_to_delete:
+            # 如果沒有找到，可能存在循環依賴，按原順序處理
+            sorted_models.extend(list(remaining))
+            break
+        
+        # 將這些模型加入排序列表（先刪除的在前）
+        # 注意：我們要反轉順序，因為我們想先刪除子模型，最後刪除父模型
+        # 但拓撲排序給我們的是相反的順序（先父後子），所以我們需要反轉
+        sorted_models = ready_to_delete + sorted_models
+        remaining -= set(ready_to_delete)
+    
+    # 反轉列表，使得先刪除子模型，最後刪除父模型
+    return sorted_models[::-1]
+
+
 class Command(BaseCommand):
     help = '強制清空當前資料庫中的所有資料（危險操作！）'
 
@@ -42,6 +109,9 @@ class Command(BaseCommand):
                     if model != ContentType:
                         continue
                 models_to_delete.append(model)
+
+        # 根據外鍵依賴關係排序模型，確保先刪除子模型，再刪除父模型
+        models_to_delete = sort_models_by_dependencies(models_to_delete)
 
         # 顯示警告信息
         self.stdout.write(

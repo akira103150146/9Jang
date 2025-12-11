@@ -128,13 +128,24 @@ class Teacher(models.Model):
     # 核心欄位
     teacher_id = models.AutoField(primary_key=True, verbose_name='老師ID')
     name = models.CharField(max_length=100, verbose_name='姓名')
-    username = models.CharField(max_length=50, unique=True, verbose_name='帳號')
-    password_hash = models.CharField(max_length=255, verbose_name='密碼雜湊')
+    
+    # 用戶帳號關聯（一對一關係）
+    user = models.OneToOneField(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='teacher_profile',
+        verbose_name='用戶帳號'
+    )
+    
+    # 保留 permission_level 用於業務邏輯（但實際權限應該從 user.role 獲取）
     permission_level = models.CharField(
         max_length=10,
         choices=PERMISSION_CHOICES,
         default='Teacher',
-        verbose_name='權限等級'
+        verbose_name='權限等級',
+        help_text='此欄位用於業務邏輯，實際權限應從 user.role 獲取'
     )
     phone = models.CharField(max_length=20, blank=True, null=True, verbose_name='聯絡電話')
     hire_date = models.DateField(blank=True, null=True, verbose_name='入職日期')
@@ -145,7 +156,13 @@ class Teacher(models.Model):
         ordering = ['name']
 
     def __str__(self):
-        return f"{self.name} ({self.username})"
+        username = self.user.username if self.user else '未設置帳號'
+        return f"{self.name} ({username})"
+    
+    @property
+    def username(self):
+        """獲取用戶名（從關聯的 user 獲取）"""
+        return self.user.username if self.user else None
 
 
 class Course(models.Model):

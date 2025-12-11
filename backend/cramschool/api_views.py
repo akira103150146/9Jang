@@ -422,10 +422,19 @@ class StudentViewSet(viewsets.ModelViewSet):
 class TeacherViewSet(viewsets.ModelViewSet):
     """
     提供 Teacher 模型 CRUD 操作的 API 視圖集
+    注意：創建/更新老師時會自動創建/更新對應的 CustomUser
     """
-    queryset = Teacher.objects.all()
+    queryset = Teacher.objects.select_related('user').all()
     serializer_class = TeacherSerializer
     permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+    
+    def get_serializer_context(self):
+        """
+        將 request 傳遞給序列化器，用於獲取初始數據
+        """
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
 
 
 class CourseViewSet(viewsets.ModelViewSet):

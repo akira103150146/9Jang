@@ -1,0 +1,55 @@
+#!/bin/bash
+# Git pre-push hook - 在推送前運行測試
+# 安裝方式: ln -s ../../scripts/pre-push .git/hooks/pre-push
+
+set -e
+
+echo "🔍 運行 pre-push 檢查..."
+
+# 獲取推送的分支名稱
+while read local_ref local_sha remote_ref remote_sha
+do
+    if [ -n "$remote_ref" ]; then
+        branch=$(echo "$remote_ref" | sed 's|refs/heads/||')
+        break
+    fi
+done
+
+# 如果是 main 或 develop 分支，強制運行測試
+if [ "$branch" = "main" ] || [ "$branch" = "develop" ]; then
+    echo "⚠️  推送至 $branch 分支，必須運行測試..."
+    
+    # 檢查是否在 backend 目錄
+    if [ ! -d "backend" ]; then
+        echo "❌ 錯誤：請在項目根目錄運行此 hook"
+        exit 1
+    fi
+    
+    # 運行後端測試
+    echo "🧪 運行後端測試..."
+    cd backend
+    
+    # 檢查是否有虛擬環境
+    if [ -d "venv" ] || [ -n "$VIRTUAL_ENV" ]; then
+        if [ -d "venv" ]; then
+            source venv/bin/activate
+        fi
+    fi
+    
+    # 運行測試
+    python manage.py test --verbosity=1
+    
+    if [ $? -ne 0 ]; then
+        echo ""
+        echo "❌ 測試失敗！請修復所有測試錯誤後再推送。"
+        echo "   運行 'python manage.py test' 查看詳細錯誤信息。"
+        exit 1
+    fi
+    
+    cd ..
+    echo "✅ 所有測試已通過！"
+else
+    echo "ℹ️  推送至 $branch 分支，跳過本地測試（CI/CD 會運行測試）"
+fi
+
+exit 0
