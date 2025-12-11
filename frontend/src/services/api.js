@@ -624,7 +624,8 @@ export const authAPI = {
   changePassword: (oldPassword, newPassword) => api.post('/account/change-password/', {
     old_password: oldPassword,
     new_password: newPassword
-  })
+  }),
+  impersonateUser: (userId) => api.post('/account/impersonate-user/', { user_id: userId })
 }
 
 // User API

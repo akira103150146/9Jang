@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
@@ -35,6 +35,9 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     # 定義使用的序列化器
     serializer_class = CustomUserSerializer
     
+    # Disable pagination to allow client-side filtering of all users
+    pagination_class = None
+
     # (可選) 設置權限：這裡我們假設只有系統管理員才能進行全部 CRUD 操作
     # 實際專案中您可能需要更細緻的權限控制 (例如讓使用者自己修改自己的資料)
     permission_classes = [IsAuthenticated]
@@ -43,7 +46,8 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
     #     如果不是管理員，則只返回自己的帳號
         if self.request.user.is_admin():
-            return CustomUser.objects.all()
+            qs = CustomUser.objects.all()
+            return qs
         return CustomUser.objects.filter(id=self.request.user.id)
 
 
@@ -491,4 +495,60 @@ def current_role_view(request):
         'temp_role_display': dict(UserRole.choices)[temp_role] if temp_role else None,
         'effective_role': temp_role if temp_role else original_role,
         'effective_role_display': dict(UserRole.choices)[temp_role] if temp_role else dict(UserRole.choices)[original_role]
+    })
+
+# 模擬指定用戶登入
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def impersonate_user_view(request):
+    """
+    管理員可以模擬指定用戶登入
+    生成目標用戶的 access token 和 refresh token
+    只有管理員可以使用此功能
+    """
+    if not request.user.is_admin():
+        return Response(
+            {'detail': '只有管理員可以模擬其他用戶'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    target_user_id = request.data.get('user_id')
+    if not target_user_id:
+        return Response(
+            {'detail': '請提供目標用戶 ID'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    target_user = get_object_or_404(CustomUser, id=target_user_id)
+    
+    # 防止模擬其他管理員（可選，視需求而定）
+    # if target_user.is_admin():
+    #     return Response(
+    #         {'detail': '不能模擬其他管理員'},
+    #         status=status.HTTP_403_FORBIDDEN
+    #     )
+    
+    # 生成目標用戶的 token
+    refresh = RefreshToken.for_user(target_user)
+    access_token = refresh.access_token
+    
+    serializer = CustomUserSerializer(target_user)
+    
+    # 記錄操作
+    try:
+        log_audit(
+            request, 'other', 'User', 
+            target_user.id, 
+            target_user.username,
+            description=f'模擬用戶登入：{target_user.username}',
+            response_status=status.HTTP_200_OK
+        )
+    except:
+        pass
+    
+    return Response({
+        'user': serializer.data,
+        'access': str(access_token),
+        'refresh': str(refresh),
+        'message': f'已切換為 {target_user.username} 身分'
     })

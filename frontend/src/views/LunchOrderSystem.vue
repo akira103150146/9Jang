@@ -7,7 +7,7 @@
           <h2 class="text-2xl font-bold text-slate-900">訂便當系統</h2>
           <p class="mt-2 text-sm text-slate-500">管理店家、創建團購、處理訂單</p>
         </div>
-        <div class="flex gap-3">
+        <div class="flex gap-3" v-if="!isStudent">
           <button
             @click="showRestaurantForm = true"
             class="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-2 text-sm font-semibold text-white shadow-md hover:from-orange-600 hover:to-amber-600"
@@ -25,7 +25,7 @@
     </header>
 
     <!-- 統計卡片 -->
-    <section class="grid gap-4 md:grid-cols-3">
+    <section class="grid gap-4 md:grid-cols-3" v-if="!isStudent">
       <div class="rounded-3xl border border-orange-100 bg-white p-5 shadow-sm">
         <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">店家總數</p>
         <p class="mt-2 text-3xl font-bold text-slate-900">{{ restaurants.length }}</p>
@@ -56,15 +56,27 @@
         進行中 ({{ activeGroupOrders.length }})
       </button>
       <button
+        v-if="isStudent"
+        @click="activeTab = 'my_orders'"
+        :class="[
+          'px-4 py-2 text-sm font-semibold transition-colors',
+          activeTab === 'my_orders'
+            ? 'text-blue-600 border-b-2 border-blue-600'
+            : 'text-slate-600 hover:text-slate-900'
+        ]"
+      >
+        我的訂單 ({{ myOrders.length }})
+      </button>
+      <button
         @click="activeTab = 'history'"
         :class="[
           'px-4 py-2 text-sm font-semibold transition-colors',
           activeTab === 'history'
-            ? 'text-green-600 border-b-2 border-green-600'
+            ? 'text-gray-600 border-b-2 border-gray-600'
             : 'text-slate-600 hover:text-slate-900'
         ]"
       >
-        歷史記錄 ({{ completedGroupOrders.length }})
+        歷史團購 ({{ completedGroupOrders.length }})
       </button>
     </div>
 
@@ -132,6 +144,51 @@
       </div>
     </section>
 
+    <!-- 我的訂單 (學生專用) -->
+    <section v-if="activeTab === 'my_orders' && isStudent">
+      <h3 class="text-lg font-semibold text-slate-900 mb-4">我的訂單記錄</h3>
+      <div v-if="loading" class="text-center py-12 text-slate-500">載入中...</div>
+      <div v-else-if="myOrders.length === 0" class="rounded-3xl border border-slate-100 bg-white p-12 text-center">
+        <p class="text-slate-500">您目前沒有訂單記錄</p>
+      </div>
+      <div v-else class="grid gap-4 md:grid-cols-2">
+        <article
+          v-for="order in myOrders"
+          :key="order.order_id"
+          class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm"
+        >
+          <div class="flex items-start justify-between">
+            <div class="flex-1">
+              <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">
+                {{ order.group_order_title }}
+              </p>
+              <h4 class="mt-1 text-lg font-semibold text-slate-900">${{ order.total_amount }}</h4>
+              <p class="mt-2 text-sm text-slate-600">
+                訂購時間：{{ formatDateTime(order.created_at) }}
+              </p>
+              <div class="mt-2 text-sm text-slate-600">
+                <ul>
+                    <li v-for="item in order.items" :key="item.order_item_id">
+                        {{ item.item_name }} x {{ item.quantity }} (${{ item.subtotal }})
+                    </li>
+                </ul>
+              </div>
+            </div>
+            <span
+              :class="[
+                'ml-2 rounded-full px-3 py-1 text-xs font-semibold',
+                order.status === 'Confirmed' ? 'bg-emerald-50 text-emerald-600' :
+                order.status === 'Pending' ? 'bg-amber-50 text-amber-600' :
+                'bg-slate-50 text-slate-600'
+              ]"
+            >
+              {{ order.status === 'Confirmed' ? '已確認' : (order.status === 'Pending' ? '待確認' : order.status) }}
+            </span>
+          </div>
+        </article>
+      </div>
+    </section>
+
     <!-- 歷史團購 -->
     <section v-if="activeTab === 'history'">
       <h3 class="text-lg font-semibold text-slate-900 mb-4">歷史團購記錄</h3>
@@ -185,7 +242,7 @@
     </section>
 
     <!-- 店家列表 -->
-    <section>
+    <section v-if="!isStudent">
       <h3 class="text-lg font-semibold text-slate-900 mb-4">店家管理</h3>
       <div v-if="loading" class="text-center py-12 text-slate-500">載入中...</div>
       <div v-else-if="restaurants.length === 0" class="rounded-3xl border border-slate-100 bg-white p-12 text-center">
@@ -426,13 +483,16 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { restaurantAPI, groupOrderAPI, uploadImageAPI, getBackendBaseURL } from '../services/api'
+import { restaurantAPI, groupOrderAPI, uploadImageAPI, getBackendBaseURL, authAPI, orderAPI } from '../services/api'
 
 // 獲取後端基礎 URL（用於圖片顯示）
 const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL || getBackendBaseURL()
 
 const restaurants = ref([])
 const groupOrders = ref([])
+const myOrders = ref([])
+const isStudent = ref(false)
+const studentId = ref(null)
 const loading = ref(false)
 const saving = ref(false)
 const showRestaurantForm = ref(false)
@@ -491,6 +551,18 @@ const fetchGroupOrders = async () => {
   } catch (error) {
     console.error('獲取團購失敗：', error)
     groupOrders.value = []
+  }
+}
+
+const fetchMyOrders = async () => {
+  if (!studentId.value) return
+  try {
+    const response = await orderAPI.getAll(null, studentId.value)
+    const data = response.data.results || response.data
+    myOrders.value = Array.isArray(data) ? data : []
+  } catch (error) {
+    console.error('獲取個人訂單失敗：', error)
+    myOrders.value = []
   }
 }
 
@@ -695,8 +767,24 @@ const getStatusDisplay = (status) => {
   return map[status] || status
 }
 
-onMounted(() => {
+onMounted(async () => {
   loading.value = true
+  
+  try {
+    const user = await authAPI.getCurrentUser()
+    const userData = user.data
+    if (userData.role === 'STUDENT') {
+        isStudent.value = true
+        studentId.value = userData.student_id
+        // 如果是學生，默認顯示 active tab，但如果有 my orders 需求，也可以預加載
+        if (studentId.value) {
+            fetchMyOrders()
+        }
+    }
+  } catch (e) {
+    console.error('獲取用戶角色失敗', e)
+  }
+
   Promise.all([fetchRestaurants(), fetchGroupOrders()]).finally(() => {
     loading.value = false
   })

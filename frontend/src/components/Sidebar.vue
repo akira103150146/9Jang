@@ -29,30 +29,36 @@
             <p class="text-sm font-semibold text-slate-900 truncate">{{ currentUser.username }}</p>
             <p class="text-xs text-slate-500 truncate">
               {{ effectiveRoleDisplay }}
-              <span v-if="tempRole" class="text-amber-600">（模擬中）</span>
+              <span v-if="isImpersonating" class="text-amber-600">（模擬中）</span>
             </p>
           </div>
         </div>
         
         <!-- 角色切換（僅管理員可見） -->
         <div v-if="currentUser.role === 'ADMIN'" class="mt-3">
-          <label class="block text-xs font-semibold text-slate-700 mb-1 px-1">切換角色視角</label>
+          <label class="block text-xs font-semibold text-slate-700 mb-1 px-1">切換身分模擬</label>
           <select
             v-model="selectedRole"
-            @change="switchRole"
+            @change="handleRoleSelect"
             class="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
           >
-            <option value="">原始角色</option>
+            <option value="">選擇身分...</option>
             <option value="TEACHER">老師</option>
             <option value="STUDENT">學生</option>
             <option value="ACCOUNTANT">會計</option>
           </select>
+        </div>
+
+        <!-- 停止模擬按鈕（當處於模擬狀態時顯示） -->
+        <div v-if="isImpersonating" class="mt-3">
           <button
-            v-if="tempRole"
-            @click="resetRole"
-            class="mt-2 w-full rounded-lg px-3 py-1 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200"
+            @click="stopImpersonation"
+            class="w-full flex items-center justify-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-100 transition-colors"
           >
-            重置角色
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-11.25a.75.75 0 00-1.5 0v2.5h-2.5a.75.75 0 000 1.5h2.5v2.5a.75.75 0 001.5 0v-2.5h2.5a.75.75 0 000-1.5h-2.5v-2.5z" clip-rule="evenodd" />
+            </svg>
+            停止模擬（返回管理員）
           </button>
         </div>
       </div>
@@ -82,14 +88,23 @@
         </button>
       </div>
     </div>
+
+    <!-- 用戶選擇 Modal -->
+    <UserSelectModal 
+      :is-open="showUserSelectModal"
+      :role="targetRole"
+      @close="closeUserSelectModal"
+      @select="handleUserSelect"
+    />
   </aside>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { authAPI, roleSwitchAPI } from '../services/api'
+import { authAPI, setTokens, clearTokens } from '../services/api'
 import logoUrl from '../assets/logo_jiuzhang.png'
+import UserSelectModal from './UserSelectModal.vue'
 
 defineProps({
   isOpen: {
@@ -104,8 +119,11 @@ const route = useRoute()
 const router = useRouter()
 const currentUser = ref(null)
 const userPermissions = ref([])
-const tempRole = ref(null)
+// const tempRole = ref(null) // Deprecated: Old role simulation
 const selectedRole = ref('')
+const showUserSelectModal = ref(false)
+const targetRole = ref('')
+const isImpersonating = ref(false)
 
 const roleDisplayMap = {
   'ADMIN': '系統管理員',
@@ -115,9 +133,6 @@ const roleDisplayMap = {
 }
 
 const effectiveRoleDisplay = computed(() => {
-  if (tempRole.value) {
-    return roleDisplayMap[tempRole.value] || tempRole.value
-  }
   return currentUser.value?.role_display || roleDisplayMap[currentUser.value?.role] || currentUser.value?.role || ''
 })
 
@@ -141,7 +156,8 @@ const getUserInitials = (user) => {
 }
 
 const allNavItems = [
-  { name: 'dashboard', label: '儀表板', path: '/', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'] },
+  { name: 'student-home', label: '首頁', path: '/student-home', requiresAdmin: false, allowedRoles: ['STUDENT'] },
+  { name: 'dashboard', label: '營運儀表板', path: '/', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER', 'ACCOUNTANT'] },
   { name: 'student-list', label: '學生管理', path: '/students', requiresAdmin: false, allowedRoles: ['ADMIN', 'ACCOUNTANT'] },
   { name: 'teachers', label: '老師管理', path: '/teachers', requiresAdmin: false, allowedRoles: ['ADMIN'] },
   { name: 'courses', label: '課程管理', path: '/courses', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER', 'STUDENT'] },
@@ -163,11 +179,10 @@ const navItems = computed(() => {
     return []
   }
 
-  // 獲取有效角色（考慮角色切換）
-  const effectiveRole = tempRole.value || currentUser.value.role
+  const role = currentUser.value.role
 
   // 管理員可以看到所有頁面
-  if (effectiveRole === 'ADMIN') {
+  if (role === 'ADMIN') {
     return allNavItems
   }
 
@@ -180,7 +195,7 @@ const navItems = computed(() => {
 
     // 檢查 allowedRoles
     if (item.allowedRoles && item.allowedRoles.length > 0) {
-      return item.allowedRoles.includes(effectiveRole)
+      return item.allowedRoles.includes(role)
     }
 
     // 檢查頁面權限
@@ -216,16 +231,26 @@ const fetchUserInfo = async () => {
       return
     }
 
-    // 檢查是否有 access token，如果沒有則不發起請求
     const accessToken = localStorage.getItem('access_token')
     if (!accessToken) {
       return
+    }
+
+    // 檢查是否在模擬中
+    if (localStorage.getItem('original_access_token')) {
+      isImpersonating.value = true
     }
 
     // 從 localStorage 獲取用戶信息
     const userStr = localStorage.getItem('user')
     if (userStr) {
       currentUser.value = JSON.parse(userStr)
+      // Force disable password change prompt during impersonation
+      if (isImpersonating.value && currentUser.value.must_change_password) {
+        currentUser.value.must_change_password = false
+        // Update local storage to prevent prompt on refresh
+        localStorage.setItem('user', JSON.stringify(currentUser.value))
+      }
       
       // 如果用戶有自訂角色，獲取權限
       if (currentUser.value.custom_role) {
@@ -239,7 +264,11 @@ const fetchUserInfo = async () => {
       const { authAPI } = await import('../services/api')
       const response = await authAPI.getCurrentUser()
       currentUser.value = response.data
-      localStorage.setItem('user', JSON.stringify(response.data))
+      // Force disable password change prompt during impersonation
+      if (isImpersonating.value && currentUser.value.must_change_password) {
+        currentUser.value.must_change_password = false
+      }
+      localStorage.setItem('user', JSON.stringify(currentUser.value))
       
       if (response.data.custom_role) {
         const { roleAPI } = await import('../services/api')
@@ -248,13 +277,14 @@ const fetchUserInfo = async () => {
       }
     }
   } catch (error) {
-    // 如果是 401 錯誤，可能是 token 過期或無效，靜默處理
     if (error.response?.status === 401) {
-      // 清除可能無效的 token 和用戶信息
-      const { clearTokens } = await import('../services/api')
       clearTokens()
       currentUser.value = null
       userPermissions.value = []
+      // Also clear impersonation data if session invalid
+      localStorage.removeItem('original_access_token')
+      localStorage.removeItem('original_refresh_token')
+      localStorage.removeItem('original_user')
     } else {
       console.error('獲取用戶信息失敗:', error)
     }
@@ -263,97 +293,102 @@ const fetchUserInfo = async () => {
 
 const handleLogout = async () => {
   try {
-    const { authAPI, clearTokens } = await import('../services/api')
+    // 如果是模擬中，直接登出會清除所有 token (包括原始管理員的)
+    // 這裡我們直接調用 API 並清除所有本地存儲
     await authAPI.logout()
-    // authAPI.logout 已經處理了清除 token 和用戶信息
-    tempRole.value = null
-    selectedRole.value = ''
-    router.push('/login')
   } catch (error) {
     console.error('登出失敗:', error)
-    // 即使 API 失敗，也清除本地存儲並跳轉
-    const { clearTokens } = await import('../services/api')
+  } finally {
     clearTokens()
-    tempRole.value = null
+    // 清除模擬數據
+    localStorage.removeItem('original_access_token')
+    localStorage.removeItem('original_refresh_token')
+    localStorage.removeItem('original_user')
+    localStorage.removeItem('temp_role')
+    
+    isImpersonating.value = false
     selectedRole.value = ''
     router.push('/login')
   }
 }
 
-const switchRole = async (event) => {
+const handleRoleSelect = (event) => {
   const role = event.target.value
+  if (!role) return
   
-  if (!role) {
-    await resetRole()
-    return
-  }
-  
+  targetRole.value = role
+  showUserSelectModal.value = true
+  // Reset select to avoid state issues if modal cancelled
+  selectedRole.value = '' 
+}
+
+const closeUserSelectModal = () => {
+  showUserSelectModal.value = false
+  targetRole.value = ''
+}
+
+const handleUserSelect = async (user) => {
   try {
-    // 先將臨時角色存儲到 localStorage（在調用 API 之前，這樣攔截器才能讀取到）
-    localStorage.setItem('temp_role', role)
-    tempRole.value = role
-    selectedRole.value = role
+    // 1. 保存當前管理員 Token
+    const adminAccess = localStorage.getItem('access_token')
+    const adminRefresh = localStorage.getItem('refresh_token')
+    const adminUser = localStorage.getItem('user')
     
-    const response = await roleSwitchAPI.switchRole(role)
+    if (!adminAccess || !adminRefresh) {
+      alert('無法獲取當前管理員憑證')
+      return
+    }
     
-    // 重新獲取用戶信息以更新顯示
-    await fetchUserInfo()
+    localStorage.setItem('original_access_token', adminAccess)
+    localStorage.setItem('original_refresh_token', adminRefresh)
+    localStorage.setItem('original_user', adminUser)
     
-    // 重新載入頁面以應用新的角色視角
+    // 2. 調用模擬 API
+    const response = await authAPI.impersonateUser(user.id)
+    
+    // 3. 設置新 Token
+    setTokens(response.data.access, response.data.refresh)
+    const impersonatedUser = response.data.user
+    impersonatedUser.must_change_password = false // Force disable password change for impersonation
+    localStorage.setItem('user', JSON.stringify(impersonatedUser))
+    
+    // 4. 重新載入頁面以應用新權限
     window.location.reload()
+    
   } catch (error) {
-    console.error('切換角色失敗：', error)
-    alert('切換角色失敗，請稍後再試')
+    console.error('模擬用戶失敗:', error)
+    alert('模擬用戶失敗，請稍後再試')
+    closeUserSelectModal()
   }
 }
 
-const resetRole = async () => {
-  try {
-    await roleSwitchAPI.resetRole()
-    // 清除 localStorage 中的臨時角色
+const stopImpersonation = () => {
+  const originalAccess = localStorage.getItem('original_access_token')
+  const originalRefresh = localStorage.getItem('original_refresh_token')
+  const originalUser = localStorage.getItem('original_user')
+  
+  if (originalAccess && originalRefresh) {
+    // 恢復原始 Token
+    setTokens(originalAccess, originalRefresh)
+    if (originalUser) {
+      localStorage.setItem('user', originalUser)
+    }
+    
+    // 清除模擬數據
+    localStorage.removeItem('original_access_token')
+    localStorage.removeItem('original_refresh_token')
+    localStorage.removeItem('original_user')
     localStorage.removeItem('temp_role')
-    tempRole.value = null
-    selectedRole.value = ''
-    // 重新獲取用戶信息
-    await fetchUserInfo()
+    
     // 重新載入頁面
     window.location.reload()
-  } catch (error) {
-    console.error('重置角色失敗：', error)
-    alert('重置角色失敗，請稍後再試')
-  }
-}
-
-const fetchCurrentRole = async () => {
-  try {
-    // 先從 localStorage 讀取臨時角色
-    const storedTempRole = localStorage.getItem('temp_role')
-    if (storedTempRole) {
-      tempRole.value = storedTempRole
-      selectedRole.value = storedTempRole
-    }
-    
-    const response = await roleSwitchAPI.getCurrentRole()
-    
-    // 如果後端返回了臨時角色，更新前端狀態
-    if (response.data.temp_role) {
-      tempRole.value = response.data.temp_role
-      selectedRole.value = response.data.temp_role
-      localStorage.setItem('temp_role', response.data.temp_role)
-    } else if (!storedTempRole) {
-      // 如果後端沒有臨時角色，且本地也沒有，則清除
-      tempRole.value = null
-      selectedRole.value = ''
-      localStorage.removeItem('temp_role')
-    }
-  } catch (error) {
-    // 忽略錯誤，可能用戶不是管理員
+  } else {
+    // 如果找不到原始 Token，只能登出
+    handleLogout()
   }
 }
 
 onMounted(() => {
   fetchUserInfo()
-  fetchCurrentRole()
 })
 </script>
-

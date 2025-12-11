@@ -4,7 +4,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
     CustomUserViewSet, RoleViewSet, RolePermissionViewSet, AuditLogViewSet,
     login_view, logout_view, current_user_view, change_password_view,
-    switch_role_view, reset_role_view, current_role_view
+    switch_role_view, reset_role_view, current_role_view, impersonate_user_view
 )
 # 建立一個 Router 實例
 router = DefaultRouter()
@@ -25,5 +25,6 @@ urlpatterns = [
     path('switch-role/', switch_role_view, name='switch-role'),
     path('reset-role/', reset_role_view, name='reset-role'),
     path('current-role/', current_role_view, name='current-role'),
+    path('impersonate-user/', impersonate_user_view, name='impersonate-user'),
     path('', include(router.urls)),
 ]

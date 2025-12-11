@@ -24,10 +24,17 @@ import ExamManagement from '../views/ExamManagement.vue'
 import CourseMaterialManagement from '../views/CourseMaterialManagement.vue'
 import StudentGroupManagement from '../views/StudentGroupManagement.vue'
 import AssessmentGenerator from '../views/AssessmentGenerator.vue'
+import StudentHome from '../views/StudentHome.vue'
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
+    {
+      path: '/student-home',
+      name: 'student-home',
+      component: StudentHome,
+      meta: { title: '學生首頁' },
+    },
     {
       path: '/login',
       name: 'login',
@@ -272,8 +279,20 @@ router.beforeEach(async (to, from, next) => {
   // 根據角色過濾路由
   const roleBasedFilter = getRoleBasedRouteFilter(effectiveRole)
   if (roleBasedFilter && !roleBasedFilter(to.path)) {
+    // 特殊處理：如果是學生訪問首頁，自動重定向到學生首頁
+    if (effectiveRole === 'STUDENT' && to.path === '/') {
+      next('/student-home')
+      return
+    }
+
     alert('您沒有權限訪問此頁面')
     next('/')
+    return
+  }
+
+  // 學生登入後訪問根路徑，重定向到學生首頁
+  if (effectiveRole === 'STUDENT' && to.path === '/') {
+    next('/student-home')
     return
   }
 
@@ -311,8 +330,8 @@ function getRoleBasedRouteFilter(role) {
 
   if (role === 'STUDENT') {
     return (path) => {
-      // 學生只能訪問：自己報名的課程、相關考卷、訂便當
-      const allowedPaths = ['/', '/courses', '/exams', '/lunch-orders']
+      // 學生只能訪問：自己報名的課程、相關考卷、訂便當、學生首頁、費用詳情
+      const allowedPaths = ['/', '/courses', '/exams', '/lunch-orders', '/student-home', '/students']
       return allowedPaths.some(allowed => path.startsWith(allowed))
     }
   }

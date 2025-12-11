@@ -15,6 +15,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
     # 我們可以覆寫 role 欄位，確保它顯示為人類可讀的選項 (例如 '學生' 而不是 'STUDENT')
     role_display = serializers.CharField(source='get_role_display', read_only=True)
     custom_role_name = serializers.CharField(source='custom_role.name', read_only=True)
+    student_id = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
@@ -23,9 +24,15 @@ class CustomUserSerializer(serializers.ModelSerializer):
             'id', 'username', 'email', 'first_name', 'last_name', 
             'role', 'role_display', 'custom_role', 'custom_role_name', 
             'is_staff', 'is_active', 'must_change_password',
+            'student_id',
         )
         # read_only_fields = ('is_staff', 'is_active') 
         # extra_kwargs = {'password': {'write_only': True}} # 處理密碼時使用，此處我們先省略密碼相關操作
+
+    def get_student_id(self, obj):
+        if hasattr(obj, 'student_profile') and obj.student_profile:
+            return obj.student_profile.student_id
+        return None
 
 
 class RolePermissionSerializer(serializers.ModelSerializer):
