@@ -1266,9 +1266,17 @@ class OrderItemViewSet(viewsets.ModelViewSet):
         """
         創建訂單項目時自動計算小計，並更新訂單總金額
         """
-        item = serializer.save()
-        item.subtotal = item.quantity * item.unit_price
-        item.save()
+        # 計算小計 (避免 IntegrityError: subtotal cannot be null)
+        quantity = serializer.validated_data.get('quantity', 1)
+        unit_price = serializer.validated_data.get('unit_price')
+        # 如果 unit_price 為 None (理論上序列化器會驗證必填)，則從 validated_data 獲取
+        if unit_price is None:
+             # 這邊防禦性編碼，實際上序列化器應該已經擋下
+             raise serializers.ValidationError({"unit_price": "此欄位為必填項。"})
+
+        subtotal = quantity * unit_price
+        
+        item = serializer.save(subtotal=subtotal)
         
         # 更新訂單總金額
         order = item.order
@@ -1280,9 +1288,13 @@ class OrderItemViewSet(viewsets.ModelViewSet):
         """
         更新訂單項目時自動計算小計，並更新訂單總金額
         """
-        item = serializer.save()
-        item.subtotal = item.quantity * item.unit_price
-        item.save()
+        # 計算小計
+        instance = serializer.instance
+        quantity = serializer.validated_data.get('quantity', instance.quantity)
+        unit_price = serializer.validated_data.get('unit_price', instance.unit_price)
+        subtotal = quantity * unit_price
+        
+        item = serializer.save(subtotal=subtotal)
         
         # 更新訂單總金額
         order = item.order

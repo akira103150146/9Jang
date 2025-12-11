@@ -241,3 +241,4 @@ python manage.py test
 - [部署文檔](./GCP_DEPLOYMENT.md)
 - [GitHub Actions 配置](./.github/workflows/test.yml)
 - [Cloud Build 配置](./cloudbuild.yaml)
+

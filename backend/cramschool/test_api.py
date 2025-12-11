@@ -1472,6 +1472,13 @@ class QuizAPITestCase(BaseAPITestCase):
     
     def test_individualized_quiz_only_visible_to_group_members(self):
         """測試個別化測驗只對群組成員可見"""
+        # 學生必須先報名課程才能看到該課程的測驗
+        StudentEnrollment.objects.create(
+            student=self.student,
+            course=self.course,
+            enroll_date=date.today()
+        )
+        
         student_group = StudentGroup.objects.create(
             name='測試群組',
             created_by=self.teacher_user
@@ -1948,8 +1955,9 @@ class EnrollmentPeriodAPITestCase(BaseAPITestCase):
         response = self.client.get(url, {'enrollment': self.enrollment.enrollment_id})
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['enrollment'], self.enrollment.enrollment_id)
+        results = self.get_response_results(response)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['enrollment'], self.enrollment.enrollment_id)
 
 
 class RestaurantAPITestCase(BaseAPITestCase):
@@ -2117,3 +2125,4 @@ class StudentAnswerAPITestCase(BaseAPITestCase):
 
 
 # 測試文件已完成，涵蓋了所有主要的 API CRUD 操作和商業邏輯
+

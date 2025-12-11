@@ -30,3 +30,4 @@ echo "✅ Git hooks 安裝完成！"
 echo ""
 echo "現在當您執行 'git push' 時，會自動運行測試檢查。"
 echo "如果測試失敗，推送將被阻止。"
+
