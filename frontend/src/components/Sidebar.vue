@@ -160,7 +160,8 @@ const allNavItems = [
   { name: 'dashboard', label: '營運儀表板', path: '/', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER', 'ACCOUNTANT'] },
   { name: 'student-list', label: '學生管理', path: '/students', requiresAdmin: false, allowedRoles: ['ADMIN', 'ACCOUNTANT'] },
   { name: 'teachers', label: '老師管理', path: '/teachers', requiresAdmin: false, allowedRoles: ['ADMIN'] },
-  { name: 'courses', label: '課程管理', path: '/courses', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER', 'STUDENT'] },
+  // 學生不顯示課程管理側邊欄入口，改由首頁入口進入
+  { name: 'courses', label: '課程管理', path: '/courses', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
   { name: 'attendance', label: '出缺勤', path: '/attendance', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
   { name: 'questions', label: '題庫系統', path: '/questions', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
   { name: 'quizzes', label: 'Quiz 管理', path: '/quizzes', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
