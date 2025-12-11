@@ -9,3 +9,4 @@ media
 .env.*.local
 backend/.env
 frontend/.env
+.cursor/debug.log

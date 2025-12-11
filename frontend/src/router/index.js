@@ -19,6 +19,11 @@ import StudentFeeTracker from '../views/StudentFeeTracker.vue'
 import RoleManagement from '../views/RoleManagement.vue'
 import AuditLog from '../views/AuditLog.vue'
 import Login from '../views/Login.vue'
+import QuizManagement from '../views/QuizManagement.vue'
+import ExamManagement from '../views/ExamManagement.vue'
+import CourseMaterialManagement from '../views/CourseMaterialManagement.vue'
+import StudentGroupManagement from '../views/StudentGroupManagement.vue'
+import AssessmentGenerator from '../views/AssessmentGenerator.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -170,11 +175,45 @@ const router = createRouter({
       component: AuditLog,
       meta: { title: '操作記錄', requiresAdmin: true },
     },
+    {
+      path: '/quizzes',
+      name: 'quizzes',
+      component: QuizManagement,
+      meta: { title: 'Quiz 管理', allowedRoles: ['ADMIN', 'TEACHER'] },
+    },
+    {
+      path: '/exams',
+      name: 'exams',
+      component: ExamManagement,
+      meta: { title: '考卷管理', allowedRoles: ['ADMIN', 'TEACHER'] },
+    },
+    {
+      path: '/materials',
+      name: 'materials',
+      component: CourseMaterialManagement,
+      meta: { title: '講義管理', allowedRoles: ['ADMIN', 'TEACHER'] },
+    },
+    {
+      path: '/student-groups',
+      name: 'student-groups',
+      component: StudentGroupManagement,
+      meta: { title: '學生群組管理', allowedRoles: ['ADMIN', 'TEACHER'] },
+    },
+    {
+      path: '/generator',
+      name: 'generator',
+      component: AssessmentGenerator,
+      meta: { title: '生成器', allowedRoles: ['ADMIN', 'TEACHER'] },
+    },
   ],
 })
 
 // 路由守衛：檢查權限
 router.beforeEach(async (to, from, next) => {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'router/index.js:212', message: 'Router beforeEach', data: { to: to.path }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H1' }) }).catch(() => { });
+  // #endregion
+
   // 登入頁面不需要認證
   if (to.name === 'login') {
     // 如果已經登入，跳轉到首頁
@@ -189,49 +228,110 @@ router.beforeEach(async (to, from, next) => {
 
   // 檢查是否已登入
   const user = await getCurrentUser()
+
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'router/index.js:226', message: 'User check', data: { hasUser: !!user, role: user?.role }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H1' }) }).catch(() => { });
+  // #endregion
+
   if (!user) {
     // 未登入，跳轉到登入頁
     next('/login')
     return
   }
 
+  // 獲取有效角色（考慮角色切換）
+  let effectiveRole = user.role
+  try {
+    const { roleSwitchAPI } = await import('../services/api')
+    const roleResponse = await roleSwitchAPI.getCurrentRole()
+    if (roleResponse.data.temp_role) {
+      effectiveRole = roleResponse.data.temp_role
+    }
+  } catch (error) {
+    // 忽略錯誤，使用原始角色
+  }
+
   // 檢查是否需要管理員權限
   if (to.meta.requiresAdmin) {
-    try {
-      // 獲取當前用戶信息
-      const user = await getCurrentUser()
-      if (!user || user.role !== 'ADMIN') {
-        alert('您沒有權限訪問此頁面')
-        next('/')
-        return
-      }
-    } catch (error) {
-      console.error('獲取用戶信息失敗:', error)
-      alert('無法驗證權限，請重新登入')
+    if (effectiveRole !== 'ADMIN') {
+      alert('您沒有權限訪問此頁面')
       next('/')
       return
     }
   }
 
+  // 檢查允許的角色
+  if (to.meta.allowedRoles && to.meta.allowedRoles.length > 0) {
+    if (!to.meta.allowedRoles.includes(effectiveRole)) {
+      alert('您沒有權限訪問此頁面')
+      next('/')
+      return
+    }
+  }
+
+  // 根據角色過濾路由
+  const roleBasedFilter = getRoleBasedRouteFilter(effectiveRole)
+  if (roleBasedFilter && !roleBasedFilter(to.path)) {
+    alert('您沒有權限訪問此頁面')
+    next('/')
+    return
+  }
+
   // 檢查頁面權限（如果不是管理員）
   if (to.meta.requiresPagePermission) {
-    try {
-      const user = await getCurrentUser()
-      if (user && user.role !== 'ADMIN') {
-        const hasPermission = await checkPagePermission(user, to.path)
-        if (!hasPermission) {
-          alert('您沒有權限訪問此頁面')
-          next('/')
-          return
-        }
+    if (effectiveRole !== 'ADMIN') {
+      const hasPermission = await checkPagePermission(user, to.path)
+      if (!hasPermission) {
+        alert('您沒有權限訪問此頁面')
+        next('/')
+        return
       }
-    } catch (error) {
-      console.error('檢查頁面權限失敗:', error)
     }
   }
 
   next()
 })
+
+// 根據角色過濾路由的函數
+function getRoleBasedRouteFilter(role) {
+  if (role === 'ADMIN') {
+    return null // 管理員可以訪問所有路由
+  }
+
+  if (role === 'TEACHER') {
+    return (path) => {
+      // 老師可以訪問：課程、題庫、Quiz、Exam、講義、學生群組、生成器
+      const allowedPaths = [
+        '/', '/courses', '/questions', '/quizzes', '/exams', '/materials',
+        '/student-groups', '/generator'
+      ]
+      return allowedPaths.some(allowed => path.startsWith(allowed))
+    }
+  }
+
+  if (role === 'STUDENT') {
+    return (path) => {
+      // 學生只能訪問：自己報名的課程、相關考卷、訂便當
+      const allowedPaths = ['/', '/courses', '/exams', '/lunch-orders']
+      return allowedPaths.some(allowed => path.startsWith(allowed))
+    }
+  }
+
+  if (role === 'ACCOUNTANT') {
+    return (path) => {
+      // 會計可以訪問：帳務、訂便當、學生基本資料（僅查看）
+      const allowedPaths = ['/', '/students', '/lunch-orders']
+      // 排除教學相關模組
+      const excludedPaths = ['/questions', '/quizzes', '/exams', '/materials', '/student-groups', '/generator', '/courses']
+      if (excludedPaths.some(excluded => path.startsWith(excluded))) {
+        return false
+      }
+      return allowedPaths.some(allowed => path.startsWith(allowed))
+    }
+  }
+
+  return null
+}
 
 // 獲取當前用戶信息
 async function getCurrentUser() {

@@ -27,10 +27,13 @@ COPY backend/ /app/
 RUN mkdir -p /app/staticfiles /app/media
 
 # 設置權限
-RUN chmod +x /app/manage.py
+RUN chmod +x /app/manage.py /app/entrypoint.sh
 
 # 暴露端口（Cloud Run 會自動設置 PORT 環境變數）
 EXPOSE 8080
+
+# 設置入口點
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 # 啟動命令
 # Cloud Run 會提供 PORT 環境變數，默認使用 8080

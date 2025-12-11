@@ -14,6 +14,8 @@ class UserRole(models.TextChoices):
     TEACHER = 'TEACHER', '老師'
     # 學生角色，只能瀏覽課程、提交作業等
     STUDENT = 'STUDENT', '學生'
+    # 會計角色，主要處理帳務、訂便當，排除教學相關模組
+    ACCOUNTANT = 'ACCOUNTANT', '會計'
 
 
 class Role(models.Model):
@@ -160,6 +162,10 @@ class CustomUser(AbstractUser):
     def is_student(self):
         """檢查是否為學生"""
         return self.role == UserRole.STUDENT
+    
+    def is_accountant(self):
+        """檢查是否為會計"""
+        return self.role == UserRole.ACCOUNTANT
 
     def has_page_permission(self, page_path):
         """

@@ -9,7 +9,8 @@ from .api_views import (
     SubjectViewSet, QuestionBankViewSet, HashtagViewSet, QuestionTagViewSet,
     StudentAnswerViewSet, ErrorLogViewSet,
     RestaurantViewSet, GroupOrderViewSet, OrderViewSet, OrderItemViewSet,
-    upload_image
+    StudentGroupViewSet, QuizViewSet, ExamViewSet, CourseMaterialViewSet,
+    upload_image, generate_quiz, generate_exam, generate_material
 )
 
 # 建立一個 Router 實例
@@ -86,9 +87,24 @@ router.register(r'orders', OrderViewSet)
 # 將 OrderItemViewSet 註冊到 'order-items' 這個 URL 前綴下
 router.register(r'order-items', OrderItemViewSet)
 
+# 將 StudentGroupViewSet 註冊到 'student-groups' 這個 URL 前綴下
+router.register(r'student-groups', StudentGroupViewSet)
+
+# 將 QuizViewSet 註冊到 'quizzes' 這個 URL 前綴下
+router.register(r'quizzes', QuizViewSet)
+
+# 將 ExamViewSet 註冊到 'exams' 這個 URL 前綴下
+router.register(r'exams', ExamViewSet)
+
+# 將 CourseMaterialViewSet 註冊到 'materials' 這個 URL 前綴下
+router.register(r'materials', CourseMaterialViewSet)
+
 # 應用程式的 URL 模式
 urlpatterns = [
     path('', include(router.urls)),
     path('upload-image/', upload_image, name='upload-image'),
+    path('generate-quiz/', generate_quiz, name='generate-quiz'),
+    path('generate-exam/', generate_exam, name='generate-exam'),
+    path('generate-material/', generate_material, name='generate-material'),
 ]
 

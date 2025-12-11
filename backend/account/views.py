@@ -7,6 +7,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+import json
+import time
 # from .models import CustomUser
 from .serializers import (
     CustomUserSerializer, RoleSerializer, RolePermissionSerializer,
@@ -368,3 +370,124 @@ def change_password_view(request):
         pass
     
     return Response({'message': '密碼修改成功'})
+
+
+# 角色切換視圖
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def switch_role_view(request):
+    """
+    管理者可以切換到其他角色視角
+    使用前端 localStorage + 請求 header 的方式，避免依賴 session cookie
+    只有管理員可以使用此功能
+    """
+    
+    if not request.user.is_admin():
+        return Response(
+            {'detail': '只有管理員可以切換角色'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    target_role = request.data.get('role')
+    if not target_role:
+        return Response(
+            {'detail': '請提供目標角色'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # 驗證角色是否有效
+    from .models import UserRole
+    valid_roles = [choice[0] for choice in UserRole.choices]
+    if target_role not in valid_roles:
+        return Response(
+            {'detail': f'無效的角色。有效角色：{", ".join(valid_roles)}'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # 記錄操作
+    try:
+        log_audit(
+            request, 'other', 'User', 
+            request.user.id, 
+            request.user.username,
+            description=f'切換角色視角：{target_role}',
+            response_status=status.HTTP_200_OK
+        )
+    except:
+        pass
+    
+    # 返回臨時角色信息，前端會將其存儲在 localStorage 中
+    return Response({
+        'message': f'已切換到 {dict(UserRole.choices)[target_role]} 視角',
+        'temp_role': target_role,
+        'original_role': request.user.role
+    })
+
+
+# 重置角色視圖
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def reset_role_view(request):
+    """
+    重置回原始角色
+    前端會清除 localStorage 中的臨時角色
+    只有管理員可以使用此功能
+    """
+    if not request.user.is_admin():
+        return Response(
+            {'detail': '只有管理員可以重置角色'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    # 記錄操作
+    try:
+        log_audit(
+            request, 'other', 'User', 
+            request.user.id, 
+            request.user.username,
+            description=f'重置角色視角：回到原始角色 {request.user.role}',
+            response_status=status.HTTP_200_OK
+        )
+    except:
+        pass
+    
+    from .models import UserRole
+    
+    return Response({
+        'message': f'已重置回 {dict(UserRole.choices)[request.user.role]} 視角',
+        'current_role': request.user.role
+    })
+
+
+# 獲取當前角色視角
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def current_role_view(request):
+    """
+    獲取當前角色視角（包括臨時切換的角色）
+    從請求 header 中讀取臨時角色（由前端發送）
+    """
+    
+    # 從請求 header 中獲取臨時角色（前端會發送 X-Temp-Role header）
+    temp_role = request.META.get('HTTP_X_TEMP_ROLE')
+    original_role = request.user.role
+    
+    # 驗證臨時角色是否有效（防止偽造）
+    from .models import UserRole
+    valid_roles = [choice[0] for choice in UserRole.choices]
+    if temp_role and temp_role not in valid_roles:
+        temp_role = None
+    
+    # 只有管理員可以使用臨時角色
+    if temp_role and not request.user.is_admin():
+        temp_role = None
+    
+    
+    return Response({
+        'original_role': original_role,
+        'original_role_display': dict(UserRole.choices)[original_role],
+        'temp_role': temp_role,
+        'temp_role_display': dict(UserRole.choices)[temp_role] if temp_role else None,
+        'effective_role': temp_role if temp_role else original_role,
+        'effective_role_display': dict(UserRole.choices)[temp_role] if temp_role else dict(UserRole.choices)[original_role]
+    })

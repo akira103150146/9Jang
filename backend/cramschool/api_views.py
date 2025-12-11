@@ -16,7 +16,8 @@ from account.models import UserRole
 from .models import (
     Student, Teacher, Course, StudentEnrollment, EnrollmentPeriod, ExtraFee, 
     SessionRecord, Attendance, Leave, Subject, QuestionBank, Hashtag, QuestionTag,
-    StudentAnswer, ErrorLog, Restaurant, GroupOrder, Order, OrderItem
+    StudentAnswer, ErrorLog, Restaurant, GroupOrder, Order, OrderItem,
+    StudentGroup, Quiz, Exam, CourseMaterial
 )
 
 CustomUser = get_user_model()
@@ -26,7 +27,8 @@ from .serializers import (
     SessionRecordSerializer, AttendanceSerializer, LeaveSerializer,
     SubjectSerializer, QuestionBankSerializer, HashtagSerializer, QuestionTagSerializer,
     StudentAnswerSerializer, ErrorLogSerializer,
-    RestaurantSerializer, GroupOrderSerializer, OrderSerializer, OrderItemSerializer
+    RestaurantSerializer, GroupOrderSerializer, OrderSerializer, OrderItemSerializer,
+    StudentGroupSerializer, QuizSerializer, ExamSerializer, CourseMaterialSerializer
 )
 
 class StudentViewSet(viewsets.ModelViewSet):
@@ -746,10 +748,58 @@ class SubjectViewSet(viewsets.ModelViewSet):
 class QuestionBankViewSet(viewsets.ModelViewSet):
     """
     提供 QuestionBank 模型 CRUD 操作的 API 視圖集
+    支援多條件篩選：科目、年級、章節、難度、標籤、來源
     """
-    queryset = QuestionBank.objects.select_related('subject').prefetch_related('tags__tag').all()
+    queryset = QuestionBank.objects.select_related('subject', 'created_by', 'imported_from_error_log').prefetch_related('tags__tag').all()
     serializer_class = QuestionBankSerializer
     permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+    
+    def get_queryset(self):
+        """
+        根據查詢參數進行多條件篩選
+        """
+        queryset = super().get_queryset()
+        
+        # 科目篩選
+        subject_id = self.request.query_params.get('subject', None)
+        if subject_id:
+            queryset = queryset.filter(subject_id=subject_id)
+        
+        # 年級篩選
+        level = self.request.query_params.get('level', None)
+        if level:
+            queryset = queryset.filter(level=level)
+        
+        # 章節篩選
+        chapter = self.request.query_params.get('chapter', None)
+        if chapter:
+            queryset = queryset.filter(chapter__icontains=chapter)
+        
+        # 難度篩選
+        difficulty = self.request.query_params.get('difficulty', None)
+        if difficulty:
+            try:
+                difficulty_int = int(difficulty)
+                queryset = queryset.filter(difficulty=difficulty_int)
+            except ValueError:
+                pass
+        
+        # 標籤篩選（支援多個標籤）
+        tags = self.request.query_params.getlist('tags[]')
+        if tags:
+            try:
+                tag_ids = [int(tag) for tag in tags]
+                # 使用 distinct() 避免重複
+                queryset = queryset.filter(tags__tag_id__in=tag_ids).distinct()
+            except ValueError:
+                pass
+        
+        # 來源篩選
+        source = self.request.query_params.get('source', None)
+        if source:
+            queryset = queryset.filter(source=source)
+        
+        return queryset
     
     @action(detail=False, methods=['get'])
     def search_chapters(self, request):
@@ -1225,4 +1275,391 @@ class OrderItemViewSet(viewsets.ModelViewSet):
         items = OrderItem.objects.filter(order=order)
         order.total_amount = sum(item.subtotal for item in items)
         order.save()
+
+
+class StudentGroupViewSet(viewsets.ModelViewSet):
+    """
+    提供 StudentGroup 模型 CRUD 操作的 API 視圖集
+    """
+    queryset = StudentGroup.objects.prefetch_related('students', 'created_by').all()
+    serializer_class = StudentGroupSerializer
+    permission_classes = [AllowAny]
+    
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+    
+    @action(detail=True, methods=['post'], url_path='add-students')
+    def add_students(self, request, pk=None):
+        """
+        新增學生到群組
+        """
+        group = self.get_object()
+        student_ids = request.data.get('student_ids', [])
+        
+        if not student_ids:
+            return Response(
+                {'detail': '請提供學生ID列表'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        students = Student.objects.filter(student_id__in=student_ids)
+        group.students.add(*students)
+        
+        serializer = self.get_serializer(group)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'], url_path='remove-students')
+    def remove_students(self, request, pk=None):
+        """
+        從群組移除學生
+        """
+        group = self.get_object()
+        student_ids = request.data.get('student_ids', [])
+        
+        if not student_ids:
+            return Response(
+                {'detail': '請提供學生ID列表'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        students = Student.objects.filter(student_id__in=student_ids)
+        group.students.remove(*students)
+        
+        serializer = self.get_serializer(group)
+        return Response(serializer.data)
+
+
+class QuizViewSet(viewsets.ModelViewSet):
+    """
+    提供 Quiz 模型 CRUD 操作的 API 視圖集
+    """
+    queryset = Quiz.objects.select_related('course', 'created_by').prefetch_related('questions').all()
+    serializer_class = QuizSerializer
+    permission_classes = [AllowAny]
+    
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+    
+    def get_queryset(self):
+        """
+        根據用戶角色過濾 Quiz
+        """
+        queryset = super().get_queryset()
+        
+        # 如果用戶未認證，返回所有 Quiz
+        if not self.request.user.is_authenticated:
+            return queryset
+        
+        # 管理員和老師可以看到所有 Quiz
+        if self.request.user.is_admin() or self.request.user.is_teacher():
+            return queryset
+        
+        # 學生只能看到自己報名課程的 Quiz
+        if self.request.user.is_student():
+            try:
+                student = self.request.user.student_profile
+                enrolled_course_ids = StudentEnrollment.objects.filter(
+                    student=student,
+                    is_active=True,
+                    is_deleted=False
+                ).values_list('course_id', flat=True)
+                return queryset.filter(course_id__in=enrolled_course_ids)
+            except Student.DoesNotExist:
+                return queryset.none()
+        
+        # 會計看不到 Quiz
+        if self.request.user.is_accountant():
+            return queryset.none()
+        
+        return queryset
+
+
+class ExamViewSet(viewsets.ModelViewSet):
+    """
+    提供 Exam 模型 CRUD 操作的 API 視圖集
+    支援個別化教學，學生只能看到自己群組的考卷
+    """
+    queryset = Exam.objects.select_related('course', 'created_by').prefetch_related('questions', 'student_groups__students').all()
+    serializer_class = ExamSerializer
+    permission_classes = [AllowAny]
+    
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+    
+    def get_queryset(self):
+        """
+        根據用戶角色過濾 Exam
+        """
+        queryset = super().get_queryset()
+        
+        # 如果用戶未認證，返回所有 Exam
+        if not self.request.user.is_authenticated:
+            return queryset
+        
+        # 管理員和老師可以看到所有 Exam
+        if self.request.user.is_admin() or self.request.user.is_teacher():
+            return queryset
+        
+        # 學生只能看到自己報名課程的 Exam，且符合群組可見性
+        if self.request.user.is_student():
+            try:
+                student = self.request.user.student_profile
+                enrolled_course_ids = StudentEnrollment.objects.filter(
+                    student=student,
+                    is_active=True,
+                    is_deleted=False
+                ).values_list('course_id', flat=True)
+                
+                # 過濾課程
+                queryset = queryset.filter(course_id__in=enrolled_course_ids)
+                
+                # 過濾個別化考卷：只顯示學生所屬群組的考卷，或非個別化的考卷
+                from django.db.models import Q
+                queryset = queryset.filter(
+                    Q(is_individualized=False) |  # 非個別化考卷，所有學生可見
+                    Q(student_groups__students=student)  # 個別化考卷，但學生在群組中
+                ).distinct()
+                
+                return queryset
+            except Student.DoesNotExist:
+                return queryset.none()
+        
+        # 會計看不到 Exam
+        if self.request.user.is_accountant():
+            return queryset.none()
+        
+        return queryset
+
+
+class CourseMaterialViewSet(viewsets.ModelViewSet):
+    """
+    提供 CourseMaterial 模型 CRUD 操作的 API 視圖集
+    """
+    queryset = CourseMaterial.objects.select_related('course', 'created_by').prefetch_related('questions').all()
+    serializer_class = CourseMaterialSerializer
+    permission_classes = [AllowAny]
+    
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+    
+    def get_queryset(self):
+        """
+        根據用戶角色過濾 CourseMaterial
+        """
+        queryset = super().get_queryset()
+        
+        # 如果用戶未認證，返回所有 CourseMaterial
+        if not self.request.user.is_authenticated:
+            return queryset
+        
+        # 管理員和老師可以看到所有 CourseMaterial
+        if self.request.user.is_admin() or self.request.user.is_teacher():
+            return queryset
+        
+        # 學生只能看到自己報名課程的講義
+        if self.request.user.is_student():
+            try:
+                student = self.request.user.student_profile
+                enrolled_course_ids = StudentEnrollment.objects.filter(
+                    student=student,
+                    is_active=True,
+                    is_deleted=False
+                ).values_list('course_id', flat=True)
+                return queryset.filter(course_id__in=enrolled_course_ids)
+            except Student.DoesNotExist:
+                return queryset.none()
+        
+        # 會計看不到 CourseMaterial
+        if self.request.user.is_accountant():
+            return queryset.none()
+        
+        return queryset
+
+
+@api_view(['POST'])
+def generate_quiz(request):
+    """
+    根據篩選條件生成 Quiz 的結構化資料
+    """
+    # 獲取篩選條件
+    subject_id = request.data.get('subject_id')
+    level = request.data.get('level')
+    chapter = request.data.get('chapter')
+    difficulty = request.data.get('difficulty')
+    tag_ids = request.data.get('tag_ids', [])
+    source = request.data.get('source')
+    course_id = request.data.get('course_id')
+    title = request.data.get('title', '自動生成的 Quiz')
+    
+    # 建立查詢
+    queryset = QuestionBank.objects.select_related('subject').prefetch_related('tags__tag').all()
+    
+    if subject_id:
+        queryset = queryset.filter(subject_id=subject_id)
+    if level:
+        queryset = queryset.filter(level=level)
+    if chapter:
+        queryset = queryset.filter(chapter__icontains=chapter)
+    if difficulty:
+        try:
+            queryset = queryset.filter(difficulty=int(difficulty))
+        except ValueError:
+            pass
+    if tag_ids:
+        queryset = queryset.filter(tags__tag_id__in=tag_ids).distinct()
+    if source:
+        queryset = queryset.filter(source=source)
+    
+    questions = queryset[:50]  # 限制最多50題
+    
+    # 生成結構化資料
+    question_data = []
+    for q in questions:
+        question_data.append({
+            'question_id': q.question_id,
+            'subject': q.subject.name if q.subject else None,
+            'level': q.get_level_display(),
+            'chapter': q.chapter,
+            'content': q.content,
+            'correct_answer': q.correct_answer,
+            'difficulty': q.difficulty,
+            'tags': [qt.tag.tag_name for qt in q.tags.all()]
+        })
+    
+    return Response({
+        'title': title,
+        'course_id': course_id,
+        'questions': question_data,
+        'total_count': len(question_data)
+    })
+
+
+@api_view(['POST'])
+def generate_exam(request):
+    """
+    根據篩選條件生成 Exam 的結構化資料
+    """
+    # 獲取篩選條件
+    subject_id = request.data.get('subject_id')
+    level = request.data.get('level')
+    chapter = request.data.get('chapter')
+    difficulty = request.data.get('difficulty')
+    tag_ids = request.data.get('tag_ids', [])
+    source = request.data.get('source')
+    course_id = request.data.get('course_id')
+    title = request.data.get('title', '自動生成的考卷')
+    is_individualized = request.data.get('is_individualized', False)
+    student_group_ids = request.data.get('student_group_ids', [])
+    
+    # 建立查詢
+    queryset = QuestionBank.objects.select_related('subject').prefetch_related('tags__tag').all()
+    
+    if subject_id:
+        queryset = queryset.filter(subject_id=subject_id)
+    if level:
+        queryset = queryset.filter(level=level)
+    if chapter:
+        queryset = queryset.filter(chapter__icontains=chapter)
+    if difficulty:
+        try:
+            queryset = queryset.filter(difficulty=int(difficulty))
+        except ValueError:
+            pass
+    if tag_ids:
+        queryset = queryset.filter(tags__tag_id__in=tag_ids).distinct()
+    if source:
+        queryset = queryset.filter(source=source)
+    
+    questions = queryset[:100]  # 限制最多100題
+    
+    # 生成結構化資料
+    question_data = []
+    for q in questions:
+        question_data.append({
+            'question_id': q.question_id,
+            'subject': q.subject.name if q.subject else None,
+            'level': q.get_level_display(),
+            'chapter': q.chapter,
+            'content': q.content,
+            'correct_answer': q.correct_answer,
+            'difficulty': q.difficulty,
+            'tags': [qt.tag.tag_name for qt in q.tags.all()]
+        })
+    
+    return Response({
+        'title': title,
+        'course_id': course_id,
+        'is_individualized': is_individualized,
+        'student_group_ids': student_group_ids,
+        'questions': question_data,
+        'total_count': len(question_data)
+    })
+
+
+@api_view(['POST'])
+def generate_material(request):
+    """
+    根據篩選條件生成 CourseMaterial 的結構化資料
+    """
+    # 獲取篩選條件
+    subject_id = request.data.get('subject_id')
+    level = request.data.get('level')
+    chapter = request.data.get('chapter')
+    difficulty = request.data.get('difficulty')
+    tag_ids = request.data.get('tag_ids', [])
+    source = request.data.get('source')
+    course_id = request.data.get('course_id')
+    title = request.data.get('title', '自動生成的講義')
+    content = request.data.get('content', '')  # 講義內容（Markdown）
+    
+    # 建立查詢（用於引用的題目）
+    queryset = QuestionBank.objects.select_related('subject').prefetch_related('tags__tag').all()
+    
+    if subject_id:
+        queryset = queryset.filter(subject_id=subject_id)
+    if level:
+        queryset = queryset.filter(level=level)
+    if chapter:
+        queryset = queryset.filter(chapter__icontains=chapter)
+    if difficulty:
+        try:
+            queryset = queryset.filter(difficulty=int(difficulty))
+        except ValueError:
+            pass
+    if tag_ids:
+        queryset = queryset.filter(tags__tag_id__in=tag_ids).distinct()
+    if source:
+        queryset = queryset.filter(source=source)
+    
+    questions = queryset[:200]  # 限制最多200題
+    
+    # 生成結構化資料
+    question_data = []
+    for q in questions:
+        question_data.append({
+            'question_id': q.question_id,
+            'subject': q.subject.name if q.subject else None,
+            'level': q.get_level_display(),
+            'chapter': q.chapter,
+            'content': q.content,
+            'correct_answer': q.correct_answer,
+            'difficulty': q.difficulty,
+            'tags': [qt.tag.tag_name for qt in q.tags.all()]
+        })
+    
+    return Response({
+        'title': title,
+        'course_id': course_id,
+        'content': content,
+        'questions': question_data,
+        'total_count': len(question_data)
+    })
 

@@ -8,6 +8,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,  // 允許發送 cookies（用於 session 支持）
 })
 
 // 從 localStorage 獲取 token
@@ -54,13 +55,20 @@ const refreshAccessToken = async () => {
   }
 }
 
-// 請求攔截器：添加 JWT token
+// 請求攔截器：添加 JWT token 和臨時角色 header
 api.interceptors.request.use(
   (config) => {
     const token = getToken()
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+    
+    // 添加臨時角色 header（如果存在）
+    const tempRole = localStorage.getItem('temp_role')
+    if (tempRole) {
+      config.headers['X-Temp-Role'] = tempRole
+    }
+    
     return config
   },
   (error) => {
@@ -114,6 +122,11 @@ api.interceptors.response.use(
         })
           .then(token => {
             originalRequest.headers.Authorization = `Bearer ${token}`
+            // 重新設置臨時角色 header（如果存在）
+            const tempRole = localStorage.getItem('temp_role')
+            if (tempRole) {
+              originalRequest.headers['X-Temp-Role'] = tempRole
+            }
             return api(originalRequest)
           })
           .catch(err => {
@@ -128,6 +141,11 @@ api.interceptors.response.use(
         const newToken = await refreshAccessToken()
         processQueue(null, newToken)
         originalRequest.headers.Authorization = `Bearer ${newToken}`
+        // 重新設置臨時角色 header（如果存在）
+        const tempRole = localStorage.getItem('temp_role')
+        if (tempRole) {
+          originalRequest.headers['X-Temp-Role'] = tempRole
+        }
         return api(originalRequest)
       } catch (refreshError) {
         processQueue(refreshError, null)
@@ -375,8 +393,21 @@ export const subjectAPI = {
 
 // QuestionBank API
 export const questionBankAPI = {
-  // 獲取所有題目
-  getAll: () => api.get('/cramschool/questions/'),
+  // 獲取所有題目（支援篩選參數）
+  getAll: (config = {}) => {
+    if (config.params) {
+      const params = new URLSearchParams()
+      Object.entries(config.params).forEach(([key, value]) => {
+        if (Array.isArray(value)) {
+          value.forEach(v => params.append(key, v))
+        } else if (value) {
+          params.append(key, value)
+        }
+      })
+      return api.get(`/cramschool/questions/?${params.toString()}`)
+    }
+    return api.get('/cramschool/questions/', config)
+  },
 
   // 獲取單個題目
   getById: (id) => api.get(`/cramschool/questions/${id}/`),
@@ -602,6 +633,58 @@ export const userAPI = {
   getById: (id) => api.get(`/account/users/${id}/`),
   update: (id, data) => api.put(`/account/users/${id}/`, data),
   getCurrentUser: () => api.get('/account/users/me/')
+}
+
+// StudentGroup API
+export const studentGroupAPI = {
+  getAll: () => api.get('/cramschool/student-groups/'),
+  getById: (id) => api.get(`/cramschool/student-groups/${id}/`),
+  create: (data) => api.post('/cramschool/student-groups/', data),
+  update: (id, data) => api.put(`/cramschool/student-groups/${id}/`, data),
+  delete: (id) => api.delete(`/cramschool/student-groups/${id}/`),
+  addStudents: (id, studentIds) => api.post(`/cramschool/student-groups/${id}/add-students/`, { student_ids: studentIds }),
+  removeStudents: (id, studentIds) => api.post(`/cramschool/student-groups/${id}/remove-students/`, { student_ids: studentIds })
+}
+
+// Quiz API
+export const quizAPI = {
+  getAll: () => api.get('/cramschool/quizzes/'),
+  getById: (id) => api.get(`/cramschool/quizzes/${id}/`),
+  create: (data) => api.post('/cramschool/quizzes/', data),
+  update: (id, data) => api.put(`/cramschool/quizzes/${id}/`, data),
+  delete: (id) => api.delete(`/cramschool/quizzes/${id}/`)
+}
+
+// Exam API
+export const examAPI = {
+  getAll: () => api.get('/cramschool/exams/'),
+  getById: (id) => api.get(`/cramschool/exams/${id}/`),
+  create: (data) => api.post('/cramschool/exams/', data),
+  update: (id, data) => api.put(`/cramschool/exams/${id}/`, data),
+  delete: (id) => api.delete(`/cramschool/exams/${id}/`)
+}
+
+// CourseMaterial API
+export const courseMaterialAPI = {
+  getAll: () => api.get('/cramschool/materials/'),
+  getById: (id) => api.get(`/cramschool/materials/${id}/`),
+  create: (data) => api.post('/cramschool/materials/', data),
+  update: (id, data) => api.put(`/cramschool/materials/${id}/`, data),
+  delete: (id) => api.delete(`/cramschool/materials/${id}/`)
+}
+
+// Generation API
+export const generationAPI = {
+  generateQuiz: (data) => api.post('/cramschool/generate-quiz/', data),
+  generateExam: (data) => api.post('/cramschool/generate-exam/', data),
+  generateMaterial: (data) => api.post('/cramschool/generate-material/', data)
+}
+
+// Role Switch API
+export const roleSwitchAPI = {
+  switchRole: (role) => api.post('/account/switch-role/', { role }),
+  resetRole: () => api.post('/account/reset-role/'),
+  getCurrentRole: () => api.get('/account/current-role/')
 }
 
 // 導出後端基礎 URL（用於圖片等靜態資源）

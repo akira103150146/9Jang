@@ -19,6 +19,116 @@
       </p>
     </header>
 
+    <!-- 篩選器 -->
+    <section class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-slate-900">篩選條件</h3>
+        <button
+          @click="resetFilters"
+          class="text-sm text-slate-600 hover:text-slate-800 font-semibold"
+        >
+          清除篩選
+        </button>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- 科目篩選 -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">科目</label>
+          <select
+            v-model="filters.subject"
+            @change="applyFilters"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+          >
+            <option value="">全部</option>
+            <option
+              v-for="subject in subjects"
+              :key="subject.subject_id"
+              :value="subject.subject_id"
+            >
+              {{ subject.name }}
+            </option>
+          </select>
+        </div>
+
+        <!-- 年級篩選 -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">年級</label>
+          <select
+            v-model="filters.level"
+            @change="applyFilters"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+          >
+            <option value="">全部</option>
+            <option value="JHS">國中</option>
+            <option value="SHS">高中</option>
+            <option value="VCS">高職</option>
+          </select>
+        </div>
+
+        <!-- 章節篩選 -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">章節</label>
+          <input
+            v-model="filters.chapter"
+            @input="applyFilters"
+            type="text"
+            placeholder="輸入章節關鍵字"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+          />
+        </div>
+
+        <!-- 難度篩選 -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">難度</label>
+          <select
+            v-model="filters.difficulty"
+            @change="applyFilters"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+          >
+            <option value="">全部</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+          </select>
+        </div>
+
+        <!-- 標籤篩選 -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">標籤</label>
+          <select
+            v-model="filters.tags"
+            @change="applyFilters"
+            multiple
+            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 min-h-[80px]"
+          >
+            <option
+              v-for="tag in hashtags"
+              :key="tag.tag_id"
+              :value="tag.tag_id"
+            >
+              #{{ tag.tag_name }}
+            </option>
+          </select>
+        </div>
+
+        <!-- 來源篩選 -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">題目來源</label>
+          <select
+            v-model="filters.source"
+            @change="applyFilters"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+          >
+            <option value="">全部</option>
+            <option value="teacher_created">老師新增</option>
+            <option value="imported_from_error_log">從錯題本匯入</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
     <!-- 載入中 -->
     <div v-if="loading" class="flex items-center justify-center py-12">
       <div class="text-slate-500">載入中...</div>
@@ -27,7 +137,7 @@
     <!-- 題目列表 -->
     <section v-else class="grid gap-4 lg:grid-cols-2">
       <article
-        v-for="question in questionBank"
+        v-for="question in filteredQuestions"
         :key="question.question_id"
         class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm"
       >
@@ -38,9 +148,18 @@
             </p>
             <h3 class="mt-1 text-lg font-semibold text-slate-900">{{ question.chapter }}</h3>
           </div>
-          <span class="ml-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">
-            難度 {{ question.difficulty }}
-          </span>
+          <div class="flex items-center gap-2">
+            <span class="ml-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">
+              難度 {{ question.difficulty }}
+            </span>
+            <span
+              v-if="question.source"
+              class="rounded-full px-3 py-1 text-xs font-semibold"
+              :class="question.source === 'teacher_created' ? 'bg-green-50 text-green-600' : 'bg-purple-50 text-purple-600'"
+            >
+              {{ question.source === 'teacher_created' ? '老師新增' : '錯題本匯入' }}
+            </span>
+          </div>
         </div>
         <div
           class="mt-3 text-sm text-slate-700 markdown-preview"
@@ -77,8 +196,10 @@
           </button>
         </div>
       </article>
-      <div v-if="questionBank.length === 0" class="col-span-2 rounded-3xl border border-slate-100 bg-white p-12 text-center">
-        <p class="text-slate-500">目前沒有題目，點擊「新增題目」開始建立題庫。</p>
+      <div v-if="filteredQuestions.length === 0" class="col-span-2 rounded-3xl border border-slate-100 bg-white p-12 text-center">
+        <p class="text-slate-500">
+          {{ questionBank.length === 0 ? '目前沒有題目，點擊「新增題目」開始建立題庫。' : '沒有符合篩選條件的題目，請調整篩選條件。' }}
+        </p>
       </div>
     </section>
 
@@ -434,13 +555,14 @@
 
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { questionBankAPI, hashtagAPI, subjectAPI } from '../services/api'
 import { mockQuestionBank } from '../data/mockData'
 import MarkdownEditor from '../components/MarkdownEditor.vue'
 import { useMarkdownRenderer } from '../composables/useMarkdownRenderer'
 
 const questionBank = ref([])
+const filteredQuestions = ref([])
 const hashtags = ref([])
 const subjects = ref([])
 const loading = ref(false)
@@ -448,6 +570,16 @@ const usingMock = ref(false)
 const showFormModal = ref(false)
 const showSubjectForm = ref(false)
 const showTagForm = ref(false)
+
+// 篩選器
+const filters = ref({
+  subject: '',
+  level: '',
+  chapter: '',
+  difficulty: '',
+  tags: [],
+  source: ''
+})
 const editingQuestion = ref(null)
 const saving = ref(false)
 const savingSubject = ref(false)
@@ -496,17 +628,69 @@ const getLevelDisplay = (level) => {
 const fetchQuestions = async () => {
   loading.value = true
   try {
-    const response = await questionBankAPI.getAll()
+    // 建立查詢參數
+    const params = {}
+    if (filters.value.subject) params.subject = filters.value.subject
+    if (filters.value.level) params.level = filters.value.level
+    if (filters.value.chapter) params.chapter = filters.value.chapter
+    if (filters.value.difficulty) params.difficulty = filters.value.difficulty
+    if (filters.value.tags && filters.value.tags.length > 0) {
+      params['tags[]'] = filters.value.tags
+    }
+    if (filters.value.source) params.source = filters.value.source
+    
+    const response = await questionBankAPI.getAll({ params })
     const data = response.data.results || response.data
     questionBank.value = Array.isArray(data) ? data : []
+    applyFilters()
     usingMock.value = false
   } catch (error) {
     console.warn('獲取題目失敗，使用 mock 資料：', error)
     questionBank.value = mockQuestionBank
+    applyFilters()
     usingMock.value = true
   } finally {
     loading.value = false
   }
+}
+
+const applyFilters = () => {
+  // 如果使用 mock 資料，在前端進行篩選
+  if (usingMock.value) {
+    filteredQuestions.value = questionBank.value.filter(q => {
+      if (filters.value.subject && q.subject !== parseInt(filters.value.subject)) return false
+      if (filters.value.level && q.level !== filters.value.level) return false
+      if (filters.value.chapter && !q.chapter.includes(filters.value.chapter)) return false
+      if (filters.value.difficulty && q.difficulty !== parseInt(filters.value.difficulty)) return false
+      if (filters.value.tags && filters.value.tags.length > 0) {
+        const hasTag = filters.value.tags.some(tagId => 
+          q.tags && q.tags.some(tag => tag.tag_id === parseInt(tagId))
+        )
+        if (!hasTag) return false
+      }
+      return true
+    })
+  } else {
+    // 後端已篩選，直接使用
+    filteredQuestions.value = questionBank.value
+  }
+}
+
+// 監聽篩選器變化，自動重新載入
+watch(filters, () => {
+  fetchQuestions()
+}, { deep: true })
+
+const resetFilters = () => {
+  filters.value = {
+    subject: '',
+    level: '',
+    chapter: '',
+    difficulty: '',
+    tags: [],
+    source: ''
+  }
+  fetchQuestions()
 }
 
 const fetchHashtags = async () => {

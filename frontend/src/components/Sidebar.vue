@@ -6,7 +6,7 @@
       isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0 md:relative md:flex'
     ]"
   >
-    <div>
+    <div class="flex flex-col h-full">
       <div class="flex items-center gap-3 rounded-2xl border border-blue-100 bg-sky-50/60 px-4 py-3">
         <img :src="logoUrl" alt="九章 Logo" class="h-10 w-auto object-cover" />
         <div>
@@ -15,7 +15,49 @@
         </div>
       </div>
 
-      <nav class="mt-8 space-y-2 flex-1">
+      <!-- 用戶信息（移到最上方） -->
+      <div v-if="currentUser" class="mt-4 mb-4">
+        <div class="flex items-center gap-3 rounded-xl border border-slate-200 bg-gradient-to-r from-slate-50 to-white px-4 py-3">
+          <!-- 用戶頭像 -->
+          <div class="flex-shrink-0">
+            <div class="h-12 w-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-lg shadow-md">
+              {{ getUserInitials(currentUser) }}
+            </div>
+          </div>
+          <!-- 用戶信息 -->
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-slate-900 truncate">{{ currentUser.username }}</p>
+            <p class="text-xs text-slate-500 truncate">
+              {{ effectiveRoleDisplay }}
+              <span v-if="tempRole" class="text-amber-600">（模擬中）</span>
+            </p>
+          </div>
+        </div>
+        
+        <!-- 角色切換（僅管理員可見） -->
+        <div v-if="currentUser.role === 'ADMIN'" class="mt-3">
+          <label class="block text-xs font-semibold text-slate-700 mb-1 px-1">切換角色視角</label>
+          <select
+            v-model="selectedRole"
+            @change="switchRole"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+          >
+            <option value="">原始角色</option>
+            <option value="TEACHER">老師</option>
+            <option value="STUDENT">學生</option>
+            <option value="ACCOUNTANT">會計</option>
+          </select>
+          <button
+            v-if="tempRole"
+            @click="resetRole"
+            class="mt-2 w-full rounded-lg px-3 py-1 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200"
+          >
+            重置角色
+          </button>
+        </div>
+      </div>
+
+      <nav class="mt-2 space-y-2 flex-1 overflow-y-auto">
         <router-link
           v-for="item in navItems"
           :key="item.name"
@@ -30,13 +72,8 @@
         </router-link>
       </nav>
 
-      <!-- 用戶信息和登出按鈕 -->
+      <!-- 登出按鈕（保持在底部） -->
       <div class="mt-auto pt-4 border-t border-slate-200">
-        <div v-if="currentUser" class="mb-3 px-4 py-2 rounded-xl bg-slate-50">
-          <p class="text-xs text-slate-500 mb-1">登入為</p>
-          <p class="text-sm font-semibold text-slate-900">{{ currentUser.username }}</p>
-          <p class="text-xs text-slate-500">{{ currentUser.role_display || currentUser.role }}</p>
-        </div>
         <button
           @click="handleLogout"
           class="w-full rounded-xl px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 transition"
@@ -49,9 +86,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { authAPI } from '../services/api'
+import { authAPI, roleSwitchAPI } from '../services/api'
 import logoUrl from '../assets/logo_jiuzhang.png'
 
 defineProps({
@@ -67,17 +104,57 @@ const route = useRoute()
 const router = useRouter()
 const currentUser = ref(null)
 const userPermissions = ref([])
+const tempRole = ref(null)
+const selectedRole = ref('')
+
+const roleDisplayMap = {
+  'ADMIN': '系統管理員',
+  'TEACHER': '老師',
+  'STUDENT': '學生',
+  'ACCOUNTANT': '會計'
+}
+
+const effectiveRoleDisplay = computed(() => {
+  if (tempRole.value) {
+    return roleDisplayMap[tempRole.value] || tempRole.value
+  }
+  return currentUser.value?.role_display || roleDisplayMap[currentUser.value?.role] || currentUser.value?.role || ''
+})
+
+// 獲取用戶頭像初始字母
+const getUserInitials = (user) => {
+  if (!user) return '?'
+  
+  // 優先使用 first_name 和 last_name
+  if (user.first_name || user.last_name) {
+    const first = user.first_name?.charAt(0) || ''
+    const last = user.last_name?.charAt(0) || ''
+    return (first + last).toUpperCase() || user.username?.charAt(0).toUpperCase() || '?'
+  }
+  
+  // 如果沒有姓名，使用 username 的第一個字符
+  if (user.username) {
+    return user.username.charAt(0).toUpperCase()
+  }
+  
+  return '?'
+}
 
 const allNavItems = [
-  { name: 'dashboard', label: '儀表板', path: '/', requiresAdmin: false },
-  { name: 'student-list', label: '學生管理', path: '/students', requiresAdmin: false },
-  { name: 'teachers', label: '老師管理', path: '/teachers', requiresAdmin: false },
-  { name: 'courses', label: '課程管理', path: '/courses', requiresAdmin: false },
-  { name: 'attendance', label: '出缺勤', path: '/attendance', requiresAdmin: false },
-  { name: 'questions', label: '題庫系統', path: '/questions', requiresAdmin: false },
-  { name: 'lunch-orders', label: '訂便當系統', path: '/lunch-orders', requiresAdmin: false },
-  { name: 'roles', label: '角色管理', path: '/roles', requiresAdmin: true },
-  { name: 'audit-logs', label: '操作記錄', path: '/audit-logs', requiresAdmin: true },
+  { name: 'dashboard', label: '儀表板', path: '/', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'] },
+  { name: 'student-list', label: '學生管理', path: '/students', requiresAdmin: false, allowedRoles: ['ADMIN', 'ACCOUNTANT'] },
+  { name: 'teachers', label: '老師管理', path: '/teachers', requiresAdmin: false, allowedRoles: ['ADMIN'] },
+  { name: 'courses', label: '課程管理', path: '/courses', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER', 'STUDENT'] },
+  { name: 'attendance', label: '出缺勤', path: '/attendance', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
+  { name: 'questions', label: '題庫系統', path: '/questions', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
+  { name: 'quizzes', label: 'Quiz 管理', path: '/quizzes', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
+  { name: 'exams', label: '考卷管理', path: '/exams', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
+  { name: 'materials', label: '講義管理', path: '/materials', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
+  { name: 'student-groups', label: '學生群組', path: '/student-groups', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
+  { name: 'generator', label: '生成器', path: '/generator', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
+  { name: 'lunch-orders', label: '訂便當系統', path: '/lunch-orders', requiresAdmin: false, allowedRoles: ['ADMIN', 'STUDENT', 'ACCOUNTANT'] },
+  { name: 'roles', label: '角色管理', path: '/roles', requiresAdmin: true, allowedRoles: ['ADMIN'] },
+  { name: 'audit-logs', label: '操作記錄', path: '/audit-logs', requiresAdmin: true, allowedRoles: ['ADMIN'] },
 ]
 
 // 根據權限過濾菜單項
@@ -86,16 +163,24 @@ const navItems = computed(() => {
     return []
   }
 
+  // 獲取有效角色（考慮角色切換）
+  const effectiveRole = tempRole.value || currentUser.value.role
+
   // 管理員可以看到所有頁面
-  if (currentUser.value.role === 'ADMIN') {
+  if (effectiveRole === 'ADMIN') {
     return allNavItems
   }
 
-  // 其他用戶根據權限過濾
+  // 根據角色過濾
   return allNavItems.filter(item => {
     // 管理員專用頁面
     if (item.requiresAdmin) {
       return false
+    }
+
+    // 檢查 allowedRoles
+    if (item.allowedRoles && item.allowedRoles.length > 0) {
+      return item.allowedRoles.includes(effectiveRole)
     }
 
     // 檢查頁面權限
@@ -181,18 +266,128 @@ const handleLogout = async () => {
     const { authAPI, clearTokens } = await import('../services/api')
     await authAPI.logout()
     // authAPI.logout 已經處理了清除 token 和用戶信息
+    tempRole.value = null
+    selectedRole.value = ''
     router.push('/login')
   } catch (error) {
     console.error('登出失敗:', error)
     // 即使 API 失敗，也清除本地存儲並跳轉
     const { clearTokens } = await import('../services/api')
     clearTokens()
+    tempRole.value = null
+    selectedRole.value = ''
     router.push('/login')
+  }
+}
+
+const switchRole = async (event) => {
+  const role = event.target.value
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'Sidebar.vue:283', message: 'switchRole called', data: { role, currentUser: currentUser.value?.username, currentRole: currentUser.value?.role }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H1' }) }).catch(() => { });
+  // #endregion
+  
+  if (!role) {
+    await resetRole()
+    return
+  }
+  
+  try {
+    // 先將臨時角色存儲到 localStorage（在調用 API 之前，這樣攔截器才能讀取到）
+    localStorage.setItem('temp_role', role)
+    tempRole.value = role
+    selectedRole.value = role
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'Sidebar.vue:291', message: 'Before API call', data: { role, apiEndpoint: '/account/switch-role/', localStorageTempRole: localStorage.getItem('temp_role') }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H2' }) }).catch(() => { });
+    // #endregion
+    
+    const response = await roleSwitchAPI.switchRole(role)
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'Sidebar.vue:295', message: 'API response received', data: { status: response?.status, data: response?.data }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H2' }) }).catch(() => { });
+    // #endregion
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'Sidebar.vue:300', message: 'State updated and saved to localStorage', data: { tempRole: tempRole.value, selectedRole: selectedRole.value, localStorageTempRole: localStorage.getItem('temp_role') }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H4' }) }).catch(() => { });
+    // #endregion
+    
+    // 重新獲取用戶信息以更新顯示
+    await fetchUserInfo()
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'Sidebar.vue:305', message: 'Before page reload', data: { tempRole: tempRole.value }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H4' }) }).catch(() => { });
+    // #endregion
+    
+    // 重新載入頁面以應用新的角色視角
+    window.location.reload()
+  } catch (error) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'Sidebar.vue:310', message: 'switchRole error', data: { error: error?.message, status: error?.response?.status, data: error?.response?.data }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H1' }) }).catch(() => { });
+    // #endregion
+    
+    console.error('切換角色失敗：', error)
+    alert('切換角色失敗，請稍後再試')
+  }
+}
+
+const resetRole = async () => {
+  try {
+    await roleSwitchAPI.resetRole()
+    // 清除 localStorage 中的臨時角色
+    localStorage.removeItem('temp_role')
+    tempRole.value = null
+    selectedRole.value = ''
+    // 重新獲取用戶信息
+    await fetchUserInfo()
+    // 重新載入頁面
+    window.location.reload()
+  } catch (error) {
+    console.error('重置角色失敗：', error)
+    alert('重置角色失敗，請稍後再試')
+  }
+}
+
+const fetchCurrentRole = async () => {
+  try {
+    // 先從 localStorage 讀取臨時角色
+    const storedTempRole = localStorage.getItem('temp_role')
+    if (storedTempRole) {
+      tempRole.value = storedTempRole
+      selectedRole.value = storedTempRole
+    }
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'Sidebar.vue:319', message: 'fetchCurrentRole called', data: { storedTempRole, localStorageTempRole: localStorage.getItem('temp_role') }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H3' }) }).catch(() => { });
+    // #endregion
+    
+    const response = await roleSwitchAPI.getCurrentRole()
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'Sidebar.vue:325', message: 'fetchCurrentRole response', data: { status: response?.status, data: response?.data, tempRole: response?.data?.temp_role }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H3' }) }).catch(() => { });
+    // #endregion
+    
+    // 如果後端返回了臨時角色，更新前端狀態
+    if (response.data.temp_role) {
+      tempRole.value = response.data.temp_role
+      selectedRole.value = response.data.temp_role
+      localStorage.setItem('temp_role', response.data.temp_role)
+    } else if (!storedTempRole) {
+      // 如果後端沒有臨時角色，且本地也沒有，則清除
+      tempRole.value = null
+      selectedRole.value = ''
+      localStorage.removeItem('temp_role')
+    }
+  } catch (error) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'Sidebar.vue:332', message: 'fetchCurrentRole error', data: { error: error?.message, status: error?.response?.status }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H3' }) }).catch(() => { });
+    // #endregion
+    // 忽略錯誤，可能用戶不是管理員
   }
 }
 
 onMounted(() => {
   fetchUserInfo()
+  fetchCurrentRole()
 })
 </script>
 

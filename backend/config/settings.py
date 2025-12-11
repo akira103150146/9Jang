@@ -217,6 +217,20 @@ AUTH_USER_MODEL = 'account.CustomUser'
 CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'True').lower() == 'true'
 CORS_ALLOW_CREDENTIALS = True  # 允許發送 cookies
 
+# 允許的自定義 header（包括 X-Temp-Role）
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'x-temp-role',  # 允許自定義 header X-Temp-Role
+]
+
 # 如果 CORS_ALLOW_ALL_ORIGINS 為 False，則使用 CORS_ALLOWED_ORIGINS
 if not CORS_ALLOW_ALL_ORIGINS:
     cors_origins = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000')
@@ -266,9 +280,14 @@ csrf_origins = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:5173,http://1
 CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in csrf_origins.split(',')]
 
 # Session 設置
-SESSION_COOKIE_SAMESITE = os.getenv('SESSION_COOKIE_SAMESITE', 'Lax')
+# 為了支持跨域請求（前端和後端在不同端口），SameSite 設為 None
+# 在開發環境（HTTP）中，Secure 可以設為 False；在生產環境（HTTPS）中，Secure 必須設為 True
+SESSION_COOKIE_SAMESITE = os.getenv('SESSION_COOKIE_SAMESITE', 'None')
 SESSION_COOKIE_HTTPONLY = os.getenv('SESSION_COOKIE_HTTPONLY', 'True').lower() == 'true'
 SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'False').lower() == 'true'  # 開發環境設為 False，生產環境設為 True（HTTPS）
+SESSION_COOKIE_AGE = 86400  # 24 小時（秒）
+SESSION_SAVE_EVERY_REQUEST = True  # 每次請求都保存 session
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # 瀏覽器關閉時不立即過期
 
 # 安全設置（生產環境）
 if not DEBUG:
