@@ -282,7 +282,7 @@ router.beforeEach(async (to, from, next) => {
     if (effectiveRole !== 'ADMIN') {
       const hasPermission = await checkPagePermission(user, to.path)
       if (!hasPermission) {
-        alert('您沒有權限訪問此頁面')
+        alert('您沒有權限訪問此頁面 (Page Permission)')
         next('/')
         return
       }

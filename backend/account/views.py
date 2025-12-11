@@ -383,6 +383,7 @@ def switch_role_view(request):
     """
     
     if not request.user.is_admin():
+
         return Response(
             {'detail': '只有管理員可以切換角色'},
             status=status.HTTP_403_FORBIDDEN

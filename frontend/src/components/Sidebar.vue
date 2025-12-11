@@ -282,9 +282,6 @@ const handleLogout = async () => {
 
 const switchRole = async (event) => {
   const role = event.target.value
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'Sidebar.vue:283', message: 'switchRole called', data: { role, currentUser: currentUser.value?.username, currentRole: currentUser.value?.role }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H1' }) }).catch(() => { });
-  // #endregion
   
   if (!role) {
     await resetRole()
@@ -297,34 +294,14 @@ const switchRole = async (event) => {
     tempRole.value = role
     selectedRole.value = role
     
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'Sidebar.vue:291', message: 'Before API call', data: { role, apiEndpoint: '/account/switch-role/', localStorageTempRole: localStorage.getItem('temp_role') }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H2' }) }).catch(() => { });
-    // #endregion
-    
     const response = await roleSwitchAPI.switchRole(role)
-    
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'Sidebar.vue:295', message: 'API response received', data: { status: response?.status, data: response?.data }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H2' }) }).catch(() => { });
-    // #endregion
-    
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'Sidebar.vue:300', message: 'State updated and saved to localStorage', data: { tempRole: tempRole.value, selectedRole: selectedRole.value, localStorageTempRole: localStorage.getItem('temp_role') }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H4' }) }).catch(() => { });
-    // #endregion
     
     // 重新獲取用戶信息以更新顯示
     await fetchUserInfo()
     
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'Sidebar.vue:305', message: 'Before page reload', data: { tempRole: tempRole.value }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H4' }) }).catch(() => { });
-    // #endregion
-    
     // 重新載入頁面以應用新的角色視角
     window.location.reload()
   } catch (error) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'Sidebar.vue:310', message: 'switchRole error', data: { error: error?.message, status: error?.response?.status, data: error?.response?.data }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H1' }) }).catch(() => { });
-    // #endregion
-    
     console.error('切換角色失敗：', error)
     alert('切換角色失敗，請稍後再試')
   }
@@ -356,15 +333,7 @@ const fetchCurrentRole = async () => {
       selectedRole.value = storedTempRole
     }
     
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'Sidebar.vue:319', message: 'fetchCurrentRole called', data: { storedTempRole, localStorageTempRole: localStorage.getItem('temp_role') }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H3' }) }).catch(() => { });
-    // #endregion
-    
     const response = await roleSwitchAPI.getCurrentRole()
-    
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'Sidebar.vue:325', message: 'fetchCurrentRole response', data: { status: response?.status, data: response?.data, tempRole: response?.data?.temp_role }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H3' }) }).catch(() => { });
-    // #endregion
     
     // 如果後端返回了臨時角色，更新前端狀態
     if (response.data.temp_role) {
@@ -378,9 +347,6 @@ const fetchCurrentRole = async () => {
       localStorage.removeItem('temp_role')
     }
   } catch (error) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'Sidebar.vue:332', message: 'fetchCurrentRole error', data: { error: error?.message, status: error?.response?.status }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H3' }) }).catch(() => { });
-    // #endregion
     // 忽略錯誤，可能用戶不是管理員
   }
 }
