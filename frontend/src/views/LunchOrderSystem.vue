@@ -2,10 +2,17 @@
   <div class="space-y-6">
     <header class="rounded-3xl border border-blue-100 bg-gradient-to-r from-white to-orange-50 p-6 shadow-sm">
       <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p class="text-sm font-semibold text-slate-500">餐飲服務</p>
-          <h2 class="text-2xl font-bold text-slate-900">訂便當系統</h2>
-          <p class="mt-2 text-sm text-slate-500">管理店家、創建團購、處理訂單</p>
+        <div class="flex items-center gap-4">
+          <button @click="$router.go(-1)" class="text-slate-400 hover:text-slate-600">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <div>
+            <p class="text-sm font-semibold text-slate-500">餐飲服務</p>
+            <h2 class="text-2xl font-bold text-slate-900">訂便當系統</h2>
+            <p class="mt-2 text-sm text-slate-500">管理店家、創建團購、處理訂單</p>
+          </div>
         </div>
         <div class="flex gap-3" v-if="!isStudent">
           <button
