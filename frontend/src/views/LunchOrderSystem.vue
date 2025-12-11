@@ -134,6 +134,7 @@
               查看訂單
             </router-link>
             <button
+              v-if="canCompleteGroup"
               @click="completeGroupOrder(groupOrder.group_order_id)"
               class="rounded-full bg-green-500 px-4 py-2 text-xs font-semibold text-white hover:bg-green-600"
             >
@@ -492,6 +493,7 @@ const restaurants = ref([])
 const groupOrders = ref([])
 const myOrders = ref([])
 const isStudent = ref(false)
+const userRole = ref('')
 const studentId = ref(null)
 const loading = ref(false)
 const saving = ref(false)
@@ -522,6 +524,10 @@ const activeRestaurants = computed(() => {
 
 const activeGroupOrders = computed(() => {
   return groupOrders.value.filter(g => g.status === 'Open')
+})
+
+const canCompleteGroup = computed(() => {
+  return ['ADMIN', 'ACCOUNTANT'].includes(userRole.value)
 })
 
 const completedGroupOrders = computed(() => {
@@ -710,6 +716,10 @@ const createGroupOrder = async () => {
 }
 
 const completeGroupOrder = async (id) => {
+  if (!canCompleteGroup.value) {
+    alert('只有管理者或會計可以完成團購')
+    return
+  }
   if (!confirm('確定要完成這個團購嗎？完成後將自動為所有訂單生成費用。')) return
   
   try {
@@ -773,6 +783,7 @@ onMounted(async () => {
   try {
     const user = await authAPI.getCurrentUser()
     const userData = user.data
+    userRole.value = userData.role || ''
     if (userData.role === 'STUDENT') {
         isStudent.value = true
         studentId.value = userData.student_id

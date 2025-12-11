@@ -168,7 +168,8 @@ const allNavItems = [
   { name: 'materials', label: '講義管理', path: '/materials', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
   { name: 'student-groups', label: '學生群組', path: '/student-groups', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
   { name: 'generator', label: '生成器', path: '/generator', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
-  { name: 'lunch-orders', label: '訂便當系統', path: '/lunch-orders', requiresAdmin: false, allowedRoles: ['ADMIN', 'STUDENT', 'ACCOUNTANT'] },
+  // 學生不顯示訂便當系統側邊欄入口，改由首頁入口進入
+  { name: 'lunch-orders', label: '訂便當系統', path: '/lunch-orders', requiresAdmin: false, allowedRoles: ['ADMIN', 'ACCOUNTANT'] },
   { name: 'roles', label: '角色管理', path: '/roles', requiresAdmin: true, allowedRoles: ['ADMIN'] },
   { name: 'audit-logs', label: '操作記錄', path: '/audit-logs', requiresAdmin: true, allowedRoles: ['ADMIN'] },
 ]
@@ -352,8 +353,12 @@ const handleUserSelect = async (user) => {
     impersonatedUser.must_change_password = false // Force disable password change for impersonation
     localStorage.setItem('user', JSON.stringify(impersonatedUser))
     
-    // 4. 重新載入頁面以應用新權限
-    window.location.reload()
+    // 4. 根據角色決定跳轉或重新載入
+    if (impersonatedUser.role === 'STUDENT') {
+      window.location.href = '/student-home'
+    } else {
+      window.location.reload()
+    }
     
   } catch (error) {
     console.error('模擬用戶失敗:', error)

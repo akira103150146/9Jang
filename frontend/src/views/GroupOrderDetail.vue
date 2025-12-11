@@ -37,7 +37,7 @@
           </div>
         </div>
         
-        <div v-if="groupOrder.status === 'Open'" class="mt-4 flex gap-3">
+          <div v-if="groupOrder.status === 'Open' && canCompleteGroup" class="mt-4 flex gap-3">
           <button
             @click="completeGroupOrder"
             class="rounded-full bg-green-500 px-5 py-2 text-sm font-semibold text-white hover:bg-green-600"
@@ -105,13 +105,14 @@
 
             <div class="mt-4 flex gap-2">
               <button
-                v-if="order.status === 'Pending'"
+                v-if="order.status === 'Pending' && canCompleteGroup"
                 @click="confirmOrder(order.order_id)"
                 class="rounded-full bg-green-500 px-4 py-2 text-xs font-semibold text-white hover:bg-green-600"
               >
                 確認訂單
               </button>
               <button
+                v-if="groupOrder?.status !== 'Completed' && order.status !== 'Completed' && (order.student === studentId || canCompleteGroup)"
                 @click="deleteOrder(order.order_id, order.student_name)"
                 class="rounded-full bg-red-500 px-4 py-2 text-xs font-semibold text-white hover:bg-red-600"
               >
@@ -126,9 +127,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { groupOrderAPI, orderAPI } from '../services/api'
+import { groupOrderAPI, orderAPI, authAPI } from '../services/api'
 
 const route = useRoute()
 const groupOrderId = parseInt(route.params.id)
@@ -136,6 +137,9 @@ const groupOrderId = parseInt(route.params.id)
 const groupOrder = ref(null)
 const orders = ref([])
 const loading = ref(false)
+const userRole = ref('')
+const studentId = ref(null)
+const canCompleteGroup = computed(() => ['ADMIN', 'ACCOUNTANT'].includes(userRole.value))
 
 const fetchGroupOrder = async () => {
   try {
@@ -188,6 +192,13 @@ const confirmOrder = async (orderId) => {
 }
 
 const deleteOrder = async (orderId, studentName) => {
+  // 學生只能刪除自己的訂單
+  const targetOrder = orders.value.find(o => o.order_id === orderId)
+  if (userRole.value === 'STUDENT' && targetOrder && targetOrder.student !== studentId.value) {
+    alert('您只能刪除自己的訂單')
+    return
+  }
+
   if (!confirm(`確定要刪除 ${studentName} 的訂單嗎？`)) return
   
   try {
@@ -201,6 +212,10 @@ const deleteOrder = async (orderId, studentName) => {
 }
 
 const completeGroupOrder = async () => {
+  if (!canCompleteGroup.value) {
+    alert('只有管理員或會計可以完成團購')
+    return
+  }
   if (!confirm('確定要完成這個團購嗎？完成後將自動為所有訂單生成費用。')) return
   
   try {
@@ -240,8 +255,16 @@ const getOrderStatusDisplay = (status) => {
   return map[status] || status
 }
 
-onMounted(() => {
+onMounted(async () => {
   loading.value = true
+  try {
+    const user = await authAPI.getCurrentUser()
+    userRole.value = user.data?.role || ''
+    studentId.value = user.data?.student_id || null
+  } catch (e) {
+    console.error('獲取用戶角色失敗', e)
+  }
+
   Promise.all([fetchGroupOrder(), fetchOrders()]).finally(() => {
     loading.value = false
   })

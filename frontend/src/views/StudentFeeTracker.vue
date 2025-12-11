@@ -113,12 +113,6 @@
                     >
                       編輯
                     </button>
-                    <button
-                      @click="deleteFee(fee.fee_id)"
-                      class="rounded-full bg-rose-500 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-600"
-                    >
-                      刪除
-                    </button>
                   </div>
                 </td>
               </tr>
@@ -307,24 +301,6 @@ const updatePaymentStatus = async (feeId, newStatus) => {
   } catch (error) {
     console.error('更新繳費狀態失敗：', error)
     alert('更新繳費狀態失敗，請稍後再試')
-  }
-}
-
-const deleteFee = async (feeId) => {
-  if (!confirm('確定要刪除此費用記錄嗎？')) {
-    return
-  }
-
-  try {
-    await feeAPI.delete(feeId)
-    fees.value = fees.value.filter(f => f.fee_id !== feeId)
-    alert('費用記錄已刪除')
-
-    // 重新獲取學生資料以更新統計
-    await fetchStudent()
-  } catch (error) {
-    console.error('刪除費用記錄失敗：', error)
-    alert('刪除費用記錄失敗，請稍後再試')
   }
 }
 

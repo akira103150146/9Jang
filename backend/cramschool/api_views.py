@@ -587,11 +587,12 @@ class ExtraFeeViewSet(viewsets.ModelViewSet):
     
     def destroy(self, request, *args, **kwargs):
         """
-        軟刪除收費記錄
+        禁止刪除費用記錄
         """
-        instance = self.get_object()
-        instance.soft_delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(
+            {'detail': '費用記錄無法刪除，請修改狀態或備註'},
+            status=status.HTTP_403_FORBIDDEN
+        )
     
     @action(detail=True, methods=['post'])
     def restore(self, request, pk=None):
@@ -1101,6 +1102,13 @@ class GroupOrderViewSet(viewsets.ModelViewSet):
         from django.utils import timezone
         from decimal import Decimal
         
+        # 權限：僅管理員或會計可完成團購
+        if not request.user.is_authenticated or not (request.user.is_admin() or request.user.is_accountant()):
+            return Response(
+                {'detail': '只有管理員或會計可以完成團購'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
         group_order = self.get_object()
         
         # 更新團購狀態
@@ -1187,8 +1195,17 @@ class OrderViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         """
         軟刪除訂單記錄
+        已完成的團購訂單無法刪除
         """
         instance = self.get_object()
+        
+        # 檢查團購狀態
+        if instance.group_order.status == 'Completed':
+            return Response(
+                {'detail': '無法刪除已完成團購的訂單'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+            
         instance.soft_delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
     
