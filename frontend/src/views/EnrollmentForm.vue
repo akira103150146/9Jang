@@ -7,7 +7,7 @@
         </h2>
 
         <form @submit.prevent="handleSubmit" class="flex flex-col">
-          <label class="block text-sm font-medium text-gray-700 mb-2">學生</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2">學生 <span class="text-red-500">*</span></label>
           <select 
             v-model="form.student"
             class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150"
@@ -19,7 +19,7 @@
             </option>
           </select>
 
-          <label class="block text-sm font-medium text-gray-700 mb-2">課程</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2">課程 <span class="text-red-500">*</span></label>
           <select 
             v-model="form.course"
             class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150"
@@ -31,7 +31,7 @@
             </option>
           </select>
 
-          <label class="block text-sm font-medium text-gray-700 mb-2">報名日期</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2">報名日期 <span class="text-red-500">*</span></label>
           <input 
             v-model="form.enroll_date"
             type="date" 
@@ -39,7 +39,7 @@
             required
           >
 
-          <label class="block text-sm font-medium text-gray-700 mb-2">折扣百分比 (%)</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2">折扣百分比 (%) <span class="text-gray-500 text-xs">（選填，預設為 0）</span></label>
           <input 
             v-model.number="form.discount_rate"
             type="number" 
@@ -48,7 +48,6 @@
             max="100"
             class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150" 
             placeholder="0.00"
-            required
           >
           <p class="text-xs text-gray-500 mb-4">輸入折扣百分比，例如：10 表示 10% 折扣</p>
 

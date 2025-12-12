@@ -7,6 +7,7 @@
         </h2>
 
         <form @submit.prevent="handleSubmit" class="flex flex-col">
+          <label class="block text-sm font-medium text-gray-700 mb-2">姓名 <span class="text-red-500">*</span></label>
           <input 
             v-model="form.name"
             type="text" 
@@ -14,6 +15,7 @@
             placeholder="姓名"
             required
           >
+          <label class="block text-sm font-medium text-gray-700 mb-2">學校 <span class="text-red-500">*</span></label>
           <input 
             v-model="form.school"
             type="text" 
@@ -21,6 +23,7 @@
             placeholder="學校"
             required
           >
+          <label class="block text-sm font-medium text-gray-700 mb-2">年級 <span class="text-red-500">*</span></label>
           <input 
             v-model="form.grade"
             type="text" 
@@ -28,24 +31,28 @@
             placeholder="年級"
             required
           >
+          <label class="block text-sm font-medium text-gray-700 mb-2">聯絡電話 <span class="text-gray-500 text-xs">（選填）</span></label>
           <input 
             v-model="form.phone"
             type="text" 
             class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150" 
             placeholder="聯絡電話"
           >
+          <label class="block text-sm font-medium text-gray-700 mb-2">緊急聯絡人姓名 <span class="text-gray-500 text-xs">（選填）</span></label>
           <input 
             v-model="form.emergency_contact_name"
             type="text" 
             class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150" 
             placeholder="緊急聯絡人姓名"
           >
+          <label class="block text-sm font-medium text-gray-700 mb-2">緊急聯絡人電話 <span class="text-gray-500 text-xs">（選填）</span></label>
           <input 
             v-model="form.emergency_contact_phone"
             type="text" 
             class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150" 
             placeholder="緊急聯絡人電話"
           >
+          <label class="block text-sm font-medium text-gray-700 mb-2">備註 <span class="text-gray-500 text-xs">（選填）</span></label>
           <textarea 
             v-model="form.notes"
             class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150" 

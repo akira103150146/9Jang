@@ -7,7 +7,7 @@
         </h2>
 
         <form @submit.prevent="handleSubmit" class="flex flex-col">
-          <label class="block text-sm font-medium text-gray-700 mb-2">學生</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2">學生 <span class="text-red-500">*</span></label>
           <select 
             v-model="form.student"
             class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150"
@@ -19,7 +19,7 @@
             </option>
           </select>
 
-          <label class="block text-sm font-medium text-gray-700 mb-2">課程</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2">課程 <span class="text-red-500">*</span></label>
           <select 
             v-model="form.course"
             class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150"
@@ -31,7 +31,7 @@
             </option>
           </select>
 
-          <label class="block text-sm font-medium text-gray-700 mb-2">請假日期</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2">請假日期 <span class="text-red-500">*</span></label>
           <input 
             v-model="form.leave_date"
             type="date" 
@@ -39,7 +39,7 @@
             required
           >
 
-          <label class="block text-sm font-medium text-gray-700 mb-2">請假原因</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2">請假原因 <span class="text-red-500">*</span></label>
           <textarea 
             v-model="form.reason"
             class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150" 
@@ -48,7 +48,7 @@
             required
           ></textarea>
 
-          <label class="block text-sm font-medium text-gray-700 mb-2">審核狀態</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2">審核狀態 <span class="text-red-500">*</span></label>
           <select 
             v-model="form.approval_status"
             class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150"

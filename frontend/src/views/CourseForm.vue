@@ -7,6 +7,7 @@
         </h2>
 
         <form @submit.prevent="handleSubmit" class="flex flex-col">
+          <label class="block text-sm font-medium text-gray-700 mb-2">課程名稱 <span class="text-red-500">*</span></label>
           <input 
             v-model="form.course_name"
             type="text" 
@@ -15,6 +16,7 @@
             required
           >
           
+          <label class="block text-sm font-medium text-gray-700 mb-2">授課老師 <span class="text-red-500">*</span></label>
           <select 
             v-model="form.teacher"
             class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150"
@@ -26,6 +28,7 @@
             </option>
           </select>
 
+          <label class="block text-sm font-medium text-gray-700 mb-2">上課日 <span class="text-red-500">*</span></label>
           <select 
             v-model="form.day_of_week"
             class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150"
@@ -62,6 +65,7 @@
             </div>
           </div>
 
+          <label class="block text-sm font-medium text-gray-700 mb-2">每堂課收費 <span class="text-red-500">*</span></label>
           <input 
             v-model.number="form.fee_per_session"
             type="number" 
@@ -72,6 +76,7 @@
             required
           >
 
+          <label class="block text-sm font-medium text-gray-700 mb-2">課程狀態 <span class="text-red-500">*</span></label>
           <select 
             v-model="form.status"
             class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150"

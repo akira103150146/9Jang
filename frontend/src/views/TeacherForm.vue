@@ -7,6 +7,7 @@
         </h2>
 
         <form @submit.prevent="handleSubmit" class="flex flex-col">
+          <label class="block text-sm font-medium text-gray-700 mb-2">姓名 <span class="text-red-500">*</span></label>
           <input 
             v-model="form.name"
             type="text" 
@@ -14,6 +15,7 @@
             placeholder="姓名"
             required
           >
+          <label class="block text-sm font-medium text-gray-700 mb-2">帳號 <span class="text-red-500">*</span></label>
           <input 
             v-model="form.username"
             type="text" 
@@ -46,6 +48,7 @@
           >
             密碼與確認密碼不一致
           </p>
+          <label class="block text-sm font-medium text-gray-700 mb-2">權限等級 <span class="text-red-500">*</span></label>
           <select 
             v-model="form.permission_level"
             class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150"
@@ -55,12 +58,14 @@
             <option value="Admin">管理員</option>
             <option value="Accountant">會計</option>
           </select>
+          <label class="block text-sm font-medium text-gray-700 mb-2">聯絡電話 <span class="text-gray-500 text-xs">（選填）</span></label>
           <input 
             v-model="form.phone"
             type="text" 
             class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150" 
             placeholder="聯絡電話"
           >
+          <label class="block text-sm font-medium text-gray-700 mb-2">入職日期 <span class="text-gray-500 text-xs">（選填）</span></label>
           <input 
             v-model="form.hire_date"
             type="date" 
