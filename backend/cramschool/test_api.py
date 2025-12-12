@@ -546,6 +546,222 @@ class CourseAPITestCase(BaseAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         results = self.get_response_results(response)
         self.assertGreaterEqual(len(results), 1)
+    
+    def test_create_course_without_teacher_fails(self):
+        """測試創建沒有老師的課程應該失敗（teacher 為必填）"""
+        url = self.get_api_url('courses')
+        course_data = {
+            'course_name': '自主學習課程',
+            # 缺少 teacher 欄位
+            'start_time': '09:00:00',
+            'end_time': '10:00:00',
+            'day_of_week': 'Mon',
+            'fee_per_session': '100.00',
+            'status': 'Active'
+        }
+        response = self.client.post(url, course_data, format='json')
+        
+        # 應該返回驗證錯誤
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+    
+    def test_create_course_with_null_teacher_fails(self):
+        """測試創建時 teacher 為 null 應該失敗"""
+        url = self.get_api_url('courses')
+        course_data = {
+            'course_name': '自主學習課程',
+            'teacher': None,  # teacher 為 null 應該失敗
+            'start_time': '09:00:00',
+            'end_time': '10:00:00',
+            'day_of_week': 'Mon',
+            'fee_per_session': '100.00',
+            'status': 'Active'
+        }
+        response = self.client.post(url, course_data, format='json')
+        
+        # 應該返回驗證錯誤
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+    
+    def test_create_course_with_hhmm_time_format(self):
+        """測試使用 HH:MM 時間格式創建課程（前端可能發送的格式）"""
+        url = self.get_api_url('courses')
+        course_data = {
+            'course_name': '測試課程',
+            'teacher': self.teacher.teacher_id,
+            'start_time': '09:00',  # HH:MM 格式
+            'end_time': '10:00',    # HH:MM 格式
+            'day_of_week': 'Mon',
+            'fee_per_session': '100.00',
+            'status': 'Active'
+        }
+        response = self.client.post(url, course_data, format='json')
+        
+        # Django TimeField 應該能夠解析 HH:MM 格式
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        # 驗證時間被正確保存（可能會被標準化為 HH:MM:SS）
+        self.assertIn('start_time', response.data)
+        self.assertIn('end_time', response.data)
+    
+    def test_create_course_with_string_fee(self):
+        """測試使用字符串數字作為 fee_per_session"""
+        url = self.get_api_url('courses')
+        course_data = {
+            'course_name': '測試課程',
+            'teacher': self.teacher.teacher_id,
+            'start_time': '09:00:00',
+            'end_time': '10:00:00',
+            'day_of_week': 'Mon',
+            'fee_per_session': '150.50',  # 字符串格式的數字
+            'status': 'Active'
+        }
+        response = self.client.post(url, course_data, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['fee_per_session'], '150.50')
+    
+    def test_create_course_missing_required_fields(self):
+        """測試缺少必填欄位時返回驗證錯誤"""
+        url = self.get_api_url('courses')
+        
+        # 缺少 course_name
+        course_data = {
+            'teacher': self.teacher.teacher_id,
+            'start_time': '09:00:00',
+            'end_time': '10:00:00',
+            'day_of_week': 'Mon',
+            'fee_per_session': '100.00',
+            'status': 'Active'
+        }
+        response = self.client.post(url, course_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        
+        # 缺少 day_of_week
+        course_data = {
+            'course_name': '測試課程',
+            'teacher': self.teacher.teacher_id,
+            'start_time': '09:00:00',
+            'end_time': '10:00:00',
+            'fee_per_session': '100.00',
+            'status': 'Active'
+        }
+        response = self.client.post(url, course_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        
+        # 缺少 start_time
+        course_data = {
+            'course_name': '測試課程',
+            'teacher': self.teacher.teacher_id,
+            'end_time': '10:00:00',
+            'day_of_week': 'Mon',
+            'fee_per_session': '100.00',
+            'status': 'Active'
+        }
+        response = self.client.post(url, course_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+    
+    def test_update_course(self):
+        """測試更新課程"""
+        course = Course.objects.create(
+            course_name='原課程名稱',
+            teacher=self.teacher,
+            start_time='09:00:00',
+            end_time='10:00:00',
+            day_of_week='Mon',
+            fee_per_session=Decimal('100.00'),
+            status='Active'
+        )
+        
+        url = self.get_api_url('courses', 'detail', course.course_id)
+        update_data = {
+            'course_name': '更新後的課程名稱',
+            'teacher': self.teacher.teacher_id,
+            'start_time': '10:00:00',
+            'end_time': '11:00:00',
+            'day_of_week': 'Tue',
+            'fee_per_session': '150.00',
+            'status': 'Pending'
+        }
+        response = self.client.put(url, update_data, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['course_name'], '更新後的課程名稱')
+        self.assertEqual(response.data['day_of_week'], 'Tue')
+        self.assertEqual(response.data['status'], 'Pending')
+    
+    def test_update_course_remove_teacher_fails(self):
+        """測試更新課程時移除老師應該失敗（teacher 為必填）"""
+        course = Course.objects.create(
+            course_name='有老師的課程',
+            teacher=self.teacher,
+            start_time='09:00:00',
+            end_time='10:00:00',
+            day_of_week='Mon',
+            fee_per_session=Decimal('100.00')
+        )
+        
+        url = self.get_api_url('courses', 'detail', course.course_id)
+        update_data = {
+            'course_name': '有老師的課程',
+            'teacher': None,  # 嘗試移除老師（應該失敗）
+            'start_time': '09:00:00',
+            'end_time': '10:00:00',
+            'day_of_week': 'Mon',
+            'fee_per_session': '100.00',
+            'status': 'Active'
+        }
+        response = self.client.put(url, update_data, format='json')
+        
+        # 應該返回驗證錯誤
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+    
+    def test_delete_course(self):
+        """測試刪除課程"""
+        course = Course.objects.create(
+            course_name='待刪除課程',
+            teacher=self.teacher,
+            start_time='09:00:00',
+            end_time='10:00:00',
+            day_of_week='Mon',
+            fee_per_session=Decimal('100.00')
+        )
+        
+        url = self.get_api_url('courses', 'detail', course.course_id)
+        response = self.client.delete(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Course.objects.filter(course_id=course.course_id).exists())
+    
+    def test_create_course_with_invalid_teacher_id(self):
+        """測試使用無效的 teacher ID 創建課程"""
+        url = self.get_api_url('courses')
+        course_data = {
+            'course_name': '測試課程',
+            'teacher': 99999,  # 不存在的 teacher ID
+            'start_time': '09:00:00',
+            'end_time': '10:00:00',
+            'day_of_week': 'Mon',
+            'fee_per_session': '100.00',
+            'status': 'Active'
+        }
+        response = self.client.post(url, course_data, format='json')
+        
+        # 應該返回驗證錯誤
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+    
+    def test_create_course_with_invalid_day_of_week(self):
+        """測試使用無效的 day_of_week 值"""
+        url = self.get_api_url('courses')
+        course_data = {
+            'course_name': '測試課程',
+            'teacher': self.teacher.teacher_id,
+            'start_time': '09:00:00',
+            'end_time': '10:00:00',
+            'day_of_week': 'InvalidDay',  # 無效的值
+            'fee_per_session': '100.00',
+            'status': 'Active'
+        }
+        response = self.client.post(url, course_data, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
 class StudentEnrollmentAPITestCase(BaseAPITestCase):

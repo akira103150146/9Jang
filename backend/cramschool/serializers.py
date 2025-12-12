@@ -258,6 +258,9 @@ class CourseSerializer(serializers.ModelSerializer):
             'start_time', 'end_time', 'day_of_week', 'fee_per_session', 'status'
         ]
         read_only_fields = ['course_id', 'teacher_name']
+        extra_kwargs = {
+            'teacher': {'required': True}  # 明確標記為必填
+        }
     
     def get_teacher_name(self, obj):
         return obj.teacher.name if obj.teacher else None

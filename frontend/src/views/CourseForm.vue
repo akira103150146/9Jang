@@ -18,6 +18,7 @@
           <select 
             v-model="form.teacher"
             class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150"
+            required
           >
             <option value="">選擇授課老師</option>
             <option v-for="teacher in teachers" :key="teacher.teacher_id || teacher.id" :value="teacher.teacher_id || teacher.id">
@@ -159,10 +160,52 @@ const fetchCourse = async () => {
 const handleSubmit = async () => {
   loading.value = true
   try {
+    // 準備提交數據，確保格式正確
+    const teacherValue = form.value.teacher
+    // teacher 欄位為必填，必須是有效的整數 ID
+    if (!teacherValue || teacherValue === '' || isNaN(parseInt(teacherValue, 10))) {
+      alert('請選擇授課老師')
+      loading.value = false
+      return
+    }
+    const teacherId = parseInt(teacherValue, 10)
+    
+    // 確保時間格式正確（轉換為 HH:MM:SS 格式以確保相容性）
+    const formatTime = (time) => {
+      if (!time) return null
+      // 如果已經是 HH:MM:SS 格式，直接返回
+      if (time.includes(':') && time.split(':').length === 3) {
+        return time
+      }
+      // 如果是 HH:MM 格式，轉換為 HH:MM:SS
+      if (time.includes(':') && time.split(':').length === 2) {
+        return `${time}:00`
+      }
+      return time
+    }
+    
     const submitData = {
-      ...form.value,
-      teacher: form.value.teacher || null,
-      fee_per_session: parseFloat(form.value.fee_per_session)
+      course_name: form.value.course_name.trim(),
+      teacher: teacherId,
+      day_of_week: form.value.day_of_week,
+      start_time: formatTime(form.value.start_time),
+      end_time: formatTime(form.value.end_time),
+      fee_per_session: form.value.fee_per_session ? parseFloat(form.value.fee_per_session) : 0,
+      status: form.value.status
+    }
+    
+    // 驗證必填欄位
+    if (!submitData.course_name || !submitData.teacher || !submitData.day_of_week || !submitData.start_time || !submitData.end_time) {
+      alert('請填寫所有必填欄位')
+      loading.value = false
+      return
+    }
+    
+    // 驗證費用為有效數字
+    if (isNaN(submitData.fee_per_session) || submitData.fee_per_session < 0) {
+      alert('請輸入有效的費用金額')
+      loading.value = false
+      return
     }
     
     if (isEdit.value) {
@@ -175,7 +218,13 @@ const handleSubmit = async () => {
     router.push('/courses')
   } catch (error) {
     console.error('操作失敗:', error)
-    alert('操作失敗，請稍後再試')
+    // 顯示更詳細的錯誤訊息
+    const errorMessage = error.response?.data?.detail || 
+                        error.response?.data?.message || 
+                        (typeof error.response?.data === 'object' ? JSON.stringify(error.response.data) : null) ||
+                        error.message || 
+                        '操作失敗，請稍後再試'
+    alert(`操作失敗：${errorMessage}`)
   } finally {
     loading.value = false
   }

@@ -190,8 +190,8 @@ class Course(models.Model):
     course_name = models.CharField(max_length=100, verbose_name='課程名稱')
     teacher = models.ForeignKey(
         Teacher,
-        on_delete=models.SET_NULL,
-        null=True,
+        on_delete=models.PROTECT,  # 如果老師被刪除，保護課程不被刪除
+        null=False,
         related_name='courses',
         verbose_name='授課老師'
     )
