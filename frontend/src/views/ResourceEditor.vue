@@ -850,10 +850,118 @@ watch(
   { deep: true }
 )
 
-const print = () => {
-  // 觸發瀏覽器列印對話框
-  // CSS @media print 會自動隱藏不需要的元素
-  window.print()
+const print = async () => {
+  // 使用 iframe 隔離列印內容，確保樣式不受影響
+  await nextTick() // 確保 DOM 已更新
+  
+  // 獲取所有有內容的頁面
+  const paperElements = document.querySelectorAll('.print-paper')
+  const pagesWithContent = Array.from(paperElements).filter(page => {
+    // 檢查頁面是否有實際內容（排除空白頁）
+    const hasBlocks = page.querySelector('[data-block-id]')
+    const hasText = page.textContent.trim().length > 0
+    return hasBlocks || hasText
+  })
+  
+  if (pagesWithContent.length === 0) {
+    alert('沒有可列印的內容')
+    return
+  }
+  
+  // 創建 iframe 用於列印
+  const printFrame = document.createElement('iframe')
+  printFrame.style.position = 'fixed'
+  printFrame.style.right = '0'
+  printFrame.style.bottom = '0'
+  printFrame.style.width = '0'
+  printFrame.style.height = '0'
+  printFrame.style.border = '0'
+  document.body.appendChild(printFrame)
+  
+  // 等待 iframe 載入
+  await new Promise(resolve => {
+    printFrame.onload = resolve
+    printFrame.src = 'about:blank'
+  })
+  
+  const iframeDoc = printFrame.contentDocument || printFrame.contentWindow.document
+  
+  // 複製必要的樣式表
+  const stylesheets = Array.from(document.styleSheets)
+  let styleContent = ''
+  
+  for (const sheet of stylesheets) {
+    try {
+      if (sheet.href) {
+        // 外部樣式表
+        const link = iframeDoc.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = sheet.href
+        iframeDoc.head.appendChild(link)
+      } else {
+        // 內聯樣式表
+        const rules = Array.from(sheet.cssRules || [])
+        for (const rule of rules) {
+          styleContent += rule.cssText + '\n'
+        }
+      }
+    } catch (e) {
+      // 跨域樣式表可能無法訪問，跳過
+      console.warn('無法複製樣式表:', e)
+    }
+  }
+  
+  // 添加內聯樣式
+  const styleEl = iframeDoc.createElement('style')
+  styleEl.textContent = styleContent + `
+    @page {
+      size: ${resource.settings.paperSize === 'A4' ? 'A4' : 'B4'};
+      margin: 0;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background: white;
+    }
+    .print-paper {
+      width: ${resource.settings.paperSize === 'A4' ? '210mm' : '250mm'};
+      min-height: ${resource.settings.paperSize === 'A4' ? '297mm' : '353mm'};
+      padding: 20mm;
+      margin: 0 auto;
+      background: white;
+      box-sizing: border-box;
+    }
+    /* KaTeX 分數樣式已從 markdown-preview.css 中自動包含 */
+  `
+  iframeDoc.head.appendChild(styleEl)
+  
+  // 複製頁面內容到 iframe
+  const container = iframeDoc.createElement('div')
+  container.style.background = 'white'
+  
+  pagesWithContent.forEach((page, index) => {
+    const clone = page.cloneNode(true)
+    // 確保所有樣式都被複製
+    const computedStyle = window.getComputedStyle(page)
+    clone.style.cssText = computedStyle.cssText
+    clone.style.margin = '0'
+    clone.style.marginBottom = index < pagesWithContent.length - 1 ? '20mm' : '0'
+    container.appendChild(clone)
+  })
+  
+  iframeDoc.body.appendChild(container)
+  
+  // 等待內容渲染
+  await new Promise(resolve => setTimeout(resolve, 500))
+  
+  // 觸發列印
+  printFrame.contentWindow.focus()
+  printFrame.contentWindow.print()
+  
+  // 列印完成後清理
+  setTimeout(() => {
+    document.body.removeChild(printFrame)
+  }, 1000)
 }
 
 // 計算總頁數 - 根據實際內容高度
@@ -1026,11 +1134,41 @@ onUnmounted(() => {
     display: none !important;
   }
   
-  /* 顯示並格式化頁面容器 */
+  /* 重置根容器和主容器，確保列印時正確顯示 */
+  .flex.h-screen {
+    display: block !important;
+    height: auto !important;
+    background: white !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  /* 確保主容器正確顯示 */
+  main.flex-1 {
+    display: block !important;
+    background: white !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  /* 確保畫布容器正確顯示 */
+  .flex-1.overflow-auto {
+    display: block !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: white !important;
+    position: static !important;
+    margin: 0 !important;
+  }
+  
+  /* 顯示並格式化頁面容器 - 保持 A4 尺寸 */
   .print-paper {
     box-shadow: none !important;
-    width: 100% !important;
-    max-width: 100% !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    min-width: 210mm !important;
     padding: 20mm !important;
     margin: 0 auto !important;
     page-break-after: auto;
@@ -1038,23 +1176,58 @@ onUnmounted(() => {
     left: 0;
     top: 0;
     background: white !important;
+    display: block !important;
+    box-sizing: border-box !important;
   }
   
-  /* 確保畫布容器正確顯示 */
-  .flex-1.overflow-auto {
-    padding: 0 !important;
-    overflow: visible !important;
-    background: white !important;
+  /* 確保 .print-paper 內的所有內容正確顯示 - 只設置必要的屬性 */
+  .print-paper img,
+  .print-paper table {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
   
-  /* 確保主容器正確顯示 */
-  main.flex-1 {
-    background: white !important;
+  /* 確保題目內容正確顯示 - 不要過度覆蓋 prose 樣式 */
+  .question-content {
+    visibility: visible !important;
+    color: black !important;
+  }
+  
+  /* 確保 prose 樣式正常顯示，只設置必要的顏色 */
+  .prose {
+    visibility: visible !important;
+    color: black !important;
+  }
+  
+  .prose p,
+  .prose h1,
+  .prose h2,
+  .prose h3,
+  .prose h4,
+  .prose h5,
+  .prose h6,
+  .prose ul,
+  .prose ol,
+  .prose li,
+  .prose strong,
+  .prose em {
+    color: black !important;
+    visibility: visible !important;
+  }
+  
+  /* 確保 prose 內的 KaTeX 不受 prose 的 line-height 影響 */
+  .prose .katex,
+  .prose .katex * {
+    line-height: normal !important;
   }
   
   /* 確保整個頁面背景是白色 */
-  body {
+  body,
+  html {
     background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
   }
   
   .break-after-page {
@@ -1099,6 +1272,171 @@ onUnmounted(() => {
   /* 確保文字可選和可讀 */
   :deep(.cm-line) {
     color: black !important;
+  }
+}
+</style>
+
+<!-- 非 scoped 的列印樣式，確保能應用到所有元素 -->
+<style>
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  
+  /* 強制隱藏所有捲軸 */
+  * {
+    overflow: visible !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+  
+  *::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+  }
+  
+  /* 強制隱藏側邊欄及其所有子元素 - 使用多種選擇器確保匹配 */
+  aside,
+  aside *,
+  body > div > aside,
+  body > div > aside *,
+  .flex.h-screen > aside,
+  .flex.h-screen > aside * {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    position: absolute !important;
+    left: -9999px !important;
+  }
+  
+  /* 強制隱藏頂部工具列及其所有子元素 - 使用多種選擇器確保匹配 */
+  header,
+  header *,
+  main > header,
+  main > header *,
+  main.flex-1 > header,
+  main.flex-1 > header * {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    position: absolute !important;
+    left: -9999px !important;
+  }
+  
+  /* 隱藏所有按鈕 */
+  button {
+    display: none !important;
+    visibility: hidden !important;
+  }
+  
+  /* 確保 KaTeX 數學公式正確顯示 - 防止 prose 樣式影響 */
+  .katex {
+    color: black !important;
+    visibility: visible !important;
+    font-family: KaTeX_Main, KaTeX_Math, KaTeX_Size1, KaTeX_Size2, KaTeX_Size3, KaTeX_Size4, "Times New Roman", serif !important;
+    /* 重置可能被 prose 影響的屬性 */
+    line-height: normal !important; /* 讓 KaTeX 自己控制 line-height */
+    font-size: 1em !important;
+  }
+  
+  /* 確保 KaTeX 在 prose 內時不受影響 */
+  .prose .katex {
+    line-height: normal !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  /* 確保分數正確顯示，防止重疊 */
+  .katex .mfrac {
+    /* 不設置任何樣式，讓 KaTeX 使用默認值 */
+  }
+  
+  /* 針對上標中的分數，增加分子分母之間的間距 */
+  .katex .msupsub .mfrac {
+    padding-top: 0.15em !important;
+    padding-bottom: 0.15em !important;
+  }
+  
+  /* 增加分數線的厚度和上下間距，讓分數更清晰 */
+  .katex .msupsub .mfrac .frac-line {
+    border-bottom-width: 0.06em !important;
+    min-height: 0.06em !important;
+    margin-top: 0.1em !important;
+    margin-bottom: 0.1em !important;
+  }
+  
+  /* 確保分數的分子和分母容器有足夠的空間 */
+  .katex .msupsub .mfrac .vlist-t2 {
+    padding-top: 0.05em !important;
+    padding-bottom: 0.05em !important;
+  }
+  
+  /* 確保分數線正確顯示 */
+  .katex .frac-line {
+    /* 不設置任何樣式，讓 KaTeX 使用默認值 */
+  }
+  
+  /* 調整上標位置，讓它更往右上方 */
+  .katex .msupsub {
+    vertical-align: 0.3em !important; /* 增加上標的垂直偏移 */
+    margin-left: 0.1em !important; /* 增加上標的水平偏移 */
+  }
+  
+  /* 確保上標/下標容器正確顯示 */
+  .katex .vlist-t,
+  .katex .vlist-r,
+  .katex .vlist-s,
+  .katex .vlist {
+    /* 不設置任何樣式，讓 KaTeX 使用默認值 */
+  }
+  
+  /* 針對上標中的 vlist，確保有足夠的垂直空間 */
+  .katex .msupsub .vlist-t {
+    margin-top: 0.05em !important;
+    margin-bottom: 0.05em !important;
+  }
+  
+  /* 確保 MathML 隱藏（使用 HTML 渲染） */
+  .katex-mathml {
+    display: none !important;
+    visibility: hidden !important;
+  }
+  
+  /* 只確保 KaTeX 內的元素可見且顏色正確，不干預布局 */
+  .katex * {
+    color: black !important;
+    visibility: visible !important;
+    /* 重置可能被 prose 影響的 line-height */
+    line-height: inherit !important;
+  }
+  
+  /* 確保畫布容器在列印時正確顯示 */
+  .flex-1.overflow-auto,
+  div[class*="overflow-auto"],
+  main .flex-1.overflow-auto {
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: white !important;
+  }
+  
+  /* 確保整個頁面背景是白色 */
+  body,
+  html {
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+  
+  /* 確保根容器正確顯示 */
+  .flex.h-screen {
+    overflow: visible !important;
+    background: white !important;
   }
 }
 </style>

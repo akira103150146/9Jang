@@ -14,9 +14,17 @@
   margin-bottom: 0.5em;
 }
 
-.markdown-preview h1 { font-size: 1.5em; }
-.markdown-preview h2 { font-size: 1.3em; }
-.markdown-preview h3 { font-size: 1.1em; }
+.markdown-preview h1 {
+  font-size: 1.5em;
+}
+
+.markdown-preview h2 {
+  font-size: 1.3em;
+}
+
+.markdown-preview h3 {
+  font-size: 1.1em;
+}
 
 .markdown-preview p {
   margin-bottom: 0.75em;
@@ -94,3 +102,30 @@
   text-align: center;
 }
 
+/* 改進 KaTeX 分數線的清晰度 - 讓分數線比數字長1.5倍 */
+.katex .frac-line {
+  border-bottom-width: 0.08em !important;
+  min-height: 0.08em !important;
+  margin-top: 0.22em !important;
+  margin-bottom: 0.2em !important;
+  width: 150% !important;
+  margin-left: -25% !important;
+  /* 居中對齊 */
+}
+
+/* 確保分數有足夠的垂直間距 */
+.katex .mfrac {
+  padding-top: 0.25em !important;
+  padding-bottom: 0.25em !important;
+}
+
+/* 分子分母的字體大小 */
+.katex .mfrac .vlist-s {
+  font-size: 1em !important;
+}
+
+/* 確保分數容器有足夠的空間 */
+.katex .mfrac .vlist-t2 {
+  padding-top: 0.2em !important;
+  padding-bottom: 0.2em !important;
+}
