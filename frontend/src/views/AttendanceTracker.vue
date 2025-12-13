@@ -72,19 +72,55 @@
               </td>
               
               <td class="whitespace-nowrap px-4 py-4 text-center">
-                <div class="flex justify-center gap-2">
+                
+                <div class="hidden md:flex justify-center items-center gap-2">
                   <router-link
                     :to="`/attendance/leaves/edit/${leave.leave_id || leave.id}`"
-                    class="rounded-full bg-sky-500 px-3 py-1 text-xs font-semibold text-white hover:bg-sky-600"
+                    class="rounded-full bg-sky-500 px-3 py-1 text-xs font-semibold text-white hover:bg-sky-600 h-7 flex items-center justify-center"
                   >
                     編輯
                   </router-link>
                   <button
                     @click="deleteLeave(leave.leave_id || leave.id, leave.student_name)"
-                    class="rounded-full bg-rose-500 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-600"
+                    class="rounded-full bg-rose-500 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-600 h-7 flex items-center justify-center"
                   >
                     刪除
                   </button>
+                </div>
+
+                <div class="block md:hidden relative inline-block text-left">
+                  <button
+                    @click.stop="toggleDropdown(leave.leave_id)"
+                    type="button"
+                    class="inline-flex justify-center w-8 h-8 rounded-full text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700/70 transition"
+                  >
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                    </svg>
+                  </button>
+                  
+                  <div
+                    v-if="openDropdownId === leave.leave_id"
+                    @click.stop
+                    class="origin-top-right absolute right-0 mt-2 w-32 rounded-lg shadow-lg bg-white ring-1 ring-black ring-opacity-5 divide-y divide-slate-100 dark:bg-slate-700 dark:divide-slate-600 z-10"
+                  >
+                    <div class="py-1">
+                      <router-link
+                        :to="`/attendance/leaves/edit/${leave.leave_id || leave.id}`"
+                        class="block px-4 py-2 text-sm text-sky-600 hover:bg-sky-50 dark:text-sky-400 dark:hover:bg-slate-600/50"
+                      >
+                        編輯
+                      </router-link>
+                    </div>
+                    <div class="py-1">
+                      <button
+                        @click="deleteLeave(leave.leave_id || leave.id, leave.student_name); closeDropdown()"
+                        class="block w-full text-left px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-slate-600/50"
+                      >
+                        刪除
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </td>
             </tr>
@@ -99,13 +135,16 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { leaveAPI } from '../services/api'
 import { mockLeaveRequests } from '../data/mockData'
 
 const leaveRequests = ref([])
 const loading = ref(false)
 const usingMock = ref(false)
+
+// 響應式操作選單狀態
+const openDropdownId = ref(null)
 
 const statusMap = {
   'Pending': '待審核',
@@ -139,6 +178,7 @@ const statusColor = (status) => {
     Pending: 'bg-amber-50 text-amber-600',
     Rejected: 'bg-rose-50 text-rose-600',
   }
+  // 由於 template 已經手動添加了 dark: 類別，這裡只需要返回淺色模式的類別
   return map[status] ?? 'bg-slate-100 text-slate-700'
 }
 
@@ -178,8 +218,32 @@ const deleteLeave = async (id, studentName) => {
   }
 }
 
+// ----------------------------------------------------
+// 操作選單邏輯 (Dropdown)
+// ----------------------------------------------------
+
+const toggleDropdown = (leaveId) => {
+  // 如果點擊當前開啟的，則關閉；否則開啟新的
+  openDropdownId.value = openDropdownId.value === leaveId ? null : leaveId
+}
+
+const closeDropdown = () => {
+  openDropdownId.value = null
+}
+
+const handleClickOutside = (event) => {
+  // 檢查點擊是否在任何下拉選單之外
+  if (openDropdownId.value && event.target.closest('.relative.inline-block') === null) {
+    closeDropdown()
+  }
+}
+
 onMounted(() => {
+  document.addEventListener('click', closeDropdown)
   fetchLeaves()
 })
-</script>
 
+onBeforeUnmount(() => {
+  document.removeEventListener('click', closeDropdown)
+})
+</script>
