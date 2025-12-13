@@ -35,50 +35,27 @@
 
           <!-- User List -->
           <div v-else class="max-h-[400px] overflow-y-auto rounded-lg border border-slate-200">
-            <table class="min-w-full divide-y divide-slate-200">
-              <thead class="bg-slate-50 sticky top-0">
-                <tr>
-                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">姓名/帳號</th>
-                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Email</th>
-                  <th scope="col" class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500">操作</th>
-                </tr>
-              </thead>
-              <tbody class="bg-white divide-y divide-slate-200">
-                <tr v-if="filteredUsers.length === 0">
-                  <td colspan="3" class="px-6 py-8 text-center text-slate-500">
-                    找不到符合條件的用戶
-                  </td>
-                </tr>
-                <tr v-for="user in filteredUsers" :key="user.id" class="hover:bg-slate-50 transition-colors">
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="flex items-center">
-                      <div class="h-8 w-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs mr-3">
-                        {{ getUserInitials(user) }}
-                      </div>
-                      <div>
-                        <div class="text-sm font-medium text-slate-900">
-                          {{ user.first_name || user.last_name ? `${user.last_name}${user.first_name}` : user.username }}
-                        </div>
-                        <div class="text-xs text-slate-500">
-                          {{ user.username }}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                    {{ user.email || '-' }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button 
-                      @click="selectUser(user)"
-                      class="text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-md transition-colors"
-                    >
-                      選擇
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <div v-if="filteredUsers.length === 0" class="px-6 py-8 text-center text-slate-500">
+              找不到符合條件的用戶
+            </div>
+            <div
+              v-for="user in filteredUsers"
+              :key="user.id"
+              @click="selectUser(user)"
+              class="flex items-center gap-3 px-4 py-3 border-b border-slate-100 last:border-b-0 hover:bg-indigo-50 cursor-pointer transition-colors"
+            >
+              <div class="h-10 w-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm flex-shrink-0">
+                {{ getUserInitials(user) }}
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-semibold text-slate-900 truncate">
+                  {{ user.first_name || user.last_name ? `${user.last_name}${user.first_name}` : user.username }}
+                </div>
+                <div class="text-xs text-slate-500 truncate">
+                  {{ user.username }}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         

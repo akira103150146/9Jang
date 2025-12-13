@@ -325,33 +325,58 @@ const closeUserSelectModal = () => {
 
 const handleUserSelect = async (user) => {
   try {
-    // 1. 保存當前管理員 Token
-    const adminAccess = localStorage.getItem('access_token')
-    const adminRefresh = localStorage.getItem('refresh_token')
-    const adminUser = localStorage.getItem('user')
+    // 1. 獲取管理員 Token（如果處於模擬狀態，從 original_access_token 獲取）
+    let adminAccess = localStorage.getItem('original_access_token')
+    let adminRefresh = localStorage.getItem('original_refresh_token')
+    let adminUser = localStorage.getItem('original_user')
     
+    // 如果沒有原始 token（第一次模擬），從當前 token 獲取
     if (!adminAccess || !adminRefresh) {
-      alert('無法獲取當前管理員憑證')
-      return
+      adminAccess = localStorage.getItem('access_token')
+      adminRefresh = localStorage.getItem('refresh_token')
+      adminUser = localStorage.getItem('user')
+      
+      if (!adminAccess || !adminRefresh) {
+        alert('無法獲取當前管理員憑證')
+        return
+      }
+      
+      // 保存原始管理員 Token（第一次模擬時）
+      localStorage.setItem('original_access_token', adminAccess)
+      localStorage.setItem('original_refresh_token', adminRefresh)
+      localStorage.setItem('original_user', adminUser)
     }
     
-    localStorage.setItem('original_access_token', adminAccess)
-    localStorage.setItem('original_refresh_token', adminRefresh)
-    localStorage.setItem('original_user', adminUser)
+    // 2. 如果處於模擬狀態，先恢復管理員 Token 以便調用 API
+    const wasImpersonating = isImpersonating.value
+    if (wasImpersonating) {
+      setTokens(adminAccess, adminRefresh)
+    }
     
-    // 2. 調用模擬 API
+    // 3. 調用模擬 API（使用管理員 Token）
     const response = await authAPI.impersonateUser(user.id)
     
-    // 3. 設置新 Token
+    // 4. 設置新 Token
     setTokens(response.data.access, response.data.refresh)
     const impersonatedUser = response.data.user
     impersonatedUser.must_change_password = false // Force disable password change for impersonation
     localStorage.setItem('user', JSON.stringify(impersonatedUser))
     
-    // 4. 根據角色決定跳轉或重新載入
+    // 5. 更新模擬狀態和用戶信息
+    isImpersonating.value = true
+    currentUser.value = impersonatedUser
+    
+    // 6. 關閉 Modal
+    closeUserSelectModal()
+    
+    // 7. 根據角色決定跳轉
     if (impersonatedUser.role === 'STUDENT') {
       window.location.href = '/student-home'
+    } else if (impersonatedUser.role === 'TEACHER' || impersonatedUser.role === 'ACCOUNTANT') {
+      // 會計和老師跳轉到 Dashboard
+      router.push('/')
     } else {
+      // 其他角色重新載入頁面
       window.location.reload()
     }
     
