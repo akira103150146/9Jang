@@ -376,23 +376,26 @@
         </div>
 
         <form @submit.prevent="createGroupOrder" class="space-y-4">
+          
           <div>
             <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">店家 *</label>
-            <select
-              v-model="groupOrderForm.restaurant"
-              required
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200
-                     dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-green-400"
-            >
-              <option value="">請選擇店家</option>
-              <option
-                v-for="restaurant in activeRestaurants"
-                :key="restaurant.restaurant_id"
-                :value="restaurant.restaurant_id"
+            <div class="custom-select-wrapper">
+              <select
+                v-model="groupOrderForm.restaurant"
+                required
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200
+                       dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-green-400 appearance-none"
               >
-                {{ restaurant.name }}
-              </option>
-            </select>
+                <option value="">請選擇店家</option>
+                <option
+                  v-for="restaurant in activeRestaurants"
+                  :key="restaurant.restaurant_id"
+                  :value="restaurant.restaurant_id"
+                >
+                  {{ restaurant.name }}
+                </option>
+              </select>
+            </div>
           </div>
 
           <div>
@@ -440,7 +443,6 @@
     </div>
   </div>
 </template>
-
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { restaurantAPI, groupOrderAPI, uploadImageAPI, getBackendBaseURL } from '../services/api'

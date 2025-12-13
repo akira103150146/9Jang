@@ -7,4 +7,42 @@ body {
 @tailwind components;
 @tailwind utilities;
 
+.custom-select-wrapper {
+  position: relative; 
+}
 
+/* 移除瀏覽器原生的箭頭，這是關鍵步驟 */
+.custom-select-wrapper select {
+  -webkit-appearance: none; /* For Chrome, Safari, Opera */
+  -moz-appearance: none;    /* For Firefox */
+  appearance: none;         /* Standard property */
+  /* 確保 select 元素有足夠空間給自定義箭頭 */
+  padding-right: 2.5rem !important; 
+}
+
+/* 繪製自定義箭頭 */
+.custom-select-wrapper::after {
+  content: '⌄'; 
+  font-size: 1.5rem; /* 箭頭大小，可能影響高度 */
+  pointer-events: none; 
+  position: absolute;
+  
+  /* --- 修正箭頭垂直對齊的關鍵 --- */
+  top: 50%; /* 將定位點設在父元素垂直中間 */
+  right: 1rem; 
+  transform: translateY(-50%); /* 向上偏移自身高度的一半 */
+  
+  /* 額外微調，確保與文字基線對齊 */
+  line-height: 1; /* 移除額外的行高，確保精確定位 */
+  /* 如果箭頭仍然偏低，可以嘗試增加負 margin-top 進行微調 */
+  /* margin-top: -0.1rem; */ 
+  
+  transition: color 0.15s ease-in-out;
+  color: #1e293b; 
+}
+
+/* 深色模式下的箭頭顏色 */
+.dark .custom-select-wrapper::after {
+  /* 深色模式箭頭顏色 (white/slate-50) */
+  color: #f8fafc; 
+}

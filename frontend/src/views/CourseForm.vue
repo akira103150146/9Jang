@@ -20,32 +20,38 @@
             required
           >
           
-          <select 
-            v-model="form.teacher"
-            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
-                   dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400"
-          >
-            <option value="">選擇授課老師</option>
-            <option v-for="teacher in teachers" :key="teacher.teacher_id || teacher.id" :value="teacher.teacher_id || teacher.id">
-              {{ teacher.name }}
-            </option>
-          </select>
+          <div class="custom-select-wrapper mb-4">
+            <select 
+              v-model="form.teacher"
+              class="w-full bg-gray-100 text-gray-900 border-0 rounded-md p-3 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
+                     dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400
+                     appearance-none"
+            >
+              <option value="">選擇授課老師</option>
+              <option v-for="teacher in teachers" :key="teacher.teacher_id || teacher.id" :value="teacher.teacher_id || teacher.id">
+                {{ teacher.name }}
+              </option>
+            </select>
+          </div>
 
-          <select 
-            v-model="form.day_of_week"
-            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
-                   dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400"
-            required
-          >
-            <option value="">選擇上課日</option>
-            <option value="Mon">週一</option>
-            <option value="Tue">週二</option>
-            <option value="Wed">週三</option>
-            <option value="Thu">週四</option>
-            <option value="Fri">週五</option>
-            <option value="Sat">週六</option>
-            <option value="Sun">週日</option>
-          </select>
+          <div class="custom-select-wrapper mb-4">
+            <select 
+              v-model="form.day_of_week"
+              class="w-full bg-gray-100 text-gray-900 border-0 rounded-md p-3 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
+                     dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400
+                     appearance-none"
+              required
+            >
+              <option value="">選擇上課日</option>
+              <option value="Mon">週一</option>
+              <option value="Tue">週二</option>
+              <option value="Wed">週三</option>
+              <option value="Thu">週四</option>
+              <option value="Fri">週五</option>
+              <option value="Sat">週六</option>
+              <option value="Sun">週日</option>
+            </select>
+          </div>
 
           <div class="grid grid-cols-2 gap-4 mb-4">
             <div>
@@ -81,16 +87,19 @@
             required
           >
 
-          <select 
-            v-model="form.status"
-            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
-                   dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400"
-            required
-          >
-            <option value="Active">進行中</option>
-            <option value="Pending">待開課</option>
-            <option value="Closed">已結束</option>
-          </select>
+          <div class="custom-select-wrapper mb-4">
+            <select 
+              v-model="form.status"
+              class="w-full bg-gray-100 text-gray-900 border-0 rounded-md p-3 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
+                     dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400
+                     appearance-none"
+              required
+            >
+              <option value="Active">進行中</option>
+              <option value="Pending">待開課</option>
+              <option value="Closed">已結束</option>
+            </select>
+          </div>
 
           <div class="flex space-x-4">
             <button 

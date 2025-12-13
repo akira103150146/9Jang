@@ -15,16 +15,16 @@
     <div class="rounded-2xl border border-slate-200 bg-white p-4
                 dark:border-slate-700 dark:bg-slate-800">
       <div class="grid gap-4 md:grid-cols-4">
-        <div v-for="i in 4" :key="i">
-          <label class="block text-xs font-semibold text-slate-700 mb-1 dark:text-slate-300">
-            {{ i === 1 ? '操作類型' : i === 2 ? '資源類型' : i === 3 ? '使用者' : '角色' }}
-          </label>
+        
+        <div class="custom-select-wrapper">
+          <label class="block text-xs font-semibold text-slate-700 mb-1 dark:text-slate-300">操作類型</label>
           <select
-            v-if="i === 1"
             v-model="filters.action_type"
             @change="fetchLogs"
-            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none
-                   dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-sky-400"
+            class="w-full rounded-lg px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200
+                   border border-slate-300 bg-white text-slate-700
+                   dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-sky-400 dark:focus:ring-sky-400/50
+                   appearance-none"
           >
             <option value="">全部</option>
             <option value="create">新增</option>
@@ -35,8 +35,11 @@
             <option value="logout">登出</option>
             <option value="other">其他</option>
           </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1 dark:text-slate-300">資源類型</label>
           <input
-            v-else-if="i === 2"
             v-model="filters.resource_type"
             @input="fetchLogs"
             type="text"
@@ -44,8 +47,11 @@
             class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none
                    dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-sky-400"
           />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1 dark:text-slate-300">使用者</label>
           <input
-            v-else-if="i === 3"
             v-model="filters.user"
             @input="fetchLogs"
             type="text"
@@ -53,8 +59,11 @@
             class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none
                    dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-sky-400"
           />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1 dark:text-slate-300">角色</label>
           <input
-            v-else
             v-model="filters.role"
             @input="fetchLogs"
             type="text"
@@ -114,7 +123,6 @@
                   class="rounded-full px-3 py-1 text-xs font-semibold"
                   :class="[
                     getActionTypeColor(log.action_type),
-                    // 假設 getActionTypeColor 返回淺色模式類別，這裡手動添加深色變體
                     log.action_type === 'create' && 'dark:bg-green-900/50 dark:text-green-300',
                     log.action_type === 'update' && 'dark:bg-blue-900/50 dark:text-blue-300',
                     log.action_type === 'delete' && 'dark:bg-rose-900/50 dark:text-rose-300',
@@ -140,7 +148,6 @@
                   class="rounded-full px-2 py-1 text-xs font-semibold"
                   :class="[
                     getStatusColor(log.response_status),
-                    // 假設 getStatusColor 返回淺色模式類別
                     log.response_status && log.response_status >= 200 && log.response_status < 400 && 'bg-green-50 text-green-600 dark:bg-green-900/50 dark:text-green-300',
                     log.response_status && log.response_status >= 400 && 'bg-rose-50 text-rose-600 dark:bg-rose-900/50 dark:text-rose-300',
                     log.response_status === null && 'bg-slate-50 text-slate-600 dark:bg-slate-700 dark:text-slate-300',

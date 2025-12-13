@@ -90,21 +90,23 @@
                   ${{ parseFloat(fee.amount).toLocaleString() }}
                 </td>
                 <td class="px-4 py-4 text-sm">
+              <div class="custom-select-wrapper inline-block max-w-[120px]">
                   <select
-                    :value="fee.payment_status"
-                    @change="updatePaymentStatus(fee.fee_id, $event.target.value)"
-                    class="rounded-lg border border-slate-300 px-3 py-1 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200
-                           dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-green-400"
-                    :class="{
-                      'bg-green-50 text-green-800 dark:bg-green-900/50 dark:text-green-300': fee.payment_status === 'Paid',
-                      'bg-amber-50 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300': fee.payment_status === 'Unpaid',
-                      'bg-blue-50 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300': fee.payment_status === 'Partial',
-                    }"
-                  >
-                    <option value="Unpaid">未繳</option>
-                    <option value="Partial">部分繳</option>
-                    <option value="Paid">已繳</option>
-                  </select>
+                      :value="fee.payment_status"
+                      @change="updatePaymentStatus(fee.fee_id, $event.target.value)"
+                      class="rounded-lg border border-slate-300 px-3 py-1 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200
+                            dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-green-400 appearance-none w-full"
+                      :class="{
+                        'bg-green-50 text-green-800 dark:bg-green-900/50 dark:text-green-300': fee.payment_status === 'Paid',
+                        'bg-amber-50 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300': fee.payment_status === 'Unpaid',
+                        'bg-blue-50 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300': fee.payment_status === 'Partial',
+                      }"
+                    >
+                      <option value="Unpaid">未繳</option>
+                      <option value="Partial">部分繳</option>
+                      <option value="Paid">已繳</option>
+                    </select>
+                  </div>
                 </td>
                 <td class="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">
                   <p class="max-w-xs truncate">{{ fee.notes || '—' }}</p>
@@ -165,19 +167,21 @@
             
             <div>
               <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">收費名目 *</label>
-              <select
-                v-model="feeForm.item"
-                required
-                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200
-                       dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-green-400"
-              >
-                <option value="">請選擇收費名目</option>
-                <option value="Tuition">學費</option>
-                <option value="Transport">交通費</option>
-                <option value="Meal">餐費</option>
-                <option value="Book">書籍費</option>
-                <option value="Other">其他</option>
-              </select>
+              <div class="custom-select-wrapper">
+                <select
+                  v-model="feeForm.item"
+                  required
+                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200
+                         dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-green-400 appearance-none"
+                >
+                  <option value="">請選擇收費名目</option>
+                  <option value="Tuition">學費</option>
+                  <option value="Transport">交通費</option>
+                  <option value="Meal">餐費</option>
+                  <option value="Book">書籍費</option>
+                  <option value="Other">其他</option>
+                </select>
+              </div>
             </div>
 
             <div>
@@ -207,16 +211,18 @@
 
             <div>
               <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">繳費狀態 *</label>
-              <select
-                v-model="feeForm.payment_status"
-                required
-                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200
-                       dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-green-400"
-              >
-                <option value="Unpaid">未繳</option>
-                <option value="Partial">部分繳</option>
-                <option value="Paid">已繳</option>
-              </select>
+              <div class="custom-select-wrapper">
+                <select
+                  v-model="feeForm.payment_status"
+                  required
+                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200
+                         dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-green-400 appearance-none"
+                >
+                  <option value="Unpaid">未繳</option>
+                  <option value="Partial">部分繳</option>
+                  <option value="Paid">已繳</option>
+                </select>
+              </div>
             </div>
 
             <div>

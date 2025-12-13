@@ -12,30 +12,34 @@
         <form @submit.prevent="handleSubmit" class="flex flex-col">
           
           <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-300">學生</label>
-          <select 
-            v-model="form.student"
-            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
-                   dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400"
-            required
-          >
-            <option value="">選擇學生</option>
-            <option v-for="student in students" :key="student.student_id || student.id" :value="student.student_id || student.id">
-              {{ student.name }} ({{ student.school }} - {{ student.grade }})
-            </option>
-          </select>
+          <div class="custom-select-wrapper mb-4">
+            <select 
+              v-model="form.student"
+              class="w-full bg-gray-100 text-gray-900 border-0 rounded-md p-3 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
+                     dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400 appearance-none"
+              required
+            >
+              <option value="">選擇學生</option>
+              <option v-for="student in students" :key="student.student_id || student.id" :value="student.student_id || student.id">
+                {{ student.name }} ({{ student.school }} - {{ student.grade }})
+              </option>
+            </select>
+          </div>
 
           <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-300">課程</label>
-          <select 
-            v-model="form.course"
-            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
-                   dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400"
-            required
-          >
-            <option value="">選擇課程</option>
-            <option v-for="course in courses" :key="course.course_id || course.id" :value="course.course_id || course.id">
-              {{ course.course_name }} ({{ getDayDisplay(course.day_of_week) }} {{ formatTime(course.start_time) }}-{{ formatTime(course.end_time) }})
-            </option>
-          </select>
+          <div class="custom-select-wrapper mb-4">
+            <select 
+              v-model="form.course"
+              class="w-full bg-gray-100 text-gray-900 border-0 rounded-md p-3 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
+                     dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400 appearance-none"
+              required
+            >
+              <option value="">選擇課程</option>
+              <option v-for="course in courses" :key="course.course_id || course.id" :value="course.course_id || course.id">
+                {{ course.course_name }} ({{ getDayDisplay(course.day_of_week) }} {{ formatTime(course.start_time) }}-{{ formatTime(course.end_time) }})
+              </option>
+            </select>
+          </div>
 
           <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-300">請假日期</label>
           <input 
@@ -57,16 +61,18 @@
           ></textarea>
 
           <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-300">審核狀態</label>
-          <select 
-            v-model="form.approval_status"
-            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
-                   dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400"
-            required
-          >
-            <option value="Pending">待審核</option>
-            <option value="Approved">已核准</option>
-            <option value="Rejected">已拒絕</option>
-          </select>
+          <div class="custom-select-wrapper mb-4">
+            <select 
+              v-model="form.approval_status"
+              class="w-full bg-gray-100 text-gray-900 border-0 rounded-md p-3 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
+                     dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400 appearance-none"
+              required
+            >
+              <option value="Pending">待審核</option>
+              <option value="Approved">已核准</option>
+              <option value="Rejected">已拒絕</option>
+            </select>
+          </div>
 
           <div class="flex space-x-4">
             <button 

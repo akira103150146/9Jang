@@ -159,22 +159,23 @@
               </button>
             </div>
             
-            <select
-              v-if="errorFormData.useExistingQuestion"
-              v-model="errorFormData.selectedQuestionId"
-              @change="loadQuestionFromBank"
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200
-                     dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-purple-400"
-            >
-              <option value="">請選擇題庫中的題目</option>
-              <option
-                v-for="question in questions"
-                :key="question.question_id"
-                :value="question.question_id"
+            <div v-if="errorFormData.useExistingQuestion" class="custom-select-wrapper">
+              <select
+                v-model="errorFormData.selectedQuestionId"
+                @change="loadQuestionFromBank"
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200
+                       dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-purple-400 appearance-none"
               >
-                {{ question.subject_name }} - {{ question.chapter }} (Q{{ question.question_id }})
-              </option>
-            </select>
+                <option value="">請選擇題庫中的題目</option>
+                <option
+                  v-for="question in questions"
+                  :key="question.question_id"
+                  :value="question.question_id"
+                >
+                  {{ question.subject_name }} - {{ question.chapter }} (Q{{ question.question_id }})
+                </option>
+              </select>
+            </div>
             
             <div v-else class="text-sm text-slate-500 bg-slate-50 p-3 rounded-lg dark:text-slate-400 dark:bg-slate-700">
               將在題庫中新增此題目，並自動標記為錯題
@@ -192,36 +193,40 @@
                 + 新增科目
               </button>
             </div>
-            <select
-              v-model="errorFormData.subject"
-              required
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200
-                     dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-purple-400"
-            >
-              <option value="">請選擇科目</option>
-              <option
-                v-for="subject in subjects"
-                :key="subject.subject_id"
-                :value="subject.subject_id"
+            <div class="custom-select-wrapper">
+              <select
+                v-model="errorFormData.subject"
+                required
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200
+                       dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-purple-400 appearance-none"
               >
-                {{ subject.name }}{{ subject.code ? ` (${subject.code})` : '' }}
-              </option>
-            </select>
+                <option value="">請選擇科目</option>
+                <option
+                  v-for="subject in subjects"
+                  :key="subject.subject_id"
+                  :value="subject.subject_id"
+                >
+                  {{ subject.name }}{{ subject.code ? ` (${subject.code})` : '' }}
+                </option>
+              </select>
+            </div>
           </div>
 
           <div>
             <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300">適用年級 *</label>
-            <select
-              v-model="errorFormData.level"
-              required
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200
-                     dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-purple-400"
-            >
-              <option value="">請選擇</option>
-              <option value="JHS">Junior High School</option>
-              <option value="SHS">Senior High School</option>
-              <option value="VCS">Vocational School</option>
-            </select>
+            <div class="custom-select-wrapper">
+              <select
+                v-model="errorFormData.level"
+                required
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200
+                       dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-purple-400 appearance-none"
+              >
+                <option value="">請選擇</option>
+                <option value="JHS">Junior High School</option>
+                <option value="SHS">Senior High School</option>
+                <option value="VCS">Vocational School</option>
+              </select>
+            </div>
           </div>
 
           <div class="relative">

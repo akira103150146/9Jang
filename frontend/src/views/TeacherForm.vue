@@ -55,15 +55,18 @@
             密碼與確認密碼不一致
           </p>
           
-          <select 
-            v-model="form.permission_level"
-            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
-                   dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400"
-            required
-          >
-            <option value="Teacher">老師</option>
-            <option value="Admin">管理員</option>
-          </select>
+          <div class="custom-select-wrapper mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-300">授課老師</label>
+            <select 
+              v-model="form.teacher"
+              class="w-full bg-gray-100 text-gray-900 border-0 rounded-md p-3 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
+                     dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400
+                     appearance-none"
+            >
+              <option value="">老師</option>
+              <option value="">管理員</option>
+              </select>
+          </div>
           
           <input 
             v-model="form.phone"

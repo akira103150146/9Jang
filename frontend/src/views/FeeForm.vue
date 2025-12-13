@@ -12,41 +12,40 @@
         <form @submit.prevent="handleSubmit" class="flex flex-col">
           
           <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-300">學生</label>
-          <select 
-            v-model="form.student"
-            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
-                   dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400"
-            required
-          >
-            <option value="">選擇學生</option>
-            <option v-for="student in students" :key="student.student_id || student.id" :value="student.student_id || student.id">
-              {{ student.name }} ({{ student.school }} - {{ student.grade }})
-            </option>
-          </select>
+          <div class="custom-select-wrapper mb-4">
+            <select 
+              v-model="form.student"
+              class="w-full bg-gray-100 text-gray-900 border-0 rounded-md p-3 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
+                     dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400
+                     appearance-none"
+              required
+            >
+              <option value="">選擇學生</option>
+              <option v-for="student in students" :key="student.student_id || student.id" :value="student.student_id || student.id">
+                {{ student.name }} ({{ student.school }} - {{ student.grade }})
+              </option>
+            </select>
+          </div>
 
-          <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-300">收費名目</label>
-          <select 
+          <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-300">費用項目</label>
+          <input 
             v-model="form.item"
+            type="text" 
             class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
-                   dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400"
+                   dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400" 
+            placeholder="例如：10月學費、教材費"
             required
           >
-            <option value="">選擇收費名目</option>
-            <option value="Transport">交通費</option>
-            <option value="Meal">餐費</option>
-            <option value="Book">書籍費</option>
-            <option value="Other">其他</option>
-          </select>
 
-          <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-300">收費金額</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-300">費用金額 (TWD)</label>
           <input 
             v-model.number="form.amount"
             type="number" 
-            step="0.01"
+            step="1"
             min="0"
             class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
                    dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400" 
-            placeholder="0.00"
+            placeholder="金額"
             required
           >
 
@@ -59,17 +58,20 @@
             required
           >
 
-          <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-300">繳費狀態</label>
-          <select 
-            v-model="form.payment_status"
-            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
-                   dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400"
-            required
-          >
-            <option value="Unpaid">未繳費</option>
-            <option value="Partial">部分繳費</option>
-            <option value="Paid">已繳費</option>
-          </select>
+          <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-300">付款狀態</label>
+          <div class="custom-select-wrapper mb-4">
+            <select 
+              v-model="form.payment_status"
+              class="w-full bg-gray-100 text-gray-900 border-0 rounded-md p-3 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
+                     dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400
+                     appearance-none"
+              required
+            >
+              <option value="Unpaid">未付款</option>
+              <option value="Paid">已付款</option>
+              <option value="Cancelled">已取消/作廢</option>
+            </select>
+          </div>
 
           <div class="flex space-x-4">
             <button 

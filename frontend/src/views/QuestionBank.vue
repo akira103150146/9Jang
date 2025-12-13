@@ -288,36 +288,40 @@
                 + 新增科目
               </button>
             </div>
-            <select
-              v-model="formData.subject"
-              required
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200
-                     dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-indigo-400"
-            >
-              <option value="">請選擇科目</option>
-              <option
-                v-for="subject in subjects"
-                :key="subject.subject_id"
-                :value="subject.subject_id"
+            <div class="custom-select-wrapper">
+              <select
+                v-model="formData.subject"
+                required
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200
+                       dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-indigo-400 appearance-none"
               >
-                {{ subject.name }}{{ subject.code ? ` (${subject.code})` : '' }}
-              </option>
-            </select>
+                <option value="">請選擇科目</option>
+                <option
+                  v-for="subject in subjects"
+                  :key="subject.subject_id"
+                  :value="subject.subject_id"
+                >
+                  {{ subject.name }}{{ subject.code ? ` (${subject.code})` : '' }}
+                </option>
+              </select>
+            </div>
           </div>
 
           <div>
             <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">適用年級 *</label>
-            <select
-              v-model="formData.level"
-              required
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200
-                     dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-indigo-400"
-            >
-              <option value="">請選擇</option>
-              <option value="JHS">Junior High School</option>
-              <option value="SHS">Senior High School</option>
-              <option value="VCS">Vocational School</option>
-            </select>
+            <div class="custom-select-wrapper">
+              <select
+                v-model="formData.level"
+                required
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200
+                       dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-indigo-400 appearance-none"
+              >
+                <option value="">請選擇</option>
+                <option value="JHS">Junior High School</option>
+                <option value="SHS">Senior High School</option>
+                <option value="VCS">Vocational School</option>
+              </select>
+            </div>
           </div>
 
           <div class="relative">
@@ -557,7 +561,6 @@
     </div>
   </div>
 </template>
-
 <style scoped>
 /* Markdown 預覽樣式 */
 :deep(.markdown-preview) {
