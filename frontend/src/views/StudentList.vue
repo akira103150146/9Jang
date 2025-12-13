@@ -81,12 +81,22 @@
           <td class="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">{{ student.phone || student.contact || '—' }}</td>
           
           <td v-if="isAdmin" class="px-4 py-4 text-sm">
-            <div v-if="student.username" class="space-y-2">
-              <div>
+            <div v-if="student.username" class="space-y-1">
+              
+              <div class="flex items-center gap-2">
                 <p class="text-xs text-slate-500 dark:text-slate-400">帳號</p>
-                <p class="font-semibold text-slate-900 dark:text-white">{{ student.username }}</p>
+                <span
+                  class="rounded-full px-2 py-1 text-xs font-semibold"
+                  :class="student.is_account_active 
+                            ? 'bg-green-50 text-green-600 dark:bg-green-900/50 dark:text-green-300' 
+                            : 'bg-rose-50 text-rose-600 dark:bg-rose-900/50 dark:text-rose-300'"
+                >
+                  {{ student.is_account_active ? '啟用' : '停用' }}
+                </span>
               </div>
-              <div>
+              <p class="font-semibold text-slate-900 dark:text-white">{{ student.username }}</p>
+              
+              <div class="mt-2">
                 <div class="flex items-center gap-2">
                   <p class="text-xs text-slate-500 dark:text-slate-400">密碼</p>
                   <button
@@ -124,38 +134,17 @@
                   <p class="font-mono text-sm text-slate-900 dark:text-white">
                     {{ visiblePasswords[student.id] ? (student.password || '—') : '••••••' }}
                   </p>
-                  <button
-                    @click="startEditPassword(student)"
-                    class="mt-1 text-xs text-sky-600 hover:text-sky-800 font-semibold dark:text-sky-400 dark:hover:text-sky-300"
-                  >
-                    編輯
-                  </button>
                 </div>
               </div>
               
-              <div class="flex items-center gap-2">
-                <span
-                  class="rounded-full px-2 py-1 text-xs font-semibold"
-                  :class="student.is_account_active 
-                            ? 'bg-green-50 text-green-600 dark:bg-green-900/50 dark:text-green-300' 
-                            : 'bg-rose-50 text-rose-600 dark:bg-rose-900/50 dark:text-rose-300'"
-                >
-                  {{ student.is_account_active ? '啟用' : '停用' }}
-                </span>
-                <span
-                  v-if="student.must_change_password"
-                  class="rounded-full px-2 py-1 text-xs font-semibold
-                         bg-amber-50 text-amber-600 dark:bg-amber-900/50 dark:text-amber-300"
-                >
-                  需修改密碼
-                </span>
-                <button
-                  @click="toggleAccountStatus(student)"
-                  class="text-xs text-slate-600 hover:text-slate-800 font-semibold dark:text-slate-400 dark:hover:text-slate-200"
-                >
-                  {{ student.is_account_active ? '停用' : '啟用' }}
-                </button>
-              </div>
+              <button
+                @click="openAccountModal(student)"
+                class="mt-3 rounded bg-indigo-500 px-3 py-1 text-xs font-semibold text-white hover:bg-indigo-600 transition"
+                title="在優化模態框中管理帳號與密碼"
+              >
+                管理
+              </button>
+
             </div>
             <p v-else class="text-xs text-slate-400">尚未創建帳號</p>
           </td>
@@ -166,11 +155,11 @@
               <p class="text-amber-600 dark:text-amber-400" :class="{'font-semibold': student.unpaid_fees > 0}">
                 待繳：${{ (student.unpaid_fees || 0).toLocaleString() }}
               </p>
-              <div v-if="student.enrollments_count > 0" class="mt-1">
+              <div v-if="student.enrollments_count > 0" class="mt-2">
                 <button
                   @click="openTuitionModal(student)"
-                  class="text-xs font-semibold underline
-                         text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                  class="rounded bg-indigo-500 px-3 py-1 text-xs font-semibold text-white hover:bg-indigo-600 transition"
+                  title="生成學生課程學費"
                 >
                   生成學費
                 </button>
@@ -183,33 +172,86 @@
             <p class="text-xs text-slate-500 dark:text-slate-400">{{ student.emergency_contact_phone || '' }}</p>
           </td>
           
-          <td class="px-4 py-4 text-center">
-            <div class="flex justify-center gap-2">
+          <td class="px-4 py-4 text-center whitespace-nowrap">
+            
+            <div class="hidden md:flex justify-center items-center gap-1.5">
+              
               <router-link
                 :to="`/students/${student.id}/fees`"
-                class="rounded-full bg-green-500 px-3 py-1 text-xs font-semibold text-white hover:bg-green-600"
+                class="rounded-full bg-green-500 px-3 py-1 text-xs font-semibold text-white hover:bg-green-600 h-7 flex items-center justify-center"
               >
                 費用
               </router-link>
-              <router-link
-                :to="`/students/${student.id}/errors`"
-                class="rounded-full bg-purple-500 px-3 py-1 text-xs font-semibold text-white hover:bg-purple-600"
-              >
-                錯題本
-              </router-link>
+
               <router-link
                 :to="`/students/edit/${student.id}`"
-                class="rounded-full bg-sky-500 px-3 py-1 text-xs font-semibold text-white hover:bg-sky-600"
+                class="rounded-full bg-sky-500 px-3 py-1 text-xs font-semibold text-white hover:bg-sky-600 h-7 flex items-center justify-center"
               >
                 編輯
               </router-link>
+              
+              <router-link
+                :to="`/students/${student.id}/errors`"
+                class="rounded-full bg-purple-500 px-3 py-1 text-xs font-semibold text-white hover:bg-purple-600 h-7 flex items-center justify-center"
+              >
+                錯題
+              </router-link>
+              
               <button
                 @click="deleteStudent(student.id, student.name)"
-                class="rounded-full bg-rose-500 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-600"
+                class="rounded-full bg-rose-500 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-600 h-7 flex items-center justify-center"
               >
                 刪除
               </button>
             </div>
+            
+            <div class="block md:hidden relative inline-block text-left">
+              <button
+                @click.stop="toggleDropdown(student.id)"
+                type="button"
+                class="inline-flex justify-center w-8 h-8 rounded-full text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700/70 transition"
+              >
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                </svg>
+              </button>
+
+              <div
+                v-if="openDropdownId === student.id"
+                @click.stop
+                class="origin-top-right absolute right-0 mt-2 w-48 rounded-lg shadow-lg bg-white ring-1 ring-black ring-opacity-5 divide-y divide-slate-100 dark:bg-slate-700 dark:divide-slate-600 z-10"
+              >
+                <div class="py-1">
+                  <router-link
+                    :to="`/students/${student.id}/fees`"
+                    class="block px-4 py-2 text-sm text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-slate-600/50"
+                  >
+                    費用記錄
+                  </router-link>
+                  <router-link
+                    :to="`/students/${student.id}/errors`"
+                    class="block px-4 py-2 text-sm text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-slate-600/50"
+                  >
+                    錯題本
+                  </router-link>
+                  <router-link
+                    :to="`/students/edit/${student.id}`"
+                    class="block px-4 py-2 text-sm text-sky-600 hover:bg-sky-50 dark:text-sky-400 dark:hover:bg-slate-600/50"
+                  >
+                    編輯資料
+                  </router-link>
+                </div>
+                <div class="py-1">
+                  <button
+                    @click="deleteStudent(student.id, student.name); closeDropdown()"
+                    class="block w-full text-left px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-slate-600/50"
+                  >
+                    刪除學生
+                  </button>
+                </div>
+              </div>
+            </div>
+            
           </td>
         </tr>
         
@@ -322,11 +364,97 @@
         </div>
       </div>
     </div>
+
+    <div
+      v-if="showAccountModal && passwordModalStudent"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm"
+      @click.self="closeAccountModal"
+    >
+      <div 
+        class="bg-white rounded-3xl shadow-xl max-w-md w-full mx-4 p-6 space-y-6
+               dark:bg-slate-800 dark:shadow-2xl dark:text-white"
+      >
+        <div class="flex items-center justify-between border-b border-slate-200 pb-4 dark:border-slate-700">
+          <h3 class="text-xl font-bold text-slate-900 dark:text-white">
+            管理 {{ passwordModalStudent.name }} 的帳號
+          </h3>
+          <button
+            @click="closeAccountModal"
+            class="text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200"
+            >
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="bg-slate-50 p-4 rounded-xl space-y-2 dark:bg-slate-700">
+          <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">帳號資訊</p>
+          <p class="text-sm text-slate-900 dark:text-white">
+            用戶名:{{ passwordModalStudent.username || '—' }}
+          </p>
+          <div class="flex items-center gap-3">
+            <p class="text-sm text-slate-900 dark:text-white">
+              狀態:
+            </p>
+            <span
+              class="rounded-full px-2 py-1 text-xs font-semibold"
+              :class="passwordModalStudent.is_account_active
+                ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
+                : 'bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300'"
+            >
+              {{ passwordModalStudent.is_account_active ? '啟用' : '停用' }}
+            </span>
+          </div>
+          <p v-if="passwordModalStudent.must_change_password" class="text-xs text-amber-600 dark:text-amber-400">
+            * 首次登入需更改密碼
+          </p>
+        </div>
+
+        <div class="border border-slate-200 p-4 rounded-xl space-y-4 dark:border-slate-700">
+          <h4 class="text-base font-semibold text-slate-900 dark:text-white">密碼重設</h4>
+          <form @submit.prevent="savePasswordFromModal" class="space-y-3">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">新密碼</label>
+              <input
+                v-model="passwordForms[passwordModalStudent.id].password"
+                type="text"
+                required
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-200
+                       dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-indigo-400"
+                placeholder="輸入新密碼"
+              />
+            </div>
+            
+            <button
+              type="submit"
+              :disabled="savingPassword"
+              class="w-full rounded-full bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-600 disabled:opacity-50"
+            >
+              {{ savingPassword ? '儲存中...' : '重設密碼' }}
+            </button>
+          </form>
+        </div>
+
+        <div class="border border-slate-200 p-4 rounded-xl dark:border-slate-700">
+          <h4 class="text-base font-semibold text-slate-900 dark:text-white">帳號狀態</h4>
+          <button
+            @click="toggleAccountStatusFromModal"
+            :class="passwordModalStudent.is_account_active 
+              ? 'bg-rose-500 hover:bg-rose-600'
+              : 'bg-green-500 hover:bg-green-600'"
+            class="mt-3 w-full rounded-full px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            {{ passwordModalStudent.is_account_active ? '停用此帳號' : '啟用此帳號' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { studentAPI } from '../services/api'
 import { mockStudents } from '../data/mockData'
@@ -342,11 +470,122 @@ const tuitionStatus = ref([])
 const loadingTuition = ref(false)
 const savingTuitions = ref(false)
 const currentUser = ref(null)
+
+// ----------------------------------------------------
+// 密碼/編輯狀態 (已還原)
+// ----------------------------------------------------
 const visiblePasswords = ref({})  // 追蹤哪些學生的密碼是顯示的
 const editingPasswords = ref({})  // 追蹤哪些學生正在編輯密碼
-const passwordForms = ref({})  // 存儲密碼編輯表單數據
-const showPasswordModal = ref(false)
+const passwordForms = ref({})     // 存儲密碼編輯表單數據
+
+// 帳號管理相關狀態 (模態框用)
+const showAccountModal = ref(false)
 const passwordModalStudent = ref(null)
+const savingPassword = ref(false)
+
+
+// ----------------------------------------------------
+// 密碼/編輯操作函數 (已還原)
+// ----------------------------------------------------
+
+// 切換密碼顯示/隱藏
+const togglePasswordVisibility = (studentId) => {
+  if (visiblePasswords.value[studentId]) {
+    visiblePasswords.value[studentId] = false
+  } else {
+    visiblePasswords.value[studentId] = true
+  }
+}
+
+// 開始編輯密碼
+const startEditPassword = (student) => {
+  passwordForms.value[student.id] = {
+    password: student.password || ''
+  }
+  editingPasswords.value[student.id] = true
+}
+
+// 取消編輯密碼
+const cancelEditPassword = (studentId) => {
+  editingPasswords.value[studentId] = false
+  delete passwordForms.value[studentId]
+}
+
+// 保存密碼 (表格內)
+const savePassword = async (student) => {
+  const newPassword = passwordForms.value[student.id]?.password
+  if (!newPassword) {
+    alert('請輸入新密碼')
+    return
+  }
+
+  try {
+    const response = await studentAPI.resetPassword(student.id, newPassword)
+    alert('密碼已更新')
+    // 更新本地數據
+    const index = students.value.findIndex(s => s.id === student.id)
+    if (index !== -1) {
+      students.value[index].password = response.data.password 
+      students.value[index].must_change_password = true
+    }
+    
+    editingPasswords.value[student.id] = false
+    delete passwordForms.value[student.id]
+  } catch (error) {
+    console.error('更新密碼失敗:', error)
+    alert('更新密碼失敗，請稍後再試')
+  }
+}
+
+// 切換帳號狀態 (表格內，此功能已不再顯示在表格中，但保留其邏輯以供其他需要)
+const toggleAccountStatus = async (student) => {
+  if (!student.username) {
+    alert('該學生尚未創建帳號')
+    return
+  }
+
+  const action = student.is_account_active ? '停用' : '啟用'
+  if (!confirm(`確定要${action}學生 ${student.name} 的帳號嗎？`)) {
+    return
+  }
+
+  try {
+    const response = await studentAPI.toggleAccountStatus(student.id)
+    const index = students.value.findIndex(s => s.id === student.id)
+    if (index !== -1) {
+      students.value[index].is_account_active = response.data.is_active
+    }
+    alert(`帳號已${response.data.is_account_active ? '啟用' : '停用'}`)
+  } catch (error) {
+    console.error('切換帳號狀態失敗:', error)
+    alert('操作失敗，請稍後再試')
+  }
+}
+
+
+// ----------------------------------------------------
+// 操作選單邏輯 (Dropdown for Mobile)
+// ----------------------------------------------------
+const openDropdownId = ref(null)
+
+const toggleDropdown = (studentId) => {
+  openDropdownId.value = openDropdownId.value === studentId ? null : studentId
+}
+
+const closeDropdown = () => {
+  openDropdownId.value = null
+}
+
+const handleClickOutside = (event) => {
+  // 檢查點擊是否在任何下拉選單之外
+  if (openDropdownId.value && event.target.closest('.relative.inline-block') === null) {
+    closeDropdown()
+  }
+}
+
+// ----------------------------------------------------
+// 數據與 API 邏輯 (保持不變)
+// ----------------------------------------------------
 
 const normalizeStudent = (student) => ({
   id: student.student_id || student.id,
@@ -422,11 +661,10 @@ const openTuitionModal = async (student) => {
   try {
     const response = await studentAPI.getTuitionStatus(student.id)
     const months = response.data.tuition_months || []
-    // 初始化每個項目，添加 selected 和 weeks 屬性
     tuitionStatus.value = months.map(item => ({
       ...item,
-      selected: !item.has_fee, // 預設選中未生成的項目
-      weeks: item.weeks || 4, // 預設4週
+      selected: !item.has_fee,
+      weeks: item.weeks || 4,
     }))
   } catch (error) {
     console.error('獲取學費狀態失敗：', error)
@@ -485,7 +723,7 @@ const generateAllTuitions = async () => {
     if (failCount === 0) {
       alert(`成功生成 ${successCount} 項學費！`)
       closeTuitionModal()
-      fetchStudents() // 刷新學生列表
+      fetchStudents()
     } else {
       alert(`成功生成 ${successCount} 項，失敗 ${failCount} 項`)
     }
@@ -497,12 +735,10 @@ const generateAllTuitions = async () => {
   }
 }
 
-// 檢查是否為管理員
 const isAdmin = computed(() => {
   return currentUser.value && currentUser.value.role === 'ADMIN'
 })
 
-// 獲取當前用戶信息
 const fetchCurrentUser = async () => {
   try {
     const userStr = localStorage.getItem('user')
@@ -514,67 +750,81 @@ const fetchCurrentUser = async () => {
   }
 }
 
-// 切換密碼顯示/隱藏
-const togglePasswordVisibility = (studentId) => {
-  if (visiblePasswords.value[studentId]) {
-    visiblePasswords.value[studentId] = false
-  } else {
-    visiblePasswords.value[studentId] = true
-  }
-}
+// ----------------------------------------------------
+// 帳號管理邏輯 (模態框用)
+// ----------------------------------------------------
 
-// 開始編輯密碼
-const startEditPassword = (student) => {
+const openAccountModal = (student) => {
+  if (!student.username) {
+    alert('該學生尚未創建帳號，無法進行管理。')
+    return
+  }
+  
   passwordForms.value[student.id] = {
-    password: student.password || ''
+    password: ''
   }
-  editingPasswords.value[student.id] = true
+  passwordModalStudent.value = student
+  showAccountModal.value = true
 }
 
-// 取消編輯密碼
-const cancelEditPassword = (studentId) => {
-  editingPasswords.value[studentId] = false
-  delete passwordForms.value[studentId]
+const closeAccountModal = () => {
+  showAccountModal.value = false
+  passwordModalStudent.value = null
+  savingPassword.value = false
 }
 
-// 保存密碼
-const savePassword = async (student) => {
+const savePasswordFromModal = async () => {
+  const student = passwordModalStudent.value
   const newPassword = passwordForms.value[student.id]?.password
+  
   if (!newPassword) {
     alert('請輸入新密碼')
     return
   }
 
+  savingPassword.value = true
   try {
     const response = await studentAPI.resetPassword(student.id, newPassword)
     alert('密碼已更新')
-    // 更新本地數據
-    student.password = response.data.password
-    student.initial_password = response.data.password
-    editingPasswords.value[student.id] = false
-    delete passwordForms.value[student.id]
+    
+    // 更新本地數據 (表格內也會自動更新)
+    const index = students.value.findIndex(s => s.id === student.id)
+    if (index !== -1) {
+      students.value[index].password = response.data.password
+      students.value[index].must_change_password = true
+    }
+    
+    // 刷新模態框顯示
+    passwordModalStudent.value = students.value.find(s => s.id === student.id)
+    passwordForms.value[student.id].password = ''
   } catch (error) {
     console.error('更新密碼失敗:', error)
     alert('更新密碼失敗，請稍後再試')
+  } finally {
+    savingPassword.value = false
   }
 }
 
-// 切換帳號狀態
-const toggleAccountStatus = async (student) => {
-  if (!student.user) {
-    alert('該學生尚未創建帳號')
-    return
-  }
-
+const toggleAccountStatusFromModal = async () => {
+  const student = passwordModalStudent.value
   const action = student.is_account_active ? '停用' : '啟用'
+  
   if (!confirm(`確定要${action}學生 ${student.name} 的帳號嗎？`)) {
     return
   }
 
   try {
     const response = await studentAPI.toggleAccountStatus(student.id)
-    student.is_account_active = response.data.is_active
-    alert(`帳號已${response.data.is_active ? '啟用' : '停用'}`)
+    
+    // 更新本地數據 (表格內也會自動更新)
+    const index = students.value.findIndex(s => s.id === student.id)
+    if (index !== -1) {
+      students.value[index].is_account_active = response.data.is_active
+    }
+
+    alert(`帳號已${response.data.is_account_active ? '啟用' : '停用'}`)
+    
+    passwordModalStudent.value = students.value.find(s => s.id === student.id)
   } catch (error) {
     console.error('切換帳號狀態失敗:', error)
     alert('操作失敗，請稍後再試')
@@ -582,8 +832,12 @@ const toggleAccountStatus = async (student) => {
 }
 
 onMounted(() => {
+  document.addEventListener('click', closeDropdown)
   fetchCurrentUser()
   fetchStudents()
 })
-</script>
 
+onBeforeUnmount(() => {
+  document.removeEventListener('click', closeDropdown)
+})
+</script>
