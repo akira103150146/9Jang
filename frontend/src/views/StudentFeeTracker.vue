@@ -1,11 +1,16 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 py-8 px-4">
+  <div class="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 py-8 px-4
+              dark:from-slate-900 dark:to-slate-800">
     <div class="max-w-6xl mx-auto space-y-6">
-      <header class="rounded-3xl border border-green-100 bg-white p-6 shadow-sm">
+      <header 
+        class="rounded-3xl p-6 shadow-sm transition
+               border border-green-100 bg-white
+               dark:border-slate-700 dark:bg-slate-800"
+      >
         <div class="flex items-center justify-between">
           <div>
-            <h2 class="text-2xl font-bold text-slate-900">{{ student?.name || '載入中...' }}</h2>
-            <p class="text-sm text-slate-500 mt-1">{{ student?.school }} / {{ student?.grade }}</p>
+            <h2 class="text-2xl font-bold text-slate-900 dark:text-white">{{ student?.name || '載入中...' }}</h2>
+            <p class="text-sm text-slate-500 mt-1 dark:text-slate-400">{{ student?.school }} / {{ student?.grade }}</p>
           </div>
           <router-link
             to="/students"
@@ -16,32 +21,30 @@
         </div>
       </header>
 
-      <!-- 費用統計卡片 -->
       <section class="grid gap-4 md:grid-cols-4">
-        <div class="rounded-3xl border border-green-100 bg-white p-5 shadow-sm">
-          <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">總費用</p>
-          <p class="mt-2 text-3xl font-bold text-slate-900">${{ (student?.total_fees || 0).toLocaleString() }}</p>
+        <div class="rounded-3xl border border-green-100 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <p class="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">總費用</p>
+          <p class="mt-2 text-3xl font-bold text-slate-900 dark:text-white">${{ (student?.total_fees || 0).toLocaleString() }}</p>
         </div>
-        <div class="rounded-3xl border border-amber-100 bg-white p-5 shadow-sm">
-          <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">待繳費用</p>
-          <p class="mt-2 text-3xl font-bold text-amber-600">${{ (student?.unpaid_fees || 0).toLocaleString() }}</p>
+        <div class="rounded-3xl border border-amber-100 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <p class="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">待繳費用</p>
+          <p class="mt-2 text-3xl font-bold text-amber-600 dark:text-amber-400">${{ (student?.unpaid_fees || 0).toLocaleString() }}</p>
         </div>
-        <div class="rounded-3xl border border-green-100 bg-white p-5 shadow-sm">
-          <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">已繳費用</p>
-          <p class="mt-2 text-3xl font-bold text-green-600">
+        <div class="rounded-3xl border border-green-100 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <p class="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">已繳費用</p>
+          <p class="mt-2 text-3xl font-bold text-green-600 dark:text-green-400">
             ${{ ((student?.total_fees || 0) - (student?.unpaid_fees || 0)).toLocaleString() }}
           </p>
         </div>
-        <div class="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
-          <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">費用記錄數</p>
-          <p class="mt-2 text-3xl font-bold text-blue-600">{{ fees.length }}</p>
+        <div class="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <p class="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">費用記錄數</p>
+          <p class="mt-2 text-3xl font-bold text-blue-600 dark:text-blue-400">{{ fees.length }}</p>
         </div>
       </section>
 
-      <!-- 費用列表 -->
-      <div class="rounded-3xl border border-slate-100 bg-white shadow-sm">
-        <div class="p-6 border-b border-slate-200 flex items-center justify-between">
-          <h3 class="text-lg font-semibold text-slate-900">費用記錄</h3>
+      <div class="rounded-3xl border border-slate-100 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <div class="p-6 border-b border-slate-200 flex items-center justify-between dark:border-slate-700">
+          <h3 class="text-lg font-semibold text-slate-900 dark:text-white">費用記錄</h3>
           <button
             @click="openAddFeeModal"
             class="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-semibold hover:bg-green-600"
@@ -50,51 +53,52 @@
           </button>
         </div>
         <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-slate-100">
-            <thead class="bg-slate-50">
+          <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-700">
+            <thead class="bg-slate-50 dark:bg-slate-900">
               <tr>
-                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">日期</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">收費名目</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">金額</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">狀態</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">備註</th>
-                <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">操作</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">日期</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">收費名目</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">金額</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">狀態</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">備註</th>
+                <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">操作</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100">
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
               <tr
                 v-for="fee in fees"
                 :key="fee.fee_id"
-                class="transition hover:bg-slate-50/70"
+                class="transition hover:bg-slate-50/70 dark:hover:bg-slate-700/70"
               >
-                <td class="px-4 py-4 text-sm text-slate-700">
+                <td class="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">
                   {{ formatDate(fee.fee_date) }}
                 </td>
                 <td class="px-4 py-4 text-sm text-slate-700">
                   <span class="px-2 py-1 rounded-full text-xs font-semibold"
                     :class="{
-                      'bg-blue-100 text-blue-800': fee.item === 'Tuition',
-                      'bg-green-100 text-green-800': fee.item === 'Meal',
-                      'bg-purple-100 text-purple-800': fee.item === 'Transport',
-                      'bg-amber-100 text-amber-800': fee.item === 'Book',
-                      'bg-slate-100 text-slate-800': fee.item === 'Other',
+                      'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300': fee.item === 'Tuition',
+                      'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300': fee.item === 'Meal',
+                      'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300': fee.item === 'Transport',
+                      'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300': fee.item === 'Book',
+                      'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300': fee.item === 'Other',
                     }"
                   >
                     {{ getItemDisplayName(fee.item) }}
                   </span>
                 </td>
-                <td class="px-4 py-4 text-sm font-semibold text-slate-900">
+                <td class="px-4 py-4 text-sm font-semibold text-slate-900 dark:text-white">
                   ${{ parseFloat(fee.amount).toLocaleString() }}
                 </td>
                 <td class="px-4 py-4 text-sm">
                   <select
                     :value="fee.payment_status"
                     @change="updatePaymentStatus(fee.fee_id, $event.target.value)"
-                    class="rounded-lg border border-slate-300 px-3 py-1 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
+                    class="rounded-lg border border-slate-300 px-3 py-1 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200
+                           dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-green-400"
                     :class="{
-                      'bg-green-50 text-green-800': fee.payment_status === 'Paid',
-                      'bg-amber-50 text-amber-800': fee.payment_status === 'Unpaid',
-                      'bg-blue-50 text-blue-800': fee.payment_status === 'Partial',
+                      'bg-green-50 text-green-800 dark:bg-green-900/50 dark:text-green-300': fee.payment_status === 'Paid',
+                      'bg-amber-50 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300': fee.payment_status === 'Unpaid',
+                      'bg-blue-50 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300': fee.payment_status === 'Partial',
                     }"
                   >
                     <option value="Unpaid">未繳</option>
@@ -102,7 +106,7 @@
                     <option value="Paid">已繳</option>
                   </select>
                 </td>
-                <td class="px-4 py-4 text-sm text-slate-700">
+                <td class="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">
                   <p class="max-w-xs truncate">{{ fee.notes || '—' }}</p>
                 </td>
                 <td class="px-4 py-4 text-center">
@@ -123,7 +127,7 @@
                 </td>
               </tr>
               <tr v-if="fees.length === 0">
-                <td colspan="6" class="py-8 px-4 text-center text-slate-500">目前沒有費用記錄</td>
+                <td colspan="6" class="py-8 px-4 text-center text-slate-500 dark:text-slate-400">目前沒有費用記錄</td>
               </tr>
             </tbody>
           </table>
@@ -131,21 +135,23 @@
       </div>
     </div>
 
-    <!-- 新增/編輯費用記錄模態框 -->
     <div
       v-if="showFeeModal"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
       @click.self="closeFeeModal"
     >
-      <div class="bg-white rounded-3xl shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
-        <div class="p-6 border-b border-slate-200">
+      <div 
+        class="bg-white rounded-3xl shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto
+               dark:bg-slate-800 dark:shadow-2xl"
+      >
+        <div class="p-6 border-b border-slate-200 dark:border-slate-700">
           <div class="flex items-center justify-between">
-            <h3 class="text-xl font-bold text-slate-900">
+            <h3 class="text-xl font-bold text-slate-900 dark:text-white">
               {{ editingFee ? '編輯費用記錄' : '新增費用記錄' }}
             </h3>
             <button
               @click="closeFeeModal"
-              class="text-slate-400 hover:text-slate-600"
+              class="text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200"
             >
               <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -153,14 +159,17 @@
             </button>
           </div>
         </div>
+        
         <div class="p-6">
           <form @submit.prevent="saveFee" class="space-y-4">
+            
             <div>
-              <label class="block text-sm font-semibold text-slate-700 mb-1">收費名目 *</label>
+              <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">收費名目 *</label>
               <select
                 v-model="feeForm.item"
                 required
-                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200
+                       dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-green-400"
               >
                 <option value="">請選擇收費名目</option>
                 <option value="Tuition">學費</option>
@@ -172,7 +181,7 @@
             </div>
 
             <div>
-              <label class="block text-sm font-semibold text-slate-700 mb-1">收費金額 *</label>
+              <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">收費金額 *</label>
               <input
                 v-model.number="feeForm.amount"
                 type="number"
@@ -180,26 +189,29 @@
                 min="0"
                 placeholder="0.00"
                 required
-                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200
+                       dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-green-400"
               />
             </div>
 
             <div>
-              <label class="block text-sm font-semibold text-slate-700 mb-1">費用日期 *</label>
+              <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">費用日期 *</label>
               <input
                 v-model="feeForm.fee_date"
                 type="date"
                 required
-                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200
+                       dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-green-400"
               />
             </div>
 
             <div>
-              <label class="block text-sm font-semibold text-slate-700 mb-1">繳費狀態 *</label>
+              <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">繳費狀態 *</label>
               <select
                 v-model="feeForm.payment_status"
                 required
-                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200
+                       dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-green-400"
               >
                 <option value="Unpaid">未繳</option>
                 <option value="Partial">部分繳</option>
@@ -208,11 +220,12 @@
             </div>
 
             <div>
-              <label class="block text-sm font-semibold text-slate-700 mb-1">備註</label>
+              <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">備註</label>
               <textarea
                 v-model="feeForm.notes"
                 rows="3"
-                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200
+                       dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-green-400"
                 placeholder="備註資訊..."
               ></textarea>
             </div>
@@ -221,7 +234,8 @@
               <button
                 type="button"
                 @click="closeFeeModal"
-                class="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                class="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50
+                       dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
               >
                 取消
               </button>

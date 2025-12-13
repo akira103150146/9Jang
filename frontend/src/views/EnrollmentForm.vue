@@ -1,16 +1,21 @@
 <template>
   <div class="flex-1 p-4 md:p-6 flex flex-col items-center justify-center">
     <div class="w-full max-w-xl">
-      <div class="w-full bg-white rounded-lg shadow-xl p-6">
-        <h2 class="text-2xl font-bold text-gray-900 mb-4">
+      <div 
+        class="w-full bg-white rounded-lg shadow-xl p-6
+               dark:bg-slate-800 dark:shadow-2xl"
+      >
+        <h2 class="text-2xl font-bold text-gray-900 mb-4 dark:text-white">
           {{ isEdit ? '編輯報名記錄' : '新增報名記錄' }}
         </h2>
 
         <form @submit.prevent="handleSubmit" class="flex flex-col">
-          <label class="block text-sm font-medium text-gray-700 mb-2">學生</label>
+          
+          <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-300">學生</label>
           <select 
             v-model="form.student"
-            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150"
+            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
+                   dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400"
             required
           >
             <option value="">選擇學生</option>
@@ -19,10 +24,11 @@
             </option>
           </select>
 
-          <label class="block text-sm font-medium text-gray-700 mb-2">課程</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-300">課程</label>
           <select 
             v-model="form.course"
-            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150"
+            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
+                   dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400"
             required
           >
             <option value="">選擇課程</option>
@@ -31,80 +37,84 @@
             </option>
           </select>
 
-          <label class="block text-sm font-medium text-gray-700 mb-2">報名日期</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-300">報名日期</label>
           <input 
             v-model="form.enroll_date"
             type="date" 
-            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150" 
+            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
+                   dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400" 
             required
           >
 
-          <label class="block text-sm font-medium text-gray-700 mb-2">折扣百分比 (%)</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-300">折扣百分比 (%)</label>
           <input 
             v-model.number="form.discount_rate"
             type="number" 
             step="0.01"
             min="0"
             max="100"
-            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150" 
+            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
+                   dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400" 
             placeholder="0.00"
             required
           >
-          <p class="text-xs text-gray-500 mb-4">輸入折扣百分比，例如：10 表示 10% 折扣</p>
+          <p class="text-xs text-gray-500 mb-4 dark:text-slate-400">輸入折扣百分比，例如：10 表示 10% 折扣</p>
 
-          <!-- 上課期間管理（僅在編輯時顯示） -->
-          <div v-if="isEdit && enrollmentId" class="mt-6 pt-6 border-t border-gray-200">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">上課期間管理</h3>
-            <p class="text-sm text-gray-600 mb-4">管理學生的上課期間，系統會根據期間生成學費</p>
+          <div v-if="isEdit && enrollmentId" class="mt-6 pt-6 border-t border-gray-200 dark:border-slate-700">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4 dark:text-white">上課期間管理</h3>
+            <p class="text-sm text-gray-600 mb-4 dark:text-slate-400">管理學生的上課期間，系統會根據期間生成學費</p>
             
-            <div v-if="loadingPeriods" class="text-center py-4 text-gray-500">載入期間數據中...</div>
+            <div v-if="loadingPeriods" class="text-center py-4 text-gray-500 dark:text-slate-400">載入期間數據中...</div>
             <div v-else class="space-y-3">
               <div
                 v-for="(period, index) in periods"
                 :key="period.period_id || index"
-                class="p-4 bg-gray-50 rounded-lg border border-gray-200"
+                class="p-4 bg-gray-50 rounded-lg border border-gray-200 dark:bg-slate-700 dark:border-slate-600"
               >
                 <div class="grid grid-cols-2 gap-3 mb-3">
                   <div>
-                    <label class="block text-xs font-semibold text-gray-700 mb-1">開始日期</label>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1 dark:text-slate-400">開始日期</label>
                     <input
                       v-model="period.start_date"
                       type="date"
-                      class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                      class="w-full rounded-md px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200
+                             border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:focus:border-blue-400"
                     />
                   </div>
                   <div>
-                    <label class="block text-xs font-semibold text-gray-700 mb-1">結束日期（可選）</label>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1 dark:text-slate-400">結束日期（可選）</label>
                     <input
                       v-model="period.end_date"
                       type="date"
-                      class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                      class="w-full rounded-md px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200
+                             border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:focus:border-blue-400"
                     />
-                    <p class="text-xs text-gray-500 mt-1">留空表示持續中</p>
+                    <p class="text-xs text-gray-500 mt-1 dark:text-slate-400">留空表示持續中</p>
                   </div>
                 </div>
                 <div class="mb-3">
-                  <label class="block text-xs font-semibold text-gray-700 mb-1">備註</label>
+                  <label class="block text-xs font-semibold text-gray-700 mb-1 dark:text-slate-400">備註</label>
                   <textarea
                     v-model="period.notes"
                     rows="2"
-                    class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    class="w-full rounded-md px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200
+                           border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:focus:border-blue-400"
                     placeholder="例如：請假中、恢復上課等..."
                   ></textarea>
                 </div>
                 <div class="flex items-center justify-between">
-                  <label class="flex items-center gap-2 text-sm text-gray-700">
+                  <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-400">
                     <input
                       v-model="period.is_active"
                       type="checkbox"
-                      class="rounded border-gray-300 text-blue-500 focus:ring-blue-500"
+                      class="rounded border-gray-300 text-blue-500 focus:ring-blue-500 dark:border-slate-500 dark:bg-slate-700 dark:checked:bg-blue-500"
                     />
                     <span>啟用此期間</span>
                   </label>
                   <button
                     type="button"
                     @click="removePeriod(index)"
-                    class="px-3 py-1 text-xs font-semibold text-red-600 hover:text-red-800"
+                    class="px-3 py-1 text-xs font-semibold text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                   >
                     刪除期間
                   </button>
@@ -113,7 +123,8 @@
               <button
                 type="button"
                 @click="addPeriod"
-                class="w-full rounded-lg border-2 border-dashed border-gray-300 px-4 py-2 text-sm font-semibold text-gray-600 hover:border-blue-500 hover:text-blue-600"
+                class="w-full rounded-lg border-2 border-dashed border-gray-300 px-4 py-2 text-sm font-semibold text-gray-600 hover:border-blue-500 hover:text-blue-600
+                       dark:border-slate-600 dark:text-slate-400 dark:hover:border-blue-400 dark:hover:text-blue-400"
               >
                 + 新增上課期間
               </button>
@@ -128,9 +139,11 @@
             >
               {{ loading ? '處理中...' : (isEdit ? '更新' : '新增') }}
             </button>
+            
             <router-link 
               to="/enrollments"
-              class="flex-1 bg-gray-300 text-gray-900 font-bold py-3 px-4 rounded-lg mt-4 hover:bg-gray-400 transition ease-in-out duration-150 shadow-md text-center"
+              class="flex-1 bg-gray-300 text-gray-900 font-bold py-3 px-4 rounded-lg mt-4 hover:bg-gray-400 transition ease-in-out duration-150 shadow-md text-center
+                     dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500"
             >
               取消
             </router-link>

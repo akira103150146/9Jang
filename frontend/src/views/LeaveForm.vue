@@ -1,16 +1,21 @@
 <template>
   <div class="flex-1 p-4 md:p-6 flex flex-col items-center justify-center">
     <div class="w-full max-w-xl">
-      <div class="w-full bg-white rounded-lg shadow-xl p-6">
-        <h2 class="text-2xl font-bold text-gray-900 mb-4">
+      <div 
+        class="w-full bg-white rounded-lg shadow-xl p-6
+               dark:bg-slate-800 dark:shadow-2xl"
+      >
+        <h2 class="text-2xl font-bold text-gray-900 mb-4 dark:text-white">
           {{ isEdit ? '編輯請假記錄' : '新增請假記錄' }}
         </h2>
 
         <form @submit.prevent="handleSubmit" class="flex flex-col">
-          <label class="block text-sm font-medium text-gray-700 mb-2">學生</label>
+          
+          <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-300">學生</label>
           <select 
             v-model="form.student"
-            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150"
+            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
+                   dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400"
             required
           >
             <option value="">選擇學生</option>
@@ -19,10 +24,11 @@
             </option>
           </select>
 
-          <label class="block text-sm font-medium text-gray-700 mb-2">課程</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-300">課程</label>
           <select 
             v-model="form.course"
-            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150"
+            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
+                   dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400"
             required
           >
             <option value="">選擇課程</option>
@@ -31,27 +37,30 @@
             </option>
           </select>
 
-          <label class="block text-sm font-medium text-gray-700 mb-2">請假日期</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-300">請假日期</label>
           <input 
             v-model="form.leave_date"
             type="date" 
-            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150" 
+            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
+                   dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400" 
             required
           >
 
-          <label class="block text-sm font-medium text-gray-700 mb-2">請假原因</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-300">請假原因</label>
           <textarea 
             v-model="form.reason"
-            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150" 
+            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
+                   dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400" 
             placeholder="請輸入請假原因"
             rows="3"
             required
           ></textarea>
 
-          <label class="block text-sm font-medium text-gray-700 mb-2">審核狀態</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-300">審核狀態</label>
           <select 
             v-model="form.approval_status"
-            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150"
+            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
+                   dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400"
             required
           >
             <option value="Pending">待審核</option>
@@ -67,9 +76,11 @@
             >
               {{ loading ? '處理中...' : (isEdit ? '更新' : '新增') }}
             </button>
+            
             <router-link 
               to="/attendance"
-              class="flex-1 bg-gray-300 text-gray-900 font-bold py-3 px-4 rounded-lg mt-4 hover:bg-gray-400 transition ease-in-out duration-150 shadow-md text-center"
+              class="flex-1 bg-gray-300 text-gray-900 font-bold py-3 px-4 rounded-lg mt-4 hover:bg-gray-400 transition ease-in-out duration-150 shadow-md text-center
+                     dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500"
             >
               取消
             </router-link>

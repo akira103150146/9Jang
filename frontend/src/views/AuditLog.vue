@@ -1,22 +1,30 @@
 <template>
   <div class="space-y-6">
-    <header class="rounded-3xl border border-blue-100 bg-gradient-to-r from-white to-sky-50 p-6 shadow-sm">
+    <header 
+      class="rounded-3xl p-6 shadow-sm transition
+             border border-blue-100 bg-gradient-to-r from-white to-sky-50
+             dark:border-slate-700 dark:from-slate-800 dark:to-slate-900"
+    >
       <div>
-        <p class="text-sm font-semibold text-slate-500">系統管理</p>
-        <h2 class="text-2xl font-bold text-slate-900">操作記錄</h2>
-        <p class="mt-2 text-sm text-slate-500">查看所有使用者的操作記錄</p>
+        <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">系統管理</p>
+        <h2 class="text-2xl font-bold text-slate-900 dark:text-white">操作記錄</h2>
+        <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">查看所有使用者的操作記錄</p>
       </div>
     </header>
 
-    <!-- 過濾器 -->
-    <div class="rounded-2xl border border-slate-200 bg-white p-4">
+    <div class="rounded-2xl border border-slate-200 bg-white p-4
+                dark:border-slate-700 dark:bg-slate-800">
       <div class="grid gap-4 md:grid-cols-4">
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">操作類型</label>
+        <div v-for="i in 4" :key="i">
+          <label class="block text-xs font-semibold text-slate-700 mb-1 dark:text-slate-300">
+            {{ i === 1 ? '操作類型' : i === 2 ? '資源類型' : i === 3 ? '使用者' : '角色' }}
+          </label>
           <select
+            v-if="i === 1"
             v-model="filters.action_type"
             @change="fetchLogs"
-            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none
+                   dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-sky-400"
           >
             <option value="">全部</option>
             <option value="create">新增</option>
@@ -27,130 +35,148 @@
             <option value="logout">登出</option>
             <option value="other">其他</option>
           </select>
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">資源類型</label>
           <input
+            v-else-if="i === 2"
             v-model="filters.resource_type"
             @input="fetchLogs"
             type="text"
             placeholder="例如：Student"
-            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none
+                   dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-sky-400"
           />
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">使用者</label>
           <input
+            v-else-if="i === 3"
             v-model="filters.user"
             @input="fetchLogs"
             type="text"
             placeholder="使用者 ID"
-            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none
+                   dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-sky-400"
           />
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">角色</label>
           <input
+            v-else
             v-model="filters.role"
             @input="fetchLogs"
             type="text"
             placeholder="角色 ID"
-            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none
+                   dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-sky-400"
           />
         </div>
       </div>
     </div>
 
     <div v-if="loading" class="flex justify-center items-center py-12">
-      <p class="text-slate-500">載入中...</p>
+      <p class="text-slate-500 dark:text-slate-400">載入中...</p>
     </div>
 
-    <div v-else class="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
+    <div v-else 
+      class="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm
+             dark:border-slate-700 dark:bg-slate-800"
+    >
       <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-slate-100">
-          <thead class="bg-slate-50">
+        <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-700">
+          <thead class="bg-slate-50 dark:bg-slate-900">
             <tr>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">時間</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">使用者</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">角色</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">操作</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">資源</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">IP 地址</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">狀態</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">時間</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">使用者</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">角色</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">操作</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">資源</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">IP 地址</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">狀態</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-slate-100">
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
             <tr
               v-for="log in logs"
               :key="log.id"
-              class="transition hover:bg-slate-50/70"
+              class="transition hover:bg-slate-50/70 dark:hover:bg-slate-700/70"
             >
-              <td class="whitespace-nowrap px-4 py-4 text-sm text-slate-700">
+              <td class="whitespace-nowrap px-4 py-4 text-sm text-slate-700 dark:text-slate-300">
                 {{ formatDate(log.created_at) }}
               </td>
-              <td class="whitespace-nowrap px-4 py-4 text-sm text-slate-700">
+              <td class="whitespace-nowrap px-4 py-4 text-sm text-slate-700 dark:text-slate-300">
                 {{ log.user_username || '未知' }}
               </td>
               <td class="whitespace-nowrap px-4 py-4 text-sm text-slate-700">
                 <span
                   v-if="log.role_name"
-                  class="rounded-full bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-600"
+                  class="rounded-full bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-600
+                         dark:bg-indigo-900/50 dark:text-indigo-300"
                 >
                   {{ log.role_name }}
                 </span>
-                <span v-else class="text-slate-400">—</span>
+                <span v-else class="text-slate-400 dark:text-slate-500">—</span>
               </td>
               <td class="whitespace-nowrap px-4 py-4">
                 <span
                   class="rounded-full px-3 py-1 text-xs font-semibold"
-                  :class="getActionTypeColor(log.action_type)"
+                  :class="[
+                    getActionTypeColor(log.action_type),
+                    // 假設 getActionTypeColor 返回淺色模式類別，這裡手動添加深色變體
+                    log.action_type === 'create' && 'dark:bg-green-900/50 dark:text-green-300',
+                    log.action_type === 'update' && 'dark:bg-blue-900/50 dark:text-blue-300',
+                    log.action_type === 'delete' && 'dark:bg-rose-900/50 dark:text-rose-300',
+                    (log.action_type === 'login' || log.action_type === 'logout') && 'dark:bg-amber-900/50 dark:text-amber-300',
+                    (log.action_type === 'view' || log.action_type === 'other') && 'dark:bg-slate-700 dark:text-slate-300',
+                  ]"
                 >
                   {{ log.action_type_display }}
                 </span>
               </td>
               <td class="px-4 py-4 text-sm text-slate-700">
                 <div>
-                  <p class="font-semibold">{{ log.resource_type }}</p>
-                  <p v-if="log.resource_name" class="text-xs text-slate-500">{{ log.resource_name }}</p>
-                  <p v-if="log.resource_id" class="text-xs text-slate-400">ID: {{ log.resource_id }}</p>
+                  <p class="font-semibold dark:text-white">{{ log.resource_type }}</p>
+                  <p v-if="log.resource_name" class="text-xs text-slate-500 dark:text-slate-400">{{ log.resource_name }}</p>
+                  <p v-if="log.resource_id" class="text-xs text-slate-400 dark:text-slate-500">ID: {{ log.resource_id }}</p>
                 </div>
               </td>
-              <td class="whitespace-nowrap px-4 py-4 text-sm text-slate-500">
+              <td class="whitespace-nowrap px-4 py-4 text-sm text-slate-500 dark:text-slate-400">
                 {{ log.ip_address || '—' }}
               </td>
               <td class="whitespace-nowrap px-4 py-4">
                 <span
                   class="rounded-full px-2 py-1 text-xs font-semibold"
-                  :class="getStatusColor(log.response_status)"
+                  :class="[
+                    getStatusColor(log.response_status),
+                    // 假設 getStatusColor 返回淺色模式類別
+                    log.response_status && log.response_status >= 200 && log.response_status < 400 && 'bg-green-50 text-green-600 dark:bg-green-900/50 dark:text-green-300',
+                    log.response_status && log.response_status >= 400 && 'bg-rose-50 text-rose-600 dark:bg-rose-900/50 dark:text-rose-300',
+                    log.response_status === null && 'bg-slate-50 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
+                  ]"
                 >
                   {{ log.response_status || '—' }}
                 </span>
               </td>
             </tr>
             <tr v-if="logs.length === 0">
-              <td colspan="7" class="py-4 px-4 text-center text-slate-500">目前沒有操作記錄。</td>
+              <td colspan="7" class="py-4 px-4 text-center text-slate-500 dark:text-slate-400">目前沒有操作記錄。</td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    <!-- 分頁 -->
     <div v-if="totalPages > 1" class="flex justify-center gap-2">
       <button
         @click="changePage(currentPage - 1)"
         :disabled="currentPage === 1"
-        class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        class="rounded-full border px-4 py-2 text-sm font-semibold transition
+               border-slate-300 text-slate-700 hover:bg-slate-50
+               dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/70 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         上一頁
       </button>
-      <span class="flex items-center px-4 text-sm text-slate-700">
+      <span class="flex items-center px-4 text-sm text-slate-700 dark:text-slate-300">
         第 {{ currentPage }} / {{ totalPages }} 頁
       </span>
       <button
         @click="changePage(currentPage + 1)"
         :disabled="currentPage === totalPages"
-        class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        class="rounded-full border px-4 py-2 text-sm font-semibold transition
+               border-slate-300 text-slate-700 hover:bg-slate-50
+               dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/70 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         下一頁
       </button>

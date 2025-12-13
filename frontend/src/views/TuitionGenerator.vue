@@ -1,11 +1,17 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-8 px-4">
+  <div class="min-h-screen py-8 px-4
+              bg-gradient-to-br from-blue-50 to-indigo-50
+              dark:from-slate-900 dark:to-slate-800">
     <div class="max-w-6xl mx-auto space-y-6">
-      <header class="rounded-3xl border border-blue-100 bg-white p-6 shadow-sm">
+      <header 
+        class="rounded-3xl p-6 shadow-sm transition
+               border border-blue-100 bg-white
+               dark:border-slate-700 dark:bg-slate-800"
+      >
         <div class="flex items-center justify-between">
           <div>
-            <h2 class="text-2xl font-bold text-slate-900">生成學費</h2>
-            <p class="text-sm text-slate-500 mt-1">{{ courseName }} - {{ year }}年{{ month }}月</p>
+            <h2 class="text-2xl font-bold text-slate-900 dark:text-white">生成學費</h2>
+            <p class="text-sm text-slate-500 mt-1 dark:text-slate-400">{{ courseName }} - {{ year }}年{{ month }}月</p>
           </div>
           <router-link
             to="/students"
@@ -17,31 +23,38 @@
       </header>
 
       <div class="max-w-2xl mx-auto">
-        <div class="rounded-3xl border border-blue-100 bg-white p-6 shadow-sm">
-          <h3 class="text-lg font-semibold text-slate-900 mb-4">費用資訊</h3>
+        <div class="rounded-3xl border border-blue-100 bg-white p-6 shadow-sm
+                    dark:border-slate-700 dark:bg-slate-800">
+          <h3 class="text-lg font-semibold text-slate-900 mb-4 dark:text-white">費用資訊</h3>
           <div class="space-y-4">
             <div>
-              <label class="block text-sm font-semibold text-slate-700 mb-1">每週費用</label>
-              <p class="text-lg font-bold text-slate-900">${{ weeklyFee.toLocaleString() }}</p>
+              <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">每週費用</label>
+              <p class="text-lg font-bold text-slate-900 dark:text-white">${{ weeklyFee.toLocaleString() }}</p>
             </div>
+            
             <div>
-              <label class="block text-sm font-semibold text-slate-700 mb-1">選擇週數</label>
+              <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">選擇週數</label>
               <input
                 v-model.number="selectedWeeks"
                 type="number"
                 min="1"
                 max="8"
-                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200
+                       dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-blue-400"
               />
-              <p class="text-xs text-slate-500 mt-1">請輸入該月的上課週數（預設為 4 週）</p>
+              <p class="text-xs text-slate-500 mt-1 dark:text-slate-400">請輸入該月的上課週數（預設為 4 週）</p>
             </div>
-            <div class="p-4 bg-blue-50 rounded-lg border border-blue-200">
+            
+            <div class="p-4 rounded-lg border 
+                        bg-blue-50 border-blue-200
+                        dark:bg-blue-900/50 dark:border-blue-700">
               <div class="flex items-center justify-between">
-                <span class="text-sm font-semibold text-slate-700">總費用：</span>
-                <span class="text-2xl font-bold text-blue-600">${{ totalFee.toLocaleString() }}</span>
+                <span class="text-sm font-semibold text-slate-700 dark:text-slate-300">總費用：</span>
+                <span class="text-2xl font-bold text-blue-600 dark:text-blue-400">${{ totalFee.toLocaleString() }}</span>
               </div>
-              <p class="text-xs text-slate-500 mt-1">計算公式：每週費用 × 週數</p>
+              <p class="text-xs text-slate-500 mt-1 dark:text-slate-400">計算公式：每週費用 × 週數</p>
             </div>
+            
             <button
               @click="saveTuition"
               :disabled="saving || selectedWeeks < 1"

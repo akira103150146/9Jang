@@ -2,16 +2,21 @@
   <aside
     id="sidebar"
     :class="[
-      'fixed inset-y-0 left-0 z-40 w-72 flex-shrink-0 bg-white/95 backdrop-blur border-r border-blue-100 h-full flex flex-col p-5 transition-transform duration-300 ease-in-out',
+      'fixed inset-y-0 left-0 z-40 w-72 flex-shrink-0 h-full flex flex-col p-5 transition-transform duration-300 ease-in-out',
+      // 側邊欄背景和邊框調整
+      'bg-white/95 backdrop-blur border-r border-blue-100 dark:bg-slate-900/90 dark:border-slate-700',
       isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0 md:relative md:flex'
     ]"
   >
     <div>
-      <div class="flex items-center gap-3 rounded-2xl border border-blue-100 bg-sky-50/60 px-4 py-3">
+      <div 
+        class="flex items-center gap-3 rounded-2xl border border-blue-100 bg-sky-50/60 px-4 py-3
+               dark:border-slate-700 dark:bg-slate-800/60"
+      >
         <img :src="logoUrl" alt="九章 Logo" class="h-10 w-auto object-cover" />
         <div>
-          <p class="text-xs font-semibold uppercase tracking-widest text-sky-600">九章補教</p>
-          <p class="text-lg font-bold text-slate-900">管理後台</p>
+          <p class="text-xs font-semibold uppercase tracking-widest text-sky-600 dark:text-sky-400">九章補教</p>
+          <p class="text-lg font-bold text-slate-900 dark:text-white">管理後台</p>
         </div>
       </div>
 
@@ -23,20 +28,23 @@
           class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition"
           :class="isActive(item.name)
             ? 'bg-gradient-to-r from-sky-500 to-indigo-500 text-white shadow-md'
-            : 'text-slate-600 hover:bg-slate-50'"
+            : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700'"
           @click="$emit('close')"
         >
           <span>{{ item.label }}</span>
         </router-link>
       </nav>
 
-      <!-- 用戶信息和登出按鈕 -->
-      <div class="mt-auto pt-4 border-t border-slate-200">
-        <div v-if="currentUser" class="mb-3 px-4 py-2 rounded-xl bg-slate-50">
-          <p class="text-xs text-slate-500 mb-1">登入為</p>
-          <p class="text-sm font-semibold text-slate-900">{{ currentUser.username }}</p>
-          <p class="text-xs text-slate-500">{{ currentUser.role_display || currentUser.role }}</p>
+      <div class="mt-auto pt-4 border-t border-slate-200 dark:border-slate-700">
+        <div 
+          v-if="currentUser" 
+          class="mb-3 px-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-700"
+        >
+          <p class="text-xs text-slate-500 mb-1 dark:text-slate-400">登入為</p>
+          <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ currentUser.username }}</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400">{{ currentUser.role_display || currentUser.role }}</p>
         </div>
+        
         <button
           @click="handleLogout"
           class="w-full rounded-xl px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 transition"

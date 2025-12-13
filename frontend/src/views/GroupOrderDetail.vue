@@ -1,39 +1,43 @@
 <template>
   <div class="space-y-6">
-    <header class="rounded-3xl border border-blue-100 bg-gradient-to-r from-white to-green-50 p-6 shadow-sm">
+    <header 
+      class="rounded-3xl p-6 shadow-sm transition
+             border border-blue-100 bg-gradient-to-r from-white to-green-50
+             dark:border-slate-700 dark:from-slate-800 dark:to-slate-900"
+    >
       <div class="flex items-center gap-4">
         <router-link
           to="/lunch-orders"
-          class="text-slate-400 hover:text-slate-600"
+          class="text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200"
         >
           <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           </svg>
         </router-link>
         <div>
-          <h2 class="text-2xl font-bold text-slate-900">{{ groupOrder?.title || '載入中...' }}</h2>
-          <p class="mt-1 text-sm text-slate-500">{{ groupOrder?.restaurant_name }}</p>
+          <h2 class="text-2xl font-bold text-slate-900 dark:text-white">{{ groupOrder?.title || '載入中...' }}</h2>
+          <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ groupOrder?.restaurant_name }}</p>
         </div>
       </div>
     </header>
 
-    <div v-if="loading" class="text-center py-12 text-slate-500">載入中...</div>
+    <div v-if="loading" class="text-center py-12 text-slate-500 dark:text-slate-400">載入中...</div>
     
     <div v-else-if="groupOrder" class="space-y-6">
-      <!-- 團購資訊 -->
-      <div class="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+      <div class="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm
+                  dark:border-slate-700 dark:bg-slate-800">
         <div class="grid gap-4 md:grid-cols-3">
           <div>
-            <p class="text-xs font-semibold text-slate-500">截止時間</p>
-            <p class="mt-1 text-lg font-semibold text-slate-900">{{ formatDateTime(groupOrder.deadline) }}</p>
+            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">截止時間</p>
+            <p class="mt-1 text-lg font-semibold text-slate-900 dark:text-white">{{ formatDateTime(groupOrder.deadline) }}</p>
           </div>
           <div>
-            <p class="text-xs font-semibold text-slate-500">訂單數</p>
-            <p class="mt-1 text-lg font-semibold text-slate-900">{{ groupOrder.orders_count }}</p>
+            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">訂單數</p>
+            <p class="mt-1 text-lg font-semibold text-slate-900 dark:text-white">{{ groupOrder.orders_count }}</p>
           </div>
           <div>
-            <p class="text-xs font-semibold text-slate-500">總金額</p>
-            <p class="mt-1 text-lg font-semibold text-green-600">${{ groupOrder.total_amount }}</p>
+            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">總金額</p>
+            <p class="mt-1 text-lg font-semibold text-green-600 dark:text-green-400">${{ groupOrder.total_amount }}</p>
           </div>
         </div>
         
@@ -47,31 +51,32 @@
         </div>
       </div>
 
-      <!-- 訂單列表 -->
       <div>
-        <h3 class="text-lg font-semibold text-slate-900 mb-4">訂單列表</h3>
-        <div v-if="orders.length === 0" class="rounded-3xl border border-slate-100 bg-white p-12 text-center">
-          <p class="text-slate-500">目前還沒有訂單</p>
+        <h3 class="text-lg font-semibold text-slate-900 mb-4 dark:text-white">訂單列表</h3>
+        <div v-if="orders.length === 0" 
+             class="rounded-3xl border border-slate-100 bg-white p-12 text-center dark:border-slate-700 dark:bg-slate-800">
+          <p class="text-slate-500 dark:text-slate-400">目前還沒有訂單</p>
         </div>
         <div v-else class="space-y-4">
           <article
             v-for="order in orders"
             :key="order.order_id"
-            class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm"
+            class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm
+                   dark:border-slate-700 dark:bg-slate-800"
           >
             <div class="flex items-start justify-between mb-3">
               <div>
-                <h4 class="text-lg font-semibold text-slate-900">{{ order.student_name }}</h4>
-                <p class="text-sm text-slate-600 mt-1">訂單時間：{{ formatDateTime(order.created_at) }}</p>
+                <h4 class="text-lg font-semibold text-slate-900 dark:text-white">{{ order.student_name }}</h4>
+                <p class="text-sm text-slate-600 mt-1 dark:text-slate-300">訂單時間：{{ formatDateTime(order.created_at) }}</p>
               </div>
               <div class="text-right">
-                <p class="text-lg font-semibold text-slate-900">${{ order.total_amount }}</p>
+                <p class="text-lg font-semibold text-slate-900 dark:text-white">${{ order.total_amount }}</p>
                 <span
                   :class="[
                     'mt-1 inline-block rounded-full px-3 py-1 text-xs font-semibold',
-                    order.status === 'Confirmed' ? 'bg-green-50 text-green-600' :
-                    order.status === 'Pending' ? 'bg-yellow-50 text-yellow-600' :
-                    'bg-gray-50 text-gray-600'
+                    order.status === 'Confirmed' ? 'bg-green-50 text-green-600 dark:bg-green-900/50 dark:text-green-300' :
+                    order.status === 'Pending' ? 'bg-yellow-50 text-yellow-600 dark:bg-amber-900/50 dark:text-amber-300' :
+                    'bg-gray-50 text-gray-600 dark:bg-slate-700 dark:text-slate-300'
                   ]"
                 >
                   {{ getOrderStatusDisplay(order.status) }}
@@ -83,23 +88,24 @@
               <div
                 v-for="item in order.items"
                 :key="item.order_item_id"
-                class="flex items-center justify-between text-sm bg-slate-50 rounded-lg px-3 py-2"
+                class="flex items-center justify-between text-sm rounded-lg px-3 py-2
+                       bg-slate-50 dark:bg-slate-700"
               >
                 <div class="flex-1">
-                  <span class="font-semibold text-slate-900">{{ item.item_name }}</span>
-                  <div class="flex items-center gap-3 mt-1 text-xs text-slate-600">
-                    <span>數量：<strong class="text-slate-700">{{ item.quantity }}</strong></span>
-                    <span>單價：<strong class="text-slate-700">${{ item.unit_price }}</strong></span>
+                  <span class="font-semibold text-slate-900 dark:text-white">{{ item.item_name }}</span>
+                  <div class="flex items-center gap-3 mt-1 text-xs text-slate-600 dark:text-slate-400">
+                    <span>數量：<strong class="text-slate-700 dark:text-slate-200">{{ item.quantity }}</strong></span>
+                    <span>單價：<strong class="text-slate-700 dark:text-slate-200">${{ item.unit_price }}</strong></span>
                   </div>
                 </div>
                 <div class="text-right">
-                  <span class="text-xs text-slate-500 block">小計</span>
-                  <span class="font-semibold text-slate-900">${{ item.subtotal }}</span>
+                  <span class="text-xs text-slate-500 block dark:text-slate-400">小計</span>
+                  <span class="font-semibold text-slate-900 dark:text-white">${{ item.subtotal }}</span>
                 </div>
               </div>
             </div>
             
-            <div v-if="order.notes" class="mt-3 text-sm text-slate-600">
+            <div v-if="order.notes" class="mt-3 text-sm text-slate-600 dark:text-slate-300">
               <span class="font-semibold">備註：</span>{{ order.notes }}
             </div>
 

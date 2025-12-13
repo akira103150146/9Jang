@@ -1,11 +1,15 @@
 <template>
   <div class="space-y-6">
-    <header class="rounded-3xl border border-blue-100 bg-gradient-to-r from-white to-sky-50 p-6 shadow-sm">
+    <header 
+      class="rounded-3xl p-6 shadow-sm transition
+             border border-blue-100 bg-gradient-to-r from-white to-sky-50
+             dark:border-slate-700 dark:from-slate-800 dark:to-slate-900"
+    >
       <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p class="text-sm font-semibold text-slate-500">權限管理</p>
-          <h2 class="text-2xl font-bold text-slate-900">角色與權限設定</h2>
-          <p class="mt-2 text-sm text-slate-500">管理系統角色及其可訪問的頁面和 API</p>
+          <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">權限管理</p>
+          <h2 class="text-2xl font-bold text-slate-900 dark:text-white">角色與權限設定</h2>
+          <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">管理系統角色及其可訪問的頁面和 API</p>
         </div>
         <button
           @click="openCreateModal"
@@ -17,41 +21,44 @@
     </header>
 
     <div v-if="loading" class="flex justify-center items-center py-12">
-      <p class="text-slate-500">載入中...</p>
+      <p class="text-slate-500 dark:text-slate-400">載入中...</p>
     </div>
 
     <div v-else class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
       <div
         v-for="role in roles"
         :key="role.id"
-        class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition"
+        class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition
+               dark:border-slate-700 dark:bg-slate-800 dark:hover:shadow-xl"
       >
         <div class="flex items-start justify-between mb-4">
           <div>
-            <h3 class="text-lg font-bold text-slate-900">{{ role.name }}</h3>
-            <p class="text-sm text-slate-500 mt-1">{{ role.description || '無描述' }}</p>
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white">{{ role.name }}</h3>
+            <p class="text-sm text-slate-500 mt-1 dark:text-slate-400">{{ role.description || '無描述' }}</p>
           </div>
           <span
             class="rounded-full px-3 py-1 text-xs font-semibold"
-            :class="role.is_active ? 'bg-green-50 text-green-600' : 'bg-slate-100 text-slate-600'"
+            :class="role.is_active 
+                      ? 'bg-green-50 text-green-600 dark:bg-green-900/50 dark:text-green-300' 
+                      : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'"
           >
             {{ role.is_active ? '啟用' : '停用' }}
           </span>
         </div>
         
         <div class="mb-4">
-          <p class="text-xs text-slate-500 mb-2">權限數量：{{ role.permission_count || 0 }}</p>
+          <p class="text-xs text-slate-500 mb-2 dark:text-slate-400">權限數量：{{ role.permission_count || 0 }}</p>
           <div class="space-y-1">
             <div
               v-for="perm in role.permissions.slice(0, 3)"
               :key="perm.id"
-              class="text-xs text-slate-600"
+              class="text-xs text-slate-600 dark:text-slate-300"
             >
               <span class="font-semibold">{{ perm.permission_type_display }}:</span>
               <span class="ml-1">{{ perm.resource }}</span>
-              <span v-if="perm.method" class="ml-1 text-slate-400">[{{ perm.method }}]</span>
+              <span v-if="perm.method" class="ml-1 text-slate-400 dark:text-slate-500">[{{ perm.method }}]</span>
             </div>
-            <p v-if="role.permissions.length > 3" class="text-xs text-slate-400">
+            <p v-if="role.permissions.length > 3" class="text-xs text-slate-400 dark:text-slate-500">
               還有 {{ role.permissions.length - 3 }} 個權限...
             </p>
           </div>
@@ -79,39 +86,41 @@
         </div>
       </div>
 
-      <div v-if="roles.length === 0" class="col-span-full text-center py-12 text-slate-500">
+      <div v-if="roles.length === 0" class="col-span-full text-center py-12 text-slate-500 dark:text-slate-400">
         目前沒有角色，請新增第一個角色。
       </div>
     </div>
 
-    <!-- 創建/編輯角色模態框 -->
     <div
       v-if="showRoleModal"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       @click.self="closeRoleModal"
     >
-      <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-        <h3 class="text-xl font-bold text-slate-900 mb-4">
+      <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl
+                  dark:bg-slate-800 dark:shadow-2xl">
+        <h3 class="text-xl font-bold text-slate-900 mb-4 dark:text-white">
           {{ editingRole ? '編輯角色' : '新增角色' }}
         </h3>
         <form @submit.prevent="saveRole">
           <div class="space-y-4">
             <div>
-              <label class="block text-sm font-semibold text-slate-700 mb-1">角色名稱</label>
+              <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">角色名稱</label>
               <input
                 v-model="roleForm.name"
                 type="text"
                 required
-                class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-sky-500 focus:outline-none"
+                class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-sky-500 focus:outline-none
+                       dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-sky-400"
                 placeholder="例如：會計、助教"
               />
             </div>
             <div>
-              <label class="block text-sm font-semibold text-slate-700 mb-1">描述</label>
+              <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">描述</label>
               <textarea
                 v-model="roleForm.description"
                 rows="3"
-                class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-sky-500 focus:outline-none"
+                class="w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-sky-500 focus:outline-none
+                       dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-sky-400"
                 placeholder="角色描述..."
               />
             </div>
@@ -120,9 +129,10 @@
                 <input
                   v-model="roleForm.is_active"
                   type="checkbox"
-                  class="rounded border-slate-300"
+                  class="rounded border-slate-300 text-sky-500 focus:ring-sky-500
+                         dark:border-slate-500 dark:bg-slate-700 dark:checked:bg-sky-500"
                 />
-                <span class="text-sm font-semibold text-slate-700">啟用此角色</span>
+                <span class="text-sm font-semibold text-slate-700 dark:text-slate-300">啟用此角色</span>
               </label>
             </div>
           </div>
@@ -130,7 +140,8 @@
             <button
               type="button"
               @click="closeRoleModal"
-              class="flex-1 rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              class="flex-1 rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50
+                     dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
             >
               取消
             </button>
@@ -145,14 +156,14 @@
       </div>
     </div>
 
-    <!-- 權限設定模態框 -->
     <div
       v-if="showPermissionModal"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 overflow-y-auto"
       @click.self="closePermissionModal"
     >
-      <div class="w-full max-w-4xl rounded-2xl bg-white p-6 shadow-xl my-8">
-        <h3 class="text-xl font-bold text-slate-900 mb-4">
+      <div class="w-full max-w-4xl rounded-2xl p-6 shadow-xl my-8
+                  bg-white dark:bg-slate-800 dark:shadow-2xl">
+        <h3 class="text-xl font-bold text-slate-900 mb-4 dark:text-white">
           設定權限：{{ selectedRole?.name }}
         </h3>
         
@@ -163,7 +174,7 @@
               class="rounded-full px-4 py-2 text-sm font-semibold transition"
               :class="activeTab === 'page' 
                 ? 'bg-sky-500 text-white' 
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600'"
             >
               頁面權限
             </button>
@@ -172,48 +183,50 @@
               class="rounded-full px-4 py-2 text-sm font-semibold transition"
               :class="activeTab === 'api' 
                 ? 'bg-sky-500 text-white' 
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600'"
             >
               API 權限
             </button>
           </div>
 
-          <!-- 頁面權限 -->
           <div v-if="activeTab === 'page'" class="space-y-3">
             <div
               v-for="page in availablePages"
               :key="page.path"
-              class="flex items-center justify-between rounded-lg border border-slate-200 p-3"
+              class="flex items-center justify-between rounded-lg border p-3
+                     border-slate-200 dark:border-slate-700"
             >
               <div>
-                <p class="font-semibold text-slate-900">{{ page.title }}</p>
-                <p class="text-xs text-slate-500">{{ page.path }}</p>
+                <p class="font-semibold text-slate-900 dark:text-white">{{ page.title }}</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">{{ page.path }}</p>
               </div>
               <input
                 type="checkbox"
                 :checked="isPageSelected(page.path)"
                 @change="togglePagePermission(page.path)"
-                class="rounded border-slate-300"
+                class="rounded border-slate-300 text-sky-500 focus:ring-sky-500
+                       dark:border-slate-500 dark:bg-slate-700 dark:checked:bg-sky-500"
               />
             </div>
           </div>
 
-          <!-- API 權限 -->
           <div v-if="activeTab === 'api'" class="space-y-3">
             <div
               v-for="api in availableAPIs"
               :key="`${api.path}-${api.method}`"
-              class="flex items-center justify-between rounded-lg border border-slate-200 p-3"
+              class="flex items-center justify-between rounded-lg border p-3
+                     border-slate-200 dark:border-slate-700"
             >
               <div>
-                <p class="font-semibold text-slate-900">{{ api.name }}</p>
-                <p class="text-xs text-slate-500">{{ api.path }}</p>
+                <p class="font-semibold text-slate-900 dark:text-white">{{ api.name }}</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">{{ api.path }}</p>
               </div>
               <input
                 type="checkbox"
                 :checked="isAPISelected(api.path, api.method)"
                 @change="toggleAPIPermission(api.path, api.method)"
-                class="rounded border-slate-300"
+                class="rounded border-slate-300 text-sky-500 focus:ring-sky-500
+                       dark:border-slate-500 dark:bg-slate-700 dark:checked:bg-sky-500"
               />
             </div>
           </div>
@@ -222,7 +235,8 @@
         <div class="flex gap-3">
           <button
             @click="closePermissionModal"
-            class="flex-1 rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            class="flex-1 rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50
+                   dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
           >
             取消
           </button>
@@ -237,7 +251,6 @@
     </div>
   </div>
 </template>
-
 <script setup>
 import { ref, onMounted } from 'vue'
 import { roleAPI } from '../services/api'

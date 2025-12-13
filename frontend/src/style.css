@@ -1,8 +1,10 @@
 @tailwind base;
-@tailwind components;
-@tailwind utilities;
 
 body {
   font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif;
 }
+
+@tailwind components;
+@tailwind utilities;
+
 

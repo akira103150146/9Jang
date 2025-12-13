@@ -1,27 +1,36 @@
 <template>
   <div class="space-y-8">
-    <section class="rounded-3xl border border-blue-100 bg-gradient-to-r from-sky-50 via-blue-50 to-indigo-50 p-6 shadow-sm">
+    <section 
+      class="rounded-3xl p-6 shadow-sm transition
+            border border-blue-100 dark:border-slate-700 
+            bg-gradient-to-r from-sky-50 via-blue-50 to-indigo-50
+            dark:from-slate-800 dark:via-slate-900 dark:to-slate-800"
+    >
       <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <p class="text-sm font-semibold uppercase tracking-widest text-sky-500">今日概況</p>
-          <h2 class="mt-2 text-2xl font-bold text-slate-900">補習班營運儀表板</h2>
-          <p class="mt-1 text-slate-600">快速掌握學生、課程與費用狀態</p>
+          <p class="text-sm font-semibold uppercase tracking-widest text-sky-500 dark:text-sky-400">今日概況</p>
+          <h2 class="mt-2 text-2xl font-bold text-slate-900 dark:text-white">補習班營運儀表板</h2>
+          <p class="mt-1 text-slate-600 dark:text-slate-400">快速掌握學生、課程與費用狀態</p>
         </div>
         <div class="flex flex-wrap gap-3">
           <router-link
             to="/enrollments"
-            class="rounded-full border border-white/60 bg-white/70 px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm backdrop-blur hover:bg-white"
+            class="rounded-full px-4 py-2 text-sm font-semibold shadow-sm backdrop-blur transition
+                  border border-white/60 bg-white/70 text-slate-800 hover:bg-white
+                  dark:border-slate-700 dark:bg-slate-700/80 dark:text-white dark:hover:bg-slate-700"
           >
             報名記錄 {{ totalEnrollments }} 筆
           </router-link>
           <router-link
             to="/students"
-            class="rounded-full border border-white/60 bg-white/70 px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm backdrop-blur hover:bg-white"
+            class="rounded-full px-4 py-2 text-sm font-semibold shadow-sm backdrop-blur transition
+                  border border-white/60 bg-white/70 text-slate-800 hover:bg-white
+                  dark:border-slate-700 dark:bg-slate-700/80 dark:text-white dark:hover:bg-slate-700"
           >
             未付費用 {{ totalPendingFeesCount }} 筆
           </router-link>
         </div>
-      </div>
+        </div>
     </section>
 
     <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -29,79 +38,94 @@
         v-for="metric in metrics"
         :key="metric.label"
         :to="metric.link"
-        class="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
+        class="rounded-2xl p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md cursor-pointer
+               border border-blue-100 bg-white 
+               dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
       >
-        <p class="text-sm font-semibold text-slate-500">{{ metric.label }}</p>
+        <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">{{ metric.label }}</p>
         <div class="mt-2 flex items-baseline gap-2">
-          <p class="text-3xl font-bold text-slate-900">{{ metric.value }}</p>
-          <span v-if="metric.badge" class="text-xs font-semibold text-sky-500">{{ metric.badge }}</span>
+          <p class="text-3xl font-bold text-slate-900 dark:text-white">{{ metric.value }}</p>
+          <span v-if="metric.badge" class="text-xs font-semibold text-sky-500 dark:text-sky-400">{{ metric.badge }}</span>
         </div>
-        <p class="mt-2 text-sm text-slate-500">{{ metric.desc }}</p>
+        <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">{{ metric.desc }}</p>
       </router-link>
     </section>
 
     <section class="grid gap-6 lg:grid-cols-2">
-      <div class="rounded-3xl border border-blue-100 bg-white p-6 shadow-sm">
+      
+      <div 
+        class="rounded-3xl p-6 shadow-sm
+               border border-blue-100 bg-white 
+               dark:border-slate-700 dark:bg-slate-800"
+      >
         <div class="flex items-center justify-between mb-4">
           <div>
-            <p class="text-sm font-semibold text-slate-500">最新報名</p>
-            <h3 class="text-xl font-semibold text-slate-900">課程報名記錄</h3>
+            <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">最新報名</p>
+            <h3 class="text-xl font-semibold text-slate-900 dark:text-white">課程報名記錄</h3>
           </div>
           <router-link
             to="/enrollments"
-            class="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-600 hover:bg-sky-100"
+            class="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-600 hover:bg-sky-100
+                   dark:bg-sky-900 dark:text-sky-300 dark:hover:bg-sky-700"
           >
             查看全部
           </router-link>
         </div>
-        <div v-if="loadingEnrollments" class="text-center py-4 text-slate-500">載入中...</div>
+        <div v-if="loadingEnrollments" class="text-center py-4 text-slate-500 dark:text-slate-400">載入中...</div>
         <ul v-else class="mt-6 space-y-4">
           <li
             v-for="enrollment in recentEnrollments"
             :key="enrollment.enrollment_id"
-            class="flex items-center justify-between rounded-2xl border border-slate-100 px-4 py-3 hover:bg-slate-50 transition"
+            class="flex items-center justify-between rounded-2xl border border-slate-100 px-4 py-3 hover:bg-slate-50 transition
+                   dark:border-slate-700 dark:bg-slate-900/40 dark:hover:bg-slate-700/40"
           >
             <div>
-              <p class="text-sm font-semibold text-slate-900">{{ enrollment.student_name }}</p>
-              <p class="text-xs text-slate-500">{{ enrollment.course_name }}</p>
+              <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ enrollment.student_name }}</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400">{{ enrollment.course_name }}</p>
             </div>
             <div class="text-right">
-              <p class="text-xs text-slate-500">{{ formatDate(enrollment.enroll_date) }}</p>
-              <p v-if="enrollment.discount_rate > 0" class="text-xs font-semibold text-emerald-600">
+              <p class="text-xs text-slate-500 dark:text-slate-400">{{ formatDate(enrollment.enroll_date) }}</p>
+              <p v-if="enrollment.discount_rate > 0" class="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                 折扣 {{ enrollment.discount_rate }}%
               </p>
             </div>
           </li>
-          <li v-if="recentEnrollments.length === 0" class="py-4 text-center text-slate-500 text-sm">
+          <li v-if="recentEnrollments.length === 0" class="py-4 text-center text-slate-500 dark:text-slate-400 text-sm">
             目前沒有報名記錄
           </li>
         </ul>
       </div>
 
-      <div class="rounded-3xl border border-blue-100 bg-white p-6 shadow-sm">
+      <div 
+        class="rounded-3xl p-6 shadow-sm
+               border border-blue-100 bg-white 
+               dark:border-slate-700 dark:bg-slate-800"
+      >
         <div class="flex items-center justify-between mb-4">
           <div>
-            <p class="text-sm font-semibold text-slate-500">費用追蹤</p>
-            <h3 class="text-xl font-semibold text-slate-900">待處理款項</h3>
+            <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">費用追蹤</p>
+            <h3 class="text-xl font-semibold text-slate-900 dark:text-white">待處理款項</h3>
           </div>
           <router-link
             to="/students"
-            class="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-100"
+            class="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-100
+                   dark:bg-rose-900 dark:text-rose-300 dark:hover:bg-rose-700"
           >
             查看全部
           </router-link>
         </div>
-        <div v-if="loadingFees" class="text-center py-4 text-slate-500">載入中...</div>
+        <div v-if="loadingFees" class="text-center py-4 text-slate-500 dark:text-slate-400">載入中...</div>
         <ul v-else class="mt-6 space-y-4">
           <router-link
             v-for="fee in pendingFeesList"
             :key="fee.fee_id"
             :to="getStudentFeePath(fee)"
-            class="flex items-center justify-between rounded-2xl border border-slate-100 px-4 py-3 hover:bg-slate-50 transition cursor-pointer block"
+            class="flex items-center justify-between rounded-2xl border border-slate-100 px-4 py-3 hover:bg-slate-50 transition cursor-pointer block
+                   dark:border-slate-700 dark:bg-slate-900/40 dark:hover:bg-slate-700/40"
           >
             <div>
-              <p class="text-sm font-semibold text-slate-500">{{ fee.student_name }}</p>
-              <p class="text-base font-semibold text-slate-900">{{ getItemDisplay(fee.item) }} ・ ${{ fee.amount }}</p>
+              <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">{{ fee.student_name }}</p>
+              <p class="text-base font-semibold text-slate-900 dark:text-white">{{ getItemDisplay(fee.item) }} ・ ${{ fee.amount }}</p>
             </div>
             <span
               class="rounded-full px-3 py-1 text-xs font-semibold"
@@ -110,7 +134,7 @@
               {{ getPaymentStatusDisplay(fee.payment_status) }}
             </span>
           </router-link>
-          <li v-if="pendingFeesList.length === 0" class="py-4 text-center text-slate-500 text-sm">
+          <li v-if="pendingFeesList.length === 0" class="py-4 text-center text-slate-500 dark:text-slate-400 text-sm">
             目前沒有待處理款項
           </li>
         </ul>
@@ -118,29 +142,36 @@
     </section>
 
     <section class="grid gap-6 lg:grid-cols-2">
-      <div class="rounded-3xl border border-blue-100 bg-white p-6 shadow-sm">
+      
+      <div 
+        class="rounded-3xl p-6 shadow-sm
+               border border-blue-100 bg-white 
+               dark:border-slate-700 dark:bg-slate-800"
+      >
         <div class="flex items-center justify-between mb-4">
           <div>
-            <p class="text-sm font-semibold text-slate-500">最新課程</p>
-            <h3 class="text-xl font-semibold text-slate-900">進行中課程</h3>
+            <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">最新課程</p>
+            <h3 class="text-xl font-semibold text-slate-900 dark:text-white">進行中課程</h3>
           </div>
           <router-link
             to="/courses"
-            class="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-600 hover:bg-sky-100"
+            class="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-600 hover:bg-sky-100
+                   dark:bg-sky-900 dark:text-sky-300 dark:hover:bg-sky-700"
           >
             查看全部
           </router-link>
         </div>
-        <div v-if="loadingCourses" class="text-center py-4 text-slate-500">載入中...</div>
+        <div v-if="loadingCourses" class="text-center py-4 text-slate-500 dark:text-slate-400">載入中...</div>
         <ul v-else class="mt-6 space-y-4">
           <li
             v-for="course in activeCourses"
             :key="course.course_id"
-            class="flex items-center justify-between rounded-2xl border border-slate-100 px-4 py-3 hover:bg-slate-50 transition"
+            class="flex items-center justify-between rounded-2xl border border-slate-100 px-4 py-3 hover:bg-slate-50 transition
+                   dark:border-slate-700 dark:bg-slate-900/40 dark:hover:bg-slate-700/40"
           >
             <div>
-              <p class="text-sm font-semibold text-slate-900">{{ course.course_name }}</p>
-              <p class="text-xs text-slate-500">{{ getDayDisplay(course.day_of_week) }} {{ formatTime(course.start_time) }}-{{ formatTime(course.end_time) }}</p>
+              <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ course.course_name }}</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400">{{ getDayDisplay(course.day_of_week) }} {{ formatTime(course.start_time) }}-{{ formatTime(course.end_time) }}</p>
             </div>
             <span
               class="rounded-full px-3 py-1 text-xs font-semibold"
@@ -149,36 +180,42 @@
               {{ getCourseStatusDisplay(course.status) }}
             </span>
           </li>
-          <li v-if="activeCourses.length === 0" class="py-4 text-center text-slate-500 text-sm">
+          <li v-if="activeCourses.length === 0" class="py-4 text-center text-slate-500 dark:text-slate-400 text-sm">
             目前沒有進行中的課程
           </li>
         </ul>
       </div>
 
-      <div class="rounded-3xl border border-blue-100 bg-white p-6 shadow-sm">
+      <div 
+        class="rounded-3xl p-6 shadow-sm
+               border border-blue-100 bg-white 
+               dark:border-slate-700 dark:bg-slate-800"
+      >
         <div class="flex items-center justify-between mb-4">
           <div>
-            <p class="text-sm font-semibold text-slate-500">請假管理</p>
-            <h3 class="text-xl font-semibold text-slate-900">待審核請假</h3>
+            <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">請假管理</p>
+            <h3 class="text-xl font-semibold text-slate-900 dark:text-white">待審核請假</h3>
           </div>
           <router-link
             to="/attendance"
-            class="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-600 hover:bg-amber-100"
+            class="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-600 hover:bg-amber-100
+                   dark:bg-amber-900 dark:text-amber-300 dark:hover:bg-amber-700"
           >
             查看全部
           </router-link>
         </div>
-        <div v-if="loadingLeaves" class="text-center py-4 text-slate-500">載入中...</div>
+        <div v-if="loadingLeaves" class="text-center py-4 text-slate-500 dark:text-slate-400">載入中...</div>
         <ul v-else class="mt-6 space-y-4">
           <li
             v-for="leave in pendingLeaves"
             :key="leave.leave_id"
-            class="flex items-center justify-between rounded-2xl border border-slate-100 px-4 py-3 hover:bg-slate-50 transition"
+            class="flex items-center justify-between rounded-2xl border border-slate-100 px-4 py-3 hover:bg-slate-50 transition
+                   dark:border-slate-700 dark:bg-slate-900/40 dark:hover:bg-slate-700/40"
           >
             <div>
-              <p class="text-sm font-semibold text-slate-900">{{ leave.student_name }}</p>
-              <p class="text-xs text-slate-500">{{ leave.course_name }} ・ {{ formatDate(leave.leave_date) }}</p>
-              <p class="text-xs text-slate-600 mt-1">{{ leave.reason }}</p>
+              <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ leave.student_name }}</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400">{{ leave.course_name }} ・ {{ formatDate(leave.leave_date) }}</p>
+              <p class="text-xs text-slate-600 mt-1 dark:text-slate-400">{{ leave.reason }}</p>
             </div>
             <span
               class="rounded-full px-3 py-1 text-xs font-semibold"
@@ -187,7 +224,7 @@
               {{ getLeaveStatusDisplay(leave.approval_status) }}
             </span>
           </li>
-          <li v-if="pendingLeaves.length === 0" class="py-4 text-center text-slate-500 text-sm">
+          <li v-if="pendingLeaves.length === 0" class="py-4 text-center text-slate-500 dark:text-slate-400 text-sm">
             目前沒有待審核的請假記錄
           </li>
         </ul>
@@ -364,29 +401,32 @@ const getPaymentStatusDisplay = (status) => {
 
 const getLeaveStatusClass = (status) => {
   const map = {
-    'Approved': 'bg-emerald-50 text-emerald-600',
-    'Pending': 'bg-amber-50 text-amber-600',
-    'Rejected': 'bg-rose-50 text-rose-600',
+    // 淺色模式 class | 深色模式 class
+    'Approved': 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900 dark:text-emerald-300',
+    'Pending': 'bg-amber-50 text-amber-600 dark:bg-amber-900 dark:text-amber-300',
+    'Rejected': 'bg-rose-50 text-rose-600 dark:bg-rose-900 dark:text-rose-300',
   }
-  return map[status] ?? 'bg-slate-100 text-slate-700'
+  return map[status] ?? 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
 }
 
 const getCourseStatusClass = (status) => {
   const map = {
-    'Active': 'bg-emerald-50 text-emerald-600',
-    'Pending': 'bg-amber-50 text-amber-600',
-    'Closed': 'bg-slate-100 text-slate-700',
+    // 淺色模式 class | 深色模式 class
+    'Active': 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900 dark:text-emerald-300',
+    'Pending': 'bg-amber-50 text-amber-600 dark:bg-amber-900 dark:text-amber-300',
+    'Closed': 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300',
   }
-  return map[status] ?? 'bg-slate-100 text-slate-700'
+  return map[status] ?? 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
 }
 
 const getPaymentStatusClass = (status) => {
   const map = {
-    'Paid': 'bg-emerald-50 text-emerald-600',
-    'Partial': 'bg-amber-50 text-amber-600',
-    'Unpaid': 'bg-rose-50 text-rose-600',
+    // 淺色模式 class | 深色模式 class
+    'Paid': 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900 dark:text-emerald-300',
+    'Partial': 'bg-amber-50 text-amber-600 dark:bg-amber-900 dark:text-amber-300',
+    'Unpaid': 'bg-rose-50 text-rose-600 dark:bg-rose-900 dark:text-rose-300',
   }
-  return map[status] ?? 'bg-slate-100 text-slate-700'
+  return map[status] ?? 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
 }
 
 const getStudentFeePath = (fee) => {

@@ -1,11 +1,15 @@
 <template>
   <div class="space-y-6">
-    <header class="rounded-3xl border border-blue-100 bg-gradient-to-r from-white to-orange-50 p-6 shadow-sm">
+    <header 
+      class="rounded-3xl p-6 shadow-sm transition
+             border border-blue-100 bg-gradient-to-r from-white to-orange-50
+             dark:border-slate-700 dark:from-slate-800 dark:to-slate-900"
+    >
       <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p class="text-sm font-semibold text-slate-500">餐飲服務</p>
-          <h2 class="text-2xl font-bold text-slate-900">訂便當系統</h2>
-          <p class="mt-2 text-sm text-slate-500">管理店家、創建團購、處理訂單</p>
+          <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">餐飲服務</p>
+          <h2 class="text-2xl font-bold text-slate-900 dark:text-white">訂便當系統</h2>
+          <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">管理店家、創建團購、處理訂單</p>
         </div>
         <div class="flex gap-3">
           <button
@@ -24,33 +28,31 @@
       </div>
     </header>
 
-    <!-- 統計卡片 -->
     <section class="grid gap-4 md:grid-cols-3">
-      <div class="rounded-3xl border border-orange-100 bg-white p-5 shadow-sm">
-        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">店家總數</p>
-        <p class="mt-2 text-3xl font-bold text-slate-900">{{ restaurants.length }}</p>
+      <div class="rounded-3xl border border-orange-100 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">店家總數</p>
+        <p class="mt-2 text-3xl font-bold text-slate-900 dark:text-white">{{ restaurants.length }}</p>
       </div>
-      <div class="rounded-3xl border border-green-100 bg-white p-5 shadow-sm">
-        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">進行中團購</p>
-        <p class="mt-2 text-3xl font-bold text-green-600">
+      <div class="rounded-3xl border border-green-100 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">進行中團購</p>
+        <p class="mt-2 text-3xl font-bold text-green-600 dark:text-green-400">
           {{ groupOrders.filter(g => g.status === 'Open').length }}
         </p>
       </div>
-      <div class="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
-        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">總訂單數</p>
-        <p class="mt-2 text-3xl font-bold text-blue-600">{{ totalOrders }}</p>
+      <div class="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">總訂單數</p>
+        <p class="mt-2 text-3xl font-bold text-blue-600 dark:text-blue-400">{{ totalOrders }}</p>
       </div>
     </section>
 
-    <!-- 標籤切換 -->
-    <div class="flex gap-2 border-b border-slate-200">
+    <div class="flex gap-2 border-b border-slate-200 dark:border-slate-700">
       <button
         @click="activeTab = 'active'"
         :class="[
           'px-4 py-2 text-sm font-semibold transition-colors',
           activeTab === 'active'
-            ? 'text-green-600 border-b-2 border-green-600'
-            : 'text-slate-600 hover:text-slate-900'
+            ? 'text-green-600 border-b-2 border-green-600 dark:text-green-400 dark:border-green-400'
+            : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
         ]"
       >
         進行中 ({{ activeGroupOrders.length }})
@@ -60,46 +62,47 @@
         :class="[
           'px-4 py-2 text-sm font-semibold transition-colors',
           activeTab === 'history'
-            ? 'text-green-600 border-b-2 border-green-600'
-            : 'text-slate-600 hover:text-slate-900'
+            ? 'text-green-600 border-b-2 border-green-600 dark:text-green-400 dark:border-green-400'
+            : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
         ]"
       >
         歷史記錄 ({{ completedGroupOrders.length }})
       </button>
     </div>
 
-    <!-- 進行中的團購 -->
     <section v-if="activeTab === 'active'">
-      <h3 class="text-lg font-semibold text-slate-900 mb-4">進行中的團購</h3>
-      <div v-if="loading" class="text-center py-12 text-slate-500">載入中...</div>
-      <div v-else-if="activeGroupOrders.length === 0" class="rounded-3xl border border-slate-100 bg-white p-12 text-center">
-        <p class="text-slate-500">目前沒有進行中的團購</p>
+      <h3 class="text-lg font-semibold text-slate-900 mb-4 dark:text-white">進行中的團購</h3>
+      <div v-if="loading" class="text-center py-12 text-slate-500 dark:text-slate-400">載入中...</div>
+      <div v-else-if="activeGroupOrders.length === 0" 
+           class="rounded-3xl border border-slate-100 bg-white p-12 text-center dark:border-slate-700 dark:bg-slate-800">
+        <p class="text-slate-500 dark:text-slate-400">目前沒有進行中的團購</p>
       </div>
       <div v-else class="grid gap-4 md:grid-cols-2">
         <article
           v-for="groupOrder in activeGroupOrders"
           :key="groupOrder.group_order_id"
-          class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm"
+          class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800"
         >
           <div class="flex items-start justify-between">
             <div class="flex-1">
-              <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">
+              <p class="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                 {{ groupOrder.restaurant_name }}
               </p>
-              <h4 class="mt-1 text-lg font-semibold text-slate-900">{{ groupOrder.title }}</h4>
-              <p class="mt-2 text-sm text-slate-600">
+              <h4 class="mt-1 text-lg font-semibold text-slate-900 dark:text-white">{{ groupOrder.title }}</h4>
+              <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
                 截止時間：{{ formatDateTime(groupOrder.deadline) }}
               </p>
-              <p class="text-sm text-slate-600">
+              <p class="text-sm text-slate-600 dark:text-slate-300">
                 訂單數：{{ groupOrder.orders_count }} | 總金額：${{ groupOrder.total_amount }}
               </p>
               <div class="mt-3">
-                <label class="block text-xs font-semibold text-slate-700 mb-1">團購連結</label>
+                <label class="block text-xs font-semibold text-slate-700 mb-1 dark:text-slate-400">團購連結</label>
                 <div class="flex items-center gap-2">
                   <input
                     :value="getOrderLink(groupOrder.order_link)"
                     readonly
-                    class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
+                    class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200
+                           dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:focus:border-green-400"
                   />
                   <button
                     @click="copyLink(groupOrder.order_link)"
@@ -110,7 +113,8 @@
                 </div>
               </div>
             </div>
-            <span class="ml-2 rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-600">
+            <span class="ml-2 rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-600
+                         dark:bg-green-900/50 dark:text-green-300">
               {{ getStatusDisplay(groupOrder.status) }}
             </span>
           </div>
@@ -132,41 +136,41 @@
       </div>
     </section>
 
-    <!-- 歷史團購 -->
     <section v-if="activeTab === 'history'">
-      <h3 class="text-lg font-semibold text-slate-900 mb-4">歷史團購記錄</h3>
-      <div v-if="loading" class="text-center py-12 text-slate-500">載入中...</div>
-      <div v-else-if="completedGroupOrders.length === 0" class="rounded-3xl border border-slate-100 bg-white p-12 text-center">
-        <p class="text-slate-500">目前沒有歷史團購記錄</p>
+      <h3 class="text-lg font-semibold text-slate-900 mb-4 dark:text-white">歷史團購記錄</h3>
+      <div v-if="loading" class="text-center py-12 text-slate-500 dark:text-slate-400">載入中...</div>
+      <div v-else-if="completedGroupOrders.length === 0" 
+           class="rounded-3xl border border-slate-100 bg-white p-12 text-center dark:border-slate-700 dark:bg-slate-800">
+        <p class="text-slate-500 dark:text-slate-400">目前沒有歷史團購記錄</p>
       </div>
       <div v-else class="grid gap-4 md:grid-cols-2">
         <article
           v-for="groupOrder in completedGroupOrders"
           :key="groupOrder.group_order_id"
-          class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm"
+          class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800"
         >
           <div class="flex items-start justify-between">
             <div class="flex-1">
-              <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">
+              <p class="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                 {{ groupOrder.restaurant_name }}
               </p>
-              <h4 class="mt-1 text-lg font-semibold text-slate-900">{{ groupOrder.title }}</h4>
-              <p class="mt-2 text-sm text-slate-600">
+              <h4 class="mt-1 text-lg font-semibold text-slate-900 dark:text-white">{{ groupOrder.title }}</h4>
+              <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
                 建立時間：{{ formatDateTime(groupOrder.created_at) }}
               </p>
-              <p v-if="groupOrder.closed_at" class="text-sm text-slate-600">
+              <p v-if="groupOrder.closed_at" class="text-sm text-slate-600 dark:text-slate-300">
                 完成時間：{{ formatDateTime(groupOrder.closed_at) }}
               </p>
-              <p class="text-sm text-slate-600">
+              <p class="text-sm text-slate-600 dark:text-slate-300">
                 訂單數：{{ groupOrder.orders_count }} | 總金額：${{ groupOrder.total_amount }}
               </p>
             </div>
             <span
               :class="[
                 'ml-2 rounded-full px-3 py-1 text-xs font-semibold',
-                groupOrder.status === 'Completed' ? 'bg-emerald-50 text-emerald-600' :
-                groupOrder.status === 'Closed' ? 'bg-gray-50 text-gray-600' :
-                'bg-slate-50 text-slate-600'
+                groupOrder.status === 'Completed' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-300' :
+                groupOrder.status === 'Closed' ? 'bg-gray-50 text-gray-600 dark:bg-slate-700 dark:text-slate-300' :
+                'bg-slate-50 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
               ]"
             >
               {{ getStatusDisplay(groupOrder.status) }}
@@ -184,29 +188,30 @@
       </div>
     </section>
 
-    <!-- 店家列表 -->
     <section>
-      <h3 class="text-lg font-semibold text-slate-900 mb-4">店家管理</h3>
-      <div v-if="loading" class="text-center py-12 text-slate-500">載入中...</div>
-      <div v-else-if="restaurants.length === 0" class="rounded-3xl border border-slate-100 bg-white p-12 text-center">
-        <p class="text-slate-500">目前沒有店家，點擊「新增店家」開始建立</p>
+      <h3 class="text-lg font-semibold text-slate-900 mb-4 dark:text-white">店家管理</h3>
+      <div v-if="loading" class="text-center py-12 text-slate-500 dark:text-slate-400">載入中...</div>
+      <div v-else-if="restaurants.length === 0" 
+           class="rounded-3xl border border-slate-100 bg-white p-12 text-center dark:border-slate-700 dark:bg-slate-800">
+        <p class="text-slate-500 dark:text-slate-400">目前沒有店家，點擊「新增店家」開始建立</p>
       </div>
       <div v-else class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <article
           v-for="restaurant in restaurants"
           :key="restaurant.restaurant_id"
-          class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm"
+          class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800"
         >
           <div class="flex items-start justify-between mb-3">
             <div>
-              <h4 class="text-lg font-semibold text-slate-900">{{ restaurant.name }}</h4>
-              <p v-if="restaurant.phone" class="text-sm text-slate-600 mt-1">{{ restaurant.phone }}</p>
-              <p v-if="restaurant.address" class="text-xs text-slate-500 mt-1">{{ restaurant.address }}</p>
+              <h4 class="text-lg font-semibold text-slate-900 dark:text-white">{{ restaurant.name }}</h4>
+              <p v-if="restaurant.phone" class="text-sm text-slate-600 mt-1 dark:text-slate-300">{{ restaurant.phone }}</p>
+              <p v-if="restaurant.address" class="text-xs text-slate-500 mt-1 dark:text-slate-400">{{ restaurant.address }}</p>
             </div>
             <span
               :class="[
                 'rounded-full px-3 py-1 text-xs font-semibold',
-                restaurant.is_active ? 'bg-green-50 text-green-600' : 'bg-gray-50 text-gray-600'
+                restaurant.is_active ? 'bg-green-50 text-green-600 dark:bg-green-900/50 dark:text-green-300' : 
+                                        'bg-gray-50 text-gray-600 dark:bg-slate-700 dark:text-slate-300'
               ]"
             >
               {{ restaurant.is_active ? '啟用' : '停用' }}
@@ -216,7 +221,7 @@
             <img
               :src="getImageUrl(restaurant.menu_image_path)"
               alt="菜單"
-              class="w-full h-48 object-cover rounded-lg border border-slate-200"
+              class="w-full h-48 object-cover rounded-lg border border-slate-200 dark:border-slate-700"
             />
           </div>
           <div class="flex gap-2">
@@ -237,18 +242,18 @@
       </div>
     </section>
 
-    <!-- 新增/編輯店家對話框 -->
     <div
       v-if="showRestaurantForm"
       class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm"
       @click.self="showRestaurantForm = false"
     >
-      <div class="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
+      <div class="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-xl
+                  dark:border-slate-700 dark:bg-slate-800 dark:shadow-2xl">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-xl font-bold text-slate-900">
+          <h3 class="text-xl font-bold text-slate-900 dark:text-white">
             {{ editingRestaurant ? '編輯店家' : '新增店家' }}
           </h3>
-          <button @click="closeRestaurantForm" class="text-slate-400 hover:text-slate-600">
+          <button @click="closeRestaurantForm" class="text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200">
             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -257,37 +262,41 @@
 
         <form @submit.prevent="saveRestaurant" class="space-y-4">
           <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">店家名稱 *</label>
+            <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">店家名稱 *</label>
             <input
               v-model="restaurantForm.name"
               type="text"
               required
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200
+                     dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-orange-400"
             />
           </div>
 
           <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">電話</label>
+            <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">電話</label>
             <input
               v-model="restaurantForm.phone"
               type="text"
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200
+                     dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-orange-400"
             />
           </div>
 
           <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">地址</label>
+            <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">地址</label>
             <input
               v-model="restaurantForm.address"
               type="text"
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200
+                     dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-orange-400"
             />
           </div>
 
           <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">菜單圖片</label>
+            <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">菜單圖片</label>
             <div class="space-y-3">
-              <div v-if="menuImagePreview" class="relative rounded-lg border border-slate-300 overflow-hidden bg-slate-50">
+              <div v-if="menuImagePreview" 
+                   class="relative rounded-lg border overflow-hidden bg-slate-50 dark:border-slate-700 dark:bg-slate-700">
                 <img :src="menuImagePreview" alt="菜單預覽" class="w-full max-h-64 object-contain" />
                 <button
                   type="button"
@@ -308,8 +317,10 @@
                   accept="image/*"
                   class="hidden"
                 />
-                <div class="w-full rounded-lg border-2 border-dashed border-slate-300 px-4 py-3 text-center cursor-pointer hover:border-orange-500 hover:bg-orange-50">
-                  <span class="text-sm font-semibold text-slate-700">選擇菜單圖片</span>
+                <div class="w-full rounded-lg border-2 border-dashed px-4 py-3 text-center cursor-pointer 
+                            border-slate-300 hover:border-orange-500 hover:bg-orange-50
+                            dark:border-slate-600 dark:hover:border-orange-400 dark:hover:bg-orange-900/50">
+                  <span class="text-sm font-semibold text-slate-700 dark:text-slate-300">選擇菜單圖片</span>
                 </div>
               </label>
             </div>
@@ -320,9 +331,10 @@
               <input
                 v-model="restaurantForm.is_active"
                 type="checkbox"
-                class="rounded border-slate-300 text-orange-500 focus:ring-orange-500"
+                class="rounded border-slate-300 text-orange-500 focus:ring-orange-500
+                       dark:border-slate-500 dark:bg-slate-700 dark:checked:bg-orange-500"
               />
-              <span class="text-sm font-semibold text-slate-700">啟用</span>
+              <span class="text-sm font-semibold text-slate-700 dark:text-slate-300">啟用</span>
             </label>
           </div>
 
@@ -330,7 +342,8 @@
             <button
               type="button"
               @click="closeRestaurantForm"
-              class="rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              class="rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50
+                     dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
             >
               取消
             </button>
@@ -346,16 +359,16 @@
       </div>
     </div>
 
-    <!-- 新增團購對話框 -->
     <div
       v-if="showGroupOrderForm"
       class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm"
       @click.self="showGroupOrderForm = false"
     >
-      <div class="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
+      <div class="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-xl
+                  dark:border-slate-700 dark:bg-slate-800 dark:shadow-2xl">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-xl font-bold text-slate-900">創建團購</h3>
-          <button @click="showGroupOrderForm = false" class="text-slate-400 hover:text-slate-600">
+          <h3 class="text-xl font-bold text-slate-900 dark:text-white">創建團購</h3>
+          <button @click="showGroupOrderForm = false" class="text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200">
             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -364,11 +377,12 @@
 
         <form @submit.prevent="createGroupOrder" class="space-y-4">
           <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">店家 *</label>
+            <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">店家 *</label>
             <select
               v-model="groupOrderForm.restaurant"
               required
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200
+                     dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-green-400"
             >
               <option value="">請選擇店家</option>
               <option
@@ -382,23 +396,25 @@
           </div>
 
           <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">團購標題 *</label>
+            <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">團購標題 *</label>
             <input
               v-model="groupOrderForm.title"
               type="text"
               required
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200
+                     dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-green-400"
               placeholder="例如：週五午餐團購"
             />
           </div>
 
           <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">截止時間 *</label>
+            <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">截止時間 *</label>
             <input
               v-model="groupOrderForm.deadline"
               type="datetime-local"
               required
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200
+                     dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-green-400"
             />
           </div>
 
@@ -406,7 +422,8 @@
             <button
               type="button"
               @click="showGroupOrderForm = false"
-              class="rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              class="rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50
+                     dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
             >
               取消
             </button>

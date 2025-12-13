@@ -1,11 +1,16 @@
 <template>
   <div class="space-y-6">
-    <header class="rounded-3xl border border-blue-100 bg-gradient-to-r from-white to-sky-50 p-6 shadow-sm">
+    <section 
+      class="rounded-3xl p-6 shadow-sm transition
+            border border-blue-100 dark:border-slate-700 
+            bg-gradient-to-r from-sky-50 via-blue-50 to-indigo-50
+            dark:from-slate-800 dark:via-slate-900 dark:to-slate-800"
+    >
       <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p class="text-sm font-semibold text-slate-500">教學團隊</p>
-          <h2 class="text-2xl font-bold text-slate-900">老師與權限管理</h2>
-          <p class="mt-2 text-sm text-slate-500">快速檢視老師帳號、授課科目與聯繫資訊</p>
+          <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">教學團隊</p>
+          <h2 class="text-2xl font-bold text-slate-900 dark:text-white">老師與權限管理</h2>
+          <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">快速檢視老師帳號、授課科目與聯繫資訊</p>
         </div>
         <router-link
           to="/teachers/add"
@@ -17,46 +22,55 @@
       <p v-if="usingMock" class="mt-3 text-sm text-amber-600">
         目前顯示示意資料（mock data），待後端欄位完善後即可串接。
       </p>
-    </header>
+    </section>
 
     <div v-if="loading" class="flex justify-center items-center py-12">
       <p class="text-slate-500">載入中...</p>
     </div>
 
-    <div v-else class="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
+    <div v-else 
+      class="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm
+             dark:border-slate-700 dark:bg-slate-800 dark:shadow-xl"
+    >
       <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-slate-100">
-          <thead class="bg-slate-50">
+        <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-700">
+          
+          <thead class="bg-slate-50 dark:bg-slate-900">
             <tr>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">姓名</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">帳號</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">權限</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">聯絡電話</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">入職日期</th>
-              <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">操作</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">姓名</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">帳號</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">權限</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">聯絡電話</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">入職日期</th>
+              <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">操作</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-slate-100">
+          
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
             <tr
               v-for="teacher in teachers"
               :key="teacher.teacher_id"
-              class="transition hover:bg-slate-50/70"
+              class="transition hover:bg-slate-50/70 dark:hover:bg-slate-700/70"
             >
               <td class="whitespace-nowrap px-4 py-4">
-                <p class="font-semibold text-slate-900">{{ teacher.name }}</p>
-                <p class="text-xs text-slate-500">ID: {{ teacher.teacher_id ?? '—' }}</p>
+                <p class="font-semibold text-slate-900 dark:text-white">{{ teacher.name }}</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">ID: {{ teacher.teacher_id ?? '—' }}</p>
               </td>
-              <td class="whitespace-nowrap px-4 py-4 text-slate-700">{{ teacher.username }}</td>
+              <td class="whitespace-nowrap px-4 py-4 text-slate-700 dark:text-slate-300">{{ teacher.username }}</td>
+              
               <td class="whitespace-nowrap px-4 py-4">
                 <span
                   class="rounded-full px-3 py-1 text-xs font-semibold"
-                  :class="teacher.permission_level === 'Admin' ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-100 text-slate-700'"
+                  :class="teacher.permission_level === 'Admin' 
+                            ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-300' 
+                            : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'"
                 >
                   {{ teacher.permission_level }}
                 </span>
               </td>
-              <td class="whitespace-nowrap px-4 py-4 text-slate-700">{{ teacher.phone || '—' }}</td>
-              <td class="whitespace-nowrap px-4 py-4 text-slate-700">{{ teacher.hire_date || '—' }}</td>
+              <td class="whitespace-nowrap px-4 py-4 text-slate-700 dark:text-slate-300">{{ teacher.phone || '—' }}</td>
+              <td class="whitespace-nowrap px-4 py-4 text-slate-700 dark:text-slate-300">{{ teacher.hire_date || '—' }}</td>
+              
               <td class="whitespace-nowrap px-4 py-4 text-center">
                 <div class="flex justify-center gap-2">
                   <router-link
@@ -75,7 +89,7 @@
               </td>
             </tr>
             <tr v-if="teachers.length === 0">
-              <td colspan="6" class="py-4 px-4 text-center text-slate-500">目前沒有老師資料。</td>
+              <td colspan="6" class="py-4 px-4 text-center text-slate-500 dark:text-slate-400">目前沒有老師資料。</td>
             </tr>
           </tbody>
         </table>

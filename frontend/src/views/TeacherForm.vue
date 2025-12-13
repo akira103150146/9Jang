@@ -1,30 +1,37 @@
 <template>
   <div class="flex-1 p-4 md:p-6 flex flex-col items-center justify-center">
     <div class="w-full max-w-xl">
-      <div class="w-full bg-white rounded-lg shadow-xl p-6">
-        <h2 class="text-2xl font-bold text-gray-900 mb-4">
+      <div 
+        class="w-full bg-white rounded-lg shadow-xl p-6
+               dark:bg-slate-800 dark:shadow-2xl"
+      >
+        <h2 class="text-2xl font-bold text-gray-900 mb-4 dark:text-white">
           {{ isEdit ? '編輯老師資料' : '新增老師資料' }}
         </h2>
 
         <form @submit.prevent="handleSubmit" class="flex flex-col">
+          
           <input 
             v-model="form.name"
             type="text" 
-            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150" 
+            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
+                   dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400" 
             placeholder="姓名"
             required
           >
           <input 
             v-model="form.username"
             type="text" 
-            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150" 
+            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
+                   dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400" 
             placeholder="帳號"
             required
           >
           <input 
             v-model="form.password"
             type="password" 
-            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150" 
+            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
+                   dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400" 
             :class="{ 'border-2 border-red-500': !isEdit && form.password && form.confirmPassword && form.password !== form.confirmPassword }"
             :placeholder="isEdit ? '留空則不修改密碼' : '密碼'"
             :required="!isEdit"
@@ -34,7 +41,8 @@
             v-if="!isEdit"
             v-model="form.confirmPassword"
             type="password" 
-            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150" 
+            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
+                   dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400" 
             :class="{ 'border-2 border-red-500': form.password && form.confirmPassword && form.password !== form.confirmPassword }"
             placeholder="確認密碼"
             required
@@ -42,28 +50,34 @@
           >
           <p 
             v-if="!isEdit && form.password && form.confirmPassword && form.password !== form.confirmPassword" 
-            class="text-red-500 text-sm mb-4 -mt-2"
+            class="text-red-500 text-sm mb-4 -mt-2 dark:text-red-400"
           >
             密碼與確認密碼不一致
           </p>
+          
           <select 
             v-model="form.permission_level"
-            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150"
+            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
+                   dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400"
             required
           >
             <option value="Teacher">老師</option>
             <option value="Admin">管理員</option>
           </select>
+          
           <input 
             v-model="form.phone"
             type="text" 
-            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150" 
+            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
+                   dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400" 
             placeholder="聯絡電話"
           >
+          
           <input 
             v-model="form.hire_date"
             type="date" 
-            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150"
+            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150
+                   dark:bg-slate-700 dark:text-white dark:focus:bg-slate-600 dark:focus:ring-blue-400"
           >
 
           <div class="flex space-x-4">
@@ -74,9 +88,11 @@
             >
               {{ loading ? '處理中...' : (isEdit ? '更新' : '新增') }}
             </button>
+            
             <router-link 
               to="/teachers"
-              class="flex-1 bg-gray-300 text-gray-900 font-bold py-3 px-4 rounded-lg mt-4 hover:bg-gray-400 transition ease-in-out duration-150 shadow-md text-center"
+              class="flex-1 bg-gray-300 text-gray-900 font-bold py-3 px-4 rounded-lg mt-4 hover:bg-gray-400 transition ease-in-out duration-150 shadow-md text-center
+                     dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500"
             >
               取消
             </router-link>

@@ -1,11 +1,16 @@
 <template>
   <div class="space-y-6">
-    <header class="rounded-3xl border border-blue-100 bg-gradient-to-r from-white to-indigo-50 p-6 shadow-sm">
+    <header 
+      class="rounded-3xl p-6 shadow-sm transition
+             border border-blue-100 dark:border-slate-700 
+             bg-gradient-to-r from-white to-indigo-50
+             dark:from-slate-800 dark:to-slate-900"
+    >
       <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p class="text-sm font-semibold text-slate-500">報名紀錄</p>
-          <h2 class="text-2xl font-bold text-slate-900">學生課程報名</h2>
-          <p class="mt-2 text-sm text-slate-500">顯示每位學生參與的課程與折扣資訊</p>
+          <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">報名紀錄</p>
+          <h2 class="text-2xl font-bold text-slate-900 dark:text-white">學生課程報名</h2>
+          <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">顯示每位學生參與的課程與折扣資訊</p>
         </div>
         <router-link
           to="/enrollments/add"
@@ -14,41 +19,48 @@
           新增報名記錄
         </router-link>
       </div>
-      <p v-if="usingMock" class="mt-3 text-sm text-amber-600">
+      <p v-if="usingMock" class="mt-3 text-sm text-amber-600 dark:text-amber-400">
         目前顯示示意資料（mock data），待後端欄位完善後即可串接。
       </p>
     </header>
 
     <div v-if="loading" class="flex justify-center items-center py-12">
-      <p class="text-slate-500">載入中...</p>
+      <p class="text-slate-500 dark:text-slate-400">載入中...</p>
     </div>
 
     <div v-else class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       <article
         v-for="record in enrollments"
         :key="record.enrollment_id"
-        class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md"
+        class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm transition 
+               hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md
+               dark:border-slate-700 dark:bg-slate-800 dark:shadow-xl 
+               dark:hover:border-sky-700 dark:hover:shadow-2xl"
       >
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">Enrollment #{{ record.enrollment_id }}</p>
-            <h3 class="mt-1 text-lg font-semibold text-slate-900">{{ record.student_name }}</h3>
+            <p class="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">Enrollment #{{ record.enrollment_id }}</p>
+            <h3 class="mt-1 text-lg font-semibold text-slate-900 dark:text-white">{{ record.student_name }}</h3>
           </div>
-          <span class="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-600">
+          <span class="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-600
+                       dark:bg-sky-900/50 dark:text-sky-300">
             {{ formatDate(record.enroll_date) }}
           </span>
         </div>
-        <p class="mt-3 text-sm font-semibold text-slate-600">{{ record.course_name }}</p>
-        <p class="text-sm text-slate-500">折扣：{{ record.discount_rate }}%</p>
         
-        <!-- 上課期間 -->
-        <div v-if="record.periods && record.periods.length > 0" class="mt-3 p-3 bg-slate-50 rounded-lg">
-          <p class="text-xs font-semibold text-slate-600 mb-2">上課期間：</p>
+        <p class="mt-3 text-sm font-semibold text-slate-600 dark:text-slate-300">{{ record.course_name }}</p>
+        <p class="text-sm text-slate-500 dark:text-slate-400">折扣：{{ record.discount_rate }}%</p>
+        
+        <div 
+          v-if="record.periods && record.periods.length > 0" 
+          class="mt-3 p-3 bg-slate-50 rounded-lg dark:bg-slate-700"
+        >
+          <p class="text-xs font-semibold text-slate-600 mb-2 dark:text-slate-300">上課期間：</p>
           <div class="space-y-1">
             <div
               v-for="period in record.periods"
               :key="period.period_id"
-              class="text-xs text-slate-700"
+              class="text-xs text-slate-700 dark:text-slate-400"
             >
               <span v-if="period.is_active" class="inline-block w-2 h-2 rounded-full bg-green-500 mr-1"></span>
               <span v-else class="inline-block w-2 h-2 rounded-full bg-slate-400 mr-1"></span>
@@ -76,7 +88,7 @@
     </div>
 
     <div v-if="!loading && enrollments.length === 0" class="text-center py-12">
-      <p class="text-slate-500">目前沒有報名記錄。</p>
+      <p class="text-slate-500 dark:text-slate-400">目前沒有報名記錄。</p>
     </div>
   </div>
 </template>

@@ -1,11 +1,15 @@
 <template>
   <div class="space-y-6">
-    <header class="rounded-3xl border border-blue-100 bg-gradient-to-r from-white to-indigo-50 p-6 shadow-sm">
+    <header 
+      class="rounded-3xl p-6 shadow-sm transition
+             border border-blue-100 bg-gradient-to-r from-white to-indigo-50
+             dark:border-slate-700 dark:from-slate-800 dark:to-slate-900"
+    >
       <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-      <p class="text-sm font-semibold text-slate-500">教學模組</p>
-      <h2 class="text-2xl font-bold text-slate-900">題庫與標籤系統</h2>
-          <p class="mt-2 text-sm text-slate-500">支援 Markdown + LaTeX，含標籤管理</p>
+          <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">教學模組</p>
+          <h2 class="text-2xl font-bold text-slate-900 dark:text-white">題庫與標籤系統</h2>
+          <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">支援 Markdown + LaTeX，含標籤管理</p>
         </div>
         <button
           @click="openFormModal()"
@@ -14,39 +18,39 @@
           新增題目
         </button>
       </div>
-      <p v-if="usingMock" class="mt-3 text-sm text-amber-600">
+      <p v-if="usingMock" class="mt-3 text-sm text-amber-600 dark:text-amber-400">
         目前顯示示意資料（mock data），待後端 API 可用後即可串接。
       </p>
     </header>
 
-    <!-- 載入中 -->
     <div v-if="loading" class="flex items-center justify-center py-12">
-      <div class="text-slate-500">載入中...</div>
+      <div class="text-slate-500 dark:text-slate-400">載入中...</div>
     </div>
 
-    <!-- 題目列表 -->
     <section v-else class="grid gap-4 lg:grid-cols-2">
       <article
         v-for="question in questionBank"
         :key="question.question_id"
-        class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm"
+        class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm
+               dark:border-slate-700 dark:bg-slate-800"
       >
         <div class="flex items-start justify-between">
           <div class="flex-1">
-            <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">
+            <p class="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
               Q{{ question.question_id }} ・ {{ question.subject_name || question.subject?.name || '無科目' }} / {{ getLevelDisplay(question.level) }}
             </p>
-            <h3 class="mt-1 text-lg font-semibold text-slate-900">{{ question.chapter }}</h3>
+            <h3 class="mt-1 text-lg font-semibold text-slate-900 dark:text-white">{{ question.chapter }}</h3>
           </div>
-          <span class="ml-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">
+          <span class="ml-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600
+                       dark:bg-indigo-900/50 dark:text-indigo-300">
             難度 {{ question.difficulty }}
           </span>
         </div>
         <div
-          class="mt-3 text-sm text-slate-700 markdown-preview"
+          class="mt-3 text-sm text-slate-700 markdown-preview dark:text-slate-200"
           v-html="renderMarkdownWithLatex(question.content)"
         ></div>
-        <div v-if="question.correct_answer" class="mt-3 text-xs text-slate-600 markdown-preview">
+        <div v-if="question.correct_answer" class="mt-3 text-xs text-slate-600 markdown-preview dark:text-slate-300">
           <span class="font-semibold">答案：</span>
           <span v-html="renderMarkdownWithLatex(question.correct_answer)"></span>
         </div>
@@ -54,7 +58,8 @@
           <span
             v-for="tag in question.tags || []"
             :key="tag"
-            class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600"
+            class="rounded-full px-3 py-1 text-xs font-semibold
+                   bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300"
           >
             #{{ tag }}
           </span>
@@ -77,21 +82,23 @@
           </button>
         </div>
       </article>
-      <div v-if="questionBank.length === 0" class="col-span-2 rounded-3xl border border-slate-100 bg-white p-12 text-center">
-        <p class="text-slate-500">目前沒有題目，點擊「新增題目」開始建立題庫。</p>
+      <div v-if="questionBank.length === 0" 
+           class="col-span-2 rounded-3xl border border-slate-100 bg-white p-12 text-center
+                  dark:border-slate-700 dark:bg-slate-800">
+        <p class="text-slate-500 dark:text-slate-400">目前沒有題目，點擊「新增題目」開始建立題庫。</p>
       </div>
     </section>
 
-    <!-- 新增標籤對話框 -->
     <div
       v-if="showTagForm"
       class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm"
       @click.self="showTagForm = false"
     >
-      <div class="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
+      <div class="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-xl
+                  dark:border-slate-700 dark:bg-slate-800 dark:shadow-2xl">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-xl font-bold text-slate-900">新增標籤</h3>
-          <button @click="showTagForm = false" class="text-slate-400 hover:text-slate-600">
+          <h3 class="text-xl font-bold text-slate-900 dark:text-white">新增標籤</h3>
+          <button @click="showTagForm = false" class="text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200">
             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -100,23 +107,25 @@
 
         <form @submit.prevent="saveTag" class="space-y-4">
           <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">標籤名稱 *</label>
+            <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">標籤名稱 *</label>
             <input
               v-model="tagFormData.tag_name"
               type="text"
               required
               maxlength="50"
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200
+                     dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-indigo-400"
               placeholder="例如：必考三角、陷阱題、被動語態"
             />
-            <p class="mt-1 text-xs text-slate-500">標籤名稱將以 # 開頭顯示</p>
+            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">標籤名稱將以 # 開頭顯示</p>
           </div>
 
           <div class="flex justify-end gap-3 pt-4">
             <button
               type="button"
               @click="showTagForm = false"
-              class="rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              class="rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50
+                     dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
             >
               取消
             </button>
@@ -132,7 +141,6 @@
       </div>
     </div>
 
-    <!-- 相機拍照對話框 -->
     <div
       v-if="showCameraModal"
       class="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 backdrop-blur-sm"
@@ -152,14 +160,16 @@
           <button
             type="button"
             @click="closeCamera"
-            class="px-6 py-2 bg-gray-600 text-white rounded-full hover:bg-gray-700"
+            class="px-6 py-2 text-white rounded-full hover:bg-gray-700
+                   bg-gray-600 dark:bg-slate-600 dark:hover:bg-slate-500"
           >
             取消
           </button>
           <button
             type="button"
             @click="capturePhoto"
-            class="px-6 py-2 bg-white rounded-full hover:bg-gray-100 flex items-center gap-2"
+            class="px-6 py-2 bg-white rounded-full hover:bg-gray-100 flex items-center gap-2
+                   dark:bg-slate-200 dark:hover:bg-slate-300 dark:text-slate-900"
           >
             <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
               <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/>
@@ -170,16 +180,16 @@
       </div>
     </div>
 
-    <!-- 新增科目對話框 -->
     <div
       v-if="showSubjectForm"
       class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm"
       @click.self="showSubjectForm = false"
     >
-      <div class="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
+      <div class="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-xl
+                  dark:border-slate-700 dark:bg-slate-800 dark:shadow-2xl">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-xl font-bold text-slate-900">新增科目</h3>
-          <button @click="showSubjectForm = false" class="text-slate-400 hover:text-slate-600">
+          <h3 class="text-xl font-bold text-slate-900 dark:text-white">新增科目</h3>
+          <button @click="showSubjectForm = false" class="text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200">
             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -188,32 +198,35 @@
 
         <form @submit.prevent="saveSubject" class="space-y-4">
           <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">科目名稱 *</label>
+            <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">科目名稱 *</label>
             <input
               v-model="subjectFormData.name"
               type="text"
               required
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200
+                     dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-indigo-400"
               placeholder="例如：數學"
             />
           </div>
 
           <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">科目代碼</label>
+            <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">科目代碼</label>
             <input
               v-model="subjectFormData.code"
               type="text"
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200
+                     dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-indigo-400"
               placeholder="例如：Math（選填）"
             />
           </div>
 
           <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">描述</label>
+            <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">描述</label>
             <textarea
               v-model="subjectFormData.description"
               rows="3"
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200
+                     dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-indigo-400"
               placeholder="科目描述（選填）"
             ></textarea>
           </div>
@@ -222,7 +235,8 @@
             <button
               type="button"
               @click="showSubjectForm = false"
-              class="rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              class="rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50
+                     dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
             >
               取消
             </button>
@@ -238,7 +252,6 @@
       </div>
     </div>
 
-    <!-- 題目表單對話框 -->
     <div
       v-if="showFormModal"
       ref="formModalRef"
@@ -247,12 +260,13 @@
       @paste="handlePaste"
       tabindex="-1"
     >
-      <div class="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
+      <div class="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-xl
+                  dark:border-slate-700 dark:bg-slate-800 dark:shadow-2xl">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-xl font-bold text-slate-900">
+          <h3 class="text-xl font-bold text-slate-900 dark:text-white">
             {{ editingQuestion ? '編輯題目' : '新增題目' }}
           </h3>
-          <button @click="closeFormModal" class="text-slate-400 hover:text-slate-600">
+          <button @click="closeFormModal" class="text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200">
             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -260,13 +274,16 @@
         </div>
 
         <form @submit.prevent="saveQuestion" @paste="handlePaste" class="space-y-4">
+          
           <div>
             <div class="flex items-center justify-between mb-1">
-              <label class="block text-sm font-semibold text-slate-700">科目 *</label>
+              <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300">科目 *</label>
               <button
                 type="button"
                 @click.prevent.stop="openSubjectForm"
-                class="text-xs text-indigo-600 hover:text-indigo-700 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-200 rounded px-2 py-1 transition-colors"
+                class="text-xs font-semibold focus:outline-none focus:ring-2 rounded px-2 py-1 transition-colors
+                       text-indigo-600 hover:text-indigo-700 focus:ring-indigo-200
+                       dark:text-indigo-400 dark:hover:text-indigo-300 dark:focus:ring-indigo-400/50"
               >
                 + 新增科目
               </button>
@@ -274,7 +291,8 @@
             <select
               v-model="formData.subject"
               required
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200
+                     dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-indigo-400"
             >
               <option value="">請選擇科目</option>
               <option
@@ -288,11 +306,12 @@
           </div>
 
           <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">適用年級 *</label>
+            <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">適用年級 *</label>
             <select
               v-model="formData.level"
               required
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200
+                     dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-indigo-400"
             >
               <option value="">請選擇</option>
               <option value="JHS">Junior High School</option>
@@ -302,7 +321,7 @@
           </div>
 
           <div class="relative">
-            <label class="block text-sm font-semibold text-slate-700 mb-1">章節/單元 *</label>
+            <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">章節/單元 *</label>
             <input
               v-model="formData.chapter"
               type="text"
@@ -310,32 +329,36 @@
               @input="searchChapters"
               @focus="searchChapters"
               @blur="handleChapterBlur"
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200
+                     dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-indigo-400"
               placeholder="例如：向量與空間（輸入關鍵字自動搜尋）"
             />
-            <!-- 章節候選列表 -->
             <div
               v-if="chapterSuggestions.length > 0 && showChapterSuggestions"
-              class="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+              class="absolute z-10 w-full mt-1 border rounded-lg shadow-lg max-h-60 overflow-y-auto
+                     bg-white border-slate-300 dark:bg-slate-700 dark:border-slate-600"
             >
               <div
                 v-for="(suggestion, index) in chapterSuggestions"
                 :key="index"
                 @mousedown.prevent="selectChapter(suggestion.chapter)"
-                class="px-3 py-2 hover:bg-indigo-50 cursor-pointer border-b border-slate-100 last:border-b-0 transition-colors"
+                class="px-3 py-2 cursor-pointer transition-colors
+                       hover:bg-indigo-50 border-b border-slate-100 last:border-b-0
+                       dark:hover:bg-indigo-900/50 dark:border-slate-600"
               >
                 <div class="flex items-center justify-between">
-                  <span class="text-sm text-slate-900">{{ suggestion.chapter }}</span>
+                  <span class="text-sm text-slate-900 dark:text-white">{{ suggestion.chapter }}</span>
                   <div class="flex items-center gap-2">
                     <span
                       v-if="suggestion.relevance === 2"
-                      class="text-xs text-indigo-600 font-semibold bg-indigo-50 px-2 py-0.5 rounded"
+                      class="text-xs font-semibold px-2 py-0.5 rounded
+                             text-indigo-600 bg-indigo-50 dark:text-indigo-300 dark:bg-indigo-900"
                     >
                       精確匹配
                     </span>
-                    <span class="text-xs text-slate-500">
+                    <span class="text-xs text-slate-500 dark:text-slate-400">
                       {{ suggestion.count }} 題
-                </span>
+                    </span>
                   </div>
                 </div>
               </div>
@@ -343,61 +366,63 @@
           </div>
 
           <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">題目內容 (Markdown + LaTeX) *</label>
+            <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">題目內容 (Markdown + LaTeX) *</label>
             <div class="space-y-3">
-              <!-- 編輯區域 -->
               <div class="relative">
                 <MarkdownEditor
                   v-model="formData.content"
                   :placeholder="'輸入題目內容...\n\n支援 Markdown 語法：\n- **粗體**\n- *斜體*\n- `程式碼`\n\n支援 LaTeX 數學公式：\n- 行內公式：$x^2 + y^2 = r^2$\n- 區塊公式：$$\n\\int_0^1 x^2 dx = \\frac{1}{3}\n$$'"
+                  :class="'dark:bg-slate-700 dark:text-white dark:border-slate-600'"
                 />
               </div>
               
-              <!-- 預覽區域 -->
-              <div class="border-t border-slate-200 pt-3">
+              <div class="pt-3 border-t border-slate-200 dark:border-slate-700">
                 <div class="flex items-center justify-between mb-2">
-                  <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">即時預覽</span>
-                  <span class="text-xs text-slate-400">下方顯示渲染效果</span>
+                  <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide dark:text-slate-400">即時預覽</span>
+                  <span class="text-xs text-slate-400 dark:text-slate-500">下方顯示渲染效果</span>
                 </div>
                 <div
-                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-slate-50 min-h-[150px] max-h-[300px] overflow-y-auto markdown-preview"
+                  class="w-full rounded-lg px-3 py-2 min-h-[150px] max-h-[300px] overflow-y-auto markdown-preview
+                         border border-slate-300 bg-slate-50
+                         dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
                   v-html="renderedContent"
                 ></div>
               </div>
             </div>
-            <p class="mt-1 text-xs text-slate-500">
+            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
               提示：使用 $$...$$ 表示區塊公式，使用 $...$ 表示行內公式
             </p>
           </div>
 
           <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">正確答案 *</label>
+            <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">正確答案 *</label>
             <textarea
               v-model="formData.correct_answer"
               required
               rows="3"
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200
+                     dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-indigo-400"
               placeholder="輸入正確答案..."
             ></textarea>
           </div>
 
           <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">難度 (1-5) *</label>
+            <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">難度 (1-5) *</label>
             <input
               v-model.number="formData.difficulty"
               type="number"
               min="1"
               max="5"
               required
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200
+                     dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-indigo-400"
             />
           </div>
 
           <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">題目圖片（選填）</label>
+            <label class="block text-sm font-semibold text-slate-700 mb-1 dark:text-slate-300">題目圖片（選填）</label>
             <div class="space-y-3">
-              <!-- 圖片預覽 -->
-              <div v-if="imagePreview" class="relative rounded-lg border border-slate-300 overflow-hidden bg-slate-50">
+              <div v-if="imagePreview" class="relative rounded-lg border overflow-hidden bg-slate-50 dark:border-slate-600 dark:bg-slate-700">
                 <img
                   :src="imagePreview"
                   alt="圖片預覽"
@@ -414,7 +439,6 @@
                 </button>
               </div>
               
-              <!-- 上傳按鈕 -->
               <div class="flex gap-2">
                 <label class="flex-1">
                   <input
@@ -424,59 +448,67 @@
                     accept="image/*"
                     class="hidden"
                   />
-                  <div class="w-full rounded-lg border-2 border-dashed border-slate-300 px-4 py-3 text-center cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 transition-colors">
-                    <svg class="w-6 h-6 mx-auto mb-1 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div class="w-full rounded-lg border-2 border-dashed px-4 py-3 text-center cursor-pointer transition-colors
+                              border-slate-300 hover:border-indigo-500 hover:bg-indigo-50
+                              dark:border-slate-600 dark:hover:border-indigo-400 dark:hover:bg-indigo-900/50">
+                    <svg class="w-6 h-6 mx-auto mb-1 text-slate-400 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    <span class="text-sm font-semibold text-slate-700">選擇圖片</span>
+                    <span class="text-sm font-semibold text-slate-700 dark:text-slate-300">選擇圖片</span>
                   </div>
                 </label>
                 
                 <button
                   type="button"
                   @click="handlePasteClick"
-                  class="rounded-lg border-2 border-dashed border-slate-300 px-4 py-3 text-center cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 transition-colors"
+                  class="rounded-lg border-2 border-dashed px-4 py-3 text-center cursor-pointer transition-colors
+                         border-slate-300 hover:border-indigo-500 hover:bg-indigo-50
+                         dark:border-slate-600 dark:hover:border-indigo-400 dark:hover:bg-indigo-900/50"
                   title="從剪貼簿貼上圖片（點擊此按鈕或直接按 Ctrl+V / Cmd+V）"
                 >
-                  <svg class="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg class="w-6 h-6 text-slate-400 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
-                  <span class="text-xs text-slate-600 block mt-1">貼上</span>
+                  <span class="text-xs text-slate-600 block mt-1 dark:text-slate-300">貼上</span>
                 </button>
                 
                 <button
                   type="button"
                   @click="openCamera"
-                  class="rounded-lg border-2 border-dashed border-slate-300 px-4 py-3 text-center cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 transition-colors"
+                  class="rounded-lg border-2 border-dashed px-4 py-3 text-center cursor-pointer transition-colors
+                         border-slate-300 hover:border-indigo-500 hover:bg-indigo-50
+                         dark:border-slate-600 dark:hover:border-indigo-400 dark:hover:bg-indigo-900/50"
                 >
-                  <svg class="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg class="w-6 h-6 text-slate-400 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
-                  <span class="text-xs text-slate-600 block mt-1">拍照</span>
+                  <span class="text-xs text-slate-600 block mt-1 dark:text-slate-300">拍照</span>
                 </button>
               </div>
               
-              <p v-if="uploadingImage" class="text-sm text-indigo-600">上傳中...</p>
-              <p v-else-if="formData.image_path" class="text-xs text-slate-500">
+              <p v-if="uploadingImage" class="text-sm text-indigo-600 dark:text-indigo-400">上傳中...</p>
+              <p v-else-if="formData.image_path" class="text-xs text-slate-500 dark:text-slate-400">
                 已上傳：{{ formData.image_path }}
               </p>
             </div>
           </div>
 
-          <!-- 標籤選擇區域 -->
           <div>
             <div class="flex items-center justify-between mb-2">
-              <label class="block text-sm font-semibold text-slate-700">標籤分類</label>
+              <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300">標籤分類</label>
               <button
                 type="button"
                 @click.prevent.stop="openTagForm"
-                class="text-xs text-indigo-600 hover:text-indigo-700 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-200 rounded px-2 py-1 transition-colors"
+                class="text-xs font-semibold focus:outline-none focus:ring-2 rounded px-2 py-1 transition-colors
+                       text-indigo-600 hover:text-indigo-700 focus:ring-indigo-200
+                       dark:text-indigo-400 dark:hover:text-indigo-300 dark:focus:ring-indigo-400/50"
               >
                 + 新增標籤
               </button>
             </div>
-            <div class="border border-slate-300 rounded-lg p-3 min-h-[100px] max-h-[200px] overflow-y-auto">
+            <div class="rounded-lg p-3 min-h-[100px] max-h-[200px] overflow-y-auto
+                        border border-slate-300 dark:border-slate-600">
               <div v-if="hashtags.length === 0" class="text-sm text-slate-400 text-center py-4">
                 尚無標籤，點擊「新增標籤」開始建立
               </div>
@@ -490,7 +522,7 @@
                     'px-3 py-1 rounded-full text-xs font-semibold transition-all',
                     formData.tag_ids.includes(tag.tag_id)
                       ? 'bg-indigo-500 text-white shadow-md'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'
                   ]"
                 >
                   #{{ tag.tag_name }}
@@ -498,7 +530,7 @@
                 </button>
               </div>
             </div>
-            <p class="mt-1 text-xs text-slate-500">
+            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
               已選擇 {{ formData.tag_ids.length }} 個標籤
             </p>
           </div>
@@ -507,7 +539,8 @@
             <button
               type="button"
               @click="closeFormModal"
-              class="rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              class="rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50
+                     dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
             >
               取消
             </button>

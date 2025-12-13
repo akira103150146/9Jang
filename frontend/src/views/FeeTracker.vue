@@ -1,11 +1,15 @@
 <template>
   <div class="space-y-6">
-    <header class="rounded-3xl border border-blue-100 bg-gradient-to-r from-white to-sky-50 p-6 shadow-sm">
+    <header 
+      class="rounded-3xl p-6 shadow-sm transition
+             border border-blue-100 bg-gradient-to-r from-white to-sky-50
+             dark:border-slate-700 dark:from-slate-800 dark:to-slate-900"
+    >
       <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p class="text-sm font-semibold text-slate-500">會計模組</p>
-          <h2 class="text-2xl font-bold text-slate-900">額外收費與款項追蹤</h2>
-          <p class="mt-2 text-sm text-slate-500">掌握各項費用與收款狀態，避免遺漏</p>
+          <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">會計模組</p>
+          <h2 class="text-2xl font-bold text-slate-900 dark:text-white">額外收費與款項追蹤</h2>
+          <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">掌握各項費用與收款狀態，避免遺漏</p>
         </div>
         <router-link
           to="/fees/add"
@@ -14,49 +18,60 @@
           新增費用記錄
         </router-link>
       </div>
-      <p v-if="usingMock" class="mt-3 text-sm text-amber-600">
+      <p v-if="usingMock" class="mt-3 text-sm text-amber-600 dark:text-amber-400">
         目前顯示示意資料（mock data），待後端欄位完善後即可串接。
       </p>
     </header>
 
     <div v-if="loading" class="flex justify-center items-center py-12">
-      <p class="text-slate-500">載入中...</p>
+      <p class="text-slate-500 dark:text-slate-400">載入中...</p>
     </div>
 
-    <div v-else class="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
+    <div v-else 
+      class="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm
+             dark:border-slate-700 dark:bg-slate-800"
+    >
       <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-slate-100">
-          <thead class="bg-slate-50">
+        <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-700">
+          <thead class="bg-slate-50 dark:bg-slate-900">
             <tr>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">學生</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">項目</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">金額</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">日期</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">狀態</th>
-              <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">操作</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">學生</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">項目</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">金額</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">日期</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">狀態</th>
+              <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">操作</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-slate-100">
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
             <tr
               v-for="fee in fees"
               :key="fee.fee_id"
-              class="transition hover:bg-slate-50/70"
+              class="transition hover:bg-slate-50/70 dark:hover:bg-slate-700/70"
             >
               <td class="whitespace-nowrap px-4 py-4">
-                <p class="font-semibold text-slate-900">{{ fee.student_name }}</p>
-                <p class="text-xs text-slate-500">Fee #{{ fee.fee_id ?? '—' }}</p>
+                <p class="font-semibold text-slate-900 dark:text-white">{{ fee.student_name }}</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Fee #{{ fee.fee_id ?? '—' }}</p>
               </td>
-              <td class="whitespace-nowrap px-4 py-4 text-slate-700">{{ getItemDisplay(fee.item) }}</td>
-              <td class="whitespace-nowrap px-4 py-4 font-semibold text-slate-900">${{ fee.amount }}</td>
-              <td class="whitespace-nowrap px-4 py-4 text-slate-700">{{ formatDate(fee.fee_date) }}</td>
+              <td class="whitespace-nowrap px-4 py-4 text-slate-700 dark:text-slate-300">{{ getItemDisplay(fee.item) }}</td>
+              <td class="whitespace-nowrap px-4 py-4 font-semibold text-slate-900 dark:text-white">${{ fee.amount }}</td>
+              <td class="whitespace-nowrap px-4 py-4 text-slate-700 dark:text-slate-300">{{ formatDate(fee.fee_date) }}</td>
+              
               <td class="whitespace-nowrap px-4 py-4">
                 <span
                   class="rounded-full px-3 py-1 text-xs font-semibold"
-                  :class="getStatusClass(fee.payment_status)"
+                  :class="[
+                    getStatusClass(fee.payment_status),
+                    // 根據狀態，手動添加深色模式類別，確保對比度
+                    fee.payment_status === 'Paid' && 'dark:bg-green-900/50 dark:text-green-300',
+                    fee.payment_status === 'Unpaid' && 'dark:bg-amber-900/50 dark:text-amber-300',
+                    fee.payment_status === 'Partial' && 'dark:bg-blue-900/50 dark:text-blue-300',
+                  ]"
                 >
                   {{ getStatusDisplay(fee.payment_status) }}
                 </span>
               </td>
+              
               <td class="whitespace-nowrap px-4 py-4 text-center">
                 <div class="flex justify-center gap-2">
                   <router-link
@@ -75,7 +90,7 @@
               </td>
             </tr>
             <tr v-if="fees.length === 0">
-              <td colspan="6" class="py-4 px-4 text-center text-slate-500">目前沒有費用記錄。</td>
+              <td colspan="6" class="py-4 px-4 text-center text-slate-500 dark:text-slate-400">目前沒有費用記錄。</td>
             </tr>
           </tbody>
         </table>

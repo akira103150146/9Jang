@@ -1,11 +1,16 @@
 <template>
   <div class="space-y-6">
-    <header class="rounded-3xl border border-blue-100 bg-gradient-to-r from-white to-sky-50 p-6 shadow-sm">
+    <section 
+      class="rounded-3xl p-6 shadow-sm transition
+            border border-blue-100 dark:border-slate-700 
+            bg-gradient-to-r from-sky-50 via-blue-50 to-indigo-50
+            dark:from-slate-800 dark:via-slate-900 dark:to-slate-800"
+    >
       <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p class="text-sm font-semibold text-slate-500">學生資訊</p>
-          <h2 class="text-2xl font-bold text-slate-900">學生資料與緊急聯絡資訊</h2>
-          <p class="text-sm text-slate-500">根據規格書顯示電話、緊急聯絡人與備註</p>
+          <p class="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest text-sky-500 dark:text-sky-400 hover:text-sky-600 dark:hover:text-sky-300 ">學生資訊</p>
+          <h2 class="text-2xl font-bold text-slate-900 dark:text-white ">學生資料與緊急聯絡資訊</h2>
+          <p class="text-sm text-slate-500 dark:text-slate-400 ">根據規格書顯示電話、緊急聯絡人與備註</p>
         </div>
         <router-link
           to="/students/add"
@@ -14,199 +19,225 @@
           新增學生資料
         </router-link>
       </div>
-      <p v-if="usingMock" class="mt-3 text-sm text-amber-600">
+      <p v-if="usingMock" class="mt-3 text-sm text-amber-600 dark:text-amber-400">
         目前顯示示意資料（mock data），待後端欄位完善後即可串接。
       </p>
-    </header>
+    </section>
 
     <section class="grid gap-4 md:grid-cols-4">
-      <div class="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
-        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">在籍學生</p>
-        <p class="mt-2 text-3xl font-bold text-slate-900">{{ students.length }}</p>
-        <p class="text-sm text-slate-500">含高三升學衝刺班 3 人</p>
+      <div 
+        class="rounded-3xl p-6 shadow-sm
+               border border-blue-100 bg-white 
+               dark:border-slate-700 dark:bg-slate-800"
+      >
+        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">在籍學生</p>
+        <p class="mt-2 text-3xl font-bold text-slate-900 dark:text-white">{{ students.length }}</p>
+        <p class="text-sm text-slate-500 dark:text-slate-400">含高三升學衝刺班 3 人</p>
       </div>
-      <div class="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
-        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">總費用</p>
-        <p class="mt-2 text-3xl font-bold text-slate-900">${{ totalFees.toLocaleString() }}</p>
-        <p class="text-sm text-slate-500">所有學生費用總和</p>
+      <div class="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">總費用</p>
+        <p class="mt-2 text-3xl font-bold text-slate-900 dark:text-white">${{ totalFees.toLocaleString() }}</p>
+        <p class="text-sm text-slate-500 dark:text-slate-400">所有學生費用總和</p>
       </div>
-      <div class="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
-        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">待繳費用</p>
-        <p class="mt-2 text-3xl font-bold text-amber-600">${{ unpaidFees.toLocaleString() }}</p>
-        <p class="text-sm text-slate-500">未繳費用總和</p>
+      <div class="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">待繳費用</p>
+        <p class="mt-2 text-3xl font-bold text-amber-600 dark:text-amber-400">${{ unpaidFees.toLocaleString() }}</p>
+        <p class="text-sm text-slate-500 dark:text-slate-400">未繳費用總和</p>
       </div>
-      <div class="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
-        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">需要生成學費</p>
-        <p class="mt-2 text-3xl font-bold text-red-600">{{ studentsWithTuitionNeeded.length }}</p>
-        <p class="text-sm text-slate-500">學生人數</p>
+      <div class="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">需要生成學費</p>
+        <p class="mt-2 text-3xl font-bold text-red-600 dark:text-rose-400">{{ studentsWithTuitionNeeded.length }}</p>
+        <p class="text-sm text-slate-500 dark:text-slate-400">學生人數</p>
       </div>
     </section>
 
-    <div class="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-slate-100">
-          <thead class="bg-slate-50">
-            <tr>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">姓名</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">學校 / 年級</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">手機</th>
-              <th v-if="isAdmin" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">帳號 / 密碼</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">總費用 / 待繳</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">緊急聯絡人</th>
-              <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">操作</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            <tr v-for="student in students" :key="student.id" class="transition hover:bg-slate-50/70">
-              <td class="px-4 py-4">
-                <p class="font-semibold text-slate-900">{{ student.name }}</p>
-                <p class="text-xs text-slate-500">ID: {{ student.id ?? '—' }}</p>
-              </td>
-              <td class="px-4 py-4 text-sm text-slate-700">{{ student.school }} / {{ student.grade }}</td>
-              <td class="px-4 py-4 text-sm text-slate-700">{{ student.phone || student.contact || '—' }}</td>
-              <td v-if="isAdmin" class="px-4 py-4 text-sm">
-                <div v-if="student.username" class="space-y-2">
-                  <div>
-                    <p class="text-xs text-slate-500">帳號</p>
-                    <p class="font-semibold text-slate-900">{{ student.username }}</p>
-                  </div>
-                  <div>
-                    <div class="flex items-center gap-2">
-                      <p class="text-xs text-slate-500">密碼</p>
-                      <button
-                        @click="togglePasswordVisibility(student.id)"
-                        class="text-xs text-sky-600 hover:text-sky-800 font-semibold"
-                      >
-                        {{ visiblePasswords[student.id] ? '隱藏' : '顯示' }}
-                      </button>
-                    </div>
-                    <div v-if="editingPasswords[student.id]" class="mt-1 flex items-center gap-2">
-                      <input
-                        v-model="passwordForms[student.id].password"
-                        type="text"
-                        class="flex-1 rounded border border-slate-300 px-2 py-1 text-xs focus:border-sky-500 focus:outline-none"
-                        placeholder="輸入新密碼"
-                      />
-                      <button
-                        @click="savePassword(student)"
-                        class="rounded bg-green-500 px-2 py-1 text-xs font-semibold text-white hover:bg-green-600"
-                      >
-                        儲存
-                      </button>
-                      <button
-                        @click="cancelEditPassword(student.id)"
-                        class="rounded bg-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-400"
-                      >
-                        取消
-                      </button>
-                    </div>
-                    <div v-else class="mt-1">
-                      <p class="font-mono text-sm text-slate-900">
-                        {{ visiblePasswords[student.id] ? (student.password || '—') : '••••••' }}
-                      </p>
-                      <button
-                        @click="startEditPassword(student)"
-                        class="mt-1 text-xs text-sky-600 hover:text-sky-800 font-semibold"
-                      >
-                        編輯
-                      </button>
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <span
-                      class="rounded-full px-2 py-1 text-xs font-semibold"
-                      :class="student.is_account_active ? 'bg-green-50 text-green-600' : 'bg-rose-50 text-rose-600'"
-                    >
-                      {{ student.is_account_active ? '啟用' : '停用' }}
-                    </span>
-                    <span
-                      v-if="student.must_change_password"
-                      class="rounded-full bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-600"
-                    >
-                      需修改密碼
-                    </span>
-                    <button
-                      @click="toggleAccountStatus(student)"
-                      class="text-xs text-slate-600 hover:text-slate-800 font-semibold"
-                    >
-                      {{ student.is_account_active ? '停用' : '啟用' }}
-                    </button>
-                  </div>
-                </div>
-                <p v-else class="text-xs text-slate-400">尚未創建帳號</p>
-              </td>
-              <td class="px-4 py-4 text-sm">
-                <div>
-                  <p class="text-slate-900 font-semibold">總：${{ (student.total_fees || 0).toLocaleString() }}</p>
-                  <p class="text-amber-600" :class="{'font-semibold': student.unpaid_fees > 0}">
-                    待繳：${{ (student.unpaid_fees || 0).toLocaleString() }}
-                  </p>
-                  <div v-if="student.enrollments_count > 0" class="mt-1">
-                    <button
-                      @click="openTuitionModal(student)"
-                      class="text-xs text-red-600 hover:text-red-800 font-semibold underline"
-                    >
-                      生成學費
-                    </button>
-                  </div>
-                </div>
-              </td>
-              <td class="px-4 py-4 text-sm text-slate-700">
-                <p>{{ student.emergency_contact_name || '—' }}</p>
-                <p class="text-xs text-slate-500">{{ student.emergency_contact_phone || '' }}</p>
-              </td>
-              <td class="px-4 py-4 text-center">
-                <div class="flex justify-center gap-2">
-                  <router-link
-                    :to="`/students/${student.id}/fees`"
-                    class="rounded-full bg-green-500 px-3 py-1 text-xs font-semibold text-white hover:bg-green-600"
-                  >
-                    費用
-                  </router-link>
-                  <router-link
-                    :to="`/students/${student.id}/errors`"
-                    class="rounded-full bg-purple-500 px-3 py-1 text-xs font-semibold text-white hover:bg-purple-600"
-                  >
-                    錯題本
-                  </router-link>
-                  <router-link
-                    :to="`/students/edit/${student.id}`"
-                    class="rounded-full bg-sky-500 px-3 py-1 text-xs font-semibold text-white hover:bg-sky-600"
-                  >
-                    編輯
-                  </router-link>
+    <div class="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm
+            dark:border-slate-700 dark:bg-slate-800 dark:shadow-xl"
+>
+  <div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-700">
+      
+      <thead class="bg-slate-50 dark:bg-slate-900">
+        <tr>
+          <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">姓名</th>
+          <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">學校 / 年級</th>
+          <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">手機</th>
+          <th v-if="isAdmin" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">帳號 / 密碼</th>
+          <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">總費用 / 待繳</th>
+          <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">緊急聯絡人</th>
+          <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">操作</th>
+        </tr>
+      </thead>
+      
+      <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+        <tr v-for="student in students" :key="student.id" class="transition hover:bg-slate-50/70 dark:hover:bg-slate-700/70">
+          
+          <td class="px-4 py-4">
+            <p class="font-semibold text-slate-900 dark:text-white">{{ student.name }}</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">ID: {{ student.id ?? '—' }}</p>
+          </td>
+          
+          <td class="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">{{ student.school }} / {{ student.grade }}</td>
+          <td class="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">{{ student.phone || student.contact || '—' }}</td>
+          
+          <td v-if="isAdmin" class="px-4 py-4 text-sm">
+            <div v-if="student.username" class="space-y-2">
+              <div>
+                <p class="text-xs text-slate-500 dark:text-slate-400">帳號</p>
+                <p class="font-semibold text-slate-900 dark:text-white">{{ student.username }}</p>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <p class="text-xs text-slate-500 dark:text-slate-400">密碼</p>
                   <button
-                    @click="deleteStudent(student.id, student.name)"
-                    class="rounded-full bg-rose-500 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-600"
+                    @click="togglePasswordVisibility(student.id)"
+                    class="text-xs text-sky-600 hover:text-sky-800 font-semibold dark:text-sky-400 dark:hover:text-sky-300"
                   >
-                    刪除
+                    {{ visiblePasswords[student.id] ? '隱藏' : '顯示' }}
                   </button>
                 </div>
-              </td>
-            </tr>
-            <tr v-if="students.length === 0">
-              <td :colspan="isAdmin ? 7 : 6" class="py-4 px-4 text-center text-slate-500">目前沒有學生資料。</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+                
+                <div v-if="editingPasswords[student.id]" class="mt-1 flex items-center gap-2">
+                  <input
+                    v-model="passwordForms[student.id].password"
+                    type="text"
+                    class="flex-1 rounded border px-2 py-1 text-xs focus:border-sky-500 focus:outline-none 
+                           border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-sky-400"
+                    placeholder="輸入新密碼"
+                  />
+                  <button
+                    @click="savePassword(student)"
+                    class="rounded bg-green-500 px-2 py-1 text-xs font-semibold text-white hover:bg-green-600"
+                  >
+                    儲存
+                  </button>
+                  <button
+                    @click="cancelEditPassword(student.id)"
+                    class="rounded px-2 py-1 text-xs font-semibold hover:bg-slate-400
+                           bg-slate-300 text-slate-700 dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500"
+                  >
+                    取消
+                  </button>
+                </div>
+                
+                <div v-else class="mt-1">
+                  <p class="font-mono text-sm text-slate-900 dark:text-white">
+                    {{ visiblePasswords[student.id] ? (student.password || '—') : '••••••' }}
+                  </p>
+                  <button
+                    @click="startEditPassword(student)"
+                    class="mt-1 text-xs text-sky-600 hover:text-sky-800 font-semibold dark:text-sky-400 dark:hover:text-sky-300"
+                  >
+                    編輯
+                  </button>
+                </div>
+              </div>
+              
+              <div class="flex items-center gap-2">
+                <span
+                  class="rounded-full px-2 py-1 text-xs font-semibold"
+                  :class="student.is_account_active 
+                            ? 'bg-green-50 text-green-600 dark:bg-green-900/50 dark:text-green-300' 
+                            : 'bg-rose-50 text-rose-600 dark:bg-rose-900/50 dark:text-rose-300'"
+                >
+                  {{ student.is_account_active ? '啟用' : '停用' }}
+                </span>
+                <span
+                  v-if="student.must_change_password"
+                  class="rounded-full px-2 py-1 text-xs font-semibold
+                         bg-amber-50 text-amber-600 dark:bg-amber-900/50 dark:text-amber-300"
+                >
+                  需修改密碼
+                </span>
+                <button
+                  @click="toggleAccountStatus(student)"
+                  class="text-xs text-slate-600 hover:text-slate-800 font-semibold dark:text-slate-400 dark:hover:text-slate-200"
+                >
+                  {{ student.is_account_active ? '停用' : '啟用' }}
+                </button>
+              </div>
+            </div>
+            <p v-else class="text-xs text-slate-400">尚未創建帳號</p>
+          </td>
+          
+          <td class="px-4 py-4 text-sm">
+            <div>
+              <p class="text-slate-900 font-semibold dark:text-white">總：${{ (student.total_fees || 0).toLocaleString() }}</p>
+              <p class="text-amber-600 dark:text-amber-400" :class="{'font-semibold': student.unpaid_fees > 0}">
+                待繳：${{ (student.unpaid_fees || 0).toLocaleString() }}
+              </p>
+              <div v-if="student.enrollments_count > 0" class="mt-1">
+                <button
+                  @click="openTuitionModal(student)"
+                  class="text-xs font-semibold underline
+                         text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                >
+                  生成學費
+                </button>
+              </div>
+            </div>
+          </td>
+          
+          <td class="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">
+            <p class="dark:text-white">{{ student.emergency_contact_name || '—' }}</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">{{ student.emergency_contact_phone || '' }}</p>
+          </td>
+          
+          <td class="px-4 py-4 text-center">
+            <div class="flex justify-center gap-2">
+              <router-link
+                :to="`/students/${student.id}/fees`"
+                class="rounded-full bg-green-500 px-3 py-1 text-xs font-semibold text-white hover:bg-green-600"
+              >
+                費用
+              </router-link>
+              <router-link
+                :to="`/students/${student.id}/errors`"
+                class="rounded-full bg-purple-500 px-3 py-1 text-xs font-semibold text-white hover:bg-purple-600"
+              >
+                錯題本
+              </router-link>
+              <router-link
+                :to="`/students/edit/${student.id}`"
+                class="rounded-full bg-sky-500 px-3 py-1 text-xs font-semibold text-white hover:bg-sky-600"
+              >
+                編輯
+              </router-link>
+              <button
+                @click="deleteStudent(student.id, student.name)"
+                class="rounded-full bg-rose-500 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-600"
+              >
+                刪除
+              </button>
+            </div>
+          </td>
+        </tr>
+        
+        <tr v-if="students.length === 0">
+          <td :colspan="isAdmin ? 7 : 6" class="py-4 px-4 text-center text-slate-500 dark:text-slate-400">目前沒有學生資料。</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
 
-    <!-- 學費生成模態框 -->
     <div
       v-if="showTuitionModal"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
       @click.self="closeTuitionModal"
     >
-      <div class="bg-white rounded-3xl shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-        <div class="p-6 border-b border-slate-200">
+      <div 
+        class="bg-white rounded-3xl shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto transition-colors duration-300
+               dark:bg-slate-800 dark:shadow-2xl dark:text-white"
+      >
+        <div class="p-6 border-b border-slate-200 dark:border-slate-700">
           <div class="flex items-center justify-between">
-            <h3 class="text-xl font-bold text-slate-900">
+            <h3 class="text-xl font-bold text-slate-900 dark:text-white">
               生成學費 - {{ selectedStudent?.name }}
             </h3>
             <button
               @click="closeTuitionModal"
-              class="text-slate-400 hover:text-slate-600"
+              class="text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200"
             >
               <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -214,60 +245,71 @@
             </button>
           </div>
         </div>
+        
         <div class="p-6">
-          <div v-if="loadingTuition" class="text-center py-8 text-slate-500">載入中...</div>
-          <div v-else-if="tuitionStatus.length === 0" class="text-center py-8 text-slate-500">
+          <div v-if="loadingTuition" class="text-center py-8 text-slate-500 dark:text-slate-400">載入中...</div>
+          <div v-else-if="tuitionStatus.length === 0" class="text-center py-8 text-slate-500 dark:text-slate-400">
             該學生尚未報名任何課程
           </div>
+          
           <div v-else class="space-y-4">
             <div
               v-for="(item, index) in tuitionStatus"
               :key="index"
-              class="border border-slate-200 rounded-lg p-4"
-              :class="{'bg-amber-50': !item.has_fee, 'bg-green-50': item.has_fee}"
+              class="rounded-lg p-4 transition duration-200 border"
+              :class="[
+                // 根據狀態選擇淺色或深色背景
+                !item.has_fee
+                  ? 'bg-amber-50 border-amber-200 dark:bg-amber-900/50 dark:border-amber-700'
+                  : 'bg-green-50 border-green-200 dark:bg-green-900/50 dark:border-green-700',
+              ]"
             >
               <div class="flex items-center justify-between mb-3">
                 <div>
-                  <p class="font-semibold text-slate-900">{{ item.course_name }}</p>
-                  <p class="text-sm text-slate-600">{{ item.year }}年{{ item.month }}月</p>
+                  <p class="font-semibold text-slate-900 dark:text-white">{{ item.course_name }}</p>
+                  <p class="text-sm text-slate-600 dark:text-slate-400">{{ item.year }}年{{ item.month }}月</p>
                 </div>
                 <div class="text-right">
-                  <p class="text-sm text-slate-600">每週費用：${{ item.weekly_fee.toLocaleString() }}</p>
-                  <p v-if="item.has_fee" class="text-sm text-green-600 font-semibold">
+                  <p class="text-sm text-slate-600 dark:text-slate-400">每週費用：${{ item.weekly_fee.toLocaleString() }}</p>
+                  <p v-if="item.has_fee" class="text-sm text-green-600 font-semibold dark:text-green-300">
                     已生成：${{ item.current_fee.toLocaleString() }}
                   </p>
                 </div>
               </div>
               <div class="grid grid-cols-3 gap-4 items-end">
                 <div>
-                  <label class="block text-xs font-semibold text-slate-600 mb-1">週數</label>
+                  <label class="block text-xs font-semibold text-slate-600 mb-1 dark:text-slate-400">週數</label>
                   <input
                     v-model.number="item.weeks"
                     type="number"
                     min="1"
                     max="8"
-                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    class="w-full rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200
+                           border border-slate-300
+                           dark:border-slate-600 dark:bg-slate-900 dark:text-white dark:focus:border-blue-400 dark:focus:ring-blue-400/50"
                   />
                 </div>
                 <div>
-                  <label class="block text-xs font-semibold text-slate-600 mb-1">總費用</label>
-                  <p class="text-lg font-bold text-slate-900">
+                  <label class="block text-xs font-semibold text-slate-600 mb-1 dark:text-slate-400">總費用</label>
+                  <p class="text-lg font-bold text-slate-900 dark:text-white">
                     ${{ (item.weekly_fee * item.weeks).toLocaleString() }}
                   </p>
                 </div>
                 <div class="flex items-center">
-                  <label class="flex items-center gap-2 text-sm text-slate-700">
+                  <label class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
                     <input
                       v-model="item.selected"
                       type="checkbox"
-                      class="rounded border-slate-300 text-blue-500 focus:ring-blue-500"
+                      class="rounded border-slate-300 text-blue-500 focus:ring-blue-500
+                             dark:border-slate-500 dark:bg-slate-700 dark:checked:bg-blue-500 dark:focus:ring-blue-400"
                     />
                     <span>{{ item.has_fee ? '更新' : '生成' }}</span>
                   </label>
                 </div>
               </div>
             </div>
-            <div class="pt-4 border-t border-slate-200">
+            
+            <div class="pt-4 border-t border-slate-200 dark:border-slate-700">
               <button
                 @click="generateAllTuitions"
                 :disabled="savingTuitions || !hasSelectedTuitions"
