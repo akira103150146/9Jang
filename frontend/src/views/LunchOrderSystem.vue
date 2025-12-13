@@ -9,9 +9,15 @@
         <div>
           <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">餐飲服務</p>
           <h2 class="text-2xl font-bold text-slate-900 dark:text-white">訂便當系統</h2>
-          <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">管理店家、創建團購、處理訂單</p>
+          <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">管理團購與訂單</p>
         </div>
         <div class="flex gap-3">
+          <router-link
+            to="/restaurants"
+            class="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-blue-500 to-sky-500 px-5 py-2 text-sm font-semibold text-white shadow-md hover:from-blue-600 hover:to-sky-600"
+          >
+            查看所有店家
+          </router-link>
           <button
             @click="showRestaurantForm = true"
             class="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-2 text-sm font-semibold text-white shadow-md hover:from-orange-600 hover:to-amber-600"
@@ -188,60 +194,6 @@
       </div>
     </section>
 
-    <section>
-      <h3 class="text-lg font-semibold text-slate-900 mb-4 dark:text-white">店家管理</h3>
-      <div v-if="loading" class="text-center py-12 text-slate-500 dark:text-slate-400">載入中...</div>
-      <div v-else-if="restaurants.length === 0" 
-           class="rounded-3xl border border-slate-100 bg-white p-12 text-center dark:border-slate-700 dark:bg-slate-800">
-        <p class="text-slate-500 dark:text-slate-400">目前沒有店家，點擊「新增店家」開始建立</p>
-      </div>
-      <div v-else class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <article
-          v-for="restaurant in restaurants"
-          :key="restaurant.restaurant_id"
-          class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800"
-        >
-          <div class="flex items-start justify-between mb-3">
-            <div>
-              <h4 class="text-lg font-semibold text-slate-900 dark:text-white">{{ restaurant.name }}</h4>
-              <p v-if="restaurant.phone" class="text-sm text-slate-600 mt-1 dark:text-slate-300">{{ restaurant.phone }}</p>
-              <p v-if="restaurant.address" class="text-xs text-slate-500 mt-1 dark:text-slate-400">{{ restaurant.address }}</p>
-            </div>
-            <span
-              :class="[
-                'rounded-full px-3 py-1 text-xs font-semibold',
-                restaurant.is_active ? 'bg-green-50 text-green-600 dark:bg-green-900/50 dark:text-green-300' : 
-                                        'bg-gray-50 text-gray-600 dark:bg-slate-700 dark:text-slate-300'
-              ]"
-            >
-              {{ restaurant.is_active ? '啟用' : '停用' }}
-            </span>
-          </div>
-          <div v-if="restaurant.menu_image_path" class="mb-3">
-            <img
-              :src="getImageUrl(restaurant.menu_image_path)"
-              alt="菜單"
-              class="w-full h-48 object-cover rounded-lg border border-slate-200 dark:border-slate-700"
-            />
-          </div>
-          <div class="flex gap-2">
-            <button
-              @click="editRestaurant(restaurant)"
-              class="rounded-full bg-blue-500 px-3 py-1 text-xs font-semibold text-white hover:bg-blue-600"
-            >
-              編輯
-            </button>
-            <button
-              @click="deleteRestaurant(restaurant.restaurant_id, restaurant.name)"
-              class="rounded-full bg-red-500 px-3 py-1 text-xs font-semibold text-white hover:bg-red-600"
-            >
-              刪除
-            </button>
-          </div>
-        </article>
-      </div>
-    </section>
-
     <div
       v-if="showRestaurantForm"
       class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm"
@@ -251,7 +203,7 @@
                   dark:border-slate-700 dark:bg-slate-800 dark:shadow-2xl">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-xl font-bold text-slate-900 dark:text-white">
-            {{ editingRestaurant ? '編輯店家' : '新增店家' }}
+            新增店家
           </h3>
           <button @click="closeRestaurantForm" class="text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200">
             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -456,11 +408,12 @@ const loading = ref(false)
 const saving = ref(false)
 const showRestaurantForm = ref(false)
 const showGroupOrderForm = ref(false)
-const editingRestaurant = ref(null)
+// 移除 editingRestaurant
 const menuImagePreview = ref('')
 const menuFileInput = ref(null)
 const activeTab = ref('active')
 
+// 簡化 restaurantForm，只需用於新增
 const restaurantForm = ref({
   name: '',
   phone: '',
@@ -513,6 +466,10 @@ const fetchGroupOrders = async () => {
   }
 }
 
+// ----------------------------------------------------
+// 店家相關邏輯 (已簡化/移除編輯功能)
+// ----------------------------------------------------
+
 const handleMenuImageSelect = async (event) => {
   const file = event.target.files?.[0]
   if (!file) return
@@ -551,24 +508,11 @@ const clearMenuImage = () => {
   if (menuFileInput.value) menuFileInput.value.value = ''
 }
 
-const editRestaurant = (restaurant) => {
-  editingRestaurant.value = restaurant
-  restaurantForm.value = {
-    name: restaurant.name,
-    phone: restaurant.phone || '',
-    address: restaurant.address || '',
-    menu_image_path: restaurant.menu_image_path || '',
-    is_active: restaurant.is_active
-  }
-  if (restaurant.menu_image_path) {
-    menuImagePreview.value = getImageUrl(restaurant.menu_image_path)
-  }
-  showRestaurantForm.value = true
-}
+// 移除 editRestaurant
 
 const closeRestaurantForm = () => {
   showRestaurantForm.value = false
-  editingRestaurant.value = null
+  // 移除 editingRestaurant.value = null
   restaurantForm.value = {
     name: '',
     phone: '',
@@ -582,13 +526,11 @@ const closeRestaurantForm = () => {
 const saveRestaurant = async () => {
   saving.value = true
   try {
-    if (editingRestaurant.value) {
-      await restaurantAPI.update(editingRestaurant.value.restaurant_id, restaurantForm.value)
-    } else {
-      await restaurantAPI.create(restaurantForm.value)
-    }
+    // 這裡只執行新增操作
+    await restaurantAPI.create(restaurantForm.value)
+    
     closeRestaurantForm()
-    fetchRestaurants()
+    fetchRestaurants() // 刷新列表以更新總數
   } catch (error) {
     console.error('儲存店家失敗：', error)
     alert('儲存失敗，請稍後再試')
@@ -597,17 +539,12 @@ const saveRestaurant = async () => {
   }
 }
 
-const deleteRestaurant = async (id, name) => {
-  if (!confirm(`確定要刪除店家「${name}」嗎？`)) return
-  
-  try {
-    await restaurantAPI.delete(id)
-    fetchRestaurants()
-  } catch (error) {
-    console.error('刪除店家失敗：', error)
-    alert('刪除失敗，請稍後再試')
-  }
-}
+// 移除 deleteRestaurant (已移至新頁面)
+// 移除 getImageUrl (已移至新頁面)
+
+// ----------------------------------------------------
+// 團購相關邏輯 (保持不變)
+// ----------------------------------------------------
 
 const openGroupOrderForm = () => {
   // 計算兩個小時後的時間
@@ -694,11 +631,6 @@ const copyLink = (link) => {
   })
 }
 
-const getImageUrl = (path) => {
-  if (!path) return ''
-  return `${BACKEND_BASE_URL}/media/${path}`
-}
-
 const formatDateTime = (datetime) => {
   if (!datetime) return ''
   const date = new Date(datetime)
@@ -721,4 +653,3 @@ onMounted(() => {
   })
 })
 </script>
-
