@@ -207,7 +207,7 @@ const navItems = computed(() => {
 const childMatchMap = {
   'student-list': ['student-list', 'student-add', 'student-edit', 'student-fees'],
   'lunch-orders': ['lunch-orders', 'group-order-detail', 'join-group-order'],
-  'questions': ['questions', 'resource-new', 'resource-edit', 'template-new', 'template-edit', 'question-new', 'question-edit'], // Keep sidebar active for editor and template editor
+  'questions': ['questions', 'resource-new', 'resource-edit', 'template-new', 'template-edit', 'question-new', 'question-edit', 'question-import'], // Keep sidebar active for editor, template editor, and import page
 }
 
 const isActive = (name) => {

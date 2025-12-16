@@ -24,6 +24,7 @@ import StudentHome from '../views/StudentHome.vue'
 import ResourceEditor from '../views/ResourceEditor.vue'
 import TemplateEditor from '../views/TemplateEditor.vue'
 import QuestionForm from '../views/QuestionForm.vue'
+import QuestionImport from '../views/QuestionImport.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -161,6 +162,12 @@ const router = createRouter({
       component: QuestionForm,
       props: true,
       meta: { title: '編輯題目', allowedRoles: ['ADMIN', 'TEACHER'] },
+    },
+    {
+      path: '/questions/import',
+      name: 'question-import',
+      component: QuestionImport,
+      meta: { title: '匯入題目', allowedRoles: ['ADMIN', 'TEACHER'] },
     },
     {
       path: '/resources/new',

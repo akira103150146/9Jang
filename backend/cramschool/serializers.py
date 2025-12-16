@@ -466,7 +466,8 @@ class QuestionBankSerializer(serializers.ModelSerializer):
             'question_id', 'subject', 'subject_name', 'level', 'chapter', 'content',
             'image_path', 'correct_answer', 'difficulty', 'tags', 'tag_ids', 'tag_ids_input',
             'source', 'source_display', 'created_by', 'created_by_name',
-            'imported_from_error_log', 'created_at', 'updated_at'
+            'imported_from_error_log', 'question_number', 'origin', 'origin_detail',
+            'created_at', 'updated_at'
         ]
         read_only_fields = [
             'question_id', 'tags', 'tag_ids', 'subject_name', 'source_display',

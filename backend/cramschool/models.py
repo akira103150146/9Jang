@@ -571,6 +571,7 @@ class QuestionBank(models.Model):
     SOURCE_CHOICES = [
         ('teacher_created', '老師新增'),
         ('imported_from_error_log', '從錯題本匯入'),
+        ('imported_from_word', '從 Word 匯入'),
     ]
     
     # 核心欄位
@@ -598,6 +599,29 @@ class QuestionBank(models.Model):
     difficulty = models.IntegerField(
         default=1,
         verbose_name='難度等級 (1-5)'
+    )
+    
+    # 題目來源資訊欄位
+    question_number = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        verbose_name='題號',
+        help_text='從 Word 匯入的題號'
+    )
+    origin = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        verbose_name='出處',
+        help_text='題目出處（例如：統測題）'
+    )
+    origin_detail = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        verbose_name='題源',
+        help_text='題目來源詳細資訊（例如：101統測B）'
     )
     
     # 新增欄位：題目來源

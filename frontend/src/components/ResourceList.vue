@@ -25,6 +25,15 @@
           + 新增題目
         </button>
         <button
+          @click="importQuestions"
+          class="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-green-500 to-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:from-green-600 hover:to-emerald-600"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+          </svg>
+          匯入外部題本
+        </button>
+        <button
           @click="createResource"
           class="inline-flex items-center justify-center rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
         >
@@ -146,6 +155,10 @@ const createResource = () => {
 
 const createQuestion = () => {
   router.push('/questions/new')
+}
+
+const importQuestions = () => {
+  router.push('/questions/import')
 }
 
 const editResource = (id) => {

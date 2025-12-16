@@ -464,7 +464,17 @@ export const questionBankAPI = {
     if (subjectId) params.append('subject', subjectId)
     if (level) params.append('level', level)
     return api.get(`/cramschool/questions/search_chapters/?${params.toString()}`)
-  }
+  },
+
+  // 預覽 Word 檔案中的題目（不匯入）
+  previewFromWord: (formData) => api.post('/cramschool/questions/preview_from_word/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+
+  // 從 Word 匯入題目
+  importFromWord: (formData) => api.post('/cramschool/questions/import_from_word/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
 }
 
 // Hashtag API

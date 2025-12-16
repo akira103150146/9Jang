@@ -892,6 +892,284 @@ class QuestionBankViewSet(viewsets.ModelViewSet):
         
         # 只返回前 10 個結果
         return Response(chapters[:10])
+    
+    @action(detail=False, methods=['post'])
+    def preview_from_word(self, request):
+        """
+        預覽 Word 檔案中的題目（不匯入）
+        接收 multipart/form-data：
+        - file: Word 檔案（.docx 或 .doc）
+        - subject_id: 科目ID（必填）
+        - level: 年級（必填，JHS/SHS/VCS）
+        - chapter: 章節（必填）
+        """
+        from .word_importer import WordQuestionImporter
+        
+        # 驗證檔案
+        if 'file' not in request.FILES:
+            return Response(
+                {'error': '請選擇要匯入的檔案'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        file = request.FILES['file']
+        filename = file.name
+        
+        # 驗證檔案格式
+        if not (filename.endswith('.docx') or filename.endswith('.doc')):
+            return Response(
+                {'error': '不支援的檔案格式，請上傳 .docx 或 .doc 檔案'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 獲取必填參數
+        subject_id = request.data.get('subject_id')
+        level = request.data.get('level')
+        chapter = request.data.get('chapter')
+        
+        if not subject_id:
+            return Response(
+                {'error': '請選擇科目'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not level:
+            return Response(
+                {'error': '請選擇年級'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not chapter:
+            return Response(
+                {'error': '請輸入章節'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 驗證科目是否存在
+        try:
+            subject = Subject.objects.get(subject_id=subject_id)
+        except Subject.DoesNotExist:
+            return Response(
+                {'error': '科目不存在'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 讀取檔案內容
+        try:
+            file_content = file.read()
+        except Exception as e:
+            return Response(
+                {'error': f'讀取檔案失敗：{str(e)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 定義保存圖片的函數
+        def save_image_func(image_bytes: bytes, filename: str) -> str:
+            """保存圖片並返回 URL"""
+            from django.core.files.storage import default_storage
+            from django.core.files.base import ContentFile
+            
+            now = datetime.now()
+            date_folder = now.strftime('%Y/%m/%d')
+            relative_path = f'question_images/{date_folder}/{filename}'
+            
+            # 保存圖片
+            saved_path = default_storage.save(relative_path, ContentFile(image_bytes))
+            
+            # 獲取圖片 URL
+            image_url = default_storage.url(saved_path)
+            if not image_url.startswith('http'):
+                image_url = request.build_absolute_uri(image_url)
+            
+            return image_url
+        
+        # 解析題目（只解析，不匯入）
+        importer = WordQuestionImporter()
+        try:
+            questions, errors = importer.import_questions(
+                file_content=file_content,
+                filename=filename,
+                default_subject_id=subject_id,
+                default_level=level,
+                default_chapter=chapter,
+                save_images_func=save_image_func
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'解析檔案失敗：{str(e)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not questions:
+            return Response(
+                {
+                    'error': '未能從檔案中解析出任何題目',
+                    'errors': errors
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 返回預覽數據（不包含 subject_id，因為前端已經知道）
+        preview_questions = []
+        for q in questions:
+            preview_questions.append({
+                'question_number': q.get('question_number', ''),
+                'origin': q.get('origin', ''),
+                'origin_detail': q.get('origin_detail', ''),
+                'difficulty': q.get('difficulty', 3),
+                'content': q.get('content', ''),
+                'correct_answer': q.get('correct_answer', ''),
+            })
+        
+        return Response({
+            'success': True,
+            'total': len(questions),
+            'questions': preview_questions,
+            'errors': errors[:20]  # 只返回前 20 個錯誤
+        }, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=['post'])
+    def import_from_word(self, request):
+        """
+        從 Word 檔案匯入題目
+        接收 multipart/form-data：
+        - file: Word 檔案（.docx 或 .doc）
+        - subject_id: 科目ID（必填）
+        - level: 年級（必填，JHS/SHS/VCS）
+        - chapter: 章節（必填）
+        """
+        from .word_importer import WordQuestionImporter
+        from django.db import transaction
+        
+        # 驗證檔案
+        if 'file' not in request.FILES:
+            return Response(
+                {'error': '請選擇要匯入的檔案'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        file = request.FILES['file']
+        filename = file.name
+        
+        # 驗證檔案格式
+        if not (filename.endswith('.docx') or filename.endswith('.doc')):
+            return Response(
+                {'error': '不支援的檔案格式，請上傳 .docx 或 .doc 檔案'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 獲取必填參數
+        subject_id = request.data.get('subject_id')
+        level = request.data.get('level')
+        chapter = request.data.get('chapter')
+        
+        if not subject_id:
+            return Response(
+                {'error': '請選擇科目'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not level:
+            return Response(
+                {'error': '請選擇年級'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not chapter:
+            return Response(
+                {'error': '請輸入章節'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 驗證科目是否存在
+        try:
+            subject = Subject.objects.get(subject_id=subject_id)
+        except Subject.DoesNotExist:
+            return Response(
+                {'error': '科目不存在'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 讀取檔案內容
+        try:
+            file_content = file.read()
+        except Exception as e:
+            return Response(
+                {'error': f'讀取檔案失敗：{str(e)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 定義保存圖片的函數
+        def save_image_func(image_bytes: bytes, filename: str) -> str:
+            """保存圖片並返回 URL"""
+            from django.core.files.storage import default_storage
+            from django.core.files.base import ContentFile
+            
+            now = datetime.now()
+            date_folder = now.strftime('%Y/%m/%d')
+            relative_path = f'question_images/{date_folder}/{filename}'
+            
+            # 保存圖片
+            saved_path = default_storage.save(relative_path, ContentFile(image_bytes))
+            
+            # 獲取圖片 URL
+            image_url = default_storage.url(saved_path)
+            if not image_url.startswith('http'):
+                image_url = request.build_absolute_uri(image_url)
+            
+            return image_url
+        
+        # 解析題目
+        importer = WordQuestionImporter()
+        try:
+            questions, errors = importer.import_questions(
+                file_content=file_content,
+                filename=filename,
+                default_subject_id=subject_id,
+                default_level=level,
+                default_chapter=chapter,
+                save_images_func=save_image_func
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'解析檔案失敗：{str(e)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not questions:
+            return Response(
+                {
+                    'error': '未能從檔案中解析出任何題目',
+                    'errors': errors
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 批量創建題目
+        created_count = 0
+        failed_count = 0
+        created_by = request.user if request.user.is_authenticated else None
+        
+        with transaction.atomic():
+            for question_data in questions:
+                try:
+                    # 設置建立者
+                    question_data['created_by'] = created_by
+                    
+                    # 創建題目（subject_id 已經在 question_data 中）
+                    question = QuestionBank.objects.create(**question_data)
+                    created_count += 1
+                except Exception as e:
+                    failed_count += 1
+                    errors.append(f"創建題目失敗（題號：{question_data.get('question_number', '未知')}）：{str(e)}")
+        
+        return Response({
+            'success': True,
+            'created_count': created_count,
+            'failed_count': failed_count,
+            'total_parsed': len(questions),
+            'errors': errors[:20]  # 只返回前 20 個錯誤
+        }, status=status.HTTP_200_OK)
 
 
 class HashtagViewSet(viewsets.ModelViewSet):
