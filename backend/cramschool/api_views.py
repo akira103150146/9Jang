@@ -4,7 +4,7 @@ from rest_framework import viewsets, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
-from django.db.models import Q, Count, Sum
+from django.db.models import Q, Count, Sum, Prefetch
 from django.conf import settings
 from django.utils import timezone
 from datetime import datetime, timedelta
@@ -44,8 +44,29 @@ class StudentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """
         根據查詢參數決定是否包含已刪除的記錄
+        使用 annotate 預先計算聚合值以避免 N+1 查詢
         """
-        queryset = Student.objects.prefetch_related('enrollments__course', 'extra_fees', 'user').all()
+        # 先進行 annotate 聚合計算（在過濾之前）
+        queryset = Student.objects.select_related('user').annotate(
+            # 預先計算總費用
+            _total_fees=Sum(
+                'extra_fees__amount',
+                filter=Q(extra_fees__is_deleted=False)
+            ),
+            # 預先計算未繳費用
+            _unpaid_fees=Sum(
+                'extra_fees__amount',
+                filter=Q(
+                    extra_fees__is_deleted=False,
+                    extra_fees__payment_status__in=['Unpaid', 'Partial']
+                )
+            ),
+            # 預先計算報名課程數量
+            _enrollments_count=Count(
+                'enrollments',
+                filter=Q(enrollments__is_deleted=False)
+            )
+        )
         
         # 檢查是否有 include_deleted 參數
         include_deleted = self.request.query_params.get('include_deleted', 'false').lower() == 'true'
@@ -53,6 +74,13 @@ class StudentViewSet(viewsets.ModelViewSet):
         if not include_deleted:
             # 預設過濾掉已刪除的記錄
             queryset = queryset.filter(is_deleted=False)
+        
+        # 在 annotate 之後進行 prefetch_related 以優化關聯查詢
+        # 注意：Prefetch 中的過濾不會影響 annotate 的結果，但可以優化序列化器的查詢
+        queryset = queryset.prefetch_related(
+            Prefetch('enrollments', queryset=StudentEnrollment.objects.filter(is_deleted=False).select_related('course')),
+            Prefetch('extra_fees', queryset=ExtraFee.objects.filter(is_deleted=False))
+        )
         
         return queryset
     
@@ -1087,7 +1115,18 @@ class GroupOrderViewSet(viewsets.ModelViewSet):
     """
     提供 GroupOrder 模型 CRUD 操作的 API 視圖集
     """
-    queryset = GroupOrder.objects.select_related('restaurant', 'created_by').prefetch_related('orders').all()
+    queryset = GroupOrder.objects.select_related('restaurant', 'created_by').prefetch_related('orders').annotate(
+        # 預先計算訂單數量
+        _orders_count=Count(
+            'orders',
+            filter=Q(orders__status__in=['Pending', 'Confirmed'], orders__is_deleted=False)
+        ),
+        # 預先計算總金額
+        _total_amount=Sum(
+            'orders__total_amount',
+            filter=Q(orders__status__in=['Pending', 'Confirmed'], orders__is_deleted=False)
+        )
+    ).all()
     serializer_class = GroupOrderSerializer
     permission_classes = [AllowAny]
 
@@ -1378,7 +1417,10 @@ class QuizViewSet(viewsets.ModelViewSet):
     """
     提供 Quiz 模型 CRUD 操作的 API 視圖集
     """
-    queryset = Quiz.objects.select_related('course', 'created_by').prefetch_related('questions', 'student_groups__students').all()
+    queryset = Quiz.objects.select_related('course', 'created_by').prefetch_related(
+        Prefetch('questions', queryset=QuestionBank.objects.select_related('subject')),
+        'student_groups__students'
+    ).all()
     serializer_class = QuizSerializer
     permission_classes = [AllowAny]
     
@@ -1525,7 +1567,10 @@ class ExamViewSet(viewsets.ModelViewSet):
     提供 Exam 模型 CRUD 操作的 API 視圖集
     支援個別化教學，學生只能看到自己群組的考卷
     """
-    queryset = Exam.objects.select_related('course', 'created_by').prefetch_related('questions', 'student_groups__students').all()
+    queryset = Exam.objects.select_related('course', 'created_by').prefetch_related(
+        Prefetch('questions', queryset=QuestionBank.objects.select_related('subject')),
+        'student_groups__students'
+    ).all()
     serializer_class = ExamSerializer
     permission_classes = [AllowAny]
     
@@ -1658,7 +1703,9 @@ class CourseMaterialViewSet(viewsets.ModelViewSet):
     """
     提供 CourseMaterial 模型 CRUD 操作的 API 視圖集
     """
-    queryset = CourseMaterial.objects.select_related('course', 'created_by').prefetch_related('questions').all()
+    queryset = CourseMaterial.objects.select_related('course', 'created_by').prefetch_related(
+        Prefetch('questions', queryset=QuestionBank.objects.select_related('subject'))
+    ).all()
     serializer_class = CourseMaterialSerializer
     permission_classes = [AllowAny]
     

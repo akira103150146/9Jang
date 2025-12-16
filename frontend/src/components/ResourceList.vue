@@ -17,12 +17,20 @@
         </button>
       </div>
       
-      <button
-        @click="createResource"
-        class="inline-flex items-center justify-center rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
-      >
-        + 新增文件
-      </button>
+      <div class="flex gap-2">
+        <button
+          @click="createQuestion"
+          class="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:from-indigo-600 hover:to-purple-600"
+        >
+          + 新增題目
+        </button>
+        <button
+          @click="createResource"
+          class="inline-flex items-center justify-center rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
+        >
+          + 新增文件
+        </button>
+      </div>
     </div>
 
     <!-- 列表 -->
@@ -76,6 +84,7 @@
         </div>
       </div>
     </div>
+
   </div>
 </template>
 
@@ -85,6 +94,7 @@ import { useRouter } from 'vue-router'
 import { learningResourceAPI } from '../services/api'
 
 const router = useRouter()
+
 const resources = ref([])
 const loading = ref(false)
 const filters = reactive({
@@ -132,6 +142,10 @@ const fetchResources = async () => {
 
 const createResource = () => {
   router.push('/resources/new')
+}
+
+const createQuestion = () => {
+  router.push('/questions/new')
 }
 
 const editResource = (id) => {

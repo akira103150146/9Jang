@@ -20,9 +20,10 @@ import RoleManagement from '../views/RoleManagement.vue'
 import AuditLog from '../views/AuditLog.vue'
 import Login from '../views/Login.vue'
 import StudentGroupManagement from '../views/StudentGroupManagement.vue'
-import AssessmentGenerator from '../views/AssessmentGenerator.vue'
 import StudentHome from '../views/StudentHome.vue'
 import ResourceEditor from '../views/ResourceEditor.vue'
+import TemplateEditor from '../views/TemplateEditor.vue'
+import QuestionForm from '../views/QuestionForm.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -149,6 +150,19 @@ const router = createRouter({
       meta: { title: '題庫與資源管理' },
     },
     {
+      path: '/questions/new',
+      name: 'question-new',
+      component: QuestionForm,
+      meta: { title: '新增題目', allowedRoles: ['ADMIN', 'TEACHER'] },
+    },
+    {
+      path: '/questions/edit/:id',
+      name: 'question-edit',
+      component: QuestionForm,
+      props: true,
+      meta: { title: '編輯題目', allowedRoles: ['ADMIN', 'TEACHER'] },
+    },
+    {
       path: '/resources/new',
       name: 'resource-new',
       component: ResourceEditor,
@@ -160,6 +174,19 @@ const router = createRouter({
       component: ResourceEditor,
       props: true,
       meta: { title: '編輯教學資源', allowedRoles: ['ADMIN', 'TEACHER'] },
+    },
+    {
+      path: '/templates/new',
+      name: 'template-new',
+      component: TemplateEditor,
+      meta: { title: '新增模板', allowedRoles: ['ADMIN', 'TEACHER'] },
+    },
+    {
+      path: '/templates/edit/:id',
+      name: 'template-edit',
+      component: TemplateEditor,
+      props: true,
+      meta: { title: '編輯模板', allowedRoles: ['ADMIN', 'TEACHER'] },
     },
     {
       path: '/lunch-orders',
@@ -198,12 +225,6 @@ const router = createRouter({
       name: 'student-groups',
       component: StudentGroupManagement,
       meta: { title: '學生群組管理', allowedRoles: ['ADMIN', 'TEACHER'] },
-    },
-    {
-      path: '/generator',
-      name: 'generator',
-      component: AssessmentGenerator,
-      meta: { title: '生成器', allowedRoles: ['ADMIN', 'TEACHER'] },
     },
   ],
 })
@@ -304,10 +325,10 @@ function getRoleBasedRouteFilter(role) {
 
   if (role === 'TEACHER') {
     return (path) => {
-      // 老師可以訪問：課程、題庫、資源、學生群組、生成器
+      // 老師可以訪問：課程、題庫、資源、學生群組、模板
       const allowedPaths = [
         '/', '/courses', '/questions', '/resources',
-        '/student-groups', '/generator'
+        '/student-groups', '/templates'
       ]
       return allowedPaths.some(allowed => path.startsWith(allowed))
     }

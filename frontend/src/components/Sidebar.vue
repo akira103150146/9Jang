@@ -165,7 +165,6 @@ const allNavItems = [
   { name: 'attendance', label: '出缺勤', path: '/attendance', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
   { name: 'questions', label: '題庫與資源', path: '/questions', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
   { name: 'student-groups', label: '學生群組', path: '/student-groups', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
-  { name: 'generator', label: '生成器', path: '/generator', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
   // 學生不顯示訂便當系統側邊欄入口，改由首頁入口進入
   // 管理員也不應該顯示訂便當系統
   { name: 'lunch-orders', label: '訂便當系統', path: '/lunch-orders', requiresAdmin: false, allowedRoles: ['ACCOUNTANT'] },
@@ -208,7 +207,7 @@ const navItems = computed(() => {
 const childMatchMap = {
   'student-list': ['student-list', 'student-add', 'student-edit', 'student-fees'],
   'lunch-orders': ['lunch-orders', 'group-order-detail', 'join-group-order'],
-  'questions': ['questions', 'resource-new', 'resource-edit'], // Keep sidebar active for editor
+  'questions': ['questions', 'resource-new', 'resource-edit', 'template-new', 'template-edit', 'question-new', 'question-edit'], // Keep sidebar active for editor and template editor
 }
 
 const isActive = (name) => {

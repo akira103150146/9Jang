@@ -11,13 +11,11 @@
         >
       </div>
       
-      <!-- 暫時隱藏新增模板功能，直到編輯器支援 -->
       <button
-        class="inline-flex items-center justify-center rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-400 cursor-not-allowed"
-        disabled
-        title="即將推出"
+        @click="createTemplate"
+        class="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 px-4 py-2 text-sm font-semibold text-white shadow-md hover:from-indigo-600 hover:to-purple-600"
       >
-        + 新增模板 (即將推出)
+        + 新增模板
       </button>
     </div>
 
@@ -37,6 +35,11 @@
             模板
           </span>
           <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button @click="editTemplate(template.template_id)" class="p-1 text-slate-400 hover:text-indigo-600" title="編輯">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+              </svg>
+            </button>
             <button @click="deleteTemplate(template.template_id)" class="p-1 text-slate-400 hover:text-rose-600" title="刪除">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
@@ -110,11 +113,20 @@ const deleteTemplate = async (id) => {
   }
 }
 
+const createTemplate = () => {
+  router.push('/templates/new')
+}
+
+const editTemplate = (id) => {
+  router.push(`/templates/edit/${id}`)
+}
+
 const useTemplate = (template) => {
-  // 將模板結構傳遞給新建資源頁面 (透過 state 或 query param)
-  // 這裡簡單跳轉到新建頁面，實際邏輯可能需要更複雜的狀態管理
-  router.push('/resources/new')
-  // TODO: 實現「從模板創建」的邏輯，可能需要 ResourceEditor 支援從 query param 讀取 template_id
+  // 跳轉到新建資源頁面，並傳遞 template_id 作為 query param
+  router.push({
+    path: '/resources/new',
+    query: { template_id: template.template_id }
+  })
 }
 
 watch(search, () => {

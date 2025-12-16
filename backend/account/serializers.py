@@ -54,6 +54,10 @@ class RoleSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def get_permission_count(self, obj):
+        # 使用 prefetch_related 後，直接使用 len() 避免額外查詢
+        # 如果已經 prefetch，使用 len() 比 .count() 更高效
+        if hasattr(obj, '_prefetched_objects_cache') and 'permissions' in obj._prefetched_objects_cache:
+            return len(obj.permissions.all())
         return obj.permissions.count()
 
 

@@ -1,0 +1,194 @@
+{
+    "models": {
+        "account.CustomUser": [
+            {
+                "lookup_fields": [
+                    "username"
+                ],
+                "data": {
+                    "username": "admin",
+                    "email": "admin@example.com",
+                    "first_name": "管理",
+                    "last_name": "員",
+                    "role": "ADMIN",
+                    "is_staff": true,
+                    "is_superuser": true,
+                    "is_active": true
+                }
+            },
+            {
+                "lookup_fields": [
+                    "username"
+                ],
+                "data": {
+                    "username": "teacher1",
+                    "email": "teacher1@example.com",
+                    "first_name": "郭",
+                    "last_name": "老師",
+                    "role": "TEACHER",
+                    "is_staff": false,
+                    "is_active": true
+                }
+            },
+            {
+                "lookup_fields": [
+                    "username"
+                ],
+                "data": {
+                    "username": "accountant1",
+                    "email": "accountant1@example.com",
+                    "first_name": "陳",
+                    "last_name": "會計",
+                    "role": "ACCOUNTANT",
+                    "is_staff": false,
+                    "is_active": true
+                }
+            },
+            {
+                "lookup_fields": [
+                    "username"
+                ],
+                "data": {
+                    "username": "student1",
+                    "email": "student1@example.com",
+                    "first_name": "張",
+                    "last_name": "和宸",
+                    "role": "STUDENT",
+                    "is_staff": false,
+                    "is_active": true
+                }
+            },
+            {
+                "lookup_fields": [
+                    "username"
+                ],
+                "data": {
+                    "username": "student2",
+                    "email": "student2@example.com",
+                    "first_name": "李",
+                    "last_name": "佳綺",
+                    "role": "STUDENT",
+                    "is_staff": false,
+                    "is_active": true
+                }
+            }
+        ],
+        "cramschool.Student": [
+            {
+                "lookup_fields": [
+                    "name",
+                    "school"
+                ],
+                "data": {
+                    "name": "張和宸",
+                    "school": "嘉義高工",
+                    "grade": "三年級",
+                    "phone": "0912345678",
+                    "emergency_contact_name": "張父",
+                    "emergency_contact_phone": "0923456789",
+                    "user": "account.CustomUser:username:student1",
+                    "notes": "測試學生資料"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "name",
+                    "school"
+                ],
+                "data": {
+                    "name": "李四",
+                    "school": "YY國中",
+                    "grade": "八年級",
+                    "phone": "0987654321",
+                    "emergency_contact_name": "李母",
+                    "emergency_contact_phone": "0976543210",
+                    "user": "account.CustomUser:username:student2",
+                    "notes": "測試學生資料"
+                }
+            }
+        ],
+        "cramschool.Subject": [
+            {
+                "lookup_fields": [
+                    "name"
+                ],
+                "data": {
+                    "name": "國小數學",
+                    "code": "MATH_PRIMARY"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "name"
+                ],
+                "data": {
+                    "name": "國中數學",
+                    "code": "MATH_MIDDLE"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "name"
+                ],
+                "data": {
+                    "name": "高中數學",
+                    "code": "MATH_HIGH"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "name"
+                ],
+                "data": {
+                    "name": "高職數學",
+                    "code": "MATH_VOCATIONAL"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "name"
+                ],
+                "data": {
+                    "name": "國小英文",
+                    "code": "ENG_PRIMARY"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "name"
+                ],
+                "data": {
+                    "name": "國中英文",
+                    "code": "ENG_MIDDLE"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "name"
+                ],
+                "data": {
+                    "name": "高中英文",
+                    "code": "ENG_HIGH"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "name"
+                ],
+                "data": {
+                    "name": "高職英文",
+                    "code": "ENG_VOCATIONAL"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "name"
+                ],
+                "data": {
+                    "name": "國文",
+                    "code": "CHI"
+                }
+            }
+        ]
+    }
+}

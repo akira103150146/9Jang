@@ -62,13 +62,21 @@ class StudentSerializer(serializers.ModelSerializer):
         return None
     
     def get_total_fees(self, obj):
-        """計算學生總費用"""
+        """計算學生總費用（使用 annotate 預先計算的值）"""
+        # 如果 queryset 已經使用 annotate 計算，直接使用該值
+        if hasattr(obj, '_total_fees'):
+            return float(obj._total_fees or 0)
+        # 後備方案：如果沒有 annotate，則執行查詢
         from django.db.models import Sum
         result = obj.extra_fees.filter(is_deleted=False).aggregate(total=Sum('amount'))
         return float(result['total'] or 0)
     
     def get_unpaid_fees(self, obj):
-        """計算學生未繳費用"""
+        """計算學生未繳費用（使用 annotate 預先計算的值）"""
+        # 如果 queryset 已經使用 annotate 計算，直接使用該值
+        if hasattr(obj, '_unpaid_fees'):
+            return float(obj._unpaid_fees or 0)
+        # 後備方案：如果沒有 annotate，則執行查詢
         from django.db.models import Sum, Q
         result = obj.extra_fees.filter(
             Q(payment_status='Unpaid') | Q(payment_status='Partial'),
@@ -77,7 +85,11 @@ class StudentSerializer(serializers.ModelSerializer):
         return float(result['total'] or 0)
     
     def get_enrollments_count(self, obj):
-        """獲取學生報名的課程數量"""
+        """獲取學生報名的課程數量（使用 annotate 預先計算的值）"""
+        # 如果 queryset 已經使用 annotate 計算，直接使用該值
+        if hasattr(obj, '_enrollments_count'):
+            return obj._enrollments_count or 0
+        # 後備方案：如果沒有 annotate，則執行查詢
         return obj.enrollments.filter(is_deleted=False).count()
 
 
@@ -797,9 +809,19 @@ class GroupOrderSerializer(serializers.ModelSerializer):
         return obj.created_by.name if obj.created_by else None
     
     def get_orders_count(self, obj):
+        """獲取訂單數量（使用 annotate 預先計算的值）"""
+        # 如果 queryset 已經使用 annotate 計算，直接使用該值
+        if hasattr(obj, '_orders_count'):
+            return obj._orders_count or 0
+        # 後備方案：如果沒有 annotate，則執行查詢
         return obj.orders.filter(status__in=['Pending', 'Confirmed'], is_deleted=False).count()
     
     def get_total_amount(self, obj):
+        """獲取總金額（使用 annotate 預先計算的值）"""
+        # 如果 queryset 已經使用 annotate 計算，直接使用該值
+        if hasattr(obj, '_total_amount'):
+            return float(obj._total_amount or 0)
+        # 後備方案：如果沒有 annotate，則執行查詢
         from django.db.models import Sum
         total = obj.orders.filter(status__in=['Pending', 'Confirmed'], is_deleted=False).aggregate(
             total=Sum('total_amount')
@@ -853,6 +875,9 @@ class StudentGroupSerializer(serializers.ModelSerializer):
         read_only_fields = ['group_id', 'students', 'students_count', 'student_names', 'created_by_name', 'created_at', 'updated_at']
     
     def get_students_count(self, obj):
+        # 使用 prefetch_related 後，直接使用 len() 避免額外查詢
+        if hasattr(obj, '_prefetched_objects_cache') and 'students' in obj._prefetched_objects_cache:
+            return len(obj.students.all())
         return obj.students.count()
     
     def get_student_names(self, obj):
@@ -937,6 +962,9 @@ class QuizSerializer(serializers.ModelSerializer):
         return obj.created_by.username if obj.created_by else None
     
     def get_questions_count(self, obj):
+        # 使用 prefetch_related 後，直接使用 len() 避免額外查詢
+        if hasattr(obj, '_prefetched_objects_cache') and 'questions' in obj._prefetched_objects_cache:
+            return len(obj.questions.all())
         return obj.questions.count()
     
     def get_question_details(self, obj):
@@ -951,6 +979,9 @@ class QuizSerializer(serializers.ModelSerializer):
         ]
     
     def get_student_groups_count(self, obj):
+        # 使用 prefetch_related 後，直接使用 len() 避免額外查詢
+        if hasattr(obj, '_prefetched_objects_cache') and 'student_groups' in obj._prefetched_objects_cache:
+            return len(obj.student_groups.all())
         return obj.student_groups.count()
     
     def get_student_group_names(self, obj):
@@ -1052,6 +1083,9 @@ class ExamSerializer(serializers.ModelSerializer):
         return obj.created_by.username if obj.created_by else None
     
     def get_questions_count(self, obj):
+        # 使用 prefetch_related 後，直接使用 len() 避免額外查詢
+        if hasattr(obj, '_prefetched_objects_cache') and 'questions' in obj._prefetched_objects_cache:
+            return len(obj.questions.all())
         return obj.questions.count()
     
     def get_question_details(self, obj):
@@ -1066,6 +1100,9 @@ class ExamSerializer(serializers.ModelSerializer):
         ]
     
     def get_student_groups_count(self, obj):
+        # 使用 prefetch_related 後，直接使用 len() 避免額外查詢
+        if hasattr(obj, '_prefetched_objects_cache') and 'student_groups' in obj._prefetched_objects_cache:
+            return len(obj.student_groups.all())
         return obj.student_groups.count()
     
     def get_student_group_names(self, obj):
@@ -1165,6 +1202,9 @@ class CourseMaterialSerializer(serializers.ModelSerializer):
         return obj.created_by.username if obj.created_by else None
     
     def get_questions_count(self, obj):
+        # 使用 prefetch_related 後，直接使用 len() 避免額外查詢
+        if hasattr(obj, '_prefetched_objects_cache') and 'questions' in obj._prefetched_objects_cache:
+            return len(obj.questions.all())
         return obj.questions.count()
     
     def get_question_details(self, obj):
@@ -1179,6 +1219,9 @@ class CourseMaterialSerializer(serializers.ModelSerializer):
         ]
     
     def get_student_groups_count(self, obj):
+        # 使用 prefetch_related 後，直接使用 len() 避免額外查詢
+        if hasattr(obj, '_prefetched_objects_cache') and 'student_groups' in obj._prefetched_objects_cache:
+            return len(obj.student_groups.all())
         return obj.student_groups.count()
     
     def get_student_group_names(self, obj):

@@ -14,13 +14,13 @@
       <!-- Tab 切換 -->
       <div class="flex border-b border-slate-100">
         <button
-          v-for="tab in ['settings', 'questions']"
+          v-for="tab in ['settings', 'questions', 'templates']"
           :key="tab"
           @click="currentTab = tab"
           class="flex-1 py-3 text-sm font-medium transition-colors border-b-2"
           :class="currentTab === tab ? 'text-indigo-600 border-indigo-600 bg-indigo-50/50' : 'text-slate-500 border-transparent hover:text-slate-700 hover:bg-slate-50'"
         >
-          {{ tab === 'settings' ? '文件設定' : '題目庫' }}
+          {{ tab === 'settings' ? '文件設定' : tab === 'questions' ? '題目庫' : '模板庫' }}
         </button>
       </div>
 
@@ -101,6 +101,51 @@
           </div>
         </div>
 
+        <!-- 模板庫面板 -->
+        <div v-show="currentTab === 'templates'" class="space-y-4">
+          <div class="relative">
+            <input
+              v-model="templateSearch"
+              type="text"
+              placeholder="搜尋模板..."
+              class="w-full rounded-md border-slate-300 pl-10 pr-4 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500 border"
+            >
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg class="h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+              </svg>
+            </div>
+          </div>
+
+          <!-- 可拖曳模板列表 -->
+          <div class="space-y-3 mt-4">
+            <div
+              v-for="template in filteredTemplates"
+              :key="template.template_id"
+              draggable="true"
+              @dragstart="handleTemplateDragStart($event, template)"
+              class="bg-white p-3 rounded border border-slate-200 shadow-sm cursor-move hover:border-indigo-300 hover:shadow-md transition-all group"
+            >
+              <div class="flex justify-between items-start mb-1">
+                <span class="text-xs font-bold text-purple-600">模板</span>
+                <span class="text-xs bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded">T{{ template.template_id }}</span>
+              </div>
+              <h4 class="text-sm font-semibold text-slate-800 mb-2">{{ template.title }}</h4>
+              <div class="flex justify-between items-center">
+                <div class="flex gap-1">
+                  <span v-for="tag in (template.tags || []).slice(0, 2)" :key="tag" class="text-[10px] bg-purple-50 text-purple-600 px-1 rounded">#{{ tag }}</span>
+                </div>
+                <button @click="addTemplateBlock(template)" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                  + 加入
+                </button>
+              </div>
+            </div>
+            <div v-if="filteredTemplates.length === 0" class="text-center text-sm text-slate-400 py-4">
+              {{ templateSearch ? '沒有找到符合的模板' : '尚無模板，請先創建模板' }}
+            </div>
+          </div>
+        </div>
+
         <!-- 題目庫面板 -->
         <div v-show="currentTab === 'questions'" class="space-y-4">
           <div class="relative">
@@ -117,17 +162,48 @@
             </div>
           </div>
 
-          <!-- 篩選器簡化版 -->
-          <div class="flex gap-2">
-            <select v-model="questionFilters.subject" class="w-1/2 rounded border-slate-300 text-xs py-1">
-              <option value="">所有科目</option>
-              <option v-for="s in subjects" :key="s.subject_id" :value="s.subject_id">{{ s.name }}</option>
-            </select>
-            <select v-model="questionFilters.level" class="w-1/2 rounded border-slate-300 text-xs py-1">
-              <option value="">所有年級</option>
-              <option value="JHS">國中</option>
-              <option value="SHS">高中</option>
-            </select>
+          <!-- 篩選器 -->
+          <div class="space-y-2">
+            <div class="grid grid-cols-2 gap-2">
+              <select v-model="questionFilters.subject" class="rounded border-slate-300 text-xs py-1.5 px-2">
+                <option value="">所有科目</option>
+                <option v-for="s in subjects" :key="s.subject_id" :value="s.subject_id">{{ s.name }}</option>
+              </select>
+              <select v-model="questionFilters.level" class="rounded border-slate-300 text-xs py-1.5 px-2">
+                <option value="">所有年級</option>
+                <option value="JHS">國中</option>
+                <option value="SHS">高中</option>
+                <option value="VCS">高職</option>
+              </select>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <input
+                v-model="questionFilters.chapter"
+                type="text"
+                placeholder="章節關鍵字"
+                class="rounded border-slate-300 text-xs py-1.5 px-2"
+              >
+              <select v-model="questionFilters.difficulty" class="rounded border-slate-300 text-xs py-1.5 px-2">
+                <option value="">所有難度</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+              </select>
+            </div>
+            <div>
+              <select v-model="questionFilters.tags" multiple class="w-full rounded border-slate-300 text-xs py-1.5 px-2 min-h-[60px]">
+                <option value="">所有標籤</option>
+                <option v-for="tag in availableTags" :key="tag.tag_id" :value="tag.tag_id">#{{ tag.tag_name }}</option>
+              </select>
+            </div>
+            <button
+              @click="resetQuestionFilters"
+              class="w-full text-xs text-slate-600 hover:text-slate-800 font-semibold py-1"
+            >
+              清除篩選
+            </button>
           </div>
 
           <!-- 可拖曳題目列表 -->
@@ -166,6 +242,11 @@
       <!-- 頂部工具列 -->
       <header class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shadow-sm z-10">
         <div class="flex items-center gap-4">
+          <button @click="goBack" class="text-slate-500 hover:text-indigo-600 transition-colors" title="返回">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+          </button>
           <button @click="sidebarOpen = !sidebarOpen" class="text-slate-500 hover:text-indigo-600 transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -294,6 +375,10 @@
                 <QuestionBlock :question-id="block.question_id" />
               </template>
 
+              <template v-else-if="block.type === 'template'">
+                <TemplateBlock :template-id="block.template_id" />
+              </template>
+
               <template v-else-if="block.type === 'page_break'">
                 <div class="flex items-center gap-4 py-4 select-none print:hidden">
                   <div class="h-px bg-red-200 flex-1 border-t border-dashed border-red-300"></div>
@@ -339,9 +424,10 @@
 <script setup>
 import { ref, reactive, onMounted, onUnmounted, watch, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { learningResourceAPI, courseAPI, studentGroupAPI, hashtagAPI, questionBankAPI, subjectAPI } from '../services/api'
+import { learningResourceAPI, courseAPI, studentGroupAPI, hashtagAPI, questionBankAPI, subjectAPI, contentTemplateAPI } from '../services/api'
 import MarkdownEditor from '../components/MarkdownEditor.vue'
-import QuestionBlock from '../components/QuestionBlock.vue' // Need to create this
+import QuestionBlock from '../components/QuestionBlock.vue'
+import TemplateBlock from '../components/TemplateBlock.vue'
 import { useMarkdownRenderer } from '../composables/useMarkdownRenderer'
 
 // Simple debounce function
@@ -361,6 +447,16 @@ const route = useRoute()
 const router = useRouter()
 const { renderMarkdownWithLatex } = useMarkdownRenderer()
 
+// 返回上一頁
+const goBack = () => {
+  // 如果有上一頁歷史，則返回；否則跳轉到題庫頁面
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.push('/questions')
+  }
+}
+
 // State
 const sidebarOpen = ref(true)
 const currentTab = ref('settings')
@@ -372,6 +468,8 @@ const availableTags = ref([])
 const subjects = ref([])
 const questions = ref([])
 const loadingQuestions = ref(false)
+const templates = ref([])
+const templateSearch = ref('')
 
 // Resource Data
 const resource = reactive({
@@ -411,8 +509,22 @@ const snapLine = reactive({
 const questionSearch = ref('')
 const questionFilters = reactive({
   subject: '',
-  level: ''
+  level: '',
+  chapter: '',
+  difficulty: '',
+  tags: [],
+  source: ''
 })
+
+const resetQuestionFilters = () => {
+  questionFilters.subject = ''
+  questionFilters.level = ''
+  questionFilters.chapter = ''
+  questionFilters.difficulty = ''
+  questionFilters.tags = []
+  questionFilters.source = ''
+  questionSearch.value = ''
+}
 
 // Computed
 const filteredQuestions = computed(() => {
@@ -421,11 +533,25 @@ const filteredQuestions = computed(() => {
       q.content.toLowerCase().includes(questionSearch.value.toLowerCase()) || 
       q.chapter.toLowerCase().includes(questionSearch.value.toLowerCase())
     
-    const matchSubject = !questionFilters.subject || q.subject === questionFilters.subject
+    const matchSubject = !questionFilters.subject || q.subject === questionFilters.subject || q.subject_id === questionFilters.subject
     const matchLevel = !questionFilters.level || q.level === questionFilters.level
+    const matchChapter = !questionFilters.chapter || q.chapter.toLowerCase().includes(questionFilters.chapter.toLowerCase())
+    const matchDifficulty = !questionFilters.difficulty || q.difficulty === parseInt(questionFilters.difficulty)
+    const matchTags = !questionFilters.tags || questionFilters.tags.length === 0 || 
+      (q.tags && questionFilters.tags.some(tagId => 
+        q.tags.some(tag => typeof tag === 'object' ? tag.tag_id === parseInt(tagId) : tag === tagId)
+      ))
     
-    return matchSearch && matchSubject && matchLevel
+    return matchSearch && matchSubject && matchLevel && matchChapter && matchDifficulty && matchTags
   }).slice(0, 50) // Limit display
+})
+
+const filteredTemplates = computed(() => {
+  return templates.value.filter(t => {
+    const matchSearch = !templateSearch.value || 
+      t.title.toLowerCase().includes(templateSearch.value.toLowerCase())
+    return matchSearch
+  })
 })
 
 // Methods
@@ -497,6 +623,25 @@ const addQuestionBlock = (question) => {
     ensurePages()
   }, 100)
   return newBlock
+}
+
+const addTemplateBlock = (template) => {
+  const newBlock = {
+    id: Date.now() + Math.random(),
+    type: 'template',
+    template_id: template.template_id
+  }
+  structure.value.push(newBlock)
+  // 自動新增頁面如果需要的話
+  setTimeout(() => {
+    ensurePages()
+  }, 100)
+  return newBlock
+}
+
+const handleTemplateDragStart = (event, template) => {
+  event.dataTransfer.setData('application/json', JSON.stringify({ type: 'template', template }))
+  event.dataTransfer.effectAllowed = 'copy'
 }
 
 const removeBlock = (index) => {
@@ -618,8 +763,13 @@ const handleDrop = (event) => {
   try {
     const data = event.dataTransfer.getData('application/json')
     if (data) {
-      const question = JSON.parse(data)
-      addQuestionBlock(question)
+      const item = JSON.parse(data)
+      if (item.type === 'template') {
+        addTemplateBlock(item.template)
+      } else {
+        // 預設為 question
+        addQuestionBlock(item)
+      }
     }
   } catch (e) {
     console.error('Drop error', e)
@@ -774,12 +924,13 @@ const checkSnapAlignment = (event, block, index) => {
 // Data Fetching
 const fetchInitialData = async () => {
   try {
-    const [cRes, gRes, tRes, sRes, qRes] = await Promise.all([
+    const [cRes, gRes, tRes, sRes, qRes, templateRes] = await Promise.all([
       courseAPI.getAll(),
       studentGroupAPI.getAll(),
       hashtagAPI.getAll(),
       subjectAPI.getAll(),
-      questionBankAPI.getAll() // Fetch all for sidebar, optimize later with pagination/search API
+      questionBankAPI.getAll(), // Fetch all for sidebar, optimize later with pagination/search API
+      contentTemplateAPI.getAll()
     ])
     
     courses.value = cRes.data.results || cRes.data
@@ -787,6 +938,7 @@ const fetchInitialData = async () => {
     availableTags.value = tRes.data.results || tRes.data
     subjects.value = sRes.data.results || sRes.data
     questions.value = qRes.data.results || qRes.data
+    templates.value = templateRes.data.results || templateRes.data
     
     // If edit mode
     if (route.params.id) {
@@ -799,6 +951,18 @@ const fetchInitialData = async () => {
       resource.tag_ids = data.tag_ids || []
       resource.settings = data.settings || { paperSize: 'A4', orientation: 'portrait' }
       structure.value = data.structure || []
+    } else if (route.query.template_id) {
+      // 如果從 template 創建，載入 template 內容
+      try {
+        const templateRes = await contentTemplateAPI.getById(route.query.template_id)
+        const template = templateRes.data
+        if (template.structure && template.structure.length > 0) {
+          // 將 template 的 structure 插入到文件開頭
+          structure.value = [...template.structure]
+        }
+      } catch (error) {
+        console.error('載入模板失敗：', error)
+      }
     }
   } catch (error) {
     console.error('Failed to load data', error)

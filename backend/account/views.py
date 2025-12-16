@@ -46,9 +46,9 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
     #     如果不是管理員，則只返回自己的帳號
         if self.request.user.is_admin():
-            qs = CustomUser.objects.all()
+            qs = CustomUser.objects.select_related('custom_role', 'student_profile').all()
             return qs
-        return CustomUser.objects.filter(id=self.request.user.id)
+        return CustomUser.objects.select_related('custom_role', 'student_profile').filter(id=self.request.user.id)
 
 
 class RoleViewSet(viewsets.ModelViewSet):
@@ -62,11 +62,11 @@ class RoleViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         # 管理員可以查看所有角色
         if self.request.user.is_admin():
-            return Role.objects.all()
+            return Role.objects.prefetch_related('permissions').all()
         # 非管理員只能查看自己的角色（如果有的話）
         user = self.request.user
         if hasattr(user, 'custom_role') and user.custom_role:
-            return Role.objects.filter(id=user.custom_role.id)
+            return Role.objects.prefetch_related('permissions').filter(id=user.custom_role.id)
         return Role.objects.none()
     
     def retrieve(self, request, *args, **kwargs):
@@ -176,10 +176,11 @@ class RolePermissionViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request.user.is_admin():
             return RolePermission.objects.none()
+        queryset = RolePermission.objects.select_related('role').all()
         role_id = self.request.query_params.get('role', None)
         if role_id:
-            return RolePermission.objects.filter(role_id=role_id)
-        return RolePermission.objects.all()
+            queryset = queryset.filter(role_id=role_id)
+        return queryset
 
     def create(self, request, *args, **kwargs):
         if not request.user.is_admin():

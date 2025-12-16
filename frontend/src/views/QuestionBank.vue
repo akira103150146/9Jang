@@ -7,13 +7,6 @@
           <h2 class="text-2xl font-bold text-slate-900">{{ headerTitle }}</h2>
           <p class="mt-2 text-sm text-slate-500">{{ headerDescription }}</p>
         </div>
-        <button
-          v-if="currentTab === 'questions'"
-          @click="openFormModal()"
-          class="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 px-5 py-2 text-sm font-semibold text-white shadow-md hover:from-indigo-600 hover:to-purple-600"
-        >
-          新增題目
-        </button>
       </div>
       
       <!-- Tabs -->
@@ -29,200 +22,153 @@
         </button>
       </div>
       
-      <p v-if="usingMock && currentTab === 'questions'" class="mt-3 text-sm text-amber-600">
-        目前顯示示意資料（mock data），待後端 API 可用後即可串接。
-      </p>
     </header>
 
-    <!-- 題目庫 Tab -->
-    <div v-show="currentTab === 'questions'">
-      <!-- 篩選器 -->
-      <section class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm mb-6">
+    <!-- 文件庫 Tab -->
+    <div v-show="currentTab === 'resources'">
+      <!-- 生成器功能區塊 -->
+      <section class="rounded-3xl border border-indigo-100 bg-gradient-to-r from-indigo-50 to-purple-50 p-5 shadow-sm mb-6">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold text-slate-900">篩選條件</h3>
-          <button
-            @click="resetFilters"
-            class="text-sm text-slate-600 hover:text-slate-800 font-semibold"
-          >
-            清除篩選
-          </button>
+          <div>
+            <h3 class="text-lg font-semibold text-slate-900">生成教學資源</h3>
+            <p class="text-sm text-slate-600 mt-1">根據篩選條件自動生成 Quiz、考卷或講義</p>
+          </div>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <!-- 科目篩選 -->
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+          <!-- 標題 -->
           <div>
-            <label class="block text-xs font-semibold text-slate-700 mb-1">科目</label>
-            <select
-              v-model="filters.subject"
-              @change="applyFilters"
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-            >
-              <option value="">全部</option>
-              <option
-                v-for="subject in subjects"
-                :key="subject.subject_id"
-                :value="subject.subject_id"
-              >
-                {{ subject.name }}
-              </option>
-            </select>
-          </div>
-
-          <!-- 年級篩選 -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 mb-1">年級</label>
-            <select
-              v-model="filters.level"
-              @change="applyFilters"
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-            >
-              <option value="">全部</option>
-              <option value="JHS">國中</option>
-              <option value="SHS">高中</option>
-              <option value="VCS">高職</option>
-            </select>
-          </div>
-
-          <!-- 章節篩選 -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 mb-1">章節</label>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">標題 *</label>
             <input
-              v-model="filters.chapter"
-              @input="applyFilters"
+              v-model="generatorForm.title"
               type="text"
-              placeholder="輸入章節關鍵字"
+              placeholder="例如：第一次小測驗"
               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
             />
           </div>
 
-          <!-- 難度篩選 -->
+          <!-- 資源類型 -->
           <div>
-            <label class="block text-xs font-semibold text-slate-700 mb-1">難度</label>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">資源類型 *</label>
             <select
-              v-model="filters.difficulty"
-              @change="applyFilters"
+              v-model="generatorForm.resource_type"
               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
             >
-              <option value="">全部</option>
-              <option value="1">1</option>
-              <option value="2">2</option>
-              <option value="3">3</option>
-              <option value="4">4</option>
-              <option value="5">5</option>
+              <option value="QUIZ">小考 (Quiz)</option>
+              <option value="EXAM">段考卷 (Exam)</option>
+              <option value="HANDOUT">講義 (Handout)</option>
+              <option value="DOCUMENT">一般文件</option>
             </select>
           </div>
 
-          <!-- 標籤篩選 -->
+          <!-- 課程 -->
           <div>
-            <label class="block text-xs font-semibold text-slate-700 mb-1">標籤</label>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">所屬課程（可選）</label>
             <select
-              v-model="filters.tags"
-              @change="applyFilters"
-              multiple
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 min-h-[80px]"
+              v-model="generatorForm.course_id"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
             >
-              <option
-                v-for="tag in hashtags"
-                :key="tag.tag_id"
-                :value="tag.tag_id"
-              >
-                #{{ tag.tag_name }}
+              <option value="">未綁定</option>
+              <option v-for="course in courses" :key="course.course_id" :value="course.course_id">
+                {{ course.course_name }}
               </option>
             </select>
           </div>
 
-          <!-- 來源篩選 -->
+          <!-- 紙張大小 -->
           <div>
-            <label class="block text-xs font-semibold text-slate-700 mb-1">題目來源</label>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">紙張大小</label>
             <select
-              v-model="filters.source"
-              @change="applyFilters"
+              v-model="generatorForm.paperSize"
               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
             >
-              <option value="">全部</option>
-              <option value="teacher_created">老師新增</option>
-              <option value="imported_from_error_log">從錯題本匯入</option>
+              <option value="A4">A4 (210mm x 297mm)</option>
+              <option value="B4">B4 (250mm x 353mm)</option>
             </select>
           </div>
+
+          <!-- Template 選擇（可選） -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">插入 Template（可選）</label>
+            <select
+              v-model="generatorForm.template_id"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            >
+              <option value="">不使用 Template</option>
+              <option v-for="template in templates" :key="template.template_id" :value="template.template_id">
+                {{ template.title }}
+              </option>
+            </select>
+          </div>
+
+          <!-- 個別化設定（僅考卷） -->
+          <div v-if="generatorForm.resource_type === 'EXAM'">
+            <div class="space-y-2">
+              <div class="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  v-model="generatorForm.is_individualized"
+                  id="is_individualized"
+                  class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <label for="is_individualized" class="text-xs font-semibold text-slate-700">
+                  個別化考卷
+                </label>
+              </div>
+              <div v-if="generatorForm.is_individualized">
+                <select
+                  v-model="generatorForm.student_group_ids"
+                  multiple
+                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 min-h-[80px]"
+                >
+                  <option v-for="group in studentGroups" :key="group.group_id" :value="group.group_id">
+                    {{ group.name }} ({{ group.students_count || 0 }} 位學生)
+                  </option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-3">
+          <button
+            @click="generateResource"
+            :disabled="generating || !generatorForm.title.trim()"
+            class="rounded-full bg-indigo-500 px-6 py-2 text-sm font-semibold text-white hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {{ generating ? '生成中...' : '生成' }}
+          </button>
         </div>
       </section>
 
-      <!-- 載入中 -->
-      <div v-if="loading" class="flex items-center justify-center py-12">
-        <div class="text-slate-500">載入中...</div>
-      </div>
-
-      <!-- 題目列表 -->
-      <section v-else class="grid gap-4 lg:grid-cols-2">
-        <article
-          v-for="question in filteredQuestions"
-          :key="question.question_id"
-          class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm"
-        >
-          <div class="flex items-start justify-between">
-            <div class="flex-1">
-              <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">
-                Q{{ question.question_id }} ・ {{ question.subject_name || question.subject?.name || '無科目' }} / {{ getLevelDisplay(question.level) }}
-              </p>
-              <h3 class="mt-1 text-lg font-semibold text-slate-900">{{ question.chapter }}</h3>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="ml-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">
-                難度 {{ question.difficulty }}
-              </span>
-              <span
-                v-if="question.source"
-                class="rounded-full px-3 py-1 text-xs font-semibold"
-                :class="question.source === 'teacher_created' ? 'bg-green-50 text-green-600' : 'bg-purple-50 text-purple-600'"
-              >
-                {{ question.source === 'teacher_created' ? '老師新增' : '錯題本匯入' }}
-              </span>
-            </div>
-          </div>
-          <div
-            class="mt-3 text-sm text-slate-700 markdown-preview"
-            v-html="renderMarkdownWithLatex(question.content)"
-          ></div>
-          <div v-if="question.correct_answer" class="mt-3 text-xs text-slate-600 markdown-preview">
-            <span class="font-semibold">答案：</span>
-            <span v-html="renderMarkdownWithLatex(question.correct_answer)"></span>
-          </div>
-          <div class="mt-4 flex flex-wrap gap-2">
-            <span
-              v-for="tag in question.tags || []"
-              :key="tag"
-              class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600"
-            >
-              #{{ tag }}
-            </span>
-            <span v-if="!question.tags || question.tags.length === 0" class="text-xs text-slate-400">
-              無標籤
-            </span>
-          </div>
-          <div class="mt-4 flex gap-2">
+      <!-- 生成結果預覽 -->
+      <section v-if="generatedResource" class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold text-slate-900">生成結果預覽</h3>
+          <div class="flex gap-2">
             <button
-              @click="openFormModal(question)"
-              class="rounded-full bg-indigo-500 px-3 py-1 text-xs font-semibold text-white hover:bg-indigo-600"
+              @click="saveGeneratedResource"
+              :disabled="savingGenerated"
+              class="rounded-full bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50"
             >
-              編輯
+              {{ savingGenerated ? '儲存中...' : '儲存' }}
             </button>
             <button
-              @click="deleteQuestion(question.question_id, question.chapter)"
-              class="rounded-full bg-rose-500 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-600"
+              @click="openInEditor"
+              class="rounded-full bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-600"
             >
-              刪除
+              在編輯器中開啟
             </button>
           </div>
-        </article>
-        <div v-if="filteredQuestions.length === 0" class="col-span-2 rounded-3xl border border-slate-100 bg-white p-12 text-center">
-          <p class="text-slate-500">
-            {{ questionBank.length === 0 ? '目前沒有題目，點擊「新增題目」開始建立題庫。' : '沒有符合篩選條件的題目，請調整篩選條件。' }}
-          </p>
+        </div>
+        <div class="space-y-4">
+          <div>
+            <p class="text-sm font-semibold text-slate-700">標題：{{ generatedResource.title }}</p>
+            <p class="text-sm text-slate-600">共 {{ generatedResource.structure?.length || 0 }} 個區塊</p>
+          </div>
         </div>
       </section>
-    </div>
 
-    <!-- 文件庫 Tab -->
-    <div v-show="currentTab === 'resources'">
       <ResourceList />
     </div>
 
@@ -231,377 +177,27 @@
       <TemplateList />
     </div>
 
-    <!-- 新增標籤對話框 (Shared) -->
-    <div
-      v-if="showTagForm"
-      class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm"
-      @click.self="showTagForm = false"
-    >
-      <div class="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-xl font-bold text-slate-900">新增標籤</h3>
-          <button @click="showTagForm = false" class="text-slate-400 hover:text-slate-600">
-            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <form @submit.prevent="saveTag" class="space-y-4">
-          <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">標籤名稱 *</label>
-            <input
-              v-model="tagFormData.tag_name"
-              type="text"
-              required
-              maxlength="50"
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-              placeholder="例如：必考三角、陷阱題、被動語態"
-            />
-            <p class="mt-1 text-xs text-slate-500">標籤名稱將以 # 開頭顯示</p>
-          </div>
-
-          <div class="flex justify-end gap-3 pt-4">
-            <button
-              type="button"
-              @click="showTagForm = false"
-              class="rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              取消
-            </button>
-            <button
-              type="submit"
-              :disabled="savingTag"
-              class="rounded-full bg-indigo-500 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-600 disabled:opacity-50"
-            >
-              {{ savingTag ? '儲存中...' : '儲存' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- 新增科目對話框 (Shared) -->
-    <div
-      v-if="showSubjectForm"
-      class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm"
-      @click.self="showSubjectForm = false"
-    >
-      <div class="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-xl font-bold text-slate-900">新增科目</h3>
-          <button @click="showSubjectForm = false" class="text-slate-400 hover:text-slate-600">
-            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <form @submit.prevent="saveSubject" class="space-y-4">
-          <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">科目名稱 *</label>
-            <input
-              v-model="subjectFormData.name"
-              type="text"
-              required
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-              placeholder="例如：數學"
-            />
-          </div>
-
-          <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">科目代碼</label>
-            <input
-              v-model="subjectFormData.code"
-              type="text"
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-              placeholder="例如：Math（選填）"
-            />
-          </div>
-
-          <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">描述</label>
-            <textarea
-              v-model="subjectFormData.description"
-              rows="3"
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-              placeholder="科目描述（選填）"
-            ></textarea>
-          </div>
-
-          <div class="flex justify-end gap-3 pt-4">
-            <button
-              type="button"
-              @click="showSubjectForm = false"
-              class="rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              取消
-            </button>
-            <button
-              type="submit"
-              :disabled="savingSubject"
-              class="rounded-full bg-indigo-500 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-600 disabled:opacity-50"
-            >
-              {{ savingSubject ? '儲存中...' : '儲存' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- 題目表單對話框 -->
-    <div
-      v-if="showFormModal"
-      ref="formModalRef"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm"
-      @click.self="closeFormModal"
-      tabindex="-1"
-    >
-      <div class="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-xl font-bold text-slate-900">
-            {{ editingQuestion ? '編輯題目' : '新增題目' }}
-          </h3>
-          <button @click="closeFormModal" class="text-slate-400 hover:text-slate-600">
-            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <form @submit.prevent="saveQuestion" class="space-y-4">
-          <div>
-            <div class="flex items-center justify-between mb-1">
-              <label class="block text-sm font-semibold text-slate-700">科目 *</label>
-              <button
-                type="button"
-                @click.prevent.stop="openSubjectForm"
-                class="text-xs text-indigo-600 hover:text-indigo-700 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-200 rounded px-2 py-1 transition-colors"
-              >
-                + 新增科目
-              </button>
-            </div>
-            <select
-              v-model="formData.subject"
-              required
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-            >
-              <option value="">請選擇科目</option>
-              <option
-                v-for="subject in subjects"
-                :key="subject.subject_id"
-                :value="subject.subject_id"
-              >
-                {{ subject.name }}{{ subject.code ? ` (${subject.code})` : '' }}
-              </option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">適用年級 *</label>
-            <select
-              v-model="formData.level"
-              required
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-            >
-              <option value="">請選擇</option>
-              <option value="JHS">Junior High School</option>
-              <option value="SHS">Senior High School</option>
-              <option value="VCS">Vocational School</option>
-            </select>
-          </div>
-
-          <div class="relative">
-            <label class="block text-sm font-semibold text-slate-700 mb-1">章節/單元 *</label>
-            <input
-              v-model="formData.chapter"
-              type="text"
-              required
-              @input="searchChapters"
-              @focus="searchChapters"
-              @blur="handleChapterBlur"
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-              placeholder="例如：向量與空間（輸入關鍵字自動搜尋）"
-            />
-            <!-- 章節候選列表 -->
-            <div
-              v-if="chapterSuggestions.length > 0 && showChapterSuggestions"
-              class="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"
-            >
-              <div
-                v-for="(suggestion, index) in chapterSuggestions"
-                :key="index"
-                @mousedown.prevent="selectChapter(suggestion.chapter)"
-                class="px-3 py-2 hover:bg-indigo-50 cursor-pointer border-b border-slate-100 last:border-b-0 transition-colors"
-              >
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-slate-900">{{ suggestion.chapter }}</span>
-                  <div class="flex items-center gap-2">
-                    <span
-                      v-if="suggestion.relevance === 2"
-                      class="text-xs text-indigo-600 font-semibold bg-indigo-50 px-2 py-0.5 rounded"
-                    >
-                      精確匹配
-                    </span>
-                    <span class="text-xs text-slate-500">
-                      {{ suggestion.count }} 題
-                </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">題目內容 (Markdown + LaTeX) *</label>
-            <div class="space-y-3">
-              <!-- 編輯區域 -->
-              <div class="relative">
-                <MarkdownEditor
-                  v-model="formData.content"
-                  :placeholder="'輸入題目內容...\n\n支援 Markdown 語法：\n- **粗體**\n- *斜體*\n- `程式碼`\n\n支援 LaTeX 數學公式：\n- 行內公式：$x^2 + y^2 = r^2$\n- 區塊公式：$$\n\\int_0^1 x^2 dx = \\frac{1}{3}\n$$'"
-                />
-              </div>
-              
-              <!-- 預覽區域 -->
-              <div class="border-t border-slate-200 pt-3">
-                <div class="flex items-center justify-between mb-2">
-                  <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">即時預覽</span>
-                  <span class="text-xs text-slate-400">下方顯示渲染效果</span>
-                </div>
-                <div
-                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-slate-50 min-h-[150px] max-h-[300px] overflow-y-auto markdown-preview"
-                  v-html="renderedContent"
-                ></div>
-              </div>
-            </div>
-            <p class="mt-1 text-xs text-slate-500">
-              提示：使用 $$...$$ 表示區塊公式，使用 $...$ 表示行內公式
-            </p>
-          </div>
-
-          <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">正確答案 (Markdown + LaTeX) *</label>
-            <div class="space-y-3">
-              <!-- 編輯區域 -->
-              <div class="relative">
-                <MarkdownEditor
-                  v-model="formData.correct_answer"
-                  :placeholder="'輸入正確答案...\n\n支援 Markdown 語法：\n- **粗體**\n- *斜體*\n- `程式碼`\n\n支援 LaTeX 數學公式：\n- 行內公式：$x = 5$\n- 區塊公式：$$\n\\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}\n$$'"
-                />
-              </div>
-              
-              <!-- 預覽區域 -->
-              <div class="border-t border-slate-200 pt-3">
-                <div class="flex items-center justify-between mb-2">
-                  <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">即時預覽</span>
-                  <span class="text-xs text-slate-400">下方顯示渲染效果</span>
-                </div>
-                <div
-                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-slate-50 min-h-[100px] max-h-[200px] overflow-y-auto markdown-preview"
-                  v-html="renderedCorrectAnswer"
-                ></div>
-              </div>
-            </div>
-            <p class="mt-1 text-xs text-slate-500">
-              提示：使用 $$...$$ 表示區塊公式，使用 $...$ 表示行內公式
-            </p>
-          </div>
-
-          <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">難度 (1-5) *</label>
-            <input
-              v-model.number="formData.difficulty"
-              type="number"
-              min="1"
-              max="5"
-              required
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-            />
-          </div>
-
-          <!-- 標籤選擇區域 -->
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <label class="block text-sm font-semibold text-slate-700">標籤分類</label>
-              <button
-                type="button"
-                @click.prevent.stop="openTagForm"
-                class="text-xs text-indigo-600 hover:text-indigo-700 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-200 rounded px-2 py-1 transition-colors"
-              >
-                + 新增標籤
-              </button>
-            </div>
-            <div class="border border-slate-300 rounded-lg p-3 min-h-[100px] max-h-[200px] overflow-y-auto">
-              <div v-if="hashtags.length === 0" class="text-sm text-slate-400 text-center py-4">
-                尚無標籤，點擊「新增標籤」開始建立
-              </div>
-              <div v-else class="flex flex-wrap gap-2">
-                <button
-                  v-for="tag in hashtags"
-                  :key="tag.tag_id"
-                  type="button"
-                  @click="toggleTag(tag.tag_id)"
-                  :class="[
-                    'px-3 py-1 rounded-full text-xs font-semibold transition-all',
-                    formData.tag_ids.includes(tag.tag_id)
-                      ? 'bg-indigo-500 text-white shadow-md'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  ]"
-                >
-                  #{{ tag.tag_name }}
-                  <span v-if="formData.tag_ids.includes(tag.tag_id)" class="ml-1">✓</span>
-                </button>
-              </div>
-            </div>
-            <p class="mt-1 text-xs text-slate-500">
-              已選擇 {{ formData.tag_ids.length }} 個標籤
-            </p>
-          </div>
-
-          <div class="flex justify-end gap-3 pt-4">
-            <button
-              type="button"
-              @click="closeFormModal"
-              class="rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              取消
-            </button>
-            <button
-              type="submit"
-              :disabled="saving"
-              class="rounded-full bg-indigo-500 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-600 disabled:opacity-50"
-            >
-              {{ saving ? '儲存中...' : '儲存' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <!-- 題目表單和相關對話框已移到 ResourceList 中 -->
   </div>
 </template>
 
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
-import { questionBankAPI, hashtagAPI, subjectAPI } from '../services/api'
-import { mockQuestionBank } from '../data/mockData'
-import MarkdownEditor from '../components/MarkdownEditor.vue'
-import { useMarkdownRenderer } from '../composables/useMarkdownRenderer'
+import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { generationAPI, courseAPI, studentGroupAPI, learningResourceAPI, contentTemplateAPI } from '../services/api'
 import ResourceList from '../components/ResourceList.vue'
 import TemplateList from '../components/TemplateList.vue'
 
 // Tabs Configuration
-const currentTab = ref('questions')
+const currentTab = ref('resources')
 const tabs = [
-  { id: 'questions', name: '題目庫' },
   { id: 'resources', name: '文件庫' },
   { id: 'templates', name: '模板庫' }
 ]
 
 const headerTitle = computed(() => {
   const map = {
-    'questions': '題庫與標籤系統',
     'resources': '教學資源管理',
     'templates': '內容模板管理'
   }
@@ -610,392 +206,191 @@ const headerTitle = computed(() => {
 
 const headerDescription = computed(() => {
   const map = {
-    'questions': '支援 Markdown + LaTeX，含標籤管理',
-    'resources': '創建、編輯與管理 Quiz、考卷與講義',
+    'resources': '創建、編輯與管理 Quiz、考卷與講義，支援題目生成',
     'templates': '管理可重複使用的內容模板'
   }
   return map[currentTab.value]
 })
 
-const questionBank = ref([])
-const filteredQuestions = ref([])
-const hashtags = ref([])
-const subjects = ref([])
-const loading = ref(false)
-const usingMock = ref(false)
-const showFormModal = ref(false)
-const showSubjectForm = ref(false)
-const showTagForm = ref(false)
+const courses = ref([])
+const studentGroups = ref([])
+const templates = ref([])
 
-// 篩選器
-const filters = ref({
-  subject: '',
-  level: '',
-  chapter: '',
-  difficulty: '',
-  tags: [],
-  source: ''
-})
-const editingQuestion = ref(null)
-const saving = ref(false)
-const savingSubject = ref(false)
-const savingTag = ref(false)
-const chapterSuggestions = ref([])
-const showChapterSuggestions = ref(false)
-const searchChapterTimeout = ref(null)
-const formModalRef = ref(null)
-
-// 使用 Markdown 渲染 composable
-const { renderMarkdownWithLatex } = useMarkdownRenderer()
-
-// 計算渲染後的內容（用於即時預覽）
-const renderedContent = computed(() => renderMarkdownWithLatex(formData.value.content))
-const renderedCorrectAnswer = computed(() => renderMarkdownWithLatex(formData.value.correct_answer))
-
-const formData = ref({
-  subject: '',
-  level: '',
-  chapter: '',
-  content: '',
-  correct_answer: '',
-  difficulty: 1,
-  tag_ids: []
+// 生成器相關狀態
+const generating = ref(false)
+const savingGenerated = ref(false)
+const generatedResource = ref(null)
+const generatorForm = ref({
+  title: '',
+  resource_type: 'QUIZ',
+  course_id: '',
+  paperSize: 'A4',
+  template_id: '',
+  is_individualized: false,
+  student_group_ids: []
 })
 
-const subjectFormData = ref({
-  name: '',
-  code: '',
-  description: ''
-})
 
-const tagFormData = ref({
-  tag_name: ''
-})
-
-const getLevelDisplay = (level) => {
-  const map = {
-    'JHS': '國中',
-    'SHS': '高中',
-    'VCS': '高職'
-  }
-  return map[level] || level
-}
-
-const fetchQuestions = async () => {
-  loading.value = true
+const fetchCourses = async () => {
   try {
-    // 建立查詢參數
-    const params = {}
-    if (filters.value.subject) params.subject = filters.value.subject
-    if (filters.value.level) params.level = filters.value.level
-    if (filters.value.chapter) params.chapter = filters.value.chapter
-    if (filters.value.difficulty) params.difficulty = filters.value.difficulty
-    if (filters.value.tags && filters.value.tags.length > 0) {
-      params['tags[]'] = filters.value.tags
-    }
-    if (filters.value.source) params.source = filters.value.source
-    
-    const response = await questionBankAPI.getAll({ params })
+    const response = await courseAPI.getAll()
     const data = response.data.results || response.data
-    questionBank.value = Array.isArray(data) ? data : []
-    applyFilters()
-    usingMock.value = false
+    courses.value = Array.isArray(data) ? data : []
   } catch (error) {
-    console.warn('獲取題目失敗，使用 mock 資料：', error)
-    questionBank.value = mockQuestionBank
-    applyFilters()
-    usingMock.value = true
-  } finally {
-    loading.value = false
+    console.warn('獲取課程失敗：', error)
+    courses.value = []
   }
 }
 
-const applyFilters = () => {
-  // 如果使用 mock 資料，在前端進行篩選
-  if (usingMock.value) {
-    filteredQuestions.value = questionBank.value.filter(q => {
-      if (filters.value.subject && q.subject !== parseInt(filters.value.subject)) return false
-      if (filters.value.level && q.level !== filters.value.level) return false
-      if (filters.value.chapter && !q.chapter.includes(filters.value.chapter)) return false
-      if (filters.value.difficulty && q.difficulty !== parseInt(filters.value.difficulty)) return false
-      if (filters.value.tags && filters.value.tags.length > 0) {
-        const hasTag = filters.value.tags.some(tagId => 
-          q.tags && q.tags.some(tag => tag.tag_id === parseInt(tagId))
-        )
-        if (!hasTag) return false
-      }
-      return true
+const fetchStudentGroups = async () => {
+  try {
+    const response = await studentGroupAPI.getAll()
+    const data = response.data.results || response.data
+    studentGroups.value = Array.isArray(data) ? data : []
+  } catch (error) {
+    console.warn('獲取學生群組失敗：', error)
+    studentGroups.value = []
+  }
+}
+
+const fetchTemplates = async () => {
+  try {
+    const response = await contentTemplateAPI.getAll()
+    const data = response.data.results || response.data
+    templates.value = Array.isArray(data) ? data : []
+  } catch (error) {
+    console.warn('獲取模板失敗：', error)
+    templates.value = []
+  }
+}
+
+// 將生成的題目列表轉換為 structure 格式
+const convertQuestionsToStructure = (questions, templateId = null) => {
+  const structure = []
+  let idCounter = 1
+
+  // 如果有選擇 Template，先插入 Template 區塊
+  if (templateId) {
+    structure.push({
+      id: idCounter++,
+      type: 'template',
+      template_id: templateId
     })
-  } else {
-    // 後端已篩選，直接使用
-    filteredQuestions.value = questionBank.value
   }
+
+  // 添加題目區塊
+  questions.forEach(question => {
+    structure.push({
+      id: idCounter++,
+      type: 'question',
+      question_id: question.question_id
+    })
+  })
+
+  return structure
 }
 
-// 監聽篩選器變化，自動重新載入
-watch(filters, () => {
-  fetchQuestions()
-}, { deep: true })
-
-const resetFilters = () => {
-  filters.value = {
-    subject: '',
-    level: '',
-    chapter: '',
-    difficulty: '',
-    tags: [],
-    source: ''
-  }
-  fetchQuestions()
-}
-
-const fetchHashtags = async () => {
-  try {
-    const response = await hashtagAPI.getAll()
-    const data = response.data.results || response.data
-    hashtags.value = Array.isArray(data) ? data : []
-  } catch (error) {
-    console.warn('獲取標籤失敗：', error)
-  }
-}
-
-const fetchSubjects = async () => {
-  try {
-    const response = await subjectAPI.getAll()
-    const data = response.data.results || response.data
-    subjects.value = Array.isArray(data) ? data : []
-  } catch (error) {
-    console.warn('獲取科目失敗：', error)
-    subjects.value = []
-  }
-}
-
-const openSubjectForm = () => {
-  showSubjectForm.value = true
-}
-
-const searchChapters = async () => {
-  // 清除之前的延遲
-  if (searchChapterTimeout.value) {
-    clearTimeout(searchChapterTimeout.value)
-  }
-  
-  const query = formData.value.chapter?.trim() || ''
-  
-  // 如果輸入太短，不搜尋
-  if (query.length < 1) {
-    chapterSuggestions.value = []
-    showChapterSuggestions.value = false
+// 生成資源
+const generateResource = async () => {
+  if (!generatorForm.value.title.trim()) {
+    alert('請輸入標題')
     return
   }
-  
-  // 延遲搜尋，避免頻繁請求
-  searchChapterTimeout.value = setTimeout(async () => {
-    try {
-      const response = await questionBankAPI.searchChapters(
-        query,
-        formData.value.subject || null,
-        formData.value.level || null
-      )
-      chapterSuggestions.value = response.data || []
-      showChapterSuggestions.value = chapterSuggestions.value.length > 0
-    } catch (error) {
-      console.warn('搜尋章節失敗：', error)
-      chapterSuggestions.value = []
-      showChapterSuggestions.value = false
-    }
-  }, 300)
-}
 
-const selectChapter = (chapter) => {
-  formData.value.chapter = chapter
-  showChapterSuggestions.value = false
-  chapterSuggestions.value = []
-}
-
-const handleChapterBlur = () => {
-  // 延遲隱藏，讓點擊事件先執行
-  setTimeout(() => {
-    showChapterSuggestions.value = false
-  }, 200)
-}
-
-const saveSubject = async () => {
-  savingSubject.value = true
+  generating.value = true
   try {
-    const response = await subjectAPI.create(subjectFormData.value)
-    subjects.value.push(response.data)
-    // 自動選擇剛新增的科目
-    formData.value.subject = response.data.subject_id
-    showSubjectForm.value = false
-    // 重置表單
-    subjectFormData.value = {
-      name: '',
-      code: '',
-      description: ''
+    // 準備生成 API 的參數（目前不使用篩選條件，篩選功能在 ResourceEditor 的題目庫 tab 中）
+    const generateParams = {
+      subject_id: null,
+      level: null,
+      chapter: null,
+      difficulty: null,
+      tag_ids: [],
+      source: null,
+      title: generatorForm.value.title.trim()
     }
-  } catch (error) {
-    console.error('儲存科目失敗：', error)
-    if (error.response?.data) {
-      const errorMsg = typeof error.response.data === 'string' 
-        ? error.response.data 
-        : JSON.stringify(error.response.data)
-      alert(`儲存失敗：${errorMsg}`)
+
+    // 根據資源類型調用不同的生成 API
+    let response
+    if (generatorForm.value.resource_type === 'QUIZ') {
+      response = await generationAPI.generateQuiz(generateParams)
+    } else if (generatorForm.value.resource_type === 'EXAM') {
+      response = await generationAPI.generateExam({
+        ...generateParams,
+        course_id: generatorForm.value.course_id || null,
+        is_individualized: generatorForm.value.is_individualized,
+        student_group_ids: generatorForm.value.is_individualized ? generatorForm.value.student_group_ids : []
+      })
     } else {
-      alert('儲存失敗，請稍後再試')
-    }
-  } finally {
-    savingSubject.value = false
-  }
-}
-
-const openTagForm = () => {
-  showTagForm.value = true
-}
-
-const toggleTag = (tagId) => {
-  const index = formData.value.tag_ids.indexOf(tagId)
-  if (index > -1) {
-    // 如果已選擇，則移除
-    formData.value.tag_ids.splice(index, 1)
-  } else {
-    // 如果未選擇，則添加
-    formData.value.tag_ids.push(tagId)
-  }
-}
-
-const saveTag = async () => {
-  savingTag.value = true
-  try {
-    // 檢查標籤是否已存在
-    const existingTag = hashtags.value.find(
-      tag => tag.tag_name.toLowerCase() === tagFormData.value.tag_name.toLowerCase().trim()
-    )
-    
-    if (existingTag) {
-      // 如果標籤已存在，直接選擇它
-      if (!formData.value.tag_ids.includes(existingTag.tag_id)) {
-        formData.value.tag_ids.push(existingTag.tag_id)
-      }
-      showTagForm.value = false
-      tagFormData.value.tag_name = ''
-      alert('標籤已存在，已自動選擇')
-      return
-    }
-
-    // 創建新標籤（creator 可選，允許為 null）
-    const response = await hashtagAPI.create({
-      tag_name: tagFormData.value.tag_name.trim()
-    })
-    
-    // 添加新標籤到列表
-    hashtags.value.push(response.data)
-    // 自動選擇剛新增的標籤
-    formData.value.tag_ids.push(response.data.tag_id)
-    showTagForm.value = false
-    // 重置表單
-    tagFormData.value.tag_name = ''
-  } catch (error) {
-    console.error('儲存標籤失敗：', error)
-    if (error.response?.data) {
-      let errorMsg = ''
-      if (typeof error.response.data === 'string') {
-        errorMsg = error.response.data
-      } else if (error.response.data.tag_name) {
-        // Django 錯誤格式
-        errorMsg = Array.isArray(error.response.data.tag_name)
-          ? error.response.data.tag_name[0]
-          : error.response.data.tag_name
-      } else {
-        errorMsg = JSON.stringify(error.response.data)
-      }
-      alert(`儲存失敗：${errorMsg}`)
-    } else {
-      alert('儲存失敗，請稍後再試')
-    }
-  } finally {
-    savingTag.value = false
-  }
-}
-
-const openFormModal = async (question = null) => {
-  editingQuestion.value = question
-  
-  if (question) {
-    // 獲取題目的標籤 ID
-    // 優先使用 tag_ids（如果 API 返回），否則從 tags 名稱列表中查找
-    let tagIds = []
-    if (question.tag_ids && Array.isArray(question.tag_ids)) {
-      tagIds = question.tag_ids
-    } else if (question.tags && Array.isArray(question.tags)) {
-      // 如果有標籤名稱列表，需要找到對應的 tag_id
-      question.tags.forEach(tagName => {
-        const tag = hashtags.value.find(t => t.tag_name === tagName)
-        if (tag) {
-          tagIds.push(tag.tag_id)
-        }
+      // HANDOUT 或 DOCUMENT
+      response = await generationAPI.generateMaterial({
+        ...generateParams,
+        course_id: generatorForm.value.course_id || null
       })
     }
-    
-    formData.value = {
-      subject: question.subject?.subject_id || question.subject, // 支援對象或ID
-      level: question.level,
-      chapter: question.chapter,
-      content: question.content,
-      correct_answer: question.correct_answer,
-      difficulty: question.difficulty,
-      tag_ids: tagIds
-    }
-  } else {
-    formData.value = {
-      subject: '',
-      level: '',
-      chapter: '',
-      content: '',
-      correct_answer: '',
-      difficulty: 1,
-      tag_ids: []
-    }
-  }
-  showFormModal.value = true
-}
 
-const closeFormModal = () => {
-  showFormModal.value = false
-  editingQuestion.value = null
-  // 重置表單
-  formData.value = {
-    subject: '',
-    level: '',
-    chapter: '',
-    content: '',
-    correct_answer: '',
-    difficulty: 1,
-    tag_ids: []
-  }
-}
+    // 將生成的題目列表轉換為 structure 格式
+    const questions = response.data.questions || []
+    const structure = convertQuestionsToStructure(questions, generatorForm.value.template_id || null)
 
-const saveQuestion = async () => {
-  saving.value = true
-  try {
-    // 準備數據，將 tag_ids 改為 tag_ids_input（對應後端寫入欄位）
-    const data = {
-      ...formData.value,
-      tag_ids_input: formData.value.tag_ids,
-      // 移除 tag_ids，因為它是只讀的
-      tag_ids: undefined
+    // 構建生成的資源對象
+    generatedResource.value = {
+      title: generatorForm.value.title.trim(),
+      resource_type: generatorForm.value.resource_type,
+      course: generatorForm.value.course_id || null,
+      student_group_ids: generatorForm.value.is_individualized ? generatorForm.value.student_group_ids : [],
+      settings: {
+        paperSize: generatorForm.value.paperSize,
+        orientation: 'portrait'
+      },
+      structure: structure,
+      questions: questions // 保留原始題目列表用於預覽
     }
-    delete data.tag_ids
-    
-    if (editingQuestion.value) {
-      await questionBankAPI.update(editingQuestion.value.question_id, data)
-    } else {
-      await questionBankAPI.create(data)
-    }
-    closeFormModal()
-    fetchQuestions()
   } catch (error) {
-    console.error('儲存題目失敗：', error)
+    console.error('生成失敗：', error)
+    if (error.response?.data) {
+      const errorMsg = typeof error.response.data === 'string' 
+        ? error.response.data 
+        : JSON.stringify(error.response.data)
+      alert(`生成失敗：${errorMsg}`)
+    } else {
+      alert('生成失敗，請稍後再試')
+    }
+  } finally {
+    generating.value = false
+  }
+}
+
+// 儲存生成的資源
+const saveGeneratedResource = async () => {
+  if (!generatedResource.value) return
+
+  savingGenerated.value = true
+  try {
+    const payload = {
+      title: generatedResource.value.title,
+      resource_type: generatedResource.value.resource_type,
+      course: generatedResource.value.course,
+      student_group_ids: generatedResource.value.student_group_ids,
+      settings: generatedResource.value.settings,
+      structure: generatedResource.value.structure
+    }
+
+    const response = await learningResourceAPI.create(payload)
+    alert('儲存成功！')
+    generatedResource.value = null
+    // 重置表單
+    generatorForm.value = {
+      title: '',
+      resource_type: 'QUIZ',
+      course_id: '',
+      paperSize: 'A4',
+      template_id: '',
+      is_individualized: false,
+      student_group_ids: []
+    }
+  } catch (error) {
+    console.error('儲存失敗：', error)
     if (error.response?.data) {
       const errorMsg = typeof error.response.data === 'string' 
         ? error.response.data 
@@ -1005,27 +400,40 @@ const saveQuestion = async () => {
       alert('儲存失敗，請稍後再試')
     }
   } finally {
-    saving.value = false
+    savingGenerated.value = false
   }
 }
 
-const deleteQuestion = async (id, chapter) => {
-  if (!confirm(`確定要刪除題目「${chapter}」嗎？`)) {
-    return
-  }
+// 在編輯器中開啟生成的資源
+const openInEditor = async () => {
+  if (!generatedResource.value) return
 
+  // 先儲存資源
+  savingGenerated.value = true
   try {
-    await questionBankAPI.delete(id)
-    fetchQuestions()
+    const payload = {
+      title: generatedResource.value.title,
+      resource_type: generatedResource.value.resource_type,
+      course: generatedResource.value.course,
+      student_group_ids: generatedResource.value.student_group_ids,
+      settings: generatedResource.value.settings,
+      structure: generatedResource.value.structure
+    }
+
+    const response = await learningResourceAPI.create(payload)
+    // 跳轉到編輯器
+    router.push(`/resources/edit/${response.data.resource_id}`)
   } catch (error) {
-    console.error('刪除失敗:', error)
-    alert('刪除失敗，請稍後再試')
+    console.error('儲存失敗：', error)
+    alert('儲存失敗，無法開啟編輯器')
+  } finally {
+    savingGenerated.value = false
   }
 }
 
 onMounted(() => {
-  fetchSubjects()
-  fetchQuestions()
-  fetchHashtags()
+  fetchCourses()
+  fetchStudentGroups()
+  fetchTemplates()
 })
 </script>
