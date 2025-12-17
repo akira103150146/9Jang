@@ -362,10 +362,11 @@
               <!-- 區塊內容 -->
               <template v-if="block.type === 'text'">
                 <div class="prose max-w-none">
-                  <MarkdownEditor
-                    :ref="el => { if (el) markdownEditorRefs[block.id] = el }"
-                    v-model="block.content"
+                  <RichTextEditor
+                    :ref="(el) => { if (el) markdownEditorRefs[block.id] = el }"
+                    :model-value="toRT(block.content)"
                     :placeholder="'輸入文字...'"
+                    @update:model-value="(v) => (block.content = fromRT(v))"
                     class="border-none shadow-none bg-transparent"
                   />
                 </div>
@@ -425,7 +426,7 @@
 import { ref, reactive, onMounted, onUnmounted, watch, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { learningResourceAPI, courseAPI, studentGroupAPI, hashtagAPI, questionBankAPI, subjectAPI, contentTemplateAPI } from '../services/api'
-import MarkdownEditor from '../components/MarkdownEditor.vue'
+import RichTextEditor from '../components/RichTextEditor.vue'
 import QuestionBlock from '../components/QuestionBlock.vue'
 import TemplateBlock from '../components/TemplateBlock.vue'
 import { useMarkdownRenderer } from '../composables/useMarkdownRenderer'
@@ -494,6 +495,18 @@ const pageContainers = ref([])
 const pageContentContainers = ref([])
 const totalPages = ref(1)
 const markdownEditorRefs = ref({})
+
+const toRT = (v) => {
+  if (typeof v === 'string') return v
+  if (v && typeof v === 'object' && typeof v.text === 'string') return v
+  return ''
+}
+
+const fromRT = (v) => {
+  if (typeof v === 'string') return v
+  if (v && typeof v === 'object' && typeof v.text === 'string') return v.text
+  return ''
+}
 
 // Drag & Drop state
 const draggingBlock = ref(null)

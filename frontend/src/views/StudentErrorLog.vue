@@ -268,22 +268,11 @@
             <div class="space-y-3">
               <!-- 編輯區域 -->
               <div class="relative">
-                <MarkdownEditor
-                  v-model="errorFormData.content"
+                <RichTextEditor
+                  :model-value="toRT(errorFormData.content)"
                   :placeholder="'輸入題目內容...\n\n支援 Markdown 語法：\n- **粗體**\n- *斜體*\n- `程式碼`\n\n支援 LaTeX 數學公式：\n- 行內公式：$x^2 + y^2 = r^2$\n- 區塊公式：$$\n\\int_0^1 x^2 dx = \\frac{1}{3}\n$$'"
+                  @update:model-value="(v) => (errorFormData.content = fromRT(v))"
                 />
-              </div>
-              
-              <!-- 預覽區域 -->
-              <div class="border-t border-slate-200 pt-3">
-                <div class="flex items-center justify-between mb-2">
-                  <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">即時預覽</span>
-                  <span class="text-xs text-slate-400">下方顯示渲染效果</span>
-                </div>
-                <div
-                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-slate-50 min-h-[150px] max-h-[300px] overflow-y-auto markdown-preview"
-                  v-html="renderedContent"
-                ></div>
               </div>
             </div>
             <p class="mt-1 text-xs text-slate-500">
@@ -297,22 +286,11 @@
             <div class="space-y-3">
               <!-- 編輯區域 -->
               <div class="relative">
-                <MarkdownEditor
-                  v-model="errorFormData.correct_answer"
+                <RichTextEditor
+                  :model-value="toRT(errorFormData.correct_answer)"
                   :placeholder="'輸入正確答案...\n\n支援 Markdown 語法：\n- **粗體**\n- *斜體*\n- `程式碼`\n\n支援 LaTeX 數學公式：\n- 行內公式：$x = 5$\n- 區塊公式：$$\n\\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}\n$$'"
+                  @update:model-value="(v) => (errorFormData.correct_answer = fromRT(v))"
                 />
-              </div>
-              
-              <!-- 預覽區域 -->
-              <div class="border-t border-slate-200 pt-3">
-                <div class="flex items-center justify-between mb-2">
-                  <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">即時預覽</span>
-                  <span class="text-xs text-slate-400">下方顯示渲染效果</span>
-                </div>
-                <div
-                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-slate-50 min-h-[100px] max-h-[200px] overflow-y-auto markdown-preview"
-                  v-html="renderedCorrectAnswer"
-                ></div>
               </div>
             </div>
             <p class="mt-1 text-xs text-slate-500">
@@ -594,15 +572,23 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { errorLogAPI, questionBankAPI, studentAPI, subjectAPI, hashtagAPI } from '../services/api'
-import MarkdownEditor from '../components/MarkdownEditor.vue'
 import { useMarkdownRenderer } from '../composables/useMarkdownRenderer'
+import RichTextEditor from '../components/RichTextEditor.vue'
 
 // 使用 Markdown 渲染 composable
 const { renderMarkdownWithLatex } = useMarkdownRenderer()
 
-// 計算渲染後的內容（用於即時預覽）
-const renderedContent = computed(() => renderMarkdownWithLatex(errorFormData.value.content))
-const renderedCorrectAnswer = computed(() => renderMarkdownWithLatex(errorFormData.value.correct_answer))
+const toRT = (v) => {
+  if (typeof v === 'string') return v
+  if (v && typeof v === 'object' && typeof v.text === 'string') return v
+  return ''
+}
+
+const fromRT = (v) => {
+  if (typeof v === 'string') return v
+  if (v && typeof v === 'object' && typeof v.text === 'string') return v.text
+  return ''
+}
 
 const route = useRoute()
 const studentId = parseInt(route.params.id)

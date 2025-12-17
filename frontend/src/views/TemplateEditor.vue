@@ -48,23 +48,12 @@
             內容 (Markdown + LaTeX) <span class="text-red-500">*</span>
           </label>
           <div class="space-y-3">
-            <!-- 編輯區域 -->
             <div class="border border-slate-300 rounded-lg overflow-hidden">
-              <MarkdownEditor
-                v-model="formData.content"
+              <RichTextEditor
+                :model-value="toRT(formData.content)"
                 :placeholder="'輸入模板內容...\n\n支援 Markdown 語法：\n- **粗體**\n- *斜體*\n- `程式碼`\n\n支援 LaTeX 數學公式：\n- 行內公式：$x^2 + y^2 = r^2$\n- 區塊公式：$$\n\\int_0^1 x^2 dx = \\frac{1}{3}\n$$'"
+                @update:model-value="(v) => (formData.content = fromRT(v))"
               />
-            </div>
-            
-            <!-- 預覽區域 -->
-            <div class="border-t border-slate-200 pt-3">
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">即時預覽</span>
-              </div>
-              <div
-                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-slate-50 min-h-[200px] max-h-[400px] overflow-y-auto markdown-preview"
-                v-html="renderedContent"
-              ></div>
             </div>
           </div>
           <p class="mt-1 text-xs text-slate-500">
@@ -123,13 +112,10 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { contentTemplateAPI, hashtagAPI } from '../services/api'
-import MarkdownEditor from '../components/MarkdownEditor.vue'
-import { useMarkdownRenderer } from '../composables/useMarkdownRenderer'
+import RichTextEditor from '../components/RichTextEditor.vue'
 
 const route = useRoute()
 const router = useRouter()
-const { renderMarkdownWithLatex } = useMarkdownRenderer()
-
 const isEdit = computed(() => !!route.params.id)
 const saving = ref(false)
 const hashtags = ref([])
@@ -141,8 +127,17 @@ const formData = ref({
   is_public: false
 })
 
-// 計算渲染後的內容（用於即時預覽）
-const renderedContent = computed(() => renderMarkdownWithLatex(formData.value.content))
+const toRT = (v) => {
+  if (typeof v === 'string') return v
+  if (v && typeof v === 'object' && typeof v.text === 'string') return v
+  return ''
+}
+
+const fromRT = (v) => {
+  if (typeof v === 'string') return v
+  if (v && typeof v === 'object' && typeof v.text === 'string') return v.text
+  return ''
+}
 
 const fetchHashtags = async () => {
   try {

@@ -114,17 +114,11 @@
           </label>
           <div class="space-y-3">
             <div class="border border-slate-300 rounded-lg overflow-hidden">
-              <MarkdownEditor
-                v-model="formData.content"
+              <RichTextEditor
+                :model-value="toRT(formData.content)"
                 :placeholder="'輸入題目內容...\n\n支援 Markdown 語法：\n- **粗體**\n- *斜體*\n- `程式碼`\n\n支援 LaTeX 數學公式：\n- 行內公式：$x^2 + y^2 = r^2$\n- 區塊公式：$$\n\\int_0^1 x^2 dx = \\frac{1}{3}\n$$'"
+                @update:model-value="(v) => (formData.content = fromRT(v))"
               />
-            </div>
-            <div class="border-t border-slate-200 pt-3">
-              <div class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">即時預覽</div>
-              <div
-                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-slate-50 min-h-[150px] max-h-[400px] overflow-y-auto markdown-preview"
-                v-html="renderedContent"
-              ></div>
             </div>
           </div>
           <p class="mt-1 text-xs text-slate-500">
@@ -139,17 +133,11 @@
           </label>
           <div class="space-y-3">
             <div class="border border-slate-300 rounded-lg overflow-hidden">
-              <MarkdownEditor
-                v-model="formData.correct_answer"
+              <RichTextEditor
+                :model-value="toRT(formData.correct_answer)"
                 :placeholder="'輸入正確答案...\n\n支援 Markdown 語法：\n- **粗體**\n- *斜體*\n- `程式碼`\n\n支援 LaTeX 數學公式：\n- 行內公式：$x = 5$\n- 區塊公式：$$\n\\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}\n$$'"
+                @update:model-value="(v) => (formData.correct_answer = fromRT(v))"
               />
-            </div>
-            <div class="border-t border-slate-200 pt-3">
-              <div class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">即時預覽</div>
-              <div
-                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-slate-50 min-h-[100px] max-h-[300px] overflow-y-auto markdown-preview"
-                v-html="renderedCorrectAnswer"
-              ></div>
             </div>
           </div>
           <p class="mt-1 text-xs text-slate-500">
@@ -226,14 +214,10 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { questionBankAPI, hashtagAPI, subjectAPI } from '../services/api'
-import MarkdownEditor from '../components/MarkdownEditor.vue'
 import RichTextEditor from '../components/RichTextEditor.vue'
-import { useMarkdownRenderer } from '../composables/useMarkdownRenderer'
 
 const route = useRoute()
 const router = useRouter()
-const { renderMarkdownWithLatex } = useMarkdownRenderer()
-
 const isEdit = computed(() => !!route.params.id)
 const saving = ref(false)
 const hashtags = ref([])
@@ -254,8 +238,17 @@ const chapterSuggestions = ref([])
 const showChapterSuggestions = ref(false)
 const searchChapterTimeout = ref(null)
 
-const renderedContent = computed(() => renderMarkdownWithLatex(formData.value.content))
-const renderedCorrectAnswer = computed(() => renderMarkdownWithLatex(formData.value.correct_answer))
+const toRT = (v) => {
+  if (typeof v === 'string') return v
+  if (v && typeof v === 'object' && typeof v.text === 'string') return v
+  return ''
+}
+
+const fromRT = (v) => {
+  if (typeof v === 'string') return v
+  if (v && typeof v === 'object' && typeof v.text === 'string') return v.text
+  return ''
+}
 
 // 返回上一頁
 const goBack = () => {
