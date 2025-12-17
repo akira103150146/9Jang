@@ -33,6 +33,11 @@ from .serializers import (
     ContentTemplateSerializer, LearningResourceSerializer
 )
 
+
+class _DRFPermissionError(Exception):
+    """內部使用：將 PermissionError 轉成 DRF 的 403 回應"""
+
+
 class StudentViewSet(viewsets.ModelViewSet):
     """
     提供 Student 模型 CRUD 操作的 API 視圖集
@@ -1632,6 +1637,21 @@ class GroupOrderViewSet(viewsets.ModelViewSet):
         """
         創建團購時自動生成唯一連結
         """
+        user = self.request.user
+        created_by_teacher = None
+
+        # 僅允許老師建立團購，並自動綁定 created_by
+        if not user.is_authenticated or not user.is_teacher():
+            raise _DRFPermissionError('只有老師可以建立團購')
+
+        try:
+            created_by_teacher = user.teacher_profile
+        except Exception:
+            created_by_teacher = None
+
+        if created_by_teacher is None:
+            raise _DRFPermissionError('找不到老師資料，無法建立團購')
+
         # 生成唯一連結
         unique_link = f"order-{uuid.uuid4().hex[:12]}"
         
@@ -1639,8 +1659,56 @@ class GroupOrderViewSet(viewsets.ModelViewSet):
         while GroupOrder.objects.filter(order_link=unique_link).exists():
             unique_link = f"order-{uuid.uuid4().hex[:12]}"
         
-        # 保存時自動設置連結
-        serializer.save(order_link=unique_link)
+        # 保存時自動設置連結與建立者
+        serializer.save(order_link=unique_link, created_by=created_by_teacher)
+
+    def create(self, request, *args, **kwargs):
+        """
+        將 perform_create 的權限錯誤轉為 403（避免變成 500）
+        """
+        try:
+            return super().create(request, *args, **kwargs)
+        except _DRFPermissionError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_403_FORBIDDEN)
+
+    def update(self, request, *args, **kwargs):
+        """
+        老師只能編輯自己發起的團購；會計可編輯；學生不可編輯。
+        """
+        instance = self.get_object()
+        user = request.user
+
+        if not user.is_authenticated:
+            return Response({'detail': '未登入'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        if user.is_student():
+            return Response({'detail': '學生不可編輯團購'}, status=status.HTTP_403_FORBIDDEN)
+
+        if user.is_teacher():
+            if not instance.created_by or instance.created_by.user != user:
+                return Response({'detail': '只能編輯自己發起的團購'}, status=status.HTTP_403_FORBIDDEN)
+
+        # 會計（或其他允許的角色）走原本流程
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        """
+        同 update 的權限邏輯
+        """
+        instance = self.get_object()
+        user = request.user
+
+        if not user.is_authenticated:
+            return Response({'detail': '未登入'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        if user.is_student():
+            return Response({'detail': '學生不可編輯團購'}, status=status.HTTP_403_FORBIDDEN)
+
+        if user.is_teacher():
+            if not instance.created_by or instance.created_by.user != user:
+                return Response({'detail': '只能編輯自己發起的團購'}, status=status.HTTP_403_FORBIDDEN)
+
+        return super().partial_update(request, *args, **kwargs)
     
     @action(detail=True, methods=['post'])
     def complete(self, request, pk=None):
@@ -1650,14 +1718,27 @@ class GroupOrderViewSet(viewsets.ModelViewSet):
         from django.utils import timezone
         from decimal import Decimal
         
-        # 權限：僅會計可完成團購（老闆預設不可用；若需要可用模擬登入會計）
-        if not request.user.is_authenticated or not request.user.is_accountant():
+        # 權限：會計 或 發起該團購的老師 可完成
+        if not request.user.is_authenticated:
             return Response(
-                {'detail': '只有會計可以完成團購'},
-                status=status.HTTP_403_FORBIDDEN
+                {'detail': '未登入'},
+                status=status.HTTP_401_UNAUTHORIZED
             )
         
         group_order = self.get_object()
+
+        is_accountant = request.user.is_accountant()
+        is_owner_teacher = (
+            request.user.is_teacher()
+            and group_order.created_by
+            and group_order.created_by.user == request.user
+        )
+
+        if not (is_accountant or is_owner_teacher):
+            return Response(
+                {'detail': '只有會計或發起該團購的老師可以完成團購'},
+                status=status.HTTP_403_FORBIDDEN
+            )
         
         # 更新團購狀態
         group_order.status = 'Completed'
@@ -1690,12 +1771,13 @@ class GroupOrderViewSet(viewsets.ModelViewSet):
                         fee_date=today,
                         payment_status='Unpaid'
                     )
-                    # 如果有 notes 欄位，添加團購資訊（需要遷移後才能使用）
-                    try:
-                        fee.notes = f"團購：{group_order.title} (訂單ID: {order.order_id}, 團購ID: {group_order.group_order_id})"
-                        fee.save()
-                    except:
-                        pass  # 如果 notes 欄位不存在，忽略
+                    # 備註：讓會計可追溯是哪位老師發起的團購
+                    teacher_name = group_order.created_by.name if group_order.created_by else '未知'
+                    fee.notes = (
+                        f"餐費/團購：{group_order.title}｜店家：{group_order.restaurant.name if group_order.restaurant else '未知'}｜"
+                        f"發起老師：{teacher_name}｜團購ID:{group_order.group_order_id}｜訂單ID:{order.order_id}"
+                    )
+                    fee.save()
                     created_fees.append(fee.fee_id)
                 except Exception as e:
                     # 如果創建失敗（可能是 notes 欄位問題），記錄錯誤但繼續
@@ -1774,6 +1856,73 @@ class OrderViewSet(viewsets.ModelViewSet):
             
         instance.soft_delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def update(self, request, *args, **kwargs):
+        """
+        訂單確認（狀態變更）權限：
+        - 會計：可更新
+        - 老師：僅能更新「自己發起的團購」底下的訂單
+        - 學生：僅能更新自己的訂單（且不可將狀態改為 Confirmed）
+        """
+        instance = self.get_object()
+        user = request.user
+
+        if not user.is_authenticated:
+            return Response({'detail': '未登入'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        incoming_status = request.data.get('status')
+        is_status_change = incoming_status is not None and incoming_status != instance.status
+
+        if user.is_teacher():
+            if not instance.group_order.created_by or instance.group_order.created_by.user != user:
+                return Response({'detail': '只能管理自己發起團購的訂單'}, status=status.HTTP_403_FORBIDDEN)
+
+        if user.is_student():
+            # 學生只能動自己的訂單
+            try:
+                student = user.student_profile
+            except Exception:
+                return Response({'detail': '找不到學生資料'}, status=status.HTTP_403_FORBIDDEN)
+
+            if instance.student != student:
+                return Response({'detail': '只能管理自己的訂單'}, status=status.HTTP_403_FORBIDDEN)
+
+            # 禁止學生自行確認訂單
+            if is_status_change and incoming_status == 'Confirmed':
+                return Response({'detail': '學生不可確認訂單'}, status=status.HTTP_403_FORBIDDEN)
+
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        """
+        同 update 的權限邏輯
+        """
+        instance = self.get_object()
+        user = request.user
+
+        if not user.is_authenticated:
+            return Response({'detail': '未登入'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        incoming_status = request.data.get('status')
+        is_status_change = incoming_status is not None and incoming_status != instance.status
+
+        if user.is_teacher():
+            if not instance.group_order.created_by or instance.group_order.created_by.user != user:
+                return Response({'detail': '只能管理自己發起團購的訂單'}, status=status.HTTP_403_FORBIDDEN)
+
+        if user.is_student():
+            try:
+                student = user.student_profile
+            except Exception:
+                return Response({'detail': '找不到學生資料'}, status=status.HTTP_403_FORBIDDEN)
+
+            if instance.student != student:
+                return Response({'detail': '只能管理自己的訂單'}, status=status.HTTP_403_FORBIDDEN)
+
+            if is_status_change and incoming_status == 'Confirmed':
+                return Response({'detail': '學生不可確認訂單'}, status=status.HTTP_403_FORBIDDEN)
+
+        return super().partial_update(request, *args, **kwargs)
     
     @action(detail=True, methods=['post'])
     def restore(self, request, pk=None):

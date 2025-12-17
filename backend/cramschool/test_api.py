@@ -74,6 +74,9 @@ class BaseAPITestCase(TestCase):
     def setUp(self):
         """設置測試環境（每個測試方法執行前都會執行）"""
         self.client = APIClient()
+        # 大多數 cramschool API 需要登入才能操作；預設以老師身分登入，
+        # 個別測試若需要其他角色，會在測試內用 authenticate_user() 覆蓋。
+        self.authenticate_user(self.teacher_user)
     
     def authenticate_user(self, user):
         """認證用戶"""
@@ -407,6 +410,8 @@ class TeacherAPITestCase(BaseAPITestCase):
     
     def test_list_teachers(self):
         """測試列出老師"""
+        # 老闆（ADMIN）可以看到全部老師；老師只能看到自己
+        self.authenticate_user(self.admin_user)
         Teacher.objects.create(name='老師1', permission_level='Teacher')
         Teacher.objects.create(name='老師2', permission_level='Admin')
         
@@ -859,6 +864,8 @@ class ExtraFeeAPITestCase(BaseAPITestCase):
     
     def setUp(self):
         super().setUp()
+        # 費用模組：老師不可用；會計可管理
+        self.authenticate_user(self.accountant_user)
         self.student = Student.objects.create(
             name='測試學生',
             school='學校',
@@ -1338,17 +1345,19 @@ class GroupOrderAPITestCase(BaseAPITestCase):
             'restaurant': self.restaurant.restaurant_id,
             'title': '測試團購',
             'deadline': (timezone.now() + timedelta(days=1)).isoformat(),
-            'created_by': self.teacher.teacher_id
         }
     
     def test_create_group_order(self):
         """測試創建團購"""
         url = self.get_api_url('group-orders')
+        self.authenticate_user(self.teacher_user)
         response = self.client.post(url, self.group_order_data, format='json')
         
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn('order_link', response.data)
         self.assertIsNotNone(response.data['order_link'])
+        # created_by 應自動綁定為登入老師
+        self.assertEqual(response.data.get('created_by'), self.teacher.teacher_id)
     
     def test_complete_group_order_generates_fees(self):
         """測試完成團購時自動生成費用"""
@@ -1368,7 +1377,7 @@ class GroupOrderAPITestCase(BaseAPITestCase):
         )
         
         url = self.get_api_url('group-orders', 'complete', group_order.group_order_id)
-        self.authenticate_user(self.admin_user)
+        self.authenticate_user(self.teacher_user)
         response = self.client.post(url)
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -1382,9 +1391,11 @@ class GroupOrderAPITestCase(BaseAPITestCase):
         ).first()
         self.assertIsNotNone(fee)
         self.assertEqual(fee.amount, Decimal('100.00'))
+        self.assertIn('發起老師', fee.notes or '')
+        self.assertIn(self.teacher.name, fee.notes or '')
     
-    def test_only_admin_or_accountant_can_complete(self):
-        """測試只有管理員或會計可以完成團購"""
+    def test_only_owner_teacher_or_accountant_can_complete(self):
+        """測試只有發起老師或會計可以完成團購"""
         group_order = GroupOrder.objects.create(
             restaurant=self.restaurant,
             title='測試團購',
@@ -1395,10 +1406,10 @@ class GroupOrderAPITestCase(BaseAPITestCase):
         
         url = self.get_api_url('group-orders', 'complete', group_order.group_order_id)
         
-        # 老師無法完成
+        # 發起老師可以完成
         self.authenticate_user(self.teacher_user)
         response = self.client.post(url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         
         # 會計可以完成
         self.authenticate_user(self.accountant_user)

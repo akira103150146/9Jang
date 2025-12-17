@@ -490,7 +490,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { restaurantAPI, groupOrderAPI, uploadImageAPI, getBackendBaseURL, authAPI, orderAPI } from '../services/api'
 
 // 獲取後端基礎 URL（用於圖片顯示）
@@ -525,16 +525,41 @@ const groupOrderForm = ref({
   deadline: ''
 })
 
+// 用於判斷「目前 title 是否仍為自動帶入」
+// 只有在 title 為空或等於 autoTitle 時，才會在切換店家時覆蓋 title
+const autoGroupOrderTitle = ref('')
+
 const activeRestaurants = computed(() => {
   return restaurants.value.filter(r => r.is_active)
 })
+
+const selectedRestaurantName = computed(() => {
+  const selectedId = groupOrderForm.value.restaurant
+  if (!selectedId) return ''
+  const restaurant = restaurants.value.find(r => r.restaurant_id === selectedId)
+  return restaurant?.name || ''
+})
+
+watch(
+  () => groupOrderForm.value.restaurant,
+  () => {
+    const name = selectedRestaurantName.value
+    if (!name) return
+
+    // 僅在使用者尚未手動輸入標題時，才自動帶入店家名稱
+    if (!groupOrderForm.value.title || groupOrderForm.value.title === autoGroupOrderTitle.value) {
+      groupOrderForm.value.title = name
+      autoGroupOrderTitle.value = name
+    }
+  }
+)
 
 const activeGroupOrders = computed(() => {
   return groupOrders.value.filter(g => g.status === 'Open')
 })
 
 const canCompleteGroup = computed(() => {
-  return ['ADMIN', 'ACCOUNTANT'].includes(userRole.value)
+  return ['ADMIN', 'ACCOUNTANT', 'TEACHER'].includes(userRole.value)
 })
 
 const completedGroupOrders = computed(() => {
@@ -694,6 +719,7 @@ const openGroupOrderForm = () => {
     title: '',
     deadline: deadline
   }
+  autoGroupOrderTitle.value = ''
   showGroupOrderForm.value = true
 }
 
@@ -712,6 +738,7 @@ const createGroupOrder = async () => {
       title: '',
       deadline: ''
     }
+    autoGroupOrderTitle.value = ''
     fetchGroupOrders()
     alert('團購已建立！連結已自動生成。')
   } catch (error) {

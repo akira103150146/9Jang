@@ -139,7 +139,7 @@ const orders = ref([])
 const loading = ref(false)
 const userRole = ref('')
 const studentId = ref(null)
-const canCompleteGroup = computed(() => ['ADMIN', 'ACCOUNTANT'].includes(userRole.value))
+const canCompleteGroup = computed(() => ['ADMIN', 'ACCOUNTANT', 'TEACHER'].includes(userRole.value))
 
 const fetchGroupOrder = async () => {
   try {
