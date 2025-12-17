@@ -6,7 +6,7 @@
         <div class="text-center mb-8">
           <div class="flex justify-center mb-4">
             <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-sky-500 to-indigo-500 flex items-center justify-center">
-              <span class="text-2xl font-bold text-white">九</span>
+              <span class="text-2xl font-bold text-white">九章</span>
             </div>
           </div>
           <h1 class="text-2xl font-bold text-slate-900 mb-2">九章管理後台</h1>

@@ -96,7 +96,17 @@ class StudentViewSet(viewsets.ModelViewSet):
         """
         根據查詢參數決定是否包含已刪除的記錄
         使用 annotate 預先計算聚合值以避免 N+1 查詢
+        根據用戶角色過濾學生：
+        - 管理員：可以看到所有學生
+        - 老師：只能看到上過自己課程的學生（含暫停仍留存）
+        - 學生：只能看到自己（如果系統有學生端使用此 ViewSet）
         """
+        user = self.request.user
+        
+        # 未登入：不回傳
+        if not user.is_authenticated:
+            return Student.objects.none()
+        
         # 先進行 annotate 聚合計算（在過濾之前）
         queryset = Student.objects.select_related('user').annotate(
             # 預先計算總費用
@@ -118,6 +128,32 @@ class StudentViewSet(viewsets.ModelViewSet):
                 filter=Q(enrollments__is_deleted=False)
             )
         )
+        
+        # 老師：只能看到上過自己課程的學生（含暫停仍留存，只看 enrollment.is_deleted）
+        if user.is_teacher():
+            try:
+                teacher = user.teacher_profile
+                # 獲取該老師的課程ID列表
+                teacher_course_ids = Course.objects.filter(teacher=teacher).values_list('course_id', flat=True)
+                # 獲取有報名過這些課程的學生ID（只排除 enrollment.is_deleted=True，不看 is_active）
+                enrolled_student_ids = StudentEnrollment.objects.filter(
+                    course_id__in=teacher_course_ids,
+                    is_deleted=False
+                ).values_list('student_id', flat=True).distinct()
+                # 只返回這些學生
+                queryset = queryset.filter(student_id__in=enrolled_student_ids)
+            except Teacher.DoesNotExist:
+                return Student.objects.none()
+        
+        # 學生：只能看到自己（如果系統有學生端使用此 ViewSet）
+        elif user.is_student():
+            try:
+                student = user.student_profile
+                queryset = queryset.filter(student_id=student.student_id)
+            except Student.DoesNotExist:
+                return Student.objects.none()
+        
+        # 管理員：可以看到所有學生（繼續執行後續過濾）
         
         # 檢查是否有 include_deleted 參數
         include_deleted = self.request.query_params.get('include_deleted', 'false').lower() == 'true'
@@ -145,8 +181,13 @@ class StudentViewSet(viewsets.ModelViewSet):
     
     def destroy(self, request, *args, **kwargs):
         """
-        軟刪除學生記錄
+        軟刪除學生記錄：僅管理員可用
         """
+        if not request.user.is_authenticated or not request.user.is_admin():
+            return Response(
+                {'detail': '只有管理員可以刪除學生'},
+                status=status.HTTP_403_FORBIDDEN
+            )
         instance = self.get_object()
         instance.soft_delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -177,8 +218,13 @@ class StudentViewSet(viewsets.ModelViewSet):
     
     def create(self, request, *args, **kwargs):
         """
-        創建學生時自動創建用戶帳號
+        創建學生時自動創建用戶帳號：僅管理員或會計可用
         """
+        if not request.user.is_authenticated or (not request.user.is_admin() and not request.user.is_accountant()):
+            return Response(
+                {'detail': '只有管理員或會計可以創建學生'},
+                status=status.HTTP_403_FORBIDDEN
+            )
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
@@ -281,6 +327,28 @@ class StudentViewSet(viewsets.ModelViewSet):
             'message': '密碼已重置',
             'password': new_password
         })
+    
+    def update(self, request, *args, **kwargs):
+        """
+        更新學生：僅管理員或會計可用
+        """
+        if not request.user.is_authenticated or (not request.user.is_admin() and not request.user.is_accountant()):
+            return Response(
+                {'detail': '只有管理員或會計可以編輯學生'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().update(request, *args, **kwargs)
+    
+    def partial_update(self, request, *args, **kwargs):
+        """
+        部分更新學生：僅管理員或會計可用
+        """
+        if not request.user.is_authenticated or (not request.user.is_admin() and not request.user.is_accountant()):
+            return Response(
+                {'detail': '只有管理員或會計可以編輯學生'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().partial_update(request, *args, **kwargs)
     
     @action(detail=True, methods=['post'], url_path='toggle-account-status')
     def toggle_account_status(self, request, pk=None):
@@ -544,7 +612,7 @@ class CourseViewSet(viewsets.ModelViewSet):
         """
         根據用戶角色過濾課程
         - 管理員：可以看到所有課程
-        - 老師：可以看到所有課程
+        - 老師：只能看到自己被指派的課程
         - 學生：只能看到自己報名的課程
         """
         queryset = super().get_queryset()
@@ -553,9 +621,21 @@ class CourseViewSet(viewsets.ModelViewSet):
         if not self.request.user.is_authenticated:
             return queryset.none()
         
-        # 老闆/老師：可以看到所有課程
-        if self.request.user.is_admin() or self.request.user.is_teacher():
+        # 管理員：可以看到所有課程
+        if self.request.user.is_admin():
             return queryset
+        
+        # 會計：可以看到所有課程（僅查看）
+        if self.request.user.is_accountant():
+            return queryset
+        
+        # 老師：只能看到自己被指派的課程
+        if self.request.user.is_teacher():
+            try:
+                teacher = self.request.user.teacher_profile
+                return queryset.filter(teacher=teacher)
+            except Teacher.DoesNotExist:
+                return queryset.none()
         
         # 學生只能看到自己報名的課程
         if self.request.user.is_student():
@@ -575,8 +655,125 @@ class CourseViewSet(viewsets.ModelViewSet):
                 # 如果學生沒有對應的 Student 記錄，返回空查詢集
                 return queryset.none()
         
-        # 其他情況返回所有課程
-        return queryset
+        # 其他情況返回空查詢集
+        return queryset.none()
+    
+    def create(self, request, *args, **kwargs):
+        """
+        創建課程：僅管理員可用
+        """
+        if not request.user.is_authenticated or not request.user.is_admin():
+            return Response(
+                {'detail': '只有管理員可以創建課程'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().create(request, *args, **kwargs)
+    
+    def update(self, request, *args, **kwargs):
+        """
+        更新課程：僅管理員可用
+        """
+        if not request.user.is_authenticated or not request.user.is_admin():
+            return Response(
+                {'detail': '只有管理員可以編輯課程'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().update(request, *args, **kwargs)
+    
+    def partial_update(self, request, *args, **kwargs):
+        """
+        部分更新課程：僅管理員可用
+        """
+        if not request.user.is_authenticated or not request.user.is_admin():
+            return Response(
+                {'detail': '只有管理員可以編輯課程'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().partial_update(request, *args, **kwargs)
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        刪除課程：僅管理員可用
+        """
+        if not request.user.is_authenticated or not request.user.is_admin():
+            return Response(
+                {'detail': '只有管理員可以刪除課程'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().destroy(request, *args, **kwargs)
+    
+    @action(detail=True, methods=['get'], url_path='student-status')
+    def student_status(self, request, pk=None):
+        """
+        獲取課程的學生狀態統計（出席/請假/暫停）
+        用於在課程列表中顯示
+        
+        邏輯：
+        1. 暫停：學生的報名期間（EnrollmentPeriod）已經不在當前日期區間內
+        2. 請假：今天有請假記錄的學生（且不在暫停狀態）
+        3. 出席：今天沒有請假記錄的學生（且不在暫停狀態）
+        """
+        course = self.get_object()
+        today = timezone.now().date()
+        
+        # 獲取該課程的所有報名學生（未刪除的報名記錄）
+        enrollments = StudentEnrollment.objects.filter(
+            course=course,
+            is_deleted=False
+        ).select_related('student').prefetch_related('periods')
+        
+        # 初始化計數器
+        present_count = 0
+        leave_count = 0
+        inactive_count = 0
+        
+        # 獲取今天該課程的請假記錄（用於快速查找）
+        today_leaves = Leave.objects.filter(
+            course=course,
+            leave_date=today,
+            is_deleted=False
+        ).values_list('student_id', flat=True)
+        today_leave_student_ids = set(today_leaves)
+        
+        # 遍歷每個報名記錄，判斷學生狀態
+        for enrollment in enrollments:
+            student_id = enrollment.student_id
+            
+            # 檢查該學生的報名期間是否包含今天
+            # 如果沒有任何期間包含今天，則算作暫停
+            has_active_period = False
+            periods = enrollment.periods.all()
+            
+            for period in periods:
+                # 檢查期間是否包含今天
+                if period.start_date <= today:
+                    # 如果沒有結束日期，或結束日期在今天之後，則期間有效
+                    if not period.end_date or period.end_date >= today:
+                        has_active_period = True
+                        break
+            
+            # 如果沒有活躍的期間，算作暫停
+            if not has_active_period:
+                inactive_count += 1
+                continue
+            
+            # 如果有活躍期間，檢查今天是否有請假記錄
+            if student_id in today_leave_student_ids:
+                leave_count += 1
+            else:
+                # 沒有請假記錄，算作出席
+                present_count += 1
+        
+        total_students = enrollments.count()
+        
+        return Response({
+            'course_id': course.course_id,
+            'course_name': course.course_name,
+            'total_students': total_students,
+            'present_count': present_count,
+            'leave_count': leave_count,
+            'inactive_count': inactive_count,  # 暫停（期間不在區間內）
+        })
 
 
 class EnrollmentPeriodViewSet(viewsets.ModelViewSet):
@@ -2603,13 +2800,31 @@ class QuizViewSet(viewsets.ModelViewSet):
         """
         queryset = super().get_queryset()
         
-        # 如果用戶未認證，返回所有 Quiz
+        # 如果用戶未認證，返回空查詢集
         if not self.request.user.is_authenticated:
+            return queryset.none()
+        
+        # 支援 course query param 篩選
+        course_id = self.request.query_params.get('course')
+        if course_id:
+            try:
+                queryset = queryset.filter(course_id=int(course_id))
+            except (ValueError, TypeError):
+                pass
+        
+        # 管理員：可以看到所有 Quiz
+        if self.request.user.is_admin():
             return queryset
         
-        # 管理員和老師可以看到所有 Quiz
-        if self.request.user.is_admin() or self.request.user.is_teacher():
-            return queryset
+        # 老師：只能看到自己課程的 Quiz
+        if self.request.user.is_teacher():
+            try:
+                teacher = self.request.user.teacher_profile
+                teacher_course_ids = Course.objects.filter(teacher=teacher).values_list('course_id', flat=True)
+                queryset = queryset.filter(course_id__in=teacher_course_ids)
+                return queryset
+            except Teacher.DoesNotExist:
+                return queryset.none()
         
         # 學生只能看到自己報名課程的 Quiz，且符合群組可見性
         if self.request.user.is_student():
@@ -2637,7 +2852,133 @@ class QuizViewSet(viewsets.ModelViewSet):
         if self.request.user.is_accountant():
             return queryset.none()
         
-        return queryset
+        return queryset.none()
+    
+    def create(self, request, *args, **kwargs):
+        """
+        創建 Quiz：檢查課程是否屬於自己（老師）或管理員
+        """
+        user = request.user
+        if not user.is_authenticated:
+            return Response(
+                {'detail': '需要登入'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        course = serializer.validated_data.get('course')
+        if user.is_teacher() and not user.is_admin():
+            if not course:
+                return Response(
+                    {'detail': '老師建立測驗時必須指定課程'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            try:
+                teacher = user.teacher_profile
+                if course.teacher != teacher:
+                    return Response(
+                        {'detail': '只能在自己課程下創建測驗'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+            except Teacher.DoesNotExist:
+                return Response(
+                    {'detail': '找不到老師資料'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        
+        return super().create(request, *args, **kwargs)
+    
+    def update(self, request, *args, **kwargs):
+        """
+        更新 Quiz：檢查課程是否屬於自己（老師）或管理員
+        """
+        instance = self.get_object()
+        user = request.user
+        
+        if not user.is_authenticated:
+            return Response(
+                {'detail': '需要登入'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        if user.is_teacher() and not user.is_admin():
+            if instance.course:
+                try:
+                    teacher = user.teacher_profile
+                    if instance.course.teacher != teacher:
+                        return Response(
+                            {'detail': '只能編輯自己課程的測驗'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                except Teacher.DoesNotExist:
+                    return Response(
+                        {'detail': '找不到老師資料'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+        
+        return super().update(request, *args, **kwargs)
+    
+    def partial_update(self, request, *args, **kwargs):
+        """
+        部分更新 Quiz：檢查課程是否屬於自己（老師）或管理員
+        """
+        instance = self.get_object()
+        user = request.user
+        
+        if not user.is_authenticated:
+            return Response(
+                {'detail': '需要登入'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        if user.is_teacher() and not user.is_admin():
+            if instance.course:
+                try:
+                    teacher = user.teacher_profile
+                    if instance.course.teacher != teacher:
+                        return Response(
+                            {'detail': '只能編輯自己課程的測驗'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                except Teacher.DoesNotExist:
+                    return Response(
+                        {'detail': '找不到老師資料'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+        
+        return super().partial_update(request, *args, **kwargs)
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        刪除 Quiz：檢查課程是否屬於自己（老師）或管理員
+        """
+        instance = self.get_object()
+        user = request.user
+        
+        if not user.is_authenticated:
+            return Response(
+                {'detail': '需要登入'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        if user.is_teacher() and not user.is_admin():
+            if instance.course:
+                try:
+                    teacher = user.teacher_profile
+                    if instance.course.teacher != teacher:
+                        return Response(
+                            {'detail': '只能刪除自己課程的測驗'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                except Teacher.DoesNotExist:
+                    return Response(
+                        {'detail': '找不到老師資料'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+        
+        return super().destroy(request, *args, **kwargs)
 
     @action(detail=True, methods=['post'])
     def submit(self, request, pk=None):
@@ -2753,13 +3094,31 @@ class ExamViewSet(viewsets.ModelViewSet):
         """
         queryset = super().get_queryset()
         
-        # 如果用戶未認證，返回所有 Exam
+        # 如果用戶未認證，返回空查詢集
         if not self.request.user.is_authenticated:
+            return queryset.none()
+        
+        # 支援 course query param 篩選
+        course_id = self.request.query_params.get('course')
+        if course_id:
+            try:
+                queryset = queryset.filter(course_id=int(course_id))
+            except (ValueError, TypeError):
+                pass
+        
+        # 管理員：可以看到所有 Exam
+        if self.request.user.is_admin():
             return queryset
         
-        # 管理員和老師可以看到所有 Exam
-        if self.request.user.is_admin() or self.request.user.is_teacher():
-            return queryset
+        # 老師：只能看到自己課程的 Exam
+        if self.request.user.is_teacher():
+            try:
+                teacher = self.request.user.teacher_profile
+                teacher_course_ids = Course.objects.filter(teacher=teacher).values_list('course_id', flat=True)
+                queryset = queryset.filter(course_id__in=teacher_course_ids)
+                return queryset
+            except Teacher.DoesNotExist:
+                return queryset.none()
         
         # 學生只能看到自己報名課程的 Exam，且符合群組可見性
         if self.request.user.is_student():
@@ -2787,8 +3146,134 @@ class ExamViewSet(viewsets.ModelViewSet):
         # 會計看不到 Exam
         if self.request.user.is_accountant():
             return queryset.none()
+
+        return queryset.none()
+    
+    def create(self, request, *args, **kwargs):
+        """
+        創建 Exam：檢查課程是否屬於自己（老師）或管理員
+        """
+        user = request.user
+        if not user.is_authenticated:
+            return Response(
+                {'detail': '需要登入'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
         
-        return queryset
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        course = serializer.validated_data.get('course')
+        if user.is_teacher() and not user.is_admin():
+            if not course:
+                return Response(
+                    {'detail': '老師建立考卷時必須指定課程'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            try:
+                teacher = user.teacher_profile
+                if course.teacher != teacher:
+                    return Response(
+                        {'detail': '只能在自己課程下創建考卷'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+            except Teacher.DoesNotExist:
+                return Response(
+                    {'detail': '找不到老師資料'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        
+        return super().create(request, *args, **kwargs)
+    
+    def update(self, request, *args, **kwargs):
+        """
+        更新 Exam：檢查課程是否屬於自己（老師）或管理員
+        """
+        instance = self.get_object()
+        user = request.user
+        
+        if not user.is_authenticated:
+            return Response(
+                {'detail': '需要登入'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        if user.is_teacher() and not user.is_admin():
+            if instance.course:
+                try:
+                    teacher = user.teacher_profile
+                    if instance.course.teacher != teacher:
+                        return Response(
+                            {'detail': '只能編輯自己課程的考卷'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                except Teacher.DoesNotExist:
+                    return Response(
+                        {'detail': '找不到老師資料'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+        
+        return super().update(request, *args, **kwargs)
+    
+    def partial_update(self, request, *args, **kwargs):
+        """
+        部分更新 Exam：檢查課程是否屬於自己（老師）或管理員
+        """
+        instance = self.get_object()
+        user = request.user
+        
+        if not user.is_authenticated:
+            return Response(
+                {'detail': '需要登入'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        if user.is_teacher() and not user.is_admin():
+            if instance.course:
+                try:
+                    teacher = user.teacher_profile
+                    if instance.course.teacher != teacher:
+                        return Response(
+                            {'detail': '只能編輯自己課程的考卷'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                except Teacher.DoesNotExist:
+                    return Response(
+                        {'detail': '找不到老師資料'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+        
+        return super().partial_update(request, *args, **kwargs)
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        刪除 Exam：檢查課程是否屬於自己（老師）或管理員
+        """
+        instance = self.get_object()
+        user = request.user
+        
+        if not user.is_authenticated:
+            return Response(
+                {'detail': '需要登入'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        if user.is_teacher() and not user.is_admin():
+            if instance.course:
+                try:
+                    teacher = user.teacher_profile
+                    if instance.course.teacher != teacher:
+                        return Response(
+                            {'detail': '只能刪除自己課程的考卷'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                except Teacher.DoesNotExist:
+                    return Response(
+                        {'detail': '找不到老師資料'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+        
+        return super().destroy(request, *args, **kwargs)
 
     @action(detail=True, methods=['post'])
     def submit(self, request, pk=None):
@@ -2881,15 +3366,33 @@ class CourseMaterialViewSet(viewsets.ModelViewSet):
         根據用戶角色過濾 CourseMaterial
         """
         queryset = super().get_queryset()
-        
-        # 如果用戶未認證，返回所有 CourseMaterial
+
+        # 如果用戶未認證，返回空查詢集
         if not self.request.user.is_authenticated:
+            return queryset.none()
+
+        # 支援 course query param 篩選
+        course_id = self.request.query_params.get('course')
+        if course_id:
+            try:
+                queryset = queryset.filter(course_id=int(course_id))
+            except (ValueError, TypeError):
+                pass
+
+        # 管理員：可以看到所有 CourseMaterial
+        if self.request.user.is_admin():
             return queryset
-        
-        # 管理員和老師可以看到所有 CourseMaterial
-        if self.request.user.is_admin() or self.request.user.is_teacher():
-            return queryset
-        
+
+        # 老師：只能看到自己課程的 CourseMaterial
+        if self.request.user.is_teacher():
+            try:
+                teacher = self.request.user.teacher_profile
+                teacher_course_ids = Course.objects.filter(teacher=teacher).values_list('course_id', flat=True)
+                queryset = queryset.filter(course_id__in=teacher_course_ids)
+                return queryset
+            except Teacher.DoesNotExist:
+                return queryset.none()
+
         # 學生只能看到自己報名課程的講義
         if self.request.user.is_student():
             try:
@@ -2899,24 +3402,154 @@ class CourseMaterialViewSet(viewsets.ModelViewSet):
                     is_active=True,
                     is_deleted=False
                 ).values_list('course_id', flat=True)
-                
+
                 queryset = queryset.filter(course_id__in=enrolled_course_ids)
-                
+
                 # 過濾個別化講義
                 queryset = queryset.filter(
                     Q(is_individualized=False) |
                     Q(student_groups__students=student)
                 ).distinct()
-                
+
                 return queryset
             except Student.DoesNotExist:
                 return queryset.none()
-        
+
         # 會計看不到 CourseMaterial
         if self.request.user.is_accountant():
             return queryset.none()
+
+        return queryset.none()
+    
+    def create(self, request, *args, **kwargs):
+        """
+        創建 CourseMaterial：檢查課程是否屬於自己（老師）或管理員
+        """
+        user = request.user
+        if not user.is_authenticated:
+            return Response(
+                {'detail': '需要登入'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
         
-        return queryset
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        course = serializer.validated_data.get('course')
+        if user.is_teacher() and not user.is_admin():
+            # 老師建立時必填 course（MVP 先禁止無課程公開資源）
+            if not course:
+                return Response(
+                    {'detail': '老師建立講義時必須指定課程'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            # 老師只能在自己課程下創建
+            try:
+                teacher = user.teacher_profile
+                if course.teacher != teacher:
+                    return Response(
+                        {'detail': '只能在自己課程下創建講義'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+            except Teacher.DoesNotExist:
+                return Response(
+                    {'detail': '找不到老師資料'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        
+        serializer.save(created_by=user)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+    
+    def update(self, request, *args, **kwargs):
+        """
+        更新 CourseMaterial：檢查課程是否屬於自己（老師）或管理員
+        """
+        instance = self.get_object()
+        user = request.user
+        
+        if not user.is_authenticated:
+            return Response(
+                {'detail': '需要登入'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        if user.is_teacher() and not user.is_admin():
+            if instance.course:
+                try:
+                    teacher = user.teacher_profile
+                    if instance.course.teacher != teacher:
+                        return Response(
+                            {'detail': '只能編輯自己課程的講義'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                except Teacher.DoesNotExist:
+                    return Response(
+                        {'detail': '找不到老師資料'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+        
+        return super().update(request, *args, **kwargs)
+    
+    def partial_update(self, request, *args, **kwargs):
+        """
+        部分更新 CourseMaterial：檢查課程是否屬於自己（老師）或管理員
+        """
+        instance = self.get_object()
+        user = request.user
+        
+        if not user.is_authenticated:
+            return Response(
+                {'detail': '需要登入'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        if user.is_teacher() and not user.is_admin():
+            if instance.course:
+                try:
+                    teacher = user.teacher_profile
+                    if instance.course.teacher != teacher:
+                        return Response(
+                            {'detail': '只能編輯自己課程的講義'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                except Teacher.DoesNotExist:
+                    return Response(
+                        {'detail': '找不到老師資料'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+        
+        return super().partial_update(request, *args, **kwargs)
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        刪除 CourseMaterial：檢查課程是否屬於自己（老師）或管理員
+        """
+        instance = self.get_object()
+        user = request.user
+        
+        if not user.is_authenticated:
+            return Response(
+                {'detail': '需要登入'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        if user.is_teacher() and not user.is_admin():
+            if instance.course:
+                try:
+                    teacher = user.teacher_profile
+                    if instance.course.teacher != teacher:
+                        return Response(
+                            {'detail': '只能刪除自己課程的講義'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                except Teacher.DoesNotExist:
+                    return Response(
+                        {'detail': '找不到老師資料'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+        
+        return super().destroy(request, *args, **kwargs)
 
 
 @api_view(['POST'])
@@ -3160,14 +3793,38 @@ class LearningResourceViewSet(viewsets.ModelViewSet):
         # 1. 未登入：不顯示
         if not user.is_authenticated:
             return queryset.none()
+        
+        # 支援 course query param 篩選
+        course_id = self.request.query_params.get('course')
+        if course_id:
+            try:
+                queryset = queryset.filter(course_id=int(course_id))
+            except (ValueError, TypeError):
+                pass
             
-        # 2. 管理員/老師：顯示所有
-        if user.is_admin() or user.is_teacher():
+        # 2. 管理員：顯示所有
+        if user.is_admin():
             # 支援篩選
             resource_type = self.request.query_params.get('resource_type')
             if resource_type:
                 queryset = queryset.filter(resource_type=resource_type)
             return queryset
+        
+        # 3. 老師：只能看到自己課程的資源
+        if user.is_teacher():
+            try:
+                teacher = user.teacher_profile
+                teacher_course_ids = Course.objects.filter(teacher=teacher).values_list('course_id', flat=True)
+                queryset = queryset.filter(
+                    Q(course_id__in=teacher_course_ids) | Q(course__isnull=True)
+                )
+                # 支援篩選
+                resource_type = self.request.query_params.get('resource_type')
+                if resource_type:
+                    queryset = queryset.filter(resource_type=resource_type)
+                return queryset
+            except Teacher.DoesNotExist:
+                return queryset.none()
             
         # 3. 學生：只顯示可見的
         if user.is_student():
@@ -3208,10 +3865,133 @@ class LearningResourceViewSet(viewsets.ModelViewSet):
             except Student.DoesNotExist:
                 return queryset.none()
                 
-        return queryset
+        return queryset.none()
 
-    def perform_create(self, serializer):
-        if self.request.user.is_authenticated:
-            serializer.save(created_by=self.request.user)
-        else:
-            serializer.save()
+    def create(self, request, *args, **kwargs):
+        """
+        創建 LearningResource：檢查課程是否屬於自己（老師）或管理員
+        """
+        user = request.user
+        if not user.is_authenticated:
+            return Response(
+                {'detail': '需要登入'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        course = serializer.validated_data.get('course')
+        if user.is_teacher() and not user.is_admin():
+            # 老師建立時必填 course（MVP 先禁止無課程公開資源）
+            if not course:
+                return Response(
+                    {'detail': '老師建立資源時必須指定課程'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            try:
+                teacher = user.teacher_profile
+                if course.teacher != teacher:
+                    return Response(
+                        {'detail': '只能在自己課程下創建資源'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+            except Teacher.DoesNotExist:
+                return Response(
+                    {'detail': '找不到老師資料'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        
+        serializer.save(created_by=user)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+    
+    def update(self, request, *args, **kwargs):
+        """
+        更新 LearningResource：檢查課程是否屬於自己（老師）或管理員
+        """
+        instance = self.get_object()
+        user = request.user
+        
+        if not user.is_authenticated:
+            return Response(
+                {'detail': '需要登入'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        if user.is_teacher() and not user.is_admin():
+            if instance.course:
+                try:
+                    teacher = user.teacher_profile
+                    if instance.course.teacher != teacher:
+                        return Response(
+                            {'detail': '只能編輯自己課程的資源'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                except Teacher.DoesNotExist:
+                    return Response(
+                        {'detail': '找不到老師資料'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+        
+        return super().update(request, *args, **kwargs)
+    
+    def partial_update(self, request, *args, **kwargs):
+        """
+        部分更新 LearningResource：檢查課程是否屬於自己（老師）或管理員
+        """
+        instance = self.get_object()
+        user = request.user
+        
+        if not user.is_authenticated:
+            return Response(
+                {'detail': '需要登入'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        if user.is_teacher() and not user.is_admin():
+            if instance.course:
+                try:
+                    teacher = user.teacher_profile
+                    if instance.course.teacher != teacher:
+                        return Response(
+                            {'detail': '只能編輯自己課程的資源'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                except Teacher.DoesNotExist:
+                    return Response(
+                        {'detail': '找不到老師資料'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+        
+        return super().partial_update(request, *args, **kwargs)
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        刪除 LearningResource：檢查課程是否屬於自己（老師）或管理員
+        """
+        instance = self.get_object()
+        user = request.user
+        
+        if not user.is_authenticated:
+            return Response(
+                {'detail': '需要登入'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        if user.is_teacher() and not user.is_admin():
+            if instance.course:
+                try:
+                    teacher = user.teacher_profile
+                    if instance.course.teacher != teacher:
+                        return Response(
+                            {'detail': '只能刪除自己課程的資源'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                except Teacher.DoesNotExist:
+                    return Response(
+                        {'detail': '找不到老師資料'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+        
+        return super().destroy(request, *args, **kwargs)

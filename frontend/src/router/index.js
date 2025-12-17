@@ -390,10 +390,10 @@ function getRoleBasedRouteFilter(role) {
 
   if (role === 'TEACHER') {
     return (path) => {
-      // 老師可以訪問：課程、請假、題庫/資源/模板、學生群組、訂便當、學生列表/錯題本
+      // 老師可以訪問：課程、題庫/資源/模板、學生群組、訂便當、學生列表/錯題本
+      // 注意：老師不能訪問 /attendance 頁面（已在學生管理中處理）
       const allowedPrefixes = [
         '/courses',
-        '/attendance',
         '/questions',
         '/resources',
         '/templates',
@@ -401,6 +401,11 @@ function getRoleBasedRouteFilter(role) {
         '/lunch-orders',
         '/students',
       ]
+
+      // 禁止訪問出缺勤頁面
+      if (path.startsWith('/attendance')) {
+        return false
+      }
 
       // 學生路由：老師只允許列表與錯題本
       if (path.startsWith('/students')) {
@@ -425,10 +430,10 @@ function getRoleBasedRouteFilter(role) {
 
   if (role === 'ACCOUNTANT') {
     return (path) => {
-      // 會計可以訪問：帳務、訂便當、學生基本資料（僅查看）
-      const allowedPaths = ['/', '/students', '/lunch-orders', '/attendance', '/fees']
+      // 會計可以訪問：帳務、訂便當、學生基本資料（僅查看）、課程管理（僅查看）
+      const allowedPaths = ['/', '/students', '/lunch-orders', '/attendance', '/fees', '/courses']
       // 排除教學相關模組與老師管理
-      const excludedPaths = ['/questions', '/resources', '/student-groups', '/generator', '/courses', '/teachers', '/templates', '/roles', '/audit-logs', '/student-home']
+      const excludedPaths = ['/questions', '/resources', '/student-groups', '/generator', '/teachers', '/templates', '/roles', '/audit-logs', '/student-home']
       if (excludedPaths.some(excluded => path.startsWith(excluded))) {
         return false
       }

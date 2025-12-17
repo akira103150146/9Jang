@@ -164,8 +164,8 @@ const allNavItems = [
   { name: 'student-list', label: '學生管理', path: '/students', requiresAdmin: false, allowedRoles: ['ADMIN', 'ACCOUNTANT', 'TEACHER'] },
   { name: 'teachers', label: '老師管理', path: '/teachers', requiresAdmin: false, allowedRoles: ['ADMIN'] },
   // 學生不顯示課程管理側邊欄入口，改由首頁入口進入
-  { name: 'courses', label: '課程管理', path: '/courses', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
-  { name: 'attendance', label: '出缺勤', path: '/attendance', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER', 'ACCOUNTANT'] },
+  { name: 'courses', label: '課程管理', path: '/courses', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER', 'ACCOUNTANT'] },
+  { name: 'attendance', label: '出缺勤', path: '/attendance', requiresAdmin: false, allowedRoles: ['ADMIN', 'ACCOUNTANT'] },
   { name: 'fees', label: '所有費用', path: '/fees', requiresAdmin: false, allowedRoles: ['ACCOUNTANT'] },
   { name: 'questions', label: '題庫與資源', path: '/questions', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
   // 老闆（ADMIN）不需要看到學生群組，必要時可用模擬登入老師視角

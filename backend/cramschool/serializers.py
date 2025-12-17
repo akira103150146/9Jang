@@ -101,6 +101,11 @@ class StudentSerializer(serializers.ModelSerializer):
     
     def get_total_fees(self, obj):
         """計算學生總費用（使用 annotate 預先計算的值）"""
+        # 老師角色不應看到金錢資訊
+        request = self.context.get('request')
+        if request and request.user.is_authenticated and request.user.is_teacher() and not request.user.is_admin():
+            return None
+        
         # 如果 queryset 已經使用 annotate 計算，直接使用該值
         if hasattr(obj, '_total_fees'):
             return float(obj._total_fees or 0)
@@ -111,6 +116,11 @@ class StudentSerializer(serializers.ModelSerializer):
     
     def get_unpaid_fees(self, obj):
         """計算學生未繳費用（使用 annotate 預先計算的值）"""
+        # 老師角色不應看到金錢資訊
+        request = self.context.get('request')
+        if request and request.user.is_authenticated and request.user.is_teacher() and not request.user.is_admin():
+            return None
+        
         # 如果 queryset 已經使用 annotate 計算，直接使用該值
         if hasattr(obj, '_unpaid_fees'):
             return float(obj._unpaid_fees or 0)

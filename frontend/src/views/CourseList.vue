@@ -8,6 +8,7 @@
           <p class="mt-2 text-sm text-slate-500">掌握每堂課的授課老師、費用與狀態</p>
         </div>
         <router-link
+          v-if="isAdmin"
           to="/courses/add"
           class="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-5 py-2 text-sm font-semibold text-white shadow-md hover:from-sky-600 hover:to-indigo-600"
         >
@@ -51,25 +52,55 @@
             <dt class="font-medium text-slate-500">上課時間</dt>
             <dd>{{ getDayDisplay(course.day_of_week) }} ・ {{ formatTime(course.start_time) }} - {{ formatTime(course.end_time) }}</dd>
           </div>
-          <div class="flex justify-between">
+          <div v-if="!isAdmin" class="flex justify-between">
             <dt class="font-medium text-slate-500">每堂費用</dt>
             <dd class="font-semibold text-slate-900">${{ course.fee_per_session }}</dd>
+          </div>
+          <!-- 學生狀態統計（僅老師和管理員可見） -->
+          <div v-if="course.student_status" class="mt-3 pt-3 border-t border-slate-200">
+            <div class="flex justify-between items-center mb-2">
+              <dt class="font-medium text-slate-500">學生狀態</dt>
+              <dd class="text-xs text-slate-400">總計 {{ course.student_status.total_students }} 人</dd>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-xs">
+              <div class="text-center">
+                <div class="font-semibold text-emerald-600">{{ course.student_status.present_count }}</div>
+                <div class="text-slate-500">出席</div>
+              </div>
+              <div class="text-center">
+                <div class="font-semibold text-amber-600">{{ course.student_status.leave_count }}</div>
+                <div class="text-slate-500">請假</div>
+              </div>
+              <div class="text-center">
+                <div class="font-semibold text-slate-400">{{ course.student_status.inactive_count }}</div>
+                <div class="text-slate-500">暫停</div>
+              </div>
+            </div>
           </div>
         </dl>
 
         <div class="mt-4 flex gap-2">
-          <router-link
-            :to="`/courses/edit/${course.course_id || course.id}`"
-            class="flex-1 rounded-full bg-sky-500 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-600 text-center"
-          >
-            編輯
-          </router-link>
           <button
-            @click="deleteCourse(course.course_id || course.id, course.course_name)"
-            class="flex-1 rounded-full bg-rose-500 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-600"
+            v-if="isTeacher"
+            @click="openCourseDetail(course)"
+            class="flex-1 rounded-full bg-indigo-500 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-600 text-center"
           >
-            刪除
+            查看課程內容
           </button>
+          <template v-if="isAdmin">
+            <router-link
+              :to="`/courses/edit/${course.course_id || course.id}`"
+              class="flex-1 rounded-full bg-sky-500 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-600 text-center"
+            >
+              編輯
+            </router-link>
+            <button
+              @click="deleteCourse(course.course_id || course.id, course.course_name)"
+              class="flex-1 rounded-full bg-rose-500 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-600"
+            >
+              刪除
+            </button>
+          </template>
         </div>
       </article>
     </div>
@@ -77,17 +108,52 @@
     <div v-if="!loading && courses.length === 0" class="text-center py-12">
       <p class="text-slate-500">目前沒有課程資料。</p>
     </div>
+
+    <!-- Course Detail Modal for Teachers -->
+    <CourseDetailModal
+      v-if="selectedCourse"
+      :is-open="isCourseModalOpen"
+      :course="selectedCourse"
+      :is-teacher="!isAdmin"
+      @close="closeCourseModal"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { courseAPI } from '../services/api'
 import { mockCourses } from '../data/mockData'
+import CourseDetailModal from '../components/CourseDetailModal.vue'
 
 const courses = ref([])
 const loading = ref(false)
 const usingMock = ref(false)
+const currentUser = ref(null)
+const isCourseModalOpen = ref(false)
+const selectedCourse = ref(null)
+
+// 檢查是否為管理員
+const isAdmin = computed(() => {
+  return currentUser.value && currentUser.value.role === 'ADMIN'
+})
+
+// 檢查是否為老師
+const isTeacher = computed(() => {
+  return currentUser.value && currentUser.value.role === 'TEACHER'
+})
+
+// 獲取當前用戶信息
+const fetchCurrentUser = async () => {
+  try {
+    const userStr = localStorage.getItem('user')
+    if (userStr) {
+      currentUser.value = JSON.parse(userStr)
+    }
+  } catch (error) {
+    console.error('獲取用戶信息失敗:', error)
+  }
+}
 
 const dayMap = {
   'Mon': '週一',
@@ -109,6 +175,7 @@ const normalizeCourse = (course) => ({
   day_of_week: course.day_of_week,
   fee_per_session: course.fee_per_session,
   status: course.status || 'Active',
+  student_status: course.student_status || null,
 })
 
 const getDayDisplay = (day) => {
@@ -135,7 +202,25 @@ const fetchCourses = async () => {
   try {
     const response = await courseAPI.getAll()
     const data = response.data.results || response.data
-    courses.value = data.map((item) => normalizeCourse(item))
+    const normalizedCourses = data.map((item) => normalizeCourse(item))
+    
+    // 如果是老師或管理員，獲取每個課程的學生狀態統計
+    if (currentUser.value && (currentUser.value.role === 'TEACHER' || currentUser.value.role === 'ADMIN')) {
+      const statusPromises = normalizedCourses.map(async (course) => {
+        try {
+          const statusRes = await courseAPI.getStudentStatus(course.course_id)
+          course.student_status = statusRes.data
+        } catch (error) {
+          console.warn(`獲取課程 ${course.course_id} 的學生狀態失敗:`, error)
+          course.student_status = null
+        }
+        return course
+      })
+      courses.value = await Promise.all(statusPromises)
+    } else {
+      courses.value = normalizedCourses
+    }
+    
     usingMock.value = false
   } catch (error) {
     console.warn('獲取課程資料失敗，使用 mock 資料：', error)
@@ -166,7 +251,18 @@ const deleteCourse = async (id, name) => {
   }
 }
 
+const openCourseDetail = (course) => {
+  selectedCourse.value = course
+  isCourseModalOpen.value = true
+}
+
+const closeCourseModal = () => {
+  isCourseModalOpen.value = false
+  selectedCourse.value = null
+}
+
 onMounted(() => {
+  fetchCurrentUser()
   fetchCourses()
 })
 </script>

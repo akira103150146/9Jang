@@ -20,6 +20,7 @@
             </label>
           </div>
           <router-link
+            v-if="canSeeAccountingFeatures"
             to="/students/add"
             class="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-5 py-2 text-sm font-semibold text-white shadow-md hover:from-sky-600 hover:to-indigo-600"
           >
@@ -38,17 +39,17 @@
         <p class="mt-2 text-3xl font-bold text-slate-900">{{ students.length }}</p>
         <p class="text-sm text-slate-500">含高三升學衝刺班 3 人</p>
       </div>
-      <div class="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
+      <div v-if="canSeeAccountingFeatures" class="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
         <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">總費用</p>
         <p class="mt-2 text-3xl font-bold text-slate-900">${{ totalFees.toLocaleString() }}</p>
         <p class="text-sm text-slate-500">所有學生費用總和</p>
       </div>
-      <div class="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
+      <div v-if="canSeeAccountingFeatures" class="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
         <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">待繳費用</p>
         <p class="mt-2 text-3xl font-bold text-amber-600">${{ unpaidFees.toLocaleString() }}</p>
         <p class="text-sm text-slate-500">未繳費用總和</p>
       </div>
-      <div class="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
+      <div v-if="canSeeAccountingFeatures" class="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
         <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">需要生成學費</p>
         <p class="mt-2 text-3xl font-bold text-red-600">{{ studentsWithTuitionNeeded.length }}</p>
         <p class="text-sm text-slate-500">學生人數</p>
@@ -64,7 +65,7 @@
               <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">學校 / 年級</th>
               <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">手機</th>
               <th v-if="isAdmin" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">帳號 / 密碼</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">總費用 / 待繳</th>
+              <th v-if="canSeeAccountingFeatures" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">總費用 / 待繳</th>
               <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">緊急聯絡人</th>
               <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">操作</th>
             </tr>
@@ -148,7 +149,7 @@
                 </div>
                 <p v-else class="text-xs text-slate-400">尚未創建帳號</p>
               </td>
-              <td class="px-4 py-4 text-sm">
+              <td v-if="canSeeAccountingFeatures" class="px-4 py-4 text-sm">
                 <div>
                   <p class="text-slate-900 font-semibold">總：${{ (student.total_fees || 0).toLocaleString() }}</p>
                   <p class="text-amber-600" :class="{'font-semibold': student.unpaid_fees > 0}">
@@ -171,12 +172,14 @@
               <td class="px-4 py-4 text-center">
                 <div class="flex justify-center gap-2 flex-wrap">
                   <button
+                    v-if="canSeeAccountingFeatures"
                     @click="openEnrollmentModal(student)"
                     class="rounded-full bg-indigo-500 px-3 py-1 text-xs font-semibold text-white hover:bg-indigo-600"
                   >
                     報名課程
                   </button>
                   <router-link
+                    v-if="canSeeAccountingFeatures"
                     :to="`/fees?student=${student.id}`"
                     class="rounded-full bg-green-500 px-3 py-1 text-xs font-semibold text-white hover:bg-green-600"
                   >
@@ -195,20 +198,21 @@
                     請假
                   </button>
                   <router-link
+                    v-if="canSeeAccountingFeatures"
                     :to="`/students/edit/${student.id}`"
                     class="rounded-full bg-sky-500 px-3 py-1 text-xs font-semibold text-white hover:bg-sky-600"
                   >
                     編輯
                   </router-link>
                   <button
-                    v-if="!student.is_deleted"
+                    v-if="isAdmin && !student.is_deleted"
                     @click="deleteStudent(student.id, student.name)"
                     class="rounded-full bg-rose-500 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-600"
                   >
                     刪除
                   </button>
                   <button
-                    v-else
+                    v-if="isAdmin && student.is_deleted"
                     @click="restoreStudent(student.id, student.name)"
                     class="rounded-full bg-green-500 px-3 py-1 text-xs font-semibold text-white hover:bg-green-600"
                   >
@@ -218,7 +222,7 @@
               </td>
             </tr>
             <tr v-if="students.length === 0">
-              <td :colspan="isAdmin ? 7 : 6" class="py-4 px-4 text-center text-slate-500">目前沒有學生資料。</td>
+              <td :colspan="isAdmin ? (canSeeAccountingFeatures ? 7 : 6) : (canSeeAccountingFeatures ? 6 : 5)" class="py-4 px-4 text-center text-slate-500">目前沒有學生資料。</td>
             </tr>
           </tbody>
         </table>
@@ -227,7 +231,7 @@
 
     <!-- 課程報名模態框 -->
     <div
-      v-if="showEnrollmentModal"
+      v-if="showEnrollmentModal && canSeeAccountingFeatures"
       class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm"
       @click.self="closeEnrollmentModal"
     >
@@ -489,7 +493,7 @@
 
     <!-- 學費生成模態框 -->
     <div
-      v-if="showTuitionModal"
+      v-if="showTuitionModal && canSeeAccountingFeatures"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
       @click.self="closeTuitionModal"
     >
@@ -885,6 +889,9 @@ const restoreStudent = async (id, name) => {
 }
 
 const openTuitionModal = async (student) => {
+  if (!canSeeAccountingFeatures.value) {
+    return
+  }
   selectedStudent.value = student
   showTuitionModal.value = true
   loadingTuition.value = true
@@ -970,6 +977,21 @@ const generateAllTuitions = async () => {
 // 檢查是否為管理員
 const isAdmin = computed(() => {
   return currentUser.value && currentUser.value.role === 'ADMIN'
+})
+
+// 檢查是否為老師
+const isTeacher = computed(() => {
+  return currentUser.value && currentUser.value.role === 'TEACHER'
+})
+
+// 檢查是否為會計
+const isAccountant = computed(() => {
+  return currentUser.value && currentUser.value.role === 'ACCOUNTANT'
+})
+
+// 檢查是否為管理員或會計（可看到會計專屬功能）
+const canSeeAccountingFeatures = computed(() => {
+  return isAdmin.value || isAccountant.value
 })
 
 // 獲取當前用戶信息

@@ -195,20 +195,27 @@ export default {
       
       loading.value = true
       try {
-        // Fetch materials
-        const materialsRes = await courseMaterialAPI.getAll({ course_id: props.course.course_id })
-        materials.value = materialsRes.data
+        const courseId = props.course.course_id || props.course.id
+        
+        // Fetch materials (使用 course query param)
+        const materialsRes = await courseMaterialAPI.getAll({ course: courseId })
+        const materialsData = materialsRes.data.results || materialsRes.data
+        materials.value = Array.isArray(materialsData) ? materialsData : []
 
-        // Fetch quizzes
-        const quizzesRes = await quizAPI.getAll({ course_id: props.course.course_id })
-        quizzes.value = quizzesRes.data
+        // Fetch quizzes (使用 course query param)
+        const quizzesRes = await quizAPI.getAll({ course: courseId })
+        const quizzesData = quizzesRes.data.results || quizzesRes.data
+        quizzes.value = Array.isArray(quizzesData) ? quizzesData : []
 
-        // Fetch exams
-        const examsRes = await examAPI.getAll({ course_id: props.course.course_id })
-        exams.value = examsRes.data
+        // Fetch exams (使用 course query param)
+        const examsRes = await examAPI.getAll({ course: courseId })
+        const examsData = examsRes.data.results || examsRes.data
+        exams.value = Array.isArray(examsData) ? examsData : []
       } catch (error) {
         console.error('Error fetching course data:', error)
-        // You might want to show a toast notification here
+        materials.value = []
+        quizzes.value = []
+        exams.value = []
       } finally {
         loading.value = false
       }
