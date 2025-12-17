@@ -157,6 +157,8 @@ const getUserInitials = (user) => {
 
 const allNavItems = [
   { name: 'student-home', label: '首頁', path: '/student-home', requiresAdmin: false, allowedRoles: ['STUDENT'] },
+  { name: 'my-courses', label: '我的課程', path: '/my-courses', requiresAdmin: false, allowedRoles: ['STUDENT'] },
+  { name: 'student-mistake-book', label: '錯題本', path: '/student-mistake-book', requiresAdmin: false, allowedRoles: ['STUDENT'] },
   { name: 'dashboard', label: '營運儀表板', path: '/', requiresAdmin: false, allowedRoles: ['ADMIN', 'ACCOUNTANT'] },
   // 老師需要學生列表/錯題本；不提供新增/編輯/費用等入口
   { name: 'student-list', label: '學生管理', path: '/students', requiresAdmin: false, allowedRoles: ['ADMIN', 'ACCOUNTANT', 'TEACHER'] },
@@ -212,6 +214,8 @@ const childMatchMap = {
   'fees': ['fees', 'fee-add', 'fee-edit'],
   'lunch-orders': ['lunch-orders', 'group-order-detail', 'join-group-order'],
   'questions': ['questions', 'resource-new', 'resource-edit', 'template-new', 'template-edit', 'question-new', 'question-edit', 'question-import'], // Keep sidebar active for editor, template editor, and import page
+  'my-courses': ['my-courses'],
+  'student-mistake-book': ['student-mistake-book'],
 }
 
 const isActive = (name) => {

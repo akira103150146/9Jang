@@ -647,6 +647,15 @@ class QuestionBank(models.Model):
         related_name='imported_questions',
         verbose_name='來源錯題記錄'
     )
+    imported_student = models.ForeignKey(
+        'Student',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='imported_questions',
+        verbose_name='來源學生',
+        help_text='若此題由學生錯題彙整而來，記錄來源學生以利針對性教學'
+    )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='建立時間')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新時間')
     
@@ -944,6 +953,109 @@ class ErrorLog(models.Model):
         self.deleted_at = None
         self.save()
 
+
+class ErrorLogImage(models.Model):
+    """
+    錯題本（ErrorLog）圖片：一筆錯題可有多張照片
+    """
+    image_id = models.AutoField(primary_key=True, verbose_name='錯題圖片ID')
+    error_log = models.ForeignKey(
+        ErrorLog,
+        on_delete=models.CASCADE,
+        related_name='images',
+        verbose_name='錯題記錄'
+    )
+    image_path = models.CharField(max_length=255, verbose_name='圖片路徑')
+    caption = models.CharField(max_length=255, blank=True, null=True, verbose_name='圖片說明')
+    sort_order = models.IntegerField(default=0, verbose_name='排序')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='建立時間')
+
+    class Meta:
+        verbose_name = '錯題圖片'
+        verbose_name_plural = '錯題圖片'
+        ordering = ['sort_order', 'image_id']
+        indexes = [
+            models.Index(fields=['error_log', 'sort_order'], name='errimg_log_sort_idx'),
+        ]
+
+    def __str__(self):
+        return f"ErrorLog#{self.error_log_id} Image#{self.image_id}"
+
+
+class StudentMistakeNote(models.Model):
+    """
+    學生自建錯題本（筆記式，不強制綁定題庫）
+    - 僅允許學生管理自己的筆記
+    """
+    note_id = models.AutoField(primary_key=True, verbose_name='錯題筆記ID')
+    student = models.ForeignKey(
+        Student,
+        on_delete=models.CASCADE,
+        related_name='mistake_notes',
+        verbose_name='學生'
+    )
+    title = models.CharField(max_length=200, verbose_name='標題')
+    subject = models.CharField(max_length=100, blank=True, null=True, verbose_name='科目/分類')
+    content = models.TextField(blank=True, null=True, verbose_name='內容 (Markdown)')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='建立時間')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新時間')
+
+    # Soft delete 欄位
+    is_deleted = models.BooleanField(default=False, verbose_name='是否已刪除')
+    deleted_at = models.DateTimeField(blank=True, null=True, verbose_name='刪除時間')
+
+    class Meta:
+        verbose_name = '學生錯題筆記'
+        verbose_name_plural = '學生錯題筆記'
+        ordering = ['-updated_at', '-note_id']
+        indexes = [
+            models.Index(fields=['student', 'is_deleted'], name='mistake_student_deleted_idx'),
+            models.Index(fields=['student', 'updated_at'], name='mistake_student_updated_idx'),
+        ]
+
+    def __str__(self):
+        return f"{self.student.name} - {self.title}"
+
+    def soft_delete(self):
+        """軟刪除錯題筆記"""
+        from django.utils import timezone
+        self.is_deleted = True
+        self.deleted_at = timezone.now()
+        self.save()
+
+    def restore(self):
+        """恢復錯題筆記"""
+        self.is_deleted = False
+        self.deleted_at = None
+        self.save()
+
+
+class StudentMistakeNoteImage(models.Model):
+    """
+    學生自建錯題筆記圖片：一筆筆記可有多張照片
+    """
+    image_id = models.AutoField(primary_key=True, verbose_name='筆記圖片ID')
+    note = models.ForeignKey(
+        StudentMistakeNote,
+        on_delete=models.CASCADE,
+        related_name='images',
+        verbose_name='錯題筆記'
+    )
+    image_path = models.CharField(max_length=255, verbose_name='圖片路徑')
+    caption = models.CharField(max_length=255, blank=True, null=True, verbose_name='圖片說明')
+    sort_order = models.IntegerField(default=0, verbose_name='排序')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='建立時間')
+
+    class Meta:
+        verbose_name = '錯題筆記圖片'
+        verbose_name_plural = '錯題筆記圖片'
+        ordering = ['sort_order', 'image_id']
+        indexes = [
+            models.Index(fields=['note', 'sort_order'], name='noteimg_note_sort_idx'),
+        ]
+
+    def __str__(self):
+        return f"Note#{self.note_id} Image#{self.image_id}"
 
 class Restaurant(models.Model):
     """

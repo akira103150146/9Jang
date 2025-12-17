@@ -22,8 +22,29 @@
           </router-link>
         </div>
       </div>
+      
+      <!-- Tabs -->
+      <div class="mt-6 flex space-x-4 border-b border-slate-200">
+        <button
+          @click="currentTab = 'errors'"
+          class="pb-2 text-sm font-medium transition-colors border-b-2"
+          :class="currentTab === 'errors' ? 'border-purple-500 text-purple-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+        >
+          系統錯題
+        </button>
+        <button
+          v-if="canViewNotes"
+          @click="currentTab = 'notes'"
+          class="pb-2 text-sm font-medium transition-colors border-b-2"
+          :class="currentTab === 'notes' ? 'border-purple-500 text-purple-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+        >
+          學生筆記
+        </button>
+      </div>
     </header>
 
+    <!-- 系統錯題 Tab 內容 -->
+    <div v-show="currentTab === 'errors'">
     <!-- 統計卡片 -->
     <section class="grid gap-4 md:grid-cols-4">
       <div class="rounded-3xl border border-purple-100 bg-white p-5 shadow-sm">
@@ -350,6 +371,38 @@
             </p>
           </div>
 
+          <!-- 錯題照片（手機拍照/相簿） -->
+          <div class="border-t border-slate-200 pt-4">
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="text-sm font-semibold text-slate-700">錯題照片</h4>
+              <label class="inline-flex items-center justify-center rounded-full bg-purple-50 px-4 py-2 text-xs font-semibold text-purple-700 hover:bg-purple-100 cursor-pointer">
+                + 拍照/選照片
+                <input
+                  class="hidden"
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  multiple
+                  @change="onPickImages"
+                />
+              </label>
+            </div>
+            <p class="text-xs text-slate-500 mb-3">可一次上傳多張；系統會自動壓縮以加快速度。</p>
+
+            <div v-if="localImages.length > 0" class="grid grid-cols-3 gap-3 sm:grid-cols-4">
+              <div v-for="(img, idx) in localImages" :key="img.url" class="relative">
+                <img :src="img.url" class="h-24 w-full rounded-xl object-cover border border-slate-200" />
+                <button
+                  type="button"
+                  class="absolute top-2 right-2 rounded-full bg-slate-900/85 text-white text-xs px-2 py-1 hover:bg-slate-900"
+                  @click="removeLocalImage(idx)"
+                >
+                  移除
+                </button>
+              </div>
+            </div>
+          </div>
+
           <!-- 錯題相關資訊 -->
           <div class="border-t border-slate-200 pt-4">
             <h4 class="text-sm font-semibold text-slate-700 mb-3">錯題資訊</h4>
@@ -389,10 +442,10 @@
             </button>
             <button
               type="submit"
-              :disabled="saving"
+              :disabled="saving || uploadingImages"
               class="rounded-full bg-purple-500 px-5 py-2 text-sm font-semibold text-white hover:bg-purple-600 disabled:opacity-50"
             >
-              {{ saving ? '儲存中...' : '儲存' }}
+              {{ saving || uploadingImages ? '儲存中...' : '儲存' }}
             </button>
           </div>
         </form>
@@ -547,12 +600,38 @@
             </div>
           </div>
 
+          <div v-if="selectedError.images && selectedError.images.length > 0" class="rounded-lg border border-slate-200 bg-white p-4">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-sm font-semibold text-slate-700">錯題照片</h4>
+              <span class="text-xs text-slate-500">{{ selectedError.images.length }} 張</span>
+            </div>
+            <div class="grid grid-cols-3 gap-3 sm:grid-cols-4">
+              <div v-for="img in selectedError.images" :key="img.image_id" class="relative">
+                <img :src="img.image_url || img.image_path" class="h-24 w-full rounded-xl object-cover border border-slate-200" />
+                <button
+                  type="button"
+                  class="absolute top-2 right-2 rounded-full bg-rose-600/90 text-white text-xs px-2 py-1 hover:bg-rose-700"
+                  @click="deleteErrorImage(img)"
+                >
+                  刪除
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
             <button
               @click="showDetailModal = false"
               class="rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
               關閉
+            </button>
+            <button
+              v-if="canImportToQuestionBank"
+              @click="importSelectedErrorToQuestionBank"
+              class="rounded-full bg-indigo-500 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-600"
+            >
+              匯入題庫
             </button>
             <button
               @click="updateErrorStatus(selectedError)"
@@ -564,6 +643,255 @@
         </div>
       </div>
     </div>
+    </div>
+
+    <!-- 學生筆記 Tab 內容 -->
+    <div v-show="currentTab === 'notes'">
+      <section class="rounded-3xl border border-slate-100 bg-white shadow-sm">
+        <div class="p-5 border-b border-slate-100">
+          <h3 class="text-lg font-semibold text-slate-900">學生筆記列表</h3>
+          <p class="text-sm text-slate-500">點擊筆記查看詳情，可匯入題庫</p>
+        </div>
+
+        <div v-if="loadingNotes" class="p-12 text-center">
+          <p class="text-slate-500">載入中...</p>
+        </div>
+
+        <div v-else-if="studentNotes.length === 0" class="p-12 text-center">
+          <p class="text-slate-500">目前沒有學生筆記。</p>
+        </div>
+
+        <div v-else class="divide-y divide-slate-100">
+          <div
+            v-for="note in studentNotes"
+            :key="note.note_id"
+            class="p-5 transition hover:bg-slate-50/70 cursor-pointer"
+            @click="viewNoteDetail(note)"
+          >
+            <div class="flex items-start justify-between">
+              <div class="flex-1">
+                <div class="flex items-center gap-3 mb-2">
+                  <span v-if="note.subject" class="text-xs text-slate-500">
+                    {{ note.subject }}
+                  </span>
+                  <span class="text-xs text-slate-500">
+                    {{ formatDateTime(note.created_at) }}
+                  </span>
+                  <span v-if="note.images && note.images.length > 0" class="text-xs text-slate-500">
+                    📷 {{ note.images.length }} 張照片
+                  </span>
+                </div>
+                <h4 class="text-lg font-semibold text-slate-900 mb-1">
+                  {{ note.title }}
+                </h4>
+                <div v-if="note.content" class="text-sm text-slate-600 mb-3 line-clamp-2 markdown-preview" v-html="renderMarkdownWithLatex(note.content)"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 筆記詳情 Modal -->
+    <div
+      v-if="showNoteDetailModal && selectedNote"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm"
+      @click.self="showNoteDetailModal = false"
+    >
+      <div class="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-xl font-bold text-slate-900">筆記詳情</h3>
+          <button @click="showNoteDetailModal = false" class="text-slate-400 hover:text-slate-600">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <div class="flex items-center gap-3 mb-3">
+              <span v-if="selectedNote.subject" class="text-sm text-slate-600">
+                {{ selectedNote.subject }}
+              </span>
+              <span class="text-sm text-slate-600">
+                {{ formatDateTime(selectedNote.created_at) }}
+              </span>
+            </div>
+            <h4 class="text-lg font-semibold text-slate-900 mb-2">{{ selectedNote.title }}</h4>
+            <div v-if="selectedNote.content" class="text-sm text-slate-700 mb-3 markdown-preview" v-html="renderMarkdownWithLatex(selectedNote.content)"></div>
+          </div>
+
+          <div v-if="selectedNote.images && selectedNote.images.length > 0" class="rounded-lg border border-slate-200 bg-white p-4">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-sm font-semibold text-slate-700">筆記照片</h4>
+              <span class="text-xs text-slate-500">{{ selectedNote.images.length }} 張</span>
+            </div>
+            <div class="grid grid-cols-1 gap-4">
+              <div v-for="img in selectedNote.images" :key="img.image_id" class="flex justify-center">
+                <ImageRotator :image-url="img.image_url || img.image_path" :alt="img.caption || '筆記圖片'" />
+              </div>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
+            <button
+              @click="showNoteDetailModal = false"
+              class="rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              關閉
+            </button>
+            <button
+              v-if="canImportToQuestionBank"
+              @click="openImportModal(selectedNote)"
+              class="rounded-full bg-indigo-500 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-600"
+            >
+              匯入題庫
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 匯入題庫表單 Modal -->
+    <div
+      v-if="showImportModal && selectedNote"
+      class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm"
+      @click.self="showImportModal = false"
+    >
+      <div class="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-xl font-bold text-slate-900">匯入題庫</h3>
+          <button @click="showImportModal = false" class="text-slate-400 hover:text-slate-600">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <form @submit.prevent="importNoteToQuestionBank" class="space-y-4">
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1">科目 *</label>
+            <select
+              v-model="importFormData.subject_id"
+              required
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            >
+              <option value="">請選擇</option>
+              <option v-for="subject in subjects" :key="subject.subject_id" :value="subject.subject_id">
+                {{ subject.name }}{{ subject.code ? ` (${subject.code})` : '' }}
+              </option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1">適用年級 *</label>
+            <select
+              v-model="importFormData.level"
+              required
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            >
+              <option value="">請選擇</option>
+              <option value="JHS">Junior High School</option>
+              <option value="SHS">Senior High School</option>
+              <option value="VCS">Vocational School</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1">章節/單元 *</label>
+            <input
+              v-model="importFormData.chapter"
+              type="text"
+              required
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              placeholder="例如：向量與空間"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1">題目內容 (Markdown + LaTeX) *</label>
+            <RichTextEditor
+              :model-value="toRT(importFormData.content)"
+              :placeholder="'輸入題目內容...'"
+              @update:model-value="(v) => (importFormData.content = fromRT(v))"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1">正確答案 (Markdown + LaTeX) *</label>
+            <RichTextEditor
+              :model-value="toRT(importFormData.correct_answer)"
+              :placeholder="'輸入正確答案...'"
+              @update:model-value="(v) => (importFormData.correct_answer = fromRT(v))"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1">難度</label>
+            <select
+              v-model="importFormData.difficulty"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            >
+              <option :value="1">1 - 非常簡單</option>
+              <option :value="2">2 - 簡單</option>
+              <option :value="3">3 - 中等</option>
+              <option :value="4">4 - 困難</option>
+              <option :value="5">5 - 非常困難</option>
+            </select>
+          </div>
+
+          <div v-if="selectedNote.images && selectedNote.images.length > 0">
+            <label class="block text-sm font-semibold text-slate-700 mb-1">選擇圖片（可選）</label>
+            <select
+              v-model="importFormData.image_path"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            >
+              <option value="">不使用圖片</option>
+              <option v-for="img in selectedNote.images" :key="img.image_id" :value="img.image_path">
+                {{ img.caption || `圖片 ${img.image_id}` }}
+              </option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1">標籤（可選）</label>
+            <div class="flex flex-wrap gap-2">
+              <label
+                v-for="tag in hashtags"
+                :key="tag.tag_id"
+                class="flex items-center gap-2 cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  :value="tag.tag_id"
+                  v-model="importFormData.tag_ids"
+                  class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span class="text-sm text-slate-700">{{ tag.tag_name }}</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
+            <button
+              type="button"
+              @click="showImportModal = false"
+              class="rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              :disabled="importing"
+              class="rounded-full bg-indigo-500 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-600 disabled:opacity-50"
+            >
+              {{ importing ? '匯入中...' : '匯入題庫' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -571,9 +899,11 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { errorLogAPI, questionBankAPI, studentAPI, subjectAPI, hashtagAPI } from '../services/api'
+import { errorLogAPI, errorLogImageAPI, questionBankAPI, studentAPI, subjectAPI, hashtagAPI, authAPI, studentMistakeNoteAPI } from '../services/api'
 import { useMarkdownRenderer } from '../composables/useMarkdownRenderer'
 import RichTextEditor from '../components/RichTextEditor.vue'
+import ImageRotator from '../components/ImageRotator.vue'
+import { compressImageFile } from '../utils/imageCompress'
 
 // 使用 Markdown 渲染 composable
 const { renderMarkdownWithLatex } = useMarkdownRenderer()
@@ -593,6 +923,7 @@ const fromRT = (v) => {
 const route = useRoute()
 const studentId = parseInt(route.params.id)
 
+const currentTab = ref('errors')
 const errorLogs = ref([])
 const questions = ref([])
 const subjects = ref([])
@@ -611,6 +942,27 @@ const studentName = ref('')
 const chapterSuggestions = ref([])
 const showChapterSuggestions = ref(false)
 const searchChapterTimeout = ref(null)
+const currentRole = ref('')
+const uploadingImages = ref(false)
+const localImages = ref([]) // { file, url }
+
+// 學生筆記相關
+const studentNotes = ref([])
+const loadingNotes = ref(false)
+const showNoteDetailModal = ref(false)
+const selectedNote = ref(null)
+const showImportModal = ref(false)
+const importing = ref(false)
+const importFormData = ref({
+  subject_id: '',
+  level: '',
+  chapter: '',
+  content: '',
+  correct_answer: '',
+  difficulty: 3,
+  image_path: '',
+  tag_ids: []
+})
 
 const errorFormData = ref({
   useExistingQuestion: true,
@@ -624,6 +976,14 @@ const errorFormData = ref({
   tag_ids: [],
   error_count: 1,
   review_status: 'New'
+})
+
+const canImportToQuestionBank = computed(() => {
+  return currentRole.value === 'TEACHER' || currentRole.value === 'ADMIN'
+})
+
+const canViewNotes = computed(() => {
+  return currentRole.value === 'TEACHER' || currentRole.value === 'ADMIN'
 })
 
 const subjectFormData = ref({
@@ -675,6 +1035,15 @@ const fetchStudentInfo = async () => {
   } catch (error) {
     console.warn('獲取學生資訊失敗：', error)
     studentName.value = '學生'
+  }
+}
+
+const fetchCurrentRole = async () => {
+  try {
+    const res = await authAPI.getCurrentUser()
+    currentRole.value = res.data?.role || ''
+  } catch (e) {
+    currentRole.value = ''
   }
 }
 
@@ -912,7 +1281,24 @@ const openAddErrorModal = () => {
     error_count: 1,
     review_status: 'New'
   }
+  localImages.value.forEach((x) => x?.url && URL.revokeObjectURL(x.url))
+  localImages.value = []
   showAddErrorModal.value = true
+}
+
+const onPickImages = async (evt) => {
+  const files = Array.from(evt.target.files || [])
+  evt.target.value = ''
+  if (files.length === 0) return
+  for (const f of files) {
+    localImages.value.push({ file: f, url: URL.createObjectURL(f) })
+  }
+}
+
+const removeLocalImage = (idx) => {
+  const item = localImages.value[idx]
+  if (item?.url) URL.revokeObjectURL(item.url)
+  localImages.value.splice(idx, 1)
 }
 
 const saveErrorLog = async () => {
@@ -964,12 +1350,27 @@ const saveErrorLog = async () => {
     }
     
     // 創建錯題記錄
-    await errorLogAPI.create({
+    const createdError = await errorLogAPI.create({
       student: studentId,
       question: questionId,
       error_count: errorFormData.value.error_count,
       review_status: errorFormData.value.review_status
     })
+
+    // 上傳錯題圖片（多張）
+    const errorLogId = createdError?.data?.error_log_id
+    if (errorLogId && localImages.value.length > 0) {
+      uploadingImages.value = true
+      const formData = new FormData()
+      for (const item of localImages.value) {
+        const compressed = await compressImageFile(item.file)
+        formData.append('images', compressed)
+      }
+      await errorLogAPI.uploadImages(errorLogId, formData)
+      uploadingImages.value = false
+      localImages.value.forEach((x) => x?.url && URL.revokeObjectURL(x.url))
+      localImages.value = []
+    }
     
     showAddErrorModal.value = false
     fetchErrorLogs()
@@ -985,6 +1386,7 @@ const saveErrorLog = async () => {
     }
   } finally {
     saving.value = false
+    uploadingImages.value = false
   }
 }
 
@@ -997,6 +1399,35 @@ const viewErrorDetail = async (errorLog) => {
   } catch (error) {
     console.error('獲取題目詳情失敗：', error)
     alert('無法載入題目詳情')
+  }
+}
+
+const deleteErrorImage = async (img) => {
+  if (!confirm('確定要刪除這張錯題照片嗎？')) return
+  try {
+    await errorLogImageAPI.delete(img.image_id)
+    if (selectedError.value?.images) {
+      selectedError.value.images = selectedError.value.images.filter((x) => x.image_id !== img.image_id)
+    }
+    fetchErrorLogs()
+  } catch (e) {
+    console.error('刪除錯題照片失敗:', e)
+    alert('刪除錯題照片失敗，請稍後再試')
+  }
+}
+
+const importSelectedErrorToQuestionBank = async () => {
+  if (!selectedError.value?.error_log_id) return
+  if (!canImportToQuestionBank.value) {
+    alert('您沒有權限匯入題庫')
+    return
+  }
+  try {
+    await errorLogAPI.importToQuestionBank(selectedError.value.error_log_id)
+    alert('已匯入題庫（或已存在）')
+  } catch (e) {
+    console.error('匯入題庫失敗:', e)
+    alert('匯入題庫失敗，請稍後再試')
   }
 }
 
@@ -1051,12 +1482,90 @@ const deleteErrorLog = async (id, chapter) => {
   }
 }
 
-onMounted(() => {
+const formatDateTime = (datetime) => {
+  if (!datetime) return ''
+  const d = new Date(datetime)
+  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+const fetchStudentNotes = async () => {
+  loadingNotes.value = true
+  try {
+    const res = await studentMistakeNoteAPI.getAll(`student_id=${studentId}`)
+    studentNotes.value = res.data.results || res.data || []
+  } catch (e) {
+    console.error('載入學生筆記失敗：', e)
+    studentNotes.value = []
+  } finally {
+    loadingNotes.value = false
+  }
+}
+
+const viewNoteDetail = (note) => {
+  selectedNote.value = note
+  showNoteDetailModal.value = true
+}
+
+const openImportModal = (note) => {
+  selectedNote.value = note
+  // 預填表單（從筆記中提取資訊）
+  importFormData.value = {
+    subject_id: '',
+    level: '',
+    chapter: '',
+    content: note.content || '',
+    correct_answer: '',
+    difficulty: 3,
+    image_path: note.images && note.images.length > 0 ? note.images[0].image_path : '',
+    tag_ids: []
+  }
+  showNoteDetailModal.value = false
+  showImportModal.value = true
+}
+
+const importNoteToQuestionBank = async () => {
+  if (!selectedNote.value) return
+  
+  importing.value = true
+  try {
+    const payload = {
+      subject_id: parseInt(importFormData.value.subject_id),
+      level: importFormData.value.level,
+      chapter: importFormData.value.chapter,
+      content: importFormData.value.content,
+      correct_answer: importFormData.value.correct_answer,
+      difficulty: importFormData.value.difficulty,
+      tag_ids: importFormData.value.tag_ids,
+    }
+    
+    if (importFormData.value.image_path) {
+      payload.image_path = importFormData.value.image_path
+    }
+    
+    await studentMistakeNoteAPI.importToQuestionBank(selectedNote.value.note_id, payload)
+    alert('成功匯入題庫！')
+    showImportModal.value = false
+    selectedNote.value = null
+  } catch (e) {
+    console.error('匯入題庫失敗：', e)
+    alert('匯入題庫失敗：' + (e.response?.data?.detail || e.message))
+  } finally {
+    importing.value = false
+  }
+}
+
+onMounted(async () => {
+  await fetchCurrentRole()
   fetchStudentInfo()
   fetchErrorLogs()
   fetchQuestions()
   fetchSubjects()
   fetchHashtags()
+  
+  // 如果是老師或管理員，載入學生筆記
+  if (currentRole.value === 'TEACHER' || currentRole.value === 'ADMIN') {
+    await fetchStudentNotes()
+  }
 })
 </script>
 

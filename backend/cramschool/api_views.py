@@ -1,16 +1,19 @@
 # cramschool/api_views.py
 
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, serializers
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
 from django.db.models import Q, Count, Sum, Prefetch
+from django.db import models
 from django.conf import settings
 from django.utils import timezone
 from datetime import datetime, timedelta
 import calendar
 import os
 import uuid
+import json
+import time
 from django.contrib.auth import get_user_model
 from account.models import UserRole
 from .models import (
@@ -18,7 +21,7 @@ from .models import (
     SessionRecord, Attendance, Leave, Subject, QuestionBank, Hashtag, QuestionTag,
     StudentAnswer, ErrorLog, Restaurant, GroupOrder, Order, OrderItem,
     StudentGroup, Quiz, Exam, CourseMaterial, AssessmentSubmission,
-    ContentTemplate, LearningResource
+    ContentTemplate, LearningResource, StudentMistakeNote, StudentMistakeNoteImage, ErrorLogImage
 )
 
 CustomUser = get_user_model()
@@ -28,10 +31,53 @@ from .serializers import (
     SessionRecordSerializer, AttendanceSerializer, LeaveSerializer,
     SubjectSerializer, QuestionBankSerializer, HashtagSerializer, QuestionTagSerializer,
     StudentAnswerSerializer, ErrorLogSerializer,
+    StudentMistakeNoteImageSerializer, ErrorLogImageSerializer,
     RestaurantSerializer, GroupOrderSerializer, OrderSerializer, OrderItemSerializer,
     StudentGroupSerializer, QuizSerializer, ExamSerializer, CourseMaterialSerializer,
-    ContentTemplateSerializer, LearningResourceSerializer
+    ContentTemplateSerializer, LearningResourceSerializer, StudentMistakeNoteSerializer
 )
+
+
+def _save_uploaded_image(request, image_file, folder_prefix: str) -> tuple[str, str]:
+    """
+    儲存上傳圖片並回傳 (saved_path, image_url)
+    folder_prefix: 例如 'mistake_images' / 'error_log_images'
+    """
+    from django.core.files.storage import default_storage
+    from datetime import datetime as _dt
+
+    filename = image_file.name or 'image'
+    file_ext = filename.split('.')[-1].lower() if '.' in filename else 'jpg'
+    unique_filename = f"{uuid.uuid4().hex}.{file_ext}"
+    date_folder = _dt.now().strftime('%Y/%m/%d')
+    relative_path = f'{folder_prefix}/{date_folder}/{unique_filename}'
+
+    saved_path = default_storage.save(relative_path, image_file)
+    image_url = default_storage.url(saved_path)
+    if not image_url.startswith('http'):
+        image_url = request.build_absolute_uri(image_url)
+    return saved_path, image_url
+
+def _agent_log(location: str, message: str, data: dict, hypothesis_id: str, run_id: str = "run1"):
+    """
+    Debug-mode NDJSON logger (no secrets / no PII).
+    Writes to: /home/akira/github/9Jang/.cursor/debug.log
+    """
+    try:
+        payload = {
+            "sessionId": "debug-session",
+            "runId": run_id,
+            "hypothesisId": hypothesis_id,
+            "location": location,
+            "message": message,
+            "data": data,
+            "timestamp": int(time.time() * 1000),
+        }
+        with open("/home/akira/github/9Jang/.cursor/debug.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    except Exception:
+        # Never break API due to logging
+        return
 
 
 class _DRFPermissionError(Exception):
@@ -1501,6 +1547,110 @@ class ErrorLogViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         instance.soft_delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post'], url_path='upload-images')
+    def upload_images(self, request, pk=None):
+        """
+        上傳錯題圖片（multipart/form-data: images[]）
+        權限：老師/會計/管理員（學生預設不開放）
+        """
+        if not request.user.is_authenticated:
+            return Response({'detail': '未登入'}, status=status.HTTP_401_UNAUTHORIZED)
+        if request.user.is_student():
+            return Response({'detail': '學生不可上傳學生管理端錯題圖片'}, status=status.HTTP_403_FORBIDDEN)
+        if not (request.user.is_admin() or request.user.is_teacher() or request.user.is_accountant()):
+            return Response({'detail': '無權限'}, status=status.HTTP_403_FORBIDDEN)
+
+        error_log = self.get_object()
+        files = request.FILES.getlist('images') or []
+        if not files:
+            return Response({'detail': '沒有提供圖片'}, status=status.HTTP_400_BAD_REQUEST)
+
+        created = []
+        # 依目前最大 sort_order 接續
+        current_max = ErrorLogImage.objects.filter(error_log=error_log).aggregate(m=models.Max('sort_order')).get('m') or 0
+        for idx, f in enumerate(files, start=1):
+            saved_path, _url = _save_uploaded_image(request, f, 'error_log_images')
+            img = ErrorLogImage.objects.create(
+                error_log=error_log,
+                image_path=saved_path,
+                sort_order=current_max + idx
+            )
+            created.append(img)
+
+        serializer = ErrorLogImageSerializer(created, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'], url_path='reorder-images')
+    def reorder_images(self, request, pk=None):
+        """
+        重新排序錯題圖片
+        body: { image_ids: [1,2,3] }
+        """
+        if not request.user.is_authenticated:
+            return Response({'detail': '未登入'}, status=status.HTTP_401_UNAUTHORIZED)
+        if request.user.is_student():
+            return Response({'detail': '學生不可操作'}, status=status.HTTP_403_FORBIDDEN)
+        if not (request.user.is_admin() or request.user.is_teacher() or request.user.is_accountant()):
+            return Response({'detail': '無權限'}, status=status.HTTP_403_FORBIDDEN)
+
+        error_log = self.get_object()
+        image_ids = request.data.get('image_ids') or []
+        if not isinstance(image_ids, list) or not image_ids:
+            return Response({'detail': '請提供 image_ids'}, status=status.HTTP_400_BAD_REQUEST)
+
+        images = list(ErrorLogImage.objects.filter(error_log=error_log, image_id__in=image_ids))
+        if len(images) != len(image_ids):
+            return Response({'detail': 'image_ids 包含不屬於此錯題的圖片'}, status=status.HTTP_400_BAD_REQUEST)
+
+        order_map = {int(image_id): idx for idx, image_id in enumerate(image_ids)}
+        for img in images:
+            img.sort_order = order_map.get(img.image_id, img.sort_order)
+        ErrorLogImage.objects.bulk_update(images, ['sort_order'])
+        return Response({'success': True})
+
+    @action(detail=True, methods=['post'], url_path='import-to-question-bank')
+    def import_to_question_bank(self, request, pk=None):
+        """
+        從 ErrorLog 匯入題庫（建立一份可追溯來源學生的題目）
+        - 權限：老師/管理員可用；會計禁止
+        - 行為：若已存在 imported_from_error_log=此錯題 的題目，回傳既有題目
+        """
+        if not request.user.is_authenticated:
+            return Response({'detail': '未登入'}, status=status.HTTP_401_UNAUTHORIZED)
+        if request.user.is_accountant():
+            return Response({'detail': '會計不可匯入題庫'}, status=status.HTTP_403_FORBIDDEN)
+        if not (request.user.is_admin() or request.user.is_teacher()):
+            return Response({'detail': '無權限'}, status=status.HTTP_403_FORBIDDEN)
+
+        error_log = self.get_object()
+
+        existing = QuestionBank.objects.filter(imported_from_error_log=error_log).first()
+        if existing:
+            serializer = QuestionBankSerializer(existing, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        q = error_log.question
+        # 複製題目（保留內容/答案/難度/科目/年級/章節/圖片等）
+        new_question = QuestionBank.objects.create(
+            subject=q.subject,
+            level=q.level,
+            chapter=q.chapter,
+            content=q.content,
+            image_path=q.image_path,
+            correct_answer=q.correct_answer,
+            difficulty=q.difficulty,
+            question_number=q.question_number,
+            origin=q.origin,
+            origin_detail=q.origin_detail,
+            solution_content=q.solution_content,
+            source='imported_from_error_log',
+            created_by=request.user,
+            imported_from_error_log=error_log,
+            imported_student=error_log.student,
+        )
+        serializer = QuestionBankSerializer(new_question, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
     
     @action(detail=True, methods=['post'])
     def restore(self, request, pk=None):
@@ -1525,6 +1675,301 @@ class ErrorLogViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(error_log)
         return Response(serializer.data)
 
+
+class StudentMistakeNoteViewSet(viewsets.ModelViewSet):
+    """
+    學生自建錯題本（筆記式）
+    - 僅允許學生存取自己的筆記
+    - 管理員/老師預設不可用（避免資料外洩；需要的話可再加特例）
+    """
+    queryset = StudentMistakeNote.objects.select_related('student', 'student__user').all()
+    serializer_class = StudentMistakeNoteSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return StudentMistakeNote.objects.none()
+
+        # 老師/管理員可以查看指定學生的筆記
+        if user.is_teacher() or user.is_admin():
+            student_id = self.request.query_params.get('student_id')
+            if student_id:
+                try:
+                    student = Student.objects.get(student_id=student_id)
+                    qs = StudentMistakeNote.objects.select_related('student').filter(student=student)
+                except Student.DoesNotExist:
+                    return StudentMistakeNote.objects.none()
+            else:
+                return StudentMistakeNote.objects.none()
+
+        # 學生只能查看自己的筆記
+        elif user.is_student():
+            try:
+                student = user.student_profile
+                qs = StudentMistakeNote.objects.select_related('student').filter(student=student)
+            except Exception:
+                return StudentMistakeNote.objects.none()
+        else:
+            return StudentMistakeNote.objects.none()
+
+        # 過濾已刪除的記錄
+        include_deleted = self.request.query_params.get('include_deleted', 'false').lower() == 'true'
+        if not include_deleted:
+            qs = qs.filter(is_deleted=False)
+
+        # 搜尋功能
+        q = (self.request.query_params.get('q') or '').strip()
+        if q:
+            qs = qs.filter(Q(title__icontains=q) | Q(subject__icontains=q) | Q(content__icontains=q))
+
+        return qs.order_by('-updated_at', '-note_id')
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if not user.is_authenticated or not user.is_student():
+            raise _DRFPermissionError('只有學生可以新增錯題筆記')
+        try:
+            student = user.student_profile
+        except Exception:
+            raise _DRFPermissionError('找不到學生資料')
+        serializer.save(student=student)
+
+    def create(self, request, *args, **kwargs):
+        try:
+            return super().create(request, *args, **kwargs)
+        except _DRFPermissionError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_403_FORBIDDEN)
+
+    def update(self, request, *args, **kwargs):
+        try:
+            obj = self.get_object()
+        except Exception:
+            return Response({'detail': '找不到筆記'}, status=status.HTTP_404_NOT_FOUND)
+
+        user = request.user
+        if not user.is_authenticated or not user.is_student():
+            return Response({'detail': '只有學生可以編輯錯題筆記'}, status=status.HTTP_403_FORBIDDEN)
+        try:
+            student = user.student_profile
+        except Exception:
+            return Response({'detail': '找不到學生資料'}, status=status.HTTP_403_FORBIDDEN)
+        if obj.student != student:
+            return Response({'detail': '只能編輯自己的錯題筆記'}, status=status.HTTP_403_FORBIDDEN)
+
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        user = request.user
+        if not user.is_authenticated or not user.is_student():
+            return Response({'detail': '只有學生可以刪除錯題筆記'}, status=status.HTTP_403_FORBIDDEN)
+        obj = self.get_object()
+        try:
+            student = user.student_profile
+        except Exception:
+            return Response({'detail': '找不到學生資料'}, status=status.HTTP_403_FORBIDDEN)
+        if obj.student != student:
+            return Response({'detail': '只能刪除自己的錯題筆記'}, status=status.HTTP_403_FORBIDDEN)
+
+        obj.soft_delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post'], url_path='upload-images')
+    def upload_images(self, request, pk=None):
+        """
+        上傳錯題筆記圖片（multipart/form-data: images[]）
+        權限：學生僅能上傳到自己的 note
+        """
+        user = request.user
+        if not user.is_authenticated:
+            return Response({'detail': '未登入'}, status=status.HTTP_401_UNAUTHORIZED)
+        if not user.is_student():
+            return Response({'detail': '只有學生可以上傳錯題筆記圖片'}, status=status.HTTP_403_FORBIDDEN)
+
+        note = self.get_object()
+        try:
+            student = user.student_profile
+        except Exception:
+            return Response({'detail': '找不到學生資料'}, status=status.HTTP_403_FORBIDDEN)
+        if note.student != student:
+            return Response({'detail': '只能操作自己的錯題筆記'}, status=status.HTTP_403_FORBIDDEN)
+
+        files = request.FILES.getlist('images') or []
+        if not files:
+            return Response({'detail': '沒有提供圖片'}, status=status.HTTP_400_BAD_REQUEST)
+
+        created = []
+        current_max = StudentMistakeNoteImage.objects.filter(note=note).aggregate(m=models.Max('sort_order')).get('m') or 0
+        for idx, f in enumerate(files, start=1):
+            saved_path, _url = _save_uploaded_image(request, f, 'mistake_images')
+            img = StudentMistakeNoteImage.objects.create(
+                note=note,
+                image_path=saved_path,
+                sort_order=current_max + idx
+            )
+            created.append(img)
+
+        serializer = StudentMistakeNoteImageSerializer(created, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'], url_path='reorder-images')
+    def reorder_images(self, request, pk=None):
+        """
+        重新排序錯題筆記圖片
+        body: { image_ids: [1,2,3] }
+        """
+        user = request.user
+        if not user.is_authenticated:
+            return Response({'detail': '未登入'}, status=status.HTTP_401_UNAUTHORIZED)
+        if not user.is_student():
+            return Response({'detail': '只有學生可以操作'}, status=status.HTTP_403_FORBIDDEN)
+
+        note = self.get_object()
+        try:
+            student = user.student_profile
+        except Exception:
+            return Response({'detail': '找不到學生資料'}, status=status.HTTP_403_FORBIDDEN)
+        if note.student != student:
+            return Response({'detail': '只能操作自己的錯題筆記'}, status=status.HTTP_403_FORBIDDEN)
+
+        image_ids = request.data.get('image_ids') or []
+        if not isinstance(image_ids, list) or not image_ids:
+            return Response({'detail': '請提供 image_ids'}, status=status.HTTP_400_BAD_REQUEST)
+
+        images = list(StudentMistakeNoteImage.objects.filter(note=note, image_id__in=image_ids))
+        if len(images) != len(image_ids):
+            return Response({'detail': 'image_ids 包含不屬於此筆記的圖片'}, status=status.HTTP_400_BAD_REQUEST)
+
+        order_map = {int(image_id): idx for idx, image_id in enumerate(image_ids)}
+        for img in images:
+            img.sort_order = order_map.get(img.image_id, img.sort_order)
+        StudentMistakeNoteImage.objects.bulk_update(images, ['sort_order'])
+        return Response({'success': True})
+
+    @action(detail=True, methods=['post'], url_path='import-to-question-bank')
+    def import_to_question_bank(self, request, pk=None):
+        """
+        從 StudentMistakeNote 手動匯入題庫
+        - 權限：老師/管理員可用；會計禁止
+        - 需要手動輸入題目資訊（因為筆記可能不完整）
+        """
+        if not request.user.is_authenticated:
+            return Response({'detail': '未登入'}, status=status.HTTP_401_UNAUTHORIZED)
+        if request.user.is_accountant():
+            return Response({'detail': '會計不可匯入題庫'}, status=status.HTTP_403_FORBIDDEN)
+        if not (request.user.is_admin() or request.user.is_teacher()):
+            return Response({'detail': '無權限'}, status=status.HTTP_403_FORBIDDEN)
+
+        # 直接查詢對象，不依賴 get_queryset() 的限制（因為 action 中沒有 student_id 查詢參數）
+        try:
+            note = StudentMistakeNote.objects.select_related('student').get(note_id=pk, is_deleted=False)
+        except StudentMistakeNote.DoesNotExist:
+            return Response({'detail': '找不到錯題筆記'}, status=status.HTTP_404_NOT_FOUND)
+
+        # 驗證必填欄位
+        required_fields = ['subject_id', 'level', 'chapter', 'content', 'correct_answer']
+        for field in required_fields:
+            if field not in request.data:
+                return Response({'detail': f'缺少必填欄位：{field}'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 創建題目
+        new_question = QuestionBank.objects.create(
+            subject_id=request.data['subject_id'],
+            level=request.data['level'],
+            chapter=request.data['chapter'],
+            content=request.data['content'],
+            correct_answer=request.data['correct_answer'],
+            difficulty=request.data.get('difficulty', 3),
+            question_number=request.data.get('question_number'),
+            origin=request.data.get('origin', ''),
+            origin_detail=request.data.get('origin_detail', ''),
+            solution_content=request.data.get('solution_content', ''),
+            image_path=request.data.get('image_path'),  # 可選：從筆記圖片中選擇
+            source='imported_from_student_note',
+            created_by=request.user,
+            imported_student=note.student,
+        )
+
+        # 處理標籤
+        if 'tag_ids' in request.data and isinstance(request.data['tag_ids'], list):
+            for tag_id in request.data['tag_ids']:
+                QuestionTag.objects.get_or_create(
+                    question=new_question,
+                    tag_id=tag_id
+                )
+
+        serializer = QuestionBankSerializer(new_question, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class StudentMistakeNoteImageViewSet(viewsets.ModelViewSet):
+    """
+    錯題筆記圖片管理（刪除/編輯 caption）
+    """
+    queryset = StudentMistakeNoteImage.objects.select_related('note', 'note__student').all()
+    serializer_class = StudentMistakeNoteImageSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated or not user.is_student():
+            return StudentMistakeNoteImage.objects.none()
+        try:
+            student = user.student_profile
+        except Exception:
+            return StudentMistakeNoteImage.objects.none()
+        return self.queryset.filter(note__student=student)
+
+    def update(self, request, *args, **kwargs):
+        # 只允許改 caption/sort_order（必要時）
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
+
+class ErrorLogImageViewSet(viewsets.ModelViewSet):
+    """
+    錯題圖片管理（刪除/編輯 caption）
+    """
+    queryset = ErrorLogImage.objects.select_related('error_log', 'error_log__student').all()
+    serializer_class = ErrorLogImageSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return ErrorLogImage.objects.none()
+        # 學生不可用
+        if user.is_student():
+            return ErrorLogImage.objects.none()
+        # 老師/會計/管理員可用
+        if user.is_admin() or user.is_teacher() or user.is_accountant():
+            return self.queryset
+        return ErrorLogImage.objects.none()
+
+    @action(detail=True, methods=['post'])
+    def restore(self, request, pk=None):
+        user = request.user
+        if not user.is_authenticated or not user.is_student():
+            return Response({'detail': '只有學生可以恢復錯題筆記'}, status=status.HTTP_403_FORBIDDEN)
+        obj = self.get_object()
+        try:
+            student = user.student_profile
+        except Exception:
+            return Response({'detail': '找不到學生資料'}, status=status.HTTP_403_FORBIDDEN)
+        if obj.student != student:
+            return Response({'detail': '只能恢復自己的錯題筆記'}, status=status.HTTP_403_FORBIDDEN)
+
+        if not obj.is_deleted:
+            return Response({'detail': '該筆記未被刪除'}, status=status.HTTP_400_BAD_REQUEST)
+
+        obj.restore()
+        serializer = self.get_serializer(obj)
+        return Response(serializer.data)
 
 @api_view(['POST'])
 def upload_image(request):

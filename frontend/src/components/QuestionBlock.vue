@@ -10,6 +10,12 @@
       <div class="flex items-start justify-between mb-2">
         <div class="text-xs text-slate-500 font-semibold tracking-wider uppercase">
           Q{{ question.question_id }} · {{ question.subject_name || '無科目' }}
+          <span
+            v-if="question.imported_student_name"
+            class="ml-2 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700"
+          >
+            來源學生：{{ question.imported_student_name }}
+          </span>
         </div>
         <div class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
           {{ question.chapter }}

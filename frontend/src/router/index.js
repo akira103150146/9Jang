@@ -23,6 +23,8 @@ import AuditLog from '../views/AuditLog.vue'
 import Login from '../views/Login.vue'
 import StudentGroupManagement from '../views/StudentGroupManagement.vue'
 import StudentHome from '../views/StudentHome.vue'
+import StudentMistakeBook from '../views/StudentMistakeBook.vue'
+import StudentMyCourses from '../views/StudentMyCourses.vue'
 import ResourceEditor from '../views/ResourceEditor.vue'
 import TemplateEditor from '../views/TemplateEditor.vue'
 import QuestionForm from '../views/QuestionForm.vue'
@@ -36,6 +38,18 @@ const router = createRouter({
       name: 'student-home',
       component: StudentHome,
       meta: { title: '學生首頁' },
+    },
+    {
+      path: '/student-mistake-book',
+      name: 'student-mistake-book',
+      component: StudentMistakeBook,
+      meta: { title: '我的錯題本', allowedRoles: ['STUDENT'] },
+    },
+    {
+      path: '/my-courses',
+      name: 'my-courses',
+      component: StudentMyCourses,
+      meta: { title: '我的課程', allowedRoles: ['STUDENT'] },
     },
     {
       path: '/login',
@@ -401,10 +415,10 @@ function getRoleBasedRouteFilter(role) {
 
   if (role === 'STUDENT') {
     return (path) => {
-      // 學生只能訪問：自己報名的課程、相關考卷(資源)、訂便當、學生首頁、費用詳情
+      // 學生只能訪問：自己報名的課程、相關考卷(資源)、訂便當、學生首頁、自己的錯題本
       // 注意：學生可能需要訪問 /resources 來查看考卷，但具體權限在 API 層控制
       // 這裡允許訪問 /courses 和 /resources (如果有的話)
-      const allowedPaths = ['/', '/courses', '/resources', '/lunch-orders', '/student-home', '/students']
+      const allowedPaths = ['/', '/courses', '/resources', '/lunch-orders', '/student-home', '/students', '/student-mistake-book', '/my-courses']
       return allowedPaths.some(allowed => path.startsWith(allowed))
     }
   }

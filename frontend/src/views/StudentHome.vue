@@ -52,180 +52,41 @@
       </div>
 
       <!-- 老師留言 -->
-      <div class="rounded-3xl border border-amber-100 bg-white p-6 shadow-sm flex flex-col">
-        <h3 class="font-bold text-lg text-slate-900 mb-3">老師留言</h3>
-        <div class="flex-1 bg-amber-50/50 rounded-xl p-4">
-          <p class="text-slate-700 whitespace-pre-wrap text-sm leading-relaxed">{{ studentNotes || '目前沒有新的留言' }}</p>
+      <div class="rounded-3xl border border-indigo-100 bg-white p-6 shadow-sm flex flex-col justify-between">
+        <div>
+          <h3 class="font-bold text-lg text-slate-900 mb-2">我的學習</h3>
+          <p class="text-sm text-slate-500">前往我的課程與錯題本</p>
+        </div>
+        <div class="mt-4 grid grid-cols-2 gap-3">
+          <router-link
+            to="/my-courses"
+            class="rounded-xl bg-indigo-50 text-indigo-700 px-4 py-3 text-sm font-semibold hover:bg-indigo-100 transition text-center"
+          >
+            我的課程
+          </router-link>
+          <router-link
+            to="/student-mistake-book"
+            class="rounded-xl bg-sky-50 text-sky-700 px-4 py-3 text-sm font-semibold hover:bg-sky-100 transition text-center"
+          >
+            錯題本
+          </router-link>
         </div>
       </div>
     </div>
 
-    <!-- 學習曲線 -->
-    <section class="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
-      <div class="flex items-center justify-between mb-6">
-        <h3 class="font-bold text-lg text-slate-900">學習成績曲線</h3>
-        <div class="flex gap-2">
-            <span class="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-600 font-medium">測驗成績</span>
-            <span class="text-xs px-2 py-1 rounded-full bg-rose-50 text-rose-600 font-medium">錯題數</span>
-        </div>
-      </div>
-      <div class="h-64 w-full">
-        <Line v-if="chartData" :data="chartData" :options="chartOptions" />
-        <div v-else class="h-full flex items-center justify-center text-slate-400">
-            載入圖表數據中...
-        </div>
-      </div>
-    </section>
-
-    <!-- 我的課程 -->
-    <section class="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
-      <h3 class="font-bold text-lg text-slate-900 mb-4">我的課程</h3>
-      <div v-if="loadingCourses" class="text-center py-8 text-slate-500">載入中...</div>
-      <div v-else-if="courses.length === 0" class="text-center py-8 text-slate-500">
-        目前沒有已報名的課程
-      </div>
-      <div v-else class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <div 
-          v-for="course in courses" 
-          :key="course.course_id" 
-          class="p-5 border border-slate-100 rounded-2xl hover:bg-slate-50 transition group"
-        >
-          <div class="flex justify-between items-start mb-2">
-             <div class="font-bold text-slate-900 group-hover:text-blue-600 transition">{{ course.course_name }}</div>
-             <span class="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-600">{{ getDayDisplay(course.day_of_week) }}</span>
-          </div>
-          
-          <div class="text-sm text-slate-500 mb-3 flex items-center gap-2">
-             <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
-             {{ course.teacher_name }} 老師
-          </div>
-          
-          <div class="flex items-center justify-between text-xs text-slate-400 border-t border-slate-100 pt-3">
-             <span>{{ formatTime(course.start_time) }} - {{ formatTime(course.end_time) }}</span>
-             <span :class="course.status === 'Active' ? 'text-emerald-500' : 'text-slate-400'">
-                {{ getCourseStatusDisplay(course.status) }}
-             </span>
-          </div>
-          <button 
-            @click="openCourseModal(course)"
-            class="mt-3 w-full bg-indigo-50 text-indigo-600 py-2 rounded-lg text-sm font-medium hover:bg-indigo-100 transition"
-          >
-            查看課程內容
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Course Detail Modal -->
-    <StudentCourseDetailModal 
-      v-if="selectedCourse"
-      :is-open="isModalOpen"
-      :course="selectedCourse"
-      @close="closeModal"
-    />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import StudentCourseDetailModal from '../components/StudentCourseDetailModal.vue'
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend
-} from 'chart.js'
-import { Line } from 'vue-chartjs'
-import { studentAPI, feeAPI, groupOrderAPI, enrollmentAPI, authAPI, courseAPI } from '../services/api'
-
-// 註冊 Chart.js 元件
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend
-)
+import { studentAPI, feeAPI, groupOrderAPI, authAPI } from '../services/api'
 
 const studentId = ref(null)
 const studentName = ref('')
-const studentNotes = ref('')
 const unpaidAmount = ref(0)
 const unpaidCount = ref(0)
 const activeGroupOrders = ref([])
-const courses = ref([])
 const loadingOrders = ref(false)
-const loadingCourses = ref(false)
-const isModalOpen = ref(false)
-const selectedCourse = ref(null)
-
-const openCourseModal = (course) => {
-  selectedCourse.value = course
-  isModalOpen.value = true
-}
-
-const closeModal = () => {
-  isModalOpen.value = false
-  selectedCourse.value = null
-}
-
-// 模擬圖表數據 (之後可替換為真實數據)
-const chartData = ref({
-  labels: ['第一週', '第二週', '第三週', '第四週', '第五週'],
-  datasets: [
-    {
-      label: '測驗平均分',
-      backgroundColor: '#3b82f6',
-      borderColor: '#3b82f6',
-      data: [75, 82, 78, 85, 88],
-      tension: 0.3
-    },
-    {
-      label: '錯題數',
-      backgroundColor: '#f43f5e',
-      borderColor: '#f43f5e',
-      data: [12, 8, 10, 5, 3],
-      tension: 0.3
-    }
-  ]
-})
-
-const chartOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      position: 'bottom'
-    }
-  },
-  scales: {
-    y: {
-      beginAtZero: true
-    }
-  }
-}
-
-const dayMap = {
-  'Mon': '週一', 'Tue': '週二', 'Wed': '週三', 'Thu': '週四', 'Fri': '週五', 'Sat': '週六', 'Sun': '週日'
-}
-
-const courseStatusMap = {
-  'Active': '進行中', 'Pending': '待開課', 'Closed': '已結束'
-}
-
-const getDayDisplay = (day) => dayMap[day] || day
-const getCourseStatusDisplay = (status) => courseStatusMap[status] || status
-
-const formatTime = (time) => {
-  if (!time) return ''
-  return typeof time === 'string' ? time.substring(0, 5) : time
-}
 
 const formatDateTime = (datetime) => {
   if (!datetime) return ''
@@ -254,7 +115,6 @@ const initData = async () => {
     // 2. 獲取學生詳細資料 (含留言/備註)
     const studentRes = await studentAPI.getById(studentId.value)
     studentName.value = studentRes.data.name
-    studentNotes.value = studentRes.data.notes
 
     // 3. 獲取費用信息 (使用已有的計算邏輯或 API)
     // studentAPI.getById 返回的數據中包含了 unpaid_fees
@@ -270,24 +130,6 @@ const initData = async () => {
     const allOrders = ordersRes.data.results || ordersRes.data
     activeGroupOrders.value = allOrders.filter(o => o.status === 'Open').slice(0, 5)
     loadingOrders.value = false
-
-    // 5. 獲取已報名的課程
-    loadingCourses.value = true
-    const enrollmentsRes = await enrollmentAPI.getAll()
-    const allEnrollments = enrollmentsRes.data.results || enrollmentsRes.data
-    // 過濾出該學生的報名記錄
-    const studentEnrollments = allEnrollments.filter(e => e.student === studentId.value && e.is_active)
-    
-    // 提取課程詳細信息
-    // 這裡我們可能需要課程的詳細信息，如果 enrollment 裡沒有包含足夠的課程資訊，可能需要額外查詢
-    // 假設 enrollmentSerializer 包含了 course_name，但我們需要更多。
-    // 簡單起見，我們可以用 courseAPI 獲取所有課程然後匹配 ID
-    const coursesRes = await courseAPI.getAll()
-    const allCourses = coursesRes.data.results || coursesRes.data
-    
-    const enrolledCourseIds = studentEnrollments.map(e => typeof e.course === 'object' ? e.course.course_id : e.course)
-    courses.value = allCourses.filter(c => enrolledCourseIds.includes(c.course_id))
-    loadingCourses.value = false
 
   } catch (error) {
     console.error('初始化學生首頁失敗:', error)

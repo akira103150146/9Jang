@@ -526,7 +526,57 @@ export const errorLogAPI = {
   delete: (id) => api.delete(`/cramschool/error-logs/${id}/`),
 
   // 恢復已刪除的錯題記錄
-  restore: (id) => api.post(`/cramschool/error-logs/${id}/restore/`)
+  restore: (id) => api.post(`/cramschool/error-logs/${id}/restore/`),
+
+  // 上傳錯題圖片（老師/會計端）
+  uploadImages: (id, formData) => api.post(`/cramschool/error-logs/${id}/upload-images/`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  reorderImages: (id, imageIds) => api.post(`/cramschool/error-logs/${id}/reorder-images/`, { image_ids: imageIds }),
+
+  // 匯入題庫（老師/管理員可用；會計禁止）
+  importToQuestionBank: (id) => api.post(`/cramschool/error-logs/${id}/import-to-question-bank/`),
+}
+
+// StudentMistakeNote API（學生自建錯題筆記）
+export const studentMistakeNoteAPI = {
+  getAll: (queryString = '') => {
+    // 支持直接傳入查詢字串，例如: "student_id=123&q=關鍵字"
+    if (typeof queryString === 'string' && queryString) {
+      return api.get(`/cramschool/student-mistake-notes/?${queryString}`)
+    }
+    // 也支持物件格式（向後兼容）
+    if (typeof queryString === 'object') {
+      const params = new URLSearchParams()
+      if (queryString.q) params.append('q', queryString.q)
+      if (queryString.includeDeleted) params.append('include_deleted', 'true')
+      if (queryString.student_id) params.append('student_id', queryString.student_id)
+      const query = params.toString()
+      return api.get(`/cramschool/student-mistake-notes/${query ? `?${query}` : ''}`)
+    }
+    return api.get('/cramschool/student-mistake-notes/')
+  },
+  getById: (id) => api.get(`/cramschool/student-mistake-notes/${id}/`),
+  create: (data) => api.post('/cramschool/student-mistake-notes/', data),
+  update: (id, data) => api.put(`/cramschool/student-mistake-notes/${id}/`, data),
+  delete: (id) => api.delete(`/cramschool/student-mistake-notes/${id}/`),
+  restore: (id) => api.post(`/cramschool/student-mistake-notes/${id}/restore/`),
+
+  uploadImages: (id, formData) => api.post(`/cramschool/student-mistake-notes/${id}/upload-images/`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  reorderImages: (id, imageIds) => api.post(`/cramschool/student-mistake-notes/${id}/reorder-images/`, { image_ids: imageIds }),
+  importToQuestionBank: (id, data) => api.post(`/cramschool/student-mistake-notes/${id}/import-to-question-bank/`, data),
+}
+
+export const studentMistakeNoteImageAPI = {
+  update: (id, data) => api.put(`/cramschool/student-mistake-note-images/${id}/`, data),
+  delete: (id) => api.delete(`/cramschool/student-mistake-note-images/${id}/`),
+}
+
+export const errorLogImageAPI = {
+  update: (id, data) => api.put(`/cramschool/error-log-images/${id}/`, data),
+  delete: (id) => api.delete(`/cramschool/error-log-images/${id}/`),
 }
 
 // StudentAnswer API

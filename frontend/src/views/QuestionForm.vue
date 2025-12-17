@@ -13,6 +13,9 @@
             <h1 class="text-lg font-bold text-slate-800 leading-tight">
               {{ isEdit ? '編輯題目' : '新增題目' }}
             </h1>
+            <p v-if="isEdit && importedStudentName" class="text-xs text-amber-700 mt-1">
+              來源學生：{{ importedStudentName }}
+            </p>
           </div>
         </div>
 
@@ -222,6 +225,7 @@ const isEdit = computed(() => !!route.params.id)
 const saving = ref(false)
 const hashtags = ref([])
 const subjects = ref([])
+const importedStudentName = ref('')
 
 const formData = ref({
   subject: '',
@@ -266,6 +270,7 @@ const fetchQuestion = async () => {
   try {
     const response = await questionBankAPI.getById(route.params.id)
     const question = response.data
+    importedStudentName.value = question.imported_student_name || ''
     
     // 獲取題目的標籤 ID
     let tagIds = []

@@ -8,6 +8,8 @@ from .api_views import (
     SessionRecordViewSet, AttendanceViewSet, LeaveViewSet,
     SubjectViewSet, QuestionBankViewSet, HashtagViewSet, QuestionTagViewSet,
     StudentAnswerViewSet, ErrorLogViewSet,
+    StudentMistakeNoteViewSet,
+    StudentMistakeNoteImageViewSet, ErrorLogImageViewSet,
     RestaurantViewSet, GroupOrderViewSet, OrderViewSet, OrderItemViewSet,
     StudentGroupViewSet, QuizViewSet, ExamViewSet, CourseMaterialViewSet,
     ContentTemplateViewSet, LearningResourceViewSet,
@@ -75,6 +77,11 @@ router.register(r'student-answers', StudentAnswerViewSet)
 # 將 ErrorLogViewSet 註冊到 'error-logs' 這個 URL 前綴下
 # 註冊後會自動產生 /api/cramschool/error-logs/, /api/cramschool/error-logs/{id}/ 等路由
 router.register(r'error-logs', ErrorLogViewSet)
+
+# 學生自建錯題筆記
+router.register(r'student-mistake-notes', StudentMistakeNoteViewSet)
+router.register(r'student-mistake-note-images', StudentMistakeNoteImageViewSet)
+router.register(r'error-log-images', ErrorLogImageViewSet)
 
 # 將 RestaurantViewSet 註冊到 'restaurants' 這個 URL 前綴下
 router.register(r'restaurants', RestaurantViewSet)

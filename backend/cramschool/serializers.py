@@ -7,8 +7,46 @@ from .models import (
     SessionRecord, Attendance, Leave, Subject, QuestionBank, Hashtag, QuestionTag,
     StudentAnswer, ErrorLog, Restaurant, GroupOrder, Order, OrderItem,
     StudentGroup, Quiz, Exam, CourseMaterial, AssessmentSubmission,
-    ContentTemplate, LearningResource
+    ContentTemplate, LearningResource, StudentMistakeNote, StudentMistakeNoteImage, ErrorLogImage
 )
+
+class StudentMistakeNoteImageSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StudentMistakeNoteImage
+        fields = ['image_id', 'note', 'image_path', 'image_url', 'caption', 'sort_order', 'created_at']
+        read_only_fields = ['image_id', 'note', 'image_path', 'image_url', 'created_at']
+
+    def get_image_url(self, obj):
+        request = self.context.get('request')
+        if not obj.image_path:
+            return None
+        # 兼容：image_path 可能已是完整 URL
+        if obj.image_path.startswith('http'):
+            return obj.image_path
+        if request:
+            return request.build_absolute_uri(f'/media/{obj.image_path}')
+        return f'/media/{obj.image_path}'
+
+
+class ErrorLogImageSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ErrorLogImage
+        fields = ['image_id', 'error_log', 'image_path', 'image_url', 'caption', 'sort_order', 'created_at']
+        read_only_fields = ['image_id', 'error_log', 'image_path', 'image_url', 'created_at']
+
+    def get_image_url(self, obj):
+        request = self.context.get('request')
+        if not obj.image_path:
+            return None
+        if obj.image_path.startswith('http'):
+            return obj.image_path
+        if request:
+            return request.build_absolute_uri(f'/media/{obj.image_path}')
+        return f'/media/{obj.image_path}'
 
 class StudentSerializer(serializers.ModelSerializer):
     """
@@ -453,6 +491,7 @@ class QuestionBankSerializer(serializers.ModelSerializer):
     subject_name = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
     source_display = serializers.SerializerMethodField()
+    imported_student_name = serializers.SerializerMethodField()
     tag_ids_input = serializers.ListField(
         child=serializers.IntegerField(),
         write_only=True,
@@ -467,7 +506,8 @@ class QuestionBankSerializer(serializers.ModelSerializer):
             'image_path', 'correct_answer', 'solution_content', 'difficulty', 
             'tags', 'tag_ids', 'tag_ids_input',
             'source', 'source_display', 'created_by', 'created_by_name',
-            'imported_from_error_log', 'question_number', 'origin', 'origin_detail',
+            'imported_from_error_log', 'imported_student', 'imported_student_name',
+            'question_number', 'origin', 'origin_detail',
             'created_at', 'updated_at'
         ]
         read_only_fields = [
@@ -504,6 +544,11 @@ class QuestionBankSerializer(serializers.ModelSerializer):
         獲取來源顯示名稱
         """
         return obj.get_source_display() if obj.source else None
+
+    def get_imported_student_name(self, obj):
+        if getattr(obj, 'imported_student', None):
+            return obj.imported_student.name
+        return None
     
     def create(self, validated_data):
         """
@@ -710,6 +755,7 @@ class ErrorLogSerializer(serializers.ModelSerializer):
     question_subject = serializers.SerializerMethodField()
     question_level = serializers.SerializerMethodField()
     question_content = serializers.SerializerMethodField()
+    images = ErrorLogImageSerializer(many=True, read_only=True)
     
     class Meta:
         model = ErrorLog
@@ -717,6 +763,7 @@ class ErrorLogSerializer(serializers.ModelSerializer):
             'error_log_id', 'student', 'student_name', 'question', 
             'question_chapter', 'question_subject', 'question_level',
             'question_content', 'error_count', 'review_status',
+            'images',
             'is_deleted', 'deleted_at'
         ]
         read_only_fields = [
@@ -745,6 +792,31 @@ class ErrorLogSerializer(serializers.ModelSerializer):
                 return content[:100] + '...'
             return content
         return None
+
+
+class StudentMistakeNoteSerializer(serializers.ModelSerializer):
+    """
+    學生錯題筆記序列化器（筆記式）
+    """
+    student_name = serializers.SerializerMethodField()
+    images = StudentMistakeNoteImageSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = StudentMistakeNote
+        fields = [
+            'note_id', 'student', 'student_name',
+            'title', 'subject', 'content',
+            'images',
+            'created_at', 'updated_at',
+            'is_deleted', 'deleted_at',
+        ]
+        read_only_fields = [
+            'note_id', 'student', 'student_name', 'created_at', 'updated_at',
+            'is_deleted', 'deleted_at',
+        ]
+
+    def get_student_name(self, obj):
+        return obj.student.name if obj.student else None
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
