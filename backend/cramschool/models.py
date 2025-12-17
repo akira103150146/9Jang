@@ -649,6 +649,23 @@ class QuestionBank(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='建立時間')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新時間')
+    
+    # 新增欄位：詳解內容（Tiptap JSON 格式）
+    solution_content = models.JSONField(
+        default=dict,
+        blank=True,
+        null=True,
+        verbose_name='詳解內容 (Tiptap JSON)',
+        help_text='使用 Tiptap 編輯器創建的詳解內容，支援富文本、2D/3D 圖形'
+    )
+    
+    # 新增欄位：搜尋文字內容（用於全文檢索）
+    search_text_content = models.TextField(
+        blank=True,
+        null=True,
+        help_text='用於全文檢索的純文字（從 Tiptap JSON 自動提取）',
+        verbose_name='搜尋文字內容'
+    )
 
     class Meta:
         verbose_name = '題目庫'
@@ -657,6 +674,47 @@ class QuestionBank(models.Model):
 
     def __str__(self):
         return f"{self.subject.name if self.subject else '無科目'} - {self.chapter} (Q{self.question_id})"
+    
+    def extract_text_from_tiptap_json(self, json_data):
+        """
+        遞迴提取 Tiptap JSON 中的所有文字節點
+        用於生成 search_text_content
+        """
+        if not json_data or not isinstance(json_data, dict):
+            return []
+
+        # 兼容：以 Markdown 純文字儲存的格式（由前端 RichTextEditor 產生）
+        if json_data.get('format') == 'markdown' and isinstance(json_data.get('text'), str):
+            text = json_data.get('text', '').strip()
+            return [text] if text else []
+        
+        text_parts = []
+        
+        # 如果是文字節點
+        if json_data.get('type') == 'text':
+            text = json_data.get('text', '')
+            if text:
+                text_parts.append(text)
+        
+        # 遞迴處理子節點
+        if 'content' in json_data and isinstance(json_data['content'], list):
+            for child in json_data['content']:
+                text_parts.extend(self.extract_text_from_tiptap_json(child))
+        
+        return text_parts
+    
+    def save(self, *args, **kwargs):
+        """
+        在保存時自動從 solution_content JSON 中提取純文字
+        存入 search_text_content 欄位
+        """
+        if self.solution_content:
+            text_parts = self.extract_text_from_tiptap_json(self.solution_content)
+            self.search_text_content = ' '.join(text_parts)
+        else:
+            self.search_text_content = None
+        
+        super().save(*args, **kwargs)
 
 
 class Hashtag(models.Model):

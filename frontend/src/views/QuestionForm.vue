@@ -157,6 +157,22 @@
           </p>
         </div>
 
+        <!-- 詳解內容（使用 RichTextEditor） -->
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-2">
+            詳解內容（富文本編輯器）
+          </label>
+          <div class="border border-slate-300 rounded-lg overflow-hidden">
+            <RichTextEditor
+              v-model="formData.solution_content"
+              placeholder="開始輸入詳解內容..."
+            />
+          </div>
+          <p class="mt-1 text-xs text-slate-500">
+            提示：支援富文本、數學公式、2D/3D 圖形等
+          </p>
+        </div>
+
         <!-- 難度 -->
         <div>
           <label class="block text-sm font-semibold text-slate-700 mb-2">
@@ -211,6 +227,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { questionBankAPI, hashtagAPI, subjectAPI } from '../services/api'
 import MarkdownEditor from '../components/MarkdownEditor.vue'
+import RichTextEditor from '../components/RichTextEditor.vue'
 import { useMarkdownRenderer } from '../composables/useMarkdownRenderer'
 
 const route = useRoute()
@@ -228,6 +245,7 @@ const formData = ref({
   chapter: '',
   content: '',
   correct_answer: '',
+  solution_content: { format: 'markdown', text: '' },
   difficulty: 1,
   tag_ids: []
 })
@@ -273,6 +291,7 @@ const fetchQuestion = async () => {
       chapter: question.chapter,
       content: question.content,
       correct_answer: question.correct_answer,
+      solution_content: question.solution_content || { format: 'markdown', text: '' },
       difficulty: question.difficulty,
       tag_ids: tagIds
     }
@@ -380,6 +399,15 @@ const saveQuestion = async () => {
 
   saving.value = true
   try {
+    // RichTextEditor 現在用 Markdown 純文字：確保送到後端仍是 JSONField 可接受的物件
+    if (typeof formData.value.solution_content === 'string') {
+      formData.value.solution_content = { format: 'markdown', text: formData.value.solution_content }
+    } else if (formData.value.solution_content && typeof formData.value.solution_content === 'object') {
+      if (!('format' in formData.value.solution_content) && 'text' in formData.value.solution_content) {
+        formData.value.solution_content.format = 'markdown'
+      }
+    }
+
     const data = {
       ...formData.value,
       tag_ids_input: formData.value.tag_ids,

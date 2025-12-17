@@ -839,6 +839,11 @@ class QuestionBankViewSet(viewsets.ModelViewSet):
         if source:
             queryset = queryset.filter(source=source)
         
+        # 全文檢索（使用 search_text_content）
+        search = self.request.query_params.get('search', None)
+        if search:
+            queryset = queryset.filter(search_text_content__icontains=search)
+        
         return queryset
     
     @action(detail=False, methods=['get'])
@@ -1170,6 +1175,125 @@ class QuestionBankViewSet(viewsets.ModelViewSet):
             'total_parsed': len(questions),
             'errors': errors[:20]  # 只返回前 20 個錯誤
         }, status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=['get'])
+    def export_to_latex(self, request, pk=None):
+        """
+        導出題目的詳解為 LaTeX 格式
+        """
+        from .utils.diagram_converter import json_to_tikz_2d, json_to_circuitikz, json_to_latex_3d
+        
+        question = self.get_object()
+        solution_content = question.solution_content
+        
+        if not solution_content:
+            return Response(
+                {'error': '該題目沒有詳解內容'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        latex_parts = []
+        content = solution_content.get('content', [])
+        
+        for node in content:
+            node_type = node.get('type')
+            attrs = node.get('attrs', {})
+            
+            if node_type == 'paragraph':
+                # 提取段落文字
+                text = self._extract_text_from_node(node)
+                if text:
+                    latex_parts.append(text)
+            
+            elif node_type == 'mathField':
+                latex = attrs.get('latex', '')
+                if latex:
+                    latex_parts.append(f'${latex}$')
+            
+            elif node_type == 'latexFormula':
+                latex = attrs.get('latex', '')
+                display_mode = attrs.get('displayMode', True)
+                if latex:
+                    if display_mode:
+                        latex_parts.append(f'$$\\begin{{align}}{latex}\\end{{align}}$$')
+                    else:
+                        latex_parts.append(f'${latex}$')
+            
+            elif node_type == 'diagram2D':
+                try:
+                    tikz = json_to_tikz_2d(attrs)
+                    latex_parts.append(tikz)
+                except Exception as e:
+                    latex_parts.append(f'% 圖形轉換錯誤: {str(e)}')
+            
+            elif node_type == 'circuit':
+                try:
+                    circuit = json_to_circuitikz(attrs)
+                    latex_parts.append(circuit)
+                except Exception as e:
+                    latex_parts.append(f'% 電路圖轉換錯誤: {str(e)}')
+            
+            elif node_type == 'diagram3D':
+                try:
+                    tikz_3d = json_to_latex_3d(attrs)
+                    latex_parts.append(tikz_3d)
+                except Exception as e:
+                    latex_parts.append(f'% 3D 圖形轉換錯誤: {str(e)}')
+        
+        latex_code = '\n\n'.join(latex_parts)
+        
+        return Response({
+            'latex': latex_code,
+            'question_id': question.question_id,
+        })
+    
+    @action(detail=True, methods=['get'])
+    def export_to_markdown(self, request, pk=None):
+        """
+        導出題目的詳解為 Markdown 格式
+        """
+        from .utils.markdown_exporter import solution_to_markdown
+        
+        question = self.get_object()
+        solution_content = question.solution_content
+        
+        if not solution_content:
+            return Response(
+                {'error': '該題目沒有詳解內容'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 兼容：前端以 Markdown 純文字儲存
+        if isinstance(solution_content, dict) and solution_content.get('format') == 'markdown':
+            return Response({
+                'markdown': solution_content.get('text', '') or '',
+                'question_id': question.question_id,
+            })
+        
+        markdown = solution_to_markdown(solution_content)
+        
+        return Response({
+            'markdown': markdown,
+            'question_id': question.question_id,
+        })
+    
+    def _extract_text_from_node(self, node):
+        """輔助方法：從節點中提取純文字"""
+        if not node:
+            return ''
+        
+        text_parts = []
+        
+        if node.get('type') == 'text':
+            text = node.get('text', '')
+            if text:
+                text_parts.append(text)
+        
+        content = node.get('content', [])
+        for child in content:
+            text_parts.append(self._extract_text_from_node(child))
+        
+        return ' '.join(text_parts)
 
 
 class HashtagViewSet(viewsets.ModelViewSet):

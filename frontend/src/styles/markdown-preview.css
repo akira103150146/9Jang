@@ -71,6 +71,11 @@
   margin-bottom: 0.75em;
 }
 
+/* 確保 Markdown 預覽中的 KaTeX 不受表格樣式影響 */
+.markdown-preview .katex table {
+  border-collapse: separate !important;
+}
+
 .markdown-preview table th,
 .markdown-preview table td {
   border: 1px solid #cbd5e1;
@@ -92,40 +97,5 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* LaTeX 樣式 */
-.katex {
-  font-size: 1.1em;
-}
-
-.katex-display {
-  margin: 1em 0;
-  text-align: center;
-}
-
-/* 改進 KaTeX 分數線的清晰度 - 讓分數線比數字長1.5倍 */
-.katex .frac-line {
-  border-bottom-width: 0.08em !important;
-  min-height: 0.08em !important;
-  margin-top: 0.22em !important;
-  margin-bottom: 0.2em !important;
-  width: 150% !important;
-  margin-left: -25% !important;
-  /* 居中對齊 */
-}
-
-/* 確保分數有足夠的垂直間距 */
-.katex .mfrac {
-  padding-top: 0.25em !important;
-  padding-bottom: 0.25em !important;
-}
-
-/* 分子分母的字體大小 */
-.katex .mfrac .vlist-s {
-  font-size: 1em !important;
-}
-
-/* 確保分數容器有足夠的空間 */
-.katex .mfrac .vlist-t2 {
-  padding-top: 0.2em !important;
-  padding-bottom: 0.2em !important;
-}
+/* LaTeX 樣式 - 現在使用全局 katex-vscode.css，這裡只保留 Markdown 特定的樣式 */
+/* 如果需要 Markdown 預覽特定的 KaTeX 樣式，可以在這裡添加 */

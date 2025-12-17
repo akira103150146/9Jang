@@ -34,21 +34,25 @@ const editorContainer = ref(null)
 let view = null
 const uploadingImage = ref(false)
 
-// 暴露 focus 方法給父組件
+// 暴露給父組件的方法
 const focus = () => {
-  if (view) {
-    view.focus()
-    // 將游標移動到文檔末尾
-    const length = view.state.doc.length
-    view.dispatch({
-      selection: { anchor: length, head: length }
-    })
-  }
+  if (!view) return
+  view.focus()
 }
 
-defineExpose({
-  focus
-})
+const focusAtLine = (lineNumber = 1) => {
+  if (!view) return
+  const totalLines = view.state.doc.lines
+  const safeLine = Math.max(1, Math.min(Number(lineNumber) || 1, totalLines))
+  const pos = view.state.doc.line(safeLine).from
+  view.dispatch({
+    selection: { anchor: pos, head: pos },
+    scrollIntoView: true,
+  })
+  view.focus()
+}
+
+defineExpose({ focus, focusAtLine })
 
 // 處理圖片貼上
 const handlePaste = async (event) => {

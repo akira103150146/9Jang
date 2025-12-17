@@ -1,3 +1,6 @@
+/* 引入 KaTeX VSCode 樣式 - 必須在所有其他規則之前 */
+@import './styles/katex-vscode.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -5,4 +8,3 @@
 body {
   font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif;
 }
-

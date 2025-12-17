@@ -6,9 +6,15 @@ import { fileURLToPath, URL } from 'node:url'
 export default defineConfig(({ mode }) => {
   // 載入環境變數
   const env = loadEnv(mode, process.cwd(), '')
-  
+
   return {
-    plugins: [vue()],
+    plugins: [vue({
+      template: {
+        compilerOptions: {
+          isCustomElement: (tag) => tag === 'math-field'
+        }
+      }
+    })],
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url))

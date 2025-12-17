@@ -1177,8 +1177,124 @@ const calculatePages = () => {
 // 使用 ResizeObserver 監聽內容變化
 let resizeObserver = null
 
+// 鍵盤快捷鍵處理
+const handleKeyboardShortcuts = (event) => {
+  // 檢查是否按下了 Ctrl (Windows/Linux) 或 Cmd (Mac)
+  const isModifierPressed = event.ctrlKey || event.metaKey
+  
+  if (!isModifierPressed) return
+  
+  const key = event.key.toLowerCase()
+  
+  // Ctrl+A: 全選
+  if (key === 'a') {
+    event.preventDefault()
+    const selection = window.getSelection()
+    const range = document.createRange()
+    
+    // 選擇整個畫布容器內的內容
+    if (canvasContainer.value) {
+      range.selectNodeContents(canvasContainer.value)
+      selection.removeAllRanges()
+      selection.addRange(range)
+    }
+    return
+  }
+  
+  // Ctrl+X: 剪下
+  if (key === 'x') {
+    // 如果當前焦點在可編輯元素中，讓瀏覽器默認處理
+    const activeElement = document.activeElement
+    const isEditable = activeElement && (
+      activeElement.tagName === 'INPUT' ||
+      activeElement.tagName === 'TEXTAREA' ||
+      activeElement.isContentEditable ||
+      activeElement.closest('.cm-editor') // CodeMirror 編輯器
+    )
+    
+    if (isEditable) {
+      // 讓瀏覽器默認處理（剪下選中的文字）
+      return
+    }
+    
+    // 如果沒有選中文字，嘗試剪下選中的區塊
+    const selection = window.getSelection()
+    if (selection.toString().trim()) {
+      // 有選中文字，讓瀏覽器默認處理
+      return
+    }
+    
+    // 可以擴展：剪下選中的區塊（如果實現了區塊選擇功能）
+    event.preventDefault()
+    return
+  }
+  
+  // Ctrl+C: 複製
+  if (key === 'c') {
+    // 如果當前焦點在可編輯元素中，讓瀏覽器默認處理
+    const activeElement = document.activeElement
+    const isEditable = activeElement && (
+      activeElement.tagName === 'INPUT' ||
+      activeElement.tagName === 'TEXTAREA' ||
+      activeElement.isContentEditable ||
+      activeElement.closest('.cm-editor') // CodeMirror 編輯器
+    )
+    
+    if (isEditable) {
+      // 讓瀏覽器默認處理（複製選中的文字）
+      return
+    }
+    
+    // 如果沒有選中文字，嘗試複製選中的區塊
+    const selection = window.getSelection()
+    if (selection.toString().trim()) {
+      // 有選中文字，讓瀏覽器默認處理
+      return
+    }
+    
+    // 可以擴展：複製選中的區塊（如果實現了區塊選擇功能）
+    event.preventDefault()
+    return
+  }
+  
+  // Ctrl+V: 貼上
+  if (key === 'v') {
+    // 如果當前焦點在可編輯元素中，讓瀏覽器默認處理
+    const activeElement = document.activeElement
+    const isEditable = activeElement && (
+      activeElement.tagName === 'INPUT' ||
+      activeElement.tagName === 'TEXTAREA' ||
+      activeElement.isContentEditable ||
+      activeElement.closest('.cm-editor') // CodeMirror 編輯器
+    )
+    
+    if (isEditable) {
+      // 讓瀏覽器默認處理（貼上剪貼板內容）
+      return
+    }
+    
+    // 如果焦點不在可編輯元素中，嘗試在當前焦點位置貼上
+    // 這裡可以擴展：在畫布上貼上區塊
+    event.preventDefault()
+    
+    // 嘗試從剪貼板獲取文字並插入到當前位置
+    navigator.clipboard.readText().then(text => {
+      if (text && canvasContainer.value) {
+        // 可以擴展：在畫布上插入文字區塊
+        addBlock('text', text)
+      }
+    }).catch(err => {
+      console.warn('無法讀取剪貼板:', err)
+    })
+    return
+  }
+}
+
 onMounted(() => {
   fetchInitialData()
+  
+  // 添加全局鍵盤事件監聽器
+  window.addEventListener('keydown', handleKeyboardShortcuts)
   
   // 等待 DOM 更新後計算頁數
   setTimeout(() => {
@@ -1214,8 +1330,11 @@ watch(
   { deep: true }
 )
 
-// 清理 ResizeObserver
+// 清理 ResizeObserver 和事件監聽器
 onUnmounted(() => {
+  // 移除鍵盤事件監聽器
+  window.removeEventListener('keydown', handleKeyboardShortcuts)
+  
   if (resizeObserver && contentContainer.value) {
     resizeObserver.unobserve(contentContainer.value)
     resizeObserver.disconnect()

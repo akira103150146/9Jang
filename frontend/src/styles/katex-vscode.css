@@ -1,0 +1,130 @@
+/* KaTeX 樣式 - 匹配 VSCode Markdown 預覽 */
+/* 這個文件定義了與 VSCode Markdown 預覽一致的 KaTeX 渲染樣式 */
+
+/* 基礎 KaTeX 樣式 - 與 VSCode 一致 */
+.katex {
+  font-size: 1em;
+  /* 與正文字體大小一致，VSCode 默認 */
+  color: inherit;
+  /* 繼承父元素顏色，通常是黑色 */
+  font-family: KaTeX_Main, "Times New Roman", serif;
+  line-height: normal !important;
+  /* 必須使用 normal，避免外部 line-height 干擾 KaTeX 內部佈局 */
+  text-indent: 0;
+  text-rendering: auto;
+}
+
+/* 行內公式樣式 */
+.katex:not(.katex-display) {
+  display: inline-block;
+  vertical-align: baseline;
+  /* 與文本基線對齊，VSCode 默認 */
+  margin: 0 0.1em;
+  /* 輕微的左右間距 */
+}
+
+/* 區塊公式樣式 */
+.katex-display {
+  display: block;
+  margin: 1em 0;
+  /* 上下邊距，VSCode 默認 */
+  text-align: center;
+  /* 居中顯示 */
+  overflow-x: auto;
+  /* 如果公式太長，允許橫向滾動 */
+  overflow-y: hidden;
+}
+
+/* 確保區塊公式內的內容居中 */
+.katex-display>.katex {
+  display: inline-block;
+  text-align: initial;
+  /* 公式本身左對齊，但容器居中 */
+  margin: 0;
+}
+
+/* 分數線樣式 - VSCode 默認樣式 */
+/* i want to make the fraction line lower*/
+.katex .frac-line {
+  border-bottom-width: 0.04em;
+  min-height: 0.04em;
+  margin-top: 0.12em;
+  margin-bottom: 0.16em;
+}
+
+/* 分數容器 */
+.katex .mfrac {
+  padding-top: 0.15em;
+  padding-bottom: 0.1em;
+}
+
+/* 根號樣式 */
+.katex .sqrt {
+  font-size: 1em;
+}
+
+/* 上標下標樣式 */
+.katex .msupsub {
+  text-align: left;
+}
+
+/* 矩陣樣式 */
+.katex .arraycolsep {
+  display: inline-block;
+  width: 0.5em;
+}
+
+.katex .col-align-l>.vlist-t {
+  text-align: left;
+}
+
+.katex .col-align-r>.vlist-t {
+  text-align: right;
+}
+
+.katex .col-align-c>.vlist-t {
+  text-align: center;
+}
+
+/* 確保公式在深色背景上也能正常顯示（如果需要的話） */
+@media (prefers-color-scheme: dark) {
+  .katex {
+    color: #d4d4d4;
+    /* VSCode 深色主題的文本顏色 */
+  }
+}
+
+/* 確保公式在白色背景上使用黑色文字 */
+.katex {
+  color: #000000;
+  /* 強制黑色，與 VSCode 亮色主題一致 */
+}
+
+/* 在特定容器中繼承顏色（如果需要） */
+.preview-content .katex,
+.math-field-display .katex,
+.latex-formula-display .katex {
+  color: inherit;
+}
+
+/* 確保公式不會被其他樣式覆蓋 */
+/* 重要：重置所有 KaTeX 內部元素的 line-height，避免外部 CSS 干擾 */
+.katex * {
+  color: inherit;
+  line-height: normal !important;
+}
+
+/* 確保 KaTeX 內部的表格不受外部 border-collapse 影響 */
+.katex table {
+  border-collapse: separate !important;
+  border-spacing: 0;
+}
+
+/* 確保 KaTeX 內部的 vlist（垂直列表）元素不受外部 line-height 影響 */
+.katex .vlist-t {
+  line-height: normal !important;
+}
+
+.katex .vlist-r {
+  line-height: normal !important;
+}

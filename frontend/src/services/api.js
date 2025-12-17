@@ -474,7 +474,13 @@ export const questionBankAPI = {
   // 從 Word 匯入題目
   importFromWord: (formData) => api.post('/cramschool/questions/import_from_word/', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
-  })
+  }),
+
+  // 導出為 LaTeX
+  exportToLatex: (id) => api.get(`/cramschool/questions/${id}/export_to_latex/`),
+
+  // 導出為 Markdown
+  exportToMarkdown: (id) => api.get(`/cramschool/questions/${id}/export_to_markdown/`)
 }
 
 // Hashtag API
