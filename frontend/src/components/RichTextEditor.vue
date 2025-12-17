@@ -26,7 +26,7 @@
       <div class="divider-line"></div>
     </div>
     <div class="preview-container">
-      <RichTextPreview :content="text" @jump-to-line="jumpToLine" />
+      <RichTextPreview :content="text" @jump-to="jumpTo" />
     </div>
   </div>
 </template>
@@ -91,8 +91,26 @@ const insertDiagram2D = () => appendSnippet('\n```diagram2d\n{}\n```\n')
 const insertDiagram3D = () => appendSnippet('\n```diagram3d\n{}\n```\n')
 const insertCircuit = () => appendSnippet('\n```circuit\n{}\n```\n')
 
-const jumpToLine = (line) => {
-  mdEditorRef.value?.focusAtLine?.(line)
+const jumpTo = (payload) => {
+  const replace = payload?.replace || null
+  if (replace && Number.isFinite(replace.pos) && Number.isFinite(replace.len)) {
+    const p = replace.pos
+    const l = replace.len
+    const rep = String(replace.text ?? '')
+    text.value = `${text.value.slice(0, p)}${rep}${text.value.slice(p + l)}`
+    mdEditorRef.value?.focusAtPos?.(p + rep.length)
+    return
+  }
+
+  const pos = payload?.pos
+  const line = payload?.line
+  if (Number.isFinite(pos) && pos >= 0) {
+    mdEditorRef.value?.focusAtPos?.(pos)
+    return
+  }
+  if (Number.isFinite(line) && line >= 1) {
+    mdEditorRef.value?.focusAtLine?.(line)
+  }
 }
 </script>
 

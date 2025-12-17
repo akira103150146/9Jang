@@ -52,7 +52,18 @@ const focusAtLine = (lineNumber = 1) => {
   view.focus()
 }
 
-defineExpose({ focus, focusAtLine })
+const focusAtPos = (pos = 0) => {
+  if (!view) return
+  const max = view.state.doc.length
+  const safePos = Math.max(0, Math.min(Number(pos) || 0, max))
+  view.dispatch({
+    selection: { anchor: safePos, head: safePos },
+    scrollIntoView: true,
+  })
+  view.focus()
+}
+
+defineExpose({ focus, focusAtLine, focusAtPos })
 
 // 處理圖片貼上
 const handlePaste = async (event) => {
