@@ -16,6 +16,8 @@ import JoinGroupOrder from '../views/JoinGroupOrder.vue'
 import StudentErrorLog from '../views/StudentErrorLog.vue'
 import TuitionGenerator from '../views/TuitionGenerator.vue'
 import StudentFeeTracker from '../views/StudentFeeTracker.vue'
+import FeeTracker from '../views/FeeTracker.vue'
+import FeeForm from '../views/FeeForm.vue'
 import RoleManagement from '../views/RoleManagement.vue'
 import AuditLog from '../views/AuditLog.vue'
 import Login from '../views/Login.vue'
@@ -86,6 +88,25 @@ const router = createRouter({
       component: StudentFeeTracker,
       props: true,
       meta: { title: '學生費用核銷' },
+    },
+    {
+      path: '/fees',
+      name: 'fees',
+      component: FeeTracker,
+      meta: { title: '所有費用', allowedRoles: ['ACCOUNTANT'] },
+    },
+    {
+      path: '/fees/add',
+      name: 'fee-add',
+      component: FeeForm,
+      meta: { title: '新增費用記錄', allowedRoles: ['ACCOUNTANT'] },
+    },
+    {
+      path: '/fees/edit/:id',
+      name: 'fee-edit',
+      component: FeeForm,
+      props: true,
+      meta: { title: '編輯費用記錄', allowedRoles: ['ACCOUNTANT'] },
     },
     {
       path: '/teachers',
@@ -391,7 +412,7 @@ function getRoleBasedRouteFilter(role) {
   if (role === 'ACCOUNTANT') {
     return (path) => {
       // 會計可以訪問：帳務、訂便當、學生基本資料（僅查看）
-      const allowedPaths = ['/', '/students', '/lunch-orders', '/attendance']
+      const allowedPaths = ['/', '/students', '/lunch-orders', '/attendance', '/fees']
       // 排除教學相關模組與老師管理
       const excludedPaths = ['/questions', '/resources', '/student-groups', '/generator', '/courses', '/teachers', '/templates', '/roles', '/audit-logs', '/student-home']
       if (excludedPaths.some(excluded => path.startsWith(excluded))) {

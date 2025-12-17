@@ -164,6 +164,7 @@ const allNavItems = [
   // 學生不顯示課程管理側邊欄入口，改由首頁入口進入
   { name: 'courses', label: '課程管理', path: '/courses', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
   { name: 'attendance', label: '出缺勤', path: '/attendance', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER', 'ACCOUNTANT'] },
+  { name: 'fees', label: '所有費用', path: '/fees', requiresAdmin: false, allowedRoles: ['ACCOUNTANT'] },
   { name: 'questions', label: '題庫與資源', path: '/questions', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
   // 老闆（ADMIN）不需要看到學生群組，必要時可用模擬登入老師視角
   { name: 'student-groups', label: '學生群組', path: '/student-groups', requiresAdmin: false, allowedRoles: ['TEACHER'] },
@@ -208,6 +209,7 @@ const navItems = computed(() => {
 
 const childMatchMap = {
   'student-list': ['student-list', 'student-add', 'student-edit', 'student-fees'],
+  'fees': ['fees', 'fee-add', 'fee-edit'],
   'lunch-orders': ['lunch-orders', 'group-order-detail', 'join-group-order'],
   'questions': ['questions', 'resource-new', 'resource-edit', 'template-new', 'template-edit', 'question-new', 'question-edit', 'question-import'], // Keep sidebar active for editor, template editor, and import page
 }

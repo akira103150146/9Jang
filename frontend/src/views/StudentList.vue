@@ -177,7 +177,7 @@
                     報名課程
                   </button>
                   <router-link
-                    :to="`/students/${student.id}/fees`"
+                    :to="`/fees?student=${student.id}`"
                     class="rounded-full bg-green-500 px-3 py-1 text-xs font-semibold text-white hover:bg-green-600"
                   >
                     費用

@@ -626,6 +626,11 @@ class ExtraFeeViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """
         根據查詢參數決定是否包含已刪除的記錄
+        支援條件：
+        - student: 學生ID
+        - student_name: 學生姓名（模糊）
+        - item: 名目（精準）
+        - q: 備註關鍵字（模糊）
         """
         user = self.request.user
         if not user.is_authenticated:
@@ -635,7 +640,7 @@ class ExtraFeeViewSet(viewsets.ModelViewSet):
         if user.is_teacher():
             return ExtraFee.objects.none()
 
-        queryset = ExtraFee.objects.select_related('student').all()
+        queryset = ExtraFee.objects.select_related('student').all().order_by('-fee_date', '-fee_id')
         
         # 檢查是否有 include_deleted 參數
         include_deleted = self.request.query_params.get('include_deleted', 'false').lower() == 'true'
@@ -647,6 +652,21 @@ class ExtraFeeViewSet(viewsets.ModelViewSet):
         student_id = self.request.query_params.get('student', None)
         if student_id:
             queryset = queryset.filter(student_id=student_id)
+
+        # 名目（精準）
+        item = self.request.query_params.get('item', None)
+        if item:
+            queryset = queryset.filter(item=item)
+
+        # 學生姓名（模糊）
+        student_name = self.request.query_params.get('student_name', None)
+        if student_name:
+            queryset = queryset.filter(student__name__icontains=student_name.strip())
+
+        # 備註模糊搜尋
+        q = self.request.query_params.get('q', None)
+        if q:
+            queryset = queryset.filter(notes__icontains=q.strip())
         
         if user.is_student():
             try:
