@@ -13,9 +13,10 @@ import { EditorView, keymap, highlightSpecialChars, drawSelection, highlightActi
 import { EditorState, Compartment, Prec } from '@codemirror/state'
 import { history, defaultKeymap, historyKeymap } from '@codemirror/commands'
 import { markdown } from '@codemirror/lang-markdown'
-import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap, acceptCompletion } from '@codemirror/autocomplete'
+import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap, acceptCompletion, completionStatus } from '@codemirror/autocomplete'
 import { bracketMatching, foldGutter, indentOnInput, syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 import { uploadImageAPI, getBackendBaseURL } from '../services/api'
+import { getAllSnippets } from '../services/snippets'
 
 const props = defineProps({
   modelValue: {
@@ -63,7 +64,21 @@ const focusAtPos = (pos = 0) => {
   view.focus()
 }
 
-defineExpose({ focus, focusAtLine, focusAtPos })
+const insertText = (text, cursorOffset = 0) => {
+  if (!view) return
+  const s = view.state.selection.main
+  const from = s.from
+  const to = s.to
+  const insert = String(text ?? '')
+  view.dispatch({
+    changes: { from, to, insert },
+    selection: { anchor: from + insert.length + (Number(cursorOffset) || 0) },
+    scrollIntoView: true,
+  })
+  view.focus()
+}
+
+defineExpose({ focus, focusAtLine, focusAtPos, insertText })
 
 // 處理圖片貼上
 const handlePaste = async (event) => {
@@ -296,6 +311,34 @@ const slashCommands = [
   },
 ]
 
+const toCompletionOption = (snippet) => {
+  const label = snippet?.label
+  if (!label) return null
+  return {
+    label,
+    type: snippet.type || 'snippet',
+    info: snippet.info || '',
+    apply: (view, completion, from, to) => {
+      const all = getAllSnippets()
+      const found = all.find((s) => s.label === completion.label)
+      if (found && typeof found.insert === 'string' && found.insert.length > 0) {
+        const insertText = found.insert.replace(/\\n/g, '\n')
+        view.dispatch({
+          changes: { from, to, insert: insertText },
+          selection: { anchor: from + insertText.length + (Number(found.cursorOffset) || 0) },
+        })
+        return
+      }
+
+      // fallback: 若無 insert，就回到插入 label 本身
+      view.dispatch({
+        changes: { from, to, insert: completion.label },
+        selection: { anchor: from + completion.label.length },
+      })
+    },
+  }
+}
+
 // 自定義自動完成
 const customCompletions = (context) => {
   const word = context.matchBefore(/[\/\\]?\w*/)
@@ -307,33 +350,17 @@ const customCompletions = (context) => {
   // Slash 命令（當輸入 / 時）
   if (word.text.startsWith('/')) {
     const query = word.text.slice(1).toLowerCase()
-    slashCommands.forEach(item => {
-      if (item.label.slice(1).toLowerCase().includes(query) || query === '') {
-        completions.push({
-          label: item.label,
-          type: item.type,
-          info: item.info,
-          apply: (view, completion, from, to) => {
-            // 插入命令對應的內容
-            const command = slashCommands.find(cmd => cmd.label === completion.label)
-            if (command) {
-              const insertText = command.insert.replace(/\\n/g, '\n')
-              const insertFrom = from - 1 // 包含 '/' 字符
-              const insertTo = to
-              
-              view.dispatch({
-                changes: {
-                  from: insertFrom,
-                  to: insertTo,
-                  insert: insertText
-                },
-                selection: {
-                  anchor: insertFrom + insertText.length + command.cursorOffset
-                }
-              })
-            }
-          }
-        })
+    const allSlash = [
+      ...slashCommands.map((s) => ({ ...s })), // 既有命令
+      ...getAllSnippets().filter((s) => typeof s.label === 'string' && s.label.startsWith('/')),
+    ]
+
+    allSlash.forEach((item) => {
+      const q = query || ''
+      const key = String(item.label || '').slice(1).toLowerCase()
+      if (key.includes(q)) {
+        const opt = toCompletionOption(item)
+        if (opt) completions.push(opt)
       }
     })
     if (completions.length > 0) {
@@ -356,6 +383,15 @@ const customCompletions = (context) => {
         })
       }
     })
+    getAllSnippets()
+      .filter((s) => typeof s.label === 'string' && s.label.startsWith('\\'))
+      .forEach((s) => {
+        const key = s.label.slice(1).toLowerCase()
+        if (key.includes(query)) {
+          const opt = toCompletionOption(s)
+          if (opt) completions.push(opt)
+        }
+      })
     if (completions.length > 0) {
       return {
         from: word.from,
@@ -485,6 +521,21 @@ onMounted(() => {
   // 添加 paste 事件監聽器
   const dom = view.dom
   dom.addEventListener('paste', handlePaste)
+  // 修正：有些情況 Enter 不會進到 CodeMirror keymap（但 completion tooltip 仍是 active）。
+  // 用 capture 階段攔截，若 completion active/pending 就直接 acceptCompletion 並阻止換行。
+  dom.addEventListener(
+    'keydown',
+    (evt) => {
+      if (evt.key !== 'Enter') return
+      const status = view ? completionStatus(view.state) : null
+      const accepted = status === 'active' || status === 'pending' ? acceptCompletion(view) : false
+      if (accepted) {
+        evt.preventDefault()
+        evt.stopPropagation()
+      }
+    },
+    true
+  )
 })
 
 watch(() => props.modelValue, (newValue) => {

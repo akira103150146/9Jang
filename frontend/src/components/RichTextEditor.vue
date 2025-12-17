@@ -16,6 +16,13 @@
         <button @click="insertDiagram3D" class="toolbar-btn" title="插入 3D 圖形（以 fenced block 表示）">🎲</button>
         <button @click="insertCircuit" class="toolbar-btn" title="插入電路圖（以 fenced block 表示）">⚡</button>
       </div>
+
+      <div class="toolbar-divider"></div>
+
+      <div class="toolbar-group">
+        <span class="toolbar-group-label">Snippets</span>
+        <button @click="openSnippets" class="toolbar-btn" title="管理 Snippets（自動完成 / 自訂片段）">✨</button>
+      </div>
     </div>
     <div class="editor-container">
       <MarkdownEditor ref="mdEditorRef" v-model="text" :placeholder="placeholder" />
@@ -28,6 +35,12 @@
     <div class="preview-container">
       <RichTextPreview :content="text" @jump-to="jumpTo" />
     </div>
+
+    <SnippetManagerModal
+      v-if="snippetModalOpen"
+      @close="snippetModalOpen = false"
+      @insert="insertSnippetFromModal"
+    />
   </div>
 </template>
 
@@ -35,6 +48,7 @@
 import { ref, watch } from 'vue'
 import MarkdownEditor from './MarkdownEditor.vue'
 import RichTextPreview from './RichTextPreview.vue'
+import SnippetManagerModal from './SnippetManagerModal.vue'
 
 const props = defineProps({
   modelValue: {
@@ -51,6 +65,7 @@ const emit = defineEmits(['update:modelValue'])
 
 const mdEditorRef = ref(null)
 const text = ref('')
+const snippetModalOpen = ref(false)
 
 const normalizeIncoming = (value) => {
   if (typeof value === 'string') return value
@@ -79,17 +94,34 @@ watch(
   }
 )
 
-const appendSnippet = (snippet) => {
-  text.value = `${text.value || ''}${snippet}`
+const insertAtCursorOrAppend = (snippet, cursorOffset = 0) => {
+  const s = String(snippet ?? '')
+  if (mdEditorRef.value?.insertText) {
+    mdEditorRef.value.insertText(s, cursorOffset)
+    return
+  }
+  // fallback：若內部 editor 尚未暴露 insertText，就退回 append
+  text.value = `${text.value || ''}${s}`
   mdEditorRef.value?.focus?.()
 }
 
-const insertInlineLatex = () => appendSnippet('\n$ x^2 $\n')
-const insertBlockLatex = () => appendSnippet('\n$$\n\\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}\n$$\n')
-const insertCodeBlock = () => appendSnippet('\n```text\n\n```\n')
-const insertDiagram2D = () => appendSnippet('\n```diagram2d\n{}\n```\n')
-const insertDiagram3D = () => appendSnippet('\n```diagram3d\n{}\n```\n')
-const insertCircuit = () => appendSnippet('\n```circuit\n{}\n```\n')
+const insertInlineLatex = () => insertAtCursorOrAppend('$  $', -2)
+const insertBlockLatex = () => insertAtCursorOrAppend('$$\n\n$$', -3)
+const insertCodeBlock = () => insertAtCursorOrAppend('```text\n\n```', -4)
+const insertDiagram2D = () => insertAtCursorOrAppend('```diagram2d\n{}\n```', -4)
+const insertDiagram3D = () => insertAtCursorOrAppend('```diagram3d\n{}\n```', -4)
+const insertCircuit = () => insertAtCursorOrAppend('```circuit\n{}\n```', -4)
+
+const openSnippets = () => {
+  snippetModalOpen.value = true
+}
+
+const insertSnippetFromModal = (snippet) => {
+  const insert = snippet?.insert ?? ''
+  const cursorOffset = snippet?.cursorOffset ?? 0
+  insertAtCursorOrAppend(insert, cursorOffset)
+  snippetModalOpen.value = false
+}
 
 const jumpTo = (payload) => {
   const replace = payload?.replace || null
