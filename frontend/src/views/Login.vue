@@ -9,7 +9,7 @@
               <span class="text-2xl font-bold text-white">九</span>
             </div>
           </div>
-          <h1 class="text-2xl font-bold text-slate-900 mb-2">九章補教管理後台</h1>
+          <h1 class="text-2xl font-bold text-slate-900 mb-2">九章管理後台</h1>
           <p class="text-sm text-slate-500">請登入您的帳號以繼續</p>
         </div>
 
@@ -66,7 +66,7 @@
         <!-- 提示訊息 -->
         <div class="mt-6 text-center">
           <p class="text-xs text-slate-500">
-            預設管理員帳號：sunroad0418@gmail.com
+            加入九章大家庭，一起打造更好的學習環境
           </p>
         </div>
       </div>
