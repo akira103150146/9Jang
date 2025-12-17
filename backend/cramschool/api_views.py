@@ -39,7 +39,7 @@ class StudentViewSet(viewsets.ModelViewSet):
     """
     queryset = Student.objects.all()  # 用於路由器確定 basename，實際查詢由 get_queryset() 處理
     serializer_class = StudentSerializer
-    permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+    permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
         """
@@ -456,7 +456,20 @@ class TeacherViewSet(viewsets.ModelViewSet):
     """
     queryset = Teacher.objects.select_related('user').all()
     serializer_class = TeacherSerializer
-    permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """
+        老師管理：僅老闆（ADMIN）可管理全部；老師只能看自己的資料
+        """
+        user = self.request.user
+        if not user.is_authenticated:
+            return Teacher.objects.none()
+        if user.is_admin():
+            return super().get_queryset()
+        if user.is_teacher():
+            return Teacher.objects.select_related('user').filter(user=user)
+        return Teacher.objects.none()
     
     def get_serializer_context(self):
         """
@@ -474,7 +487,7 @@ class CourseViewSet(viewsets.ModelViewSet):
     """
     queryset = Course.objects.select_related('teacher').all()
     serializer_class = CourseSerializer
-    permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+    permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
         """
@@ -485,11 +498,11 @@ class CourseViewSet(viewsets.ModelViewSet):
         """
         queryset = super().get_queryset()
         
-        # 如果用戶未認證，返回所有課程
+        # 未登入：不回傳
         if not self.request.user.is_authenticated:
-            return queryset
+            return queryset.none()
         
-        # 管理員和老師可以看到所有課程
+        # 老闆/老師：可以看到所有課程
         if self.request.user.is_admin() or self.request.user.is_teacher():
             return queryset
         
@@ -521,7 +534,7 @@ class EnrollmentPeriodViewSet(viewsets.ModelViewSet):
     """
     queryset = EnrollmentPeriod.objects.select_related('enrollment', 'enrollment__student', 'enrollment__course').all()
     serializer_class = EnrollmentPeriodSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -537,7 +550,7 @@ class StudentEnrollmentViewSet(viewsets.ModelViewSet):
     """
     queryset = StudentEnrollment.objects.all()  # 用於路由器確定 basename，實際查詢由 get_queryset() 處理
     serializer_class = StudentEnrollmentSerializer
-    permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+    permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
         """
@@ -603,12 +616,20 @@ class ExtraFeeViewSet(viewsets.ModelViewSet):
     """
     queryset = ExtraFee.objects.all()  # 用於路由器確定 basename，實際查詢由 get_queryset() 處理
     serializer_class = ExtraFeeSerializer
-    permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+    permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
         """
         根據查詢參數決定是否包含已刪除的記錄
         """
+        user = self.request.user
+        if not user.is_authenticated:
+            return ExtraFee.objects.none()
+
+        # 老師不可用；老闆/會計可管理；學生只能看自己的
+        if user.is_teacher():
+            return ExtraFee.objects.none()
+
         queryset = ExtraFee.objects.select_related('student').all()
         
         # 檢查是否有 include_deleted 參數
@@ -622,7 +643,18 @@ class ExtraFeeViewSet(viewsets.ModelViewSet):
         if student_id:
             queryset = queryset.filter(student_id=student_id)
         
-        return queryset
+        if user.is_student():
+            try:
+                student = user.student_profile
+                return queryset.filter(student=student)
+            except Student.DoesNotExist:
+                return ExtraFee.objects.none()
+
+        # ADMIN / ACCOUNTANT
+        if user.is_admin() or user.is_accountant():
+            return queryset
+
+        return ExtraFee.objects.none()
     
     def destroy(self, request, *args, **kwargs):
         """
@@ -663,7 +695,7 @@ class SessionRecordViewSet(viewsets.ModelViewSet):
     """
     queryset = SessionRecord.objects.select_related('course').all()
     serializer_class = SessionRecordSerializer
-    permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+    permission_classes = [IsAuthenticated]
 
 
 class AttendanceViewSet(viewsets.ModelViewSet):
@@ -672,7 +704,7 @@ class AttendanceViewSet(viewsets.ModelViewSet):
     """
     queryset = Attendance.objects.all()  # 用於路由器確定 basename，實際查詢由 get_queryset() 處理
     serializer_class = AttendanceSerializer
-    permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+    permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
         """
@@ -727,7 +759,7 @@ class LeaveViewSet(viewsets.ModelViewSet):
     """
     queryset = Leave.objects.all()  # 用於路由器確定 basename，實際查詢由 get_queryset() 處理
     serializer_class = LeaveSerializer
-    permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+    permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
         """
@@ -782,7 +814,16 @@ class SubjectViewSet(viewsets.ModelViewSet):
     """
     queryset = Subject.objects.all()
     serializer_class = SubjectSerializer
-    permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return Subject.objects.none()
+        # 題庫相關：學生/會計不提供
+        if user.is_student() or user.is_accountant():
+            return Subject.objects.none()
+        return super().get_queryset()
 
 
 class QuestionBankViewSet(viewsets.ModelViewSet):
@@ -792,13 +833,20 @@ class QuestionBankViewSet(viewsets.ModelViewSet):
     """
     queryset = QuestionBank.objects.select_related('subject', 'created_by', 'imported_from_error_log').prefetch_related('tags__tag').all()
     serializer_class = QuestionBankSerializer
-    permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+    permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
         """
         根據查詢參數進行多條件篩選
         """
         queryset = super().get_queryset()
+
+        # 題庫：學生/會計不可用
+        user = self.request.user
+        if not user.is_authenticated:
+            return queryset.none()
+        if user.is_student() or user.is_accountant():
+            return queryset.none()
         
         # 科目篩選
         subject_id = self.request.query_params.get('subject', None)
@@ -1302,7 +1350,7 @@ class HashtagViewSet(viewsets.ModelViewSet):
     """
     queryset = Hashtag.objects.select_related('creator').all()
     serializer_class = HashtagSerializer
-    permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+    permission_classes = [IsAuthenticated]
 
 
 class QuestionTagViewSet(viewsets.ModelViewSet):
@@ -1311,7 +1359,7 @@ class QuestionTagViewSet(viewsets.ModelViewSet):
     """
     queryset = QuestionTag.objects.select_related('question', 'tag').all()
     serializer_class = QuestionTagSerializer
-    permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+    permission_classes = [IsAuthenticated]
 
 
 class StudentAnswerViewSet(viewsets.ModelViewSet):
@@ -1320,7 +1368,7 @@ class StudentAnswerViewSet(viewsets.ModelViewSet):
     """
     queryset = StudentAnswer.objects.all()  # 用於路由器確定 basename，實際查詢由 get_queryset() 處理
     serializer_class = StudentAnswerSerializer
-    permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+    permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
         """
@@ -1375,13 +1423,21 @@ class ErrorLogViewSet(viewsets.ModelViewSet):
     """
     queryset = ErrorLog.objects.all()  # 用於路由器確定 basename，實際查詢由 get_queryset() 處理
     serializer_class = ErrorLogSerializer
-    permission_classes = [AllowAny]  # 開發階段允許所有請求，生產環境請改為適當的權限控制
+    permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
         """
         支援按學生 ID 篩選錯題記錄，並優化查詢
         根據查詢參數決定是否包含已刪除的記錄
         """
+        user = self.request.user
+        if not user.is_authenticated:
+            return ErrorLog.objects.none()
+
+        # 會計不可用
+        if user.is_accountant():
+            return ErrorLog.objects.none()
+
         queryset = ErrorLog.objects.select_related(
             'student', 'question', 'question__subject'
         ).prefetch_related('question__tags__tag')
@@ -1397,6 +1453,19 @@ class ErrorLogViewSet(viewsets.ModelViewSet):
         
         if student_id:
             queryset = queryset.filter(student_id=student_id)
+
+        # 學生只能看自己的錯題
+        if user.is_student():
+            try:
+                student = user.student_profile
+                return queryset.filter(student=student)
+            except Student.DoesNotExist:
+                return ErrorLog.objects.none()
+
+        # 老闆/老師可看
+        if user.is_admin() or user.is_teacher():
+            return queryset
+        return ErrorLog.objects.none()
         
         return queryset
     
@@ -1505,7 +1574,20 @@ class RestaurantViewSet(viewsets.ModelViewSet):
     """
     queryset = Restaurant.objects.all()
     serializer_class = RestaurantSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """
+        訂便當模組：
+        - 老闆（ADMIN）預設不可用（需模擬登入其他身分）
+        - 老師/會計/學生可依需求使用
+        """
+        user = self.request.user
+        if not user.is_authenticated:
+            return Restaurant.objects.none()
+        if user.is_admin():
+            return Restaurant.objects.none()
+        return super().get_queryset()
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -1530,7 +1612,21 @@ class GroupOrderViewSet(viewsets.ModelViewSet):
         )
     ).all()
     serializer_class = GroupOrderSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """
+        訂便當模組：
+        - 老闆（ADMIN）預設不可用
+        - 老師/會計可查看全部團購
+        - 學生僅能透過 join link / 建立自己的訂單（由 Order API 控制），這裡先允許讀取（避免前端 join 頁面壞掉）
+        """
+        user = self.request.user
+        if not user.is_authenticated:
+            return GroupOrder.objects.none()
+        if user.is_admin():
+            return GroupOrder.objects.none()
+        return super().get_queryset()
 
     def perform_create(self, serializer):
         """
@@ -1554,10 +1650,10 @@ class GroupOrderViewSet(viewsets.ModelViewSet):
         from django.utils import timezone
         from decimal import Decimal
         
-        # 權限：僅管理員或會計可完成團購
-        if not request.user.is_authenticated or not (request.user.is_admin() or request.user.is_accountant()):
+        # 權限：僅會計可完成團購（老闆預設不可用；若需要可用模擬登入會計）
+        if not request.user.is_authenticated or not request.user.is_accountant():
             return Response(
-                {'detail': '只有管理員或會計可以完成團購'},
+                {'detail': '只有會計可以完成團購'},
                 status=status.HTTP_403_FORBIDDEN
             )
         
@@ -1618,13 +1714,21 @@ class OrderViewSet(viewsets.ModelViewSet):
     """
     queryset = Order.objects.all()  # 用於路由器確定 basename，實際查詢由 get_queryset() 處理
     serializer_class = OrderSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
         """
         支援按團購 ID 和學生 ID 篩選
         根據查詢參數決定是否包含已刪除的記錄
         """
+        user = self.request.user
+        if not user.is_authenticated:
+            return Order.objects.none()
+
+        # 老闆（ADMIN）預設不可用
+        if user.is_admin():
+            return Order.objects.none()
+
         queryset = Order.objects.select_related('group_order', 'student').prefetch_related('items').all()
         
         # 檢查是否有 include_deleted 參數
@@ -1641,6 +1745,16 @@ class OrderViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(group_order_id=group_order_id)
         if student_id:
             queryset = queryset.filter(student_id=student_id)
+
+        # 學生：只能看自己的訂單（不信任 query string）
+        if user.is_student():
+            try:
+                student = user.student_profile
+                queryset = queryset.filter(student=student)
+            except Student.DoesNotExist:
+                return Order.objects.none()
+
+        # 老師/會計：可看全部
         
         return queryset
     
@@ -1703,7 +1817,22 @@ class OrderItemViewSet(viewsets.ModelViewSet):
     """
     queryset = OrderItem.objects.select_related('order').all()
     serializer_class = OrderItemSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return OrderItem.objects.none()
+        if user.is_admin():
+            return OrderItem.objects.none()
+        qs = super().get_queryset()
+        if user.is_student():
+            try:
+                student = user.student_profile
+                return qs.filter(order__student=student)
+            except Student.DoesNotExist:
+                return OrderItem.objects.none()
+        return qs
     
     def perform_create(self, serializer):
         """
@@ -1764,21 +1893,36 @@ class StudentGroupViewSet(viewsets.ModelViewSet):
     """
     queryset = StudentGroup.objects.prefetch_related('students', 'created_by').all()
     serializer_class = StudentGroupSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """
+        學生群組：只有老師可用（老闆需模擬登入老師）
+        """
+        user = self.request.user
+        if not user.is_authenticated:
+            return StudentGroup.objects.none()
+        if not user.is_teacher():
+            return StudentGroup.objects.none()
+        return super().get_queryset()
+
+    def create(self, request, *args, **kwargs):
+        if not request.user.is_authenticated or not request.user.is_teacher():
+            return Response({'detail': '只有老師可以管理學生群組'}, status=status.HTTP_403_FORBIDDEN)
+        return super().create(request, *args, **kwargs)
     
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context['request'] = self.request
         return context
     
-    def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
-    
     @action(detail=True, methods=['post'], url_path='add-students')
     def add_students(self, request, pk=None):
         """
         新增學生到群組
         """
+        if not request.user.is_authenticated or not request.user.is_teacher():
+            return Response({'detail': '只有老師可以管理學生群組'}, status=status.HTTP_403_FORBIDDEN)
         group = self.get_object()
         student_ids = request.data.get('student_ids', [])
         
@@ -1799,6 +1943,8 @@ class StudentGroupViewSet(viewsets.ModelViewSet):
         """
         從群組移除學生
         """
+        if not request.user.is_authenticated or not request.user.is_teacher():
+            return Response({'detail': '只有老師可以管理學生群組'}, status=status.HTTP_403_FORBIDDEN)
         group = self.get_object()
         student_ids = request.data.get('student_ids', [])
         
@@ -1824,7 +1970,7 @@ class QuizViewSet(viewsets.ModelViewSet):
         'student_groups__students'
     ).all()
     serializer_class = QuizSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -1974,7 +2120,7 @@ class ExamViewSet(viewsets.ModelViewSet):
         'student_groups__students'
     ).all()
     serializer_class = ExamSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -2109,7 +2255,7 @@ class CourseMaterialViewSet(viewsets.ModelViewSet):
         Prefetch('questions', queryset=QuestionBank.objects.select_related('subject'))
     ).all()
     serializer_class = CourseMaterialSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -2345,14 +2491,18 @@ class ContentTemplateViewSet(viewsets.ModelViewSet):
     """
     queryset = ContentTemplate.objects.select_related('created_by').prefetch_related('tags').all()
     serializer_class = ContentTemplateSerializer
-    permission_classes = [AllowAny] # Dev phase
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        
-        # 如果未認證，只返回公開模板 (或者不返回，看需求，目前 AllowAny)
-        if not self.request.user.is_authenticated:
-            return queryset.filter(is_public=True)
+
+        user = self.request.user
+        if not user.is_authenticated:
+            return queryset.none()
+
+        # 會計不可用
+        if user.is_accountant():
+            return queryset.none()
             
         # 返回公開的 或 自己創建的
         return queryset.filter(
@@ -2386,7 +2536,7 @@ class LearningResourceViewSet(viewsets.ModelViewSet):
     """
     queryset = LearningResource.objects.select_related('course', 'created_by').prefetch_related('tags', 'student_groups').all()
     serializer_class = LearningResourceSerializer
-    permission_classes = [AllowAny] # Dev phase
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -2395,7 +2545,7 @@ class LearningResourceViewSet(viewsets.ModelViewSet):
         
         # 1. 未登入：不顯示
         if not user.is_authenticated:
-            return queryset # 暫時允許
+            return queryset.none()
             
         # 2. 管理員/老師：顯示所有
         if user.is_admin() or user.is_teacher():

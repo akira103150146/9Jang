@@ -231,7 +231,7 @@ const router = createRouter({
       path: '/student-groups',
       name: 'student-groups',
       component: StudentGroupManagement,
-      meta: { title: '學生群組管理', allowedRoles: ['ADMIN', 'TEACHER'] },
+      meta: { title: '學生群組管理', allowedRoles: ['TEACHER'] },
     },
   ],
 })
@@ -326,18 +326,55 @@ router.beforeEach(async (to, from, next) => {
 
 // 根據角色過濾路由的函數
 function getRoleBasedRouteFilter(role) {
+  // 依需求：老闆（ADMIN）不是「全能」，有明確允許/禁止的模組
   if (role === 'ADMIN') {
-    return null // 管理員可以訪問所有路由
+    return (path) => {
+      // 允許：儀表板、學生、老師、課程、請假、題庫/資源/模板、角色管理、操作記錄
+      const allowedPrefixes = [
+        '/',
+        '/students',
+        '/teachers',
+        '/courses',
+        '/attendance',
+        '/questions',
+        '/resources',
+        '/templates',
+        '/roles',
+        '/audit-logs',
+      ]
+
+      // 禁止：學生群組、訂便當、學生首頁（必要時透過模擬登入切換視角）
+      const excludedPrefixes = ['/student-groups', '/lunch-orders', '/student-home']
+      if (excludedPrefixes.some(excluded => path.startsWith(excluded))) {
+        return false
+      }
+
+      return allowedPrefixes.some(allowed => path === allowed || path.startsWith(`${allowed}/`) || path.startsWith(allowed))
+    }
   }
 
   if (role === 'TEACHER') {
     return (path) => {
-      // 老師可以訪問：課程、題庫、資源、學生群組、模板
-      const allowedPaths = [
-        '/', '/courses', '/questions', '/resources',
-        '/student-groups', '/templates'
+      // 老師可以訪問：課程、請假、題庫/資源/模板、學生群組、訂便當、學生列表/錯題本
+      const allowedPrefixes = [
+        '/courses',
+        '/attendance',
+        '/questions',
+        '/resources',
+        '/templates',
+        '/student-groups',
+        '/lunch-orders',
+        '/students',
       ]
-      return allowedPaths.some(allowed => path.startsWith(allowed))
+
+      // 學生路由：老師只允許列表與錯題本
+      if (path.startsWith('/students')) {
+        if (path === '/students') return true
+        // /students/:id/errors
+        return /^\/students\/[^/]+\/errors$/.test(path)
+      }
+
+      return allowedPrefixes.some(allowed => path.startsWith(allowed))
     }
   }
 
@@ -354,9 +391,9 @@ function getRoleBasedRouteFilter(role) {
   if (role === 'ACCOUNTANT') {
     return (path) => {
       // 會計可以訪問：帳務、訂便當、學生基本資料（僅查看）
-      const allowedPaths = ['/', '/students', '/lunch-orders']
-      // 排除教學相關模組
-      const excludedPaths = ['/questions', '/resources', '/student-groups', '/generator', '/courses']
+      const allowedPaths = ['/', '/students', '/lunch-orders', '/attendance']
+      // 排除教學相關模組與老師管理
+      const excludedPaths = ['/questions', '/resources', '/student-groups', '/generator', '/courses', '/teachers', '/templates', '/roles', '/audit-logs', '/student-home']
       if (excludedPaths.some(excluded => path.startsWith(excluded))) {
         return false
       }

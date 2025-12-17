@@ -158,16 +158,18 @@ const getUserInitials = (user) => {
 const allNavItems = [
   { name: 'student-home', label: '首頁', path: '/student-home', requiresAdmin: false, allowedRoles: ['STUDENT'] },
   { name: 'dashboard', label: '營運儀表板', path: '/', requiresAdmin: false, allowedRoles: ['ADMIN', 'ACCOUNTANT'] },
-  { name: 'student-list', label: '學生管理', path: '/students', requiresAdmin: false, allowedRoles: ['ADMIN', 'ACCOUNTANT'] },
+  // 老師需要學生列表/錯題本；不提供新增/編輯/費用等入口
+  { name: 'student-list', label: '學生管理', path: '/students', requiresAdmin: false, allowedRoles: ['ADMIN', 'ACCOUNTANT', 'TEACHER'] },
   { name: 'teachers', label: '老師管理', path: '/teachers', requiresAdmin: false, allowedRoles: ['ADMIN'] },
   // 學生不顯示課程管理側邊欄入口，改由首頁入口進入
   { name: 'courses', label: '課程管理', path: '/courses', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
-  { name: 'attendance', label: '出缺勤', path: '/attendance', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
+  { name: 'attendance', label: '出缺勤', path: '/attendance', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER', 'ACCOUNTANT'] },
   { name: 'questions', label: '題庫與資源', path: '/questions', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
-  { name: 'student-groups', label: '學生群組', path: '/student-groups', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
+  // 老闆（ADMIN）不需要看到學生群組，必要時可用模擬登入老師視角
+  { name: 'student-groups', label: '學生群組', path: '/student-groups', requiresAdmin: false, allowedRoles: ['TEACHER'] },
   // 學生不顯示訂便當系統側邊欄入口，改由首頁入口進入
   // 管理員也不應該顯示訂便當系統
-  { name: 'lunch-orders', label: '訂便當系統', path: '/lunch-orders', requiresAdmin: false, allowedRoles: ['ACCOUNTANT'] },
+  { name: 'lunch-orders', label: '訂便當系統', path: '/lunch-orders', requiresAdmin: false, allowedRoles: ['ACCOUNTANT', 'TEACHER'] },
   { name: 'roles', label: '角色管理', path: '/roles', requiresAdmin: true, allowedRoles: ['ADMIN'] },
   { name: 'audit-logs', label: '操作記錄', path: '/audit-logs', requiresAdmin: true, allowedRoles: ['ADMIN'] },
 ]
@@ -371,9 +373,12 @@ const handleUserSelect = async (user) => {
     // 7. 根據角色決定跳轉
     if (impersonatedUser.role === 'STUDENT') {
       window.location.href = '/student-home'
-    } else if (impersonatedUser.role === 'TEACHER' || impersonatedUser.role === 'ACCOUNTANT') {
-      // 會計和老師跳轉到 Dashboard
-      router.push('/')
+    } else if (impersonatedUser.role === 'TEACHER') {
+      // 老師預設進題庫系統
+      router.push('/questions')
+    } else if (impersonatedUser.role === 'ACCOUNTANT') {
+      // 會計預設進學生管理
+      router.push('/students')
     } else {
       // 其他角色重新載入頁面
       window.location.reload()
@@ -404,8 +409,8 @@ const stopImpersonation = () => {
     localStorage.removeItem('original_user')
     localStorage.removeItem('temp_role')
     
-    // 重新載入頁面
-    window.location.reload()
+    // 回到老闆（ADMIN）預設頁：儀表板
+    window.location.href = '/'
   } else {
     // 如果找不到原始 Token，只能登出
     handleLogout()
