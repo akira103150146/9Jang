@@ -114,21 +114,23 @@ class RoleViewSet(viewsets.ModelViewSet):
         )
         return response
 
-    def destroy(self, request, *args, **kwargs):
-        if not request.user.is_admin():
-            return Response({'detail': '只有管理員可以刪除角色'}, status=status.HTTP_403_FORBIDDEN)
-        
-        instance = self.get_object()
-        role_name = instance.name
-        role_id = kwargs.get('pk')
-        response = super().destroy(request, *args, **kwargs)
-        log_audit(
-            request, 'delete', 'Role', 
-            role_id, 
-            role_name,
-            response_status=response.status_code
-        )
-        return response
+    # 註解：刪除功能已禁用，避免誤刪導致資料庫錯誤
+    # 唯一刪除方式是透過 flush_db 指令
+    # def destroy(self, request, *args, **kwargs):
+    #     if not request.user.is_admin():
+    #         return Response({'detail': '只有管理員可以刪除角色'}, status=status.HTTP_403_FORBIDDEN)
+    #     
+    #     instance = self.get_object()
+    #     role_name = instance.name
+    #     role_id = kwargs.get('pk')
+    #     response = super().destroy(request, *args, **kwargs)
+    #     log_audit(
+    #         request, 'delete', 'Role', 
+    #         role_id, 
+    #         role_name,
+    #         response_status=response.status_code
+    #     )
+    #     return response
 
     @action(detail=True, methods=['post'], url_path='permissions')
     def update_permissions(self, request, pk=None):

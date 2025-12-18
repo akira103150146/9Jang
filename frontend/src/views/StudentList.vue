@@ -204,7 +204,9 @@
                   >
                     編輯
                   </router-link>
-                  <button
+                  <!-- 註解：刪除功能已禁用，避免誤刪導致資料庫錯誤 -->
+                  <!-- 唯一刪除方式是透過 flush_db 指令 -->
+                  <!-- <button
                     v-if="isAdmin && !student.is_deleted"
                     @click="deleteStudent(student.id, student.name)"
                     class="rounded-full bg-rose-500 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-600"
@@ -217,7 +219,7 @@
                     class="rounded-full bg-green-500 px-3 py-1 text-xs font-semibold text-white hover:bg-green-600"
                   >
                     恢復
-                  </button>
+                  </button> -->
                 </div>
               </td>
             </tr>

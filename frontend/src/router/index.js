@@ -183,52 +183,52 @@ const router = createRouter({
       path: '/questions',
       name: 'questions',
       component: QuestionBank,
-      meta: { title: '題庫與資源管理' },
+      meta: { title: '題庫與資源管理', allowedRoles: ['TEACHER'] },
     },
     {
       path: '/questions/new',
       name: 'question-new',
       component: QuestionForm,
-      meta: { title: '新增題目', allowedRoles: ['ADMIN', 'TEACHER'] },
+      meta: { title: '新增題目', allowedRoles: ['TEACHER'] },
     },
     {
       path: '/questions/edit/:id',
       name: 'question-edit',
       component: QuestionForm,
       props: true,
-      meta: { title: '編輯題目', allowedRoles: ['ADMIN', 'TEACHER'] },
+      meta: { title: '編輯題目', allowedRoles: ['TEACHER'] },
     },
     {
       path: '/questions/import',
       name: 'question-import',
       component: QuestionImport,
-      meta: { title: '匯入題目', allowedRoles: ['ADMIN', 'TEACHER'] },
+      meta: { title: '匯入題目', allowedRoles: ['TEACHER'] },
     },
     {
       path: '/resources/new',
       name: 'resource-new',
       component: ResourceEditor,
-      meta: { title: '新增教學資源', allowedRoles: ['ADMIN', 'TEACHER'] },
+      meta: { title: '新增教學資源', allowedRoles: ['TEACHER'] },
     },
     {
       path: '/resources/edit/:id',
       name: 'resource-edit',
       component: ResourceEditor,
       props: true,
-      meta: { title: '編輯教學資源', allowedRoles: ['ADMIN', 'TEACHER'] },
+      meta: { title: '編輯教學資源', allowedRoles: ['TEACHER'] },
     },
     {
       path: '/templates/new',
       name: 'template-new',
       component: TemplateEditor,
-      meta: { title: '新增模板', allowedRoles: ['ADMIN', 'TEACHER'] },
+      meta: { title: '新增模板', allowedRoles: ['TEACHER'] },
     },
     {
       path: '/templates/edit/:id',
       name: 'template-edit',
       component: TemplateEditor,
       props: true,
-      meta: { title: '編輯模板', allowedRoles: ['ADMIN', 'TEACHER'] },
+      meta: { title: '編輯模板', allowedRoles: ['TEACHER'] },
     },
     {
       path: '/lunch-orders',
@@ -324,6 +324,17 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
+  // 檢查管理員是否在模擬狀態下訪問老師專用頁面
+  if (user.role === 'ADMIN' && effectiveRole === 'ADMIN') {
+    // 管理員在非模擬狀態下，不允許訪問老師專用頁面
+    const teacherOnlyPaths = ['/questions', '/resources', '/templates']
+    if (teacherOnlyPaths.some(path => to.path.startsWith(path))) {
+      alert('管理員需要先切換到老師身分才能訪問此功能')
+      next('/')
+      return
+    }
+  }
+
   // 根據角色過濾路由
   const roleBasedFilter = getRoleBasedRouteFilter(effectiveRole)
   if (roleBasedFilter && !roleBasedFilter(to.path)) {
@@ -362,24 +373,22 @@ router.beforeEach(async (to, from, next) => {
 // 根據角色過濾路由的函數
 function getRoleBasedRouteFilter(role) {
   // 依需求：老闆（ADMIN）不是「全能」，有明確允許/禁止的模組
+  // 注意：管理員在非模擬狀態下不能訪問老師專用頁面（題庫與資源）
   if (role === 'ADMIN') {
     return (path) => {
-      // 允許：儀表板、學生、老師、課程、請假、題庫/資源/模板、角色管理、操作記錄
+      // 允許：儀表板、學生、老師、課程、請假、角色管理、操作記錄
       const allowedPrefixes = [
         '/',
         '/students',
         '/teachers',
         '/courses',
         '/attendance',
-        '/questions',
-        '/resources',
-        '/templates',
         '/roles',
         '/audit-logs',
       ]
 
-      // 禁止：學生群組、訂便當、學生首頁（必要時透過模擬登入切換視角）
-      const excludedPrefixes = ['/student-groups', '/lunch-orders', '/student-home']
+      // 禁止：學生群組、訂便當、學生首頁、題庫與資源（必要時透過模擬登入切換視角）
+      const excludedPrefixes = ['/student-groups', '/lunch-orders', '/student-home', '/questions', '/resources', '/templates']
       if (excludedPrefixes.some(excluded => path.startsWith(excluded))) {
         return false
       }

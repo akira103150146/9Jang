@@ -127,7 +127,7 @@ class StudentSerializer(serializers.ModelSerializer):
         # 後備方案：如果沒有 annotate，則執行查詢
         from django.db.models import Sum, Q
         result = obj.extra_fees.filter(
-            Q(payment_status='Unpaid') | Q(payment_status='Partial'),
+            payment_status='Unpaid',
             is_deleted=False
         ).aggregate(total=Sum('amount'))
         return float(result['total'] or 0)

@@ -150,7 +150,7 @@ export const mockExtraFees = [
     item: 'Other',
     amount: 600,
     fee_date: '2025-02-18',
-    payment_status: 'Partial',
+    payment_status: 'Unpaid',
   },
 ]
 

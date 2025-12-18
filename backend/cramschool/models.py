@@ -319,7 +319,6 @@ class ExtraFee(models.Model):
     PAYMENT_STATUS_CHOICES = [
         ('Paid', 'Paid'),
         ('Unpaid', 'Unpaid'),
-        ('Partial', 'Partial'),
     ]
     
     # 核心欄位

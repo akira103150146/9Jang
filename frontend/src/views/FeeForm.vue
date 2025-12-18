@@ -58,7 +58,6 @@
             required
           >
             <option value="Unpaid">未繳費</option>
-            <option value="Partial">部分繳費</option>
             <option value="Paid">已繳費</option>
           </select>
 
@@ -119,12 +118,17 @@ const fetchFee = async () => {
   try {
     const response = await feeAPI.getById(route.params.id)
     const fee = response.data
+    let paymentStatus = fee.payment_status || 'Unpaid'
+    // 如果遇到舊的 Partial 狀態（理論上不應該有），轉換為 Unpaid
+    if (paymentStatus === 'Partial') {
+      paymentStatus = 'Unpaid'
+    }
     form.value = {
       student: fee.student || fee.student_id || '',
       item: fee.item,
       amount: fee.amount,
       fee_date: fee.fee_date || new Date().toISOString().split('T')[0],
-      payment_status: fee.payment_status || 'Unpaid'
+      payment_status: paymentStatus
     }
   } catch (error) {
     console.error('獲取費用記錄失敗:', error)

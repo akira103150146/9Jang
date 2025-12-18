@@ -119,7 +119,7 @@ class StudentViewSet(viewsets.ModelViewSet):
                 'extra_fees__amount',
                 filter=Q(
                     extra_fees__is_deleted=False,
-                    extra_fees__payment_status__in=['Unpaid', 'Partial']
+                    extra_fees__payment_status='Unpaid'
                 )
             ),
             # 預先計算報名課程數量
@@ -179,18 +179,20 @@ class StudentViewSet(viewsets.ModelViewSet):
         context['request'] = self.request
         return context
     
-    def destroy(self, request, *args, **kwargs):
-        """
-        軟刪除學生記錄：僅管理員可用
-        """
-        if not request.user.is_authenticated or not request.user.is_admin():
-            return Response(
-                {'detail': '只有管理員可以刪除學生'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        instance = self.get_object()
-        instance.soft_delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    # 註解：刪除功能已禁用，避免誤刪導致資料庫錯誤
+    # 唯一刪除方式是透過 flush_db 指令
+    # def destroy(self, request, *args, **kwargs):
+    #     """
+    #     軟刪除學生記錄：僅管理員可用
+    #     """
+    #     if not request.user.is_authenticated or not request.user.is_admin():
+    #         return Response(
+    #             {'detail': '只有管理員可以刪除學生'},
+    #             status=status.HTTP_403_FORBIDDEN
+    #         )
+    #     instance = self.get_object()
+    #     instance.soft_delete()
+    #     return Response(status=status.HTTP_204_NO_CONTENT)
     
     @action(detail=True, methods=['post'])
     def restore(self, request, pk=None):
@@ -597,6 +599,19 @@ class TeacherViewSet(viewsets.ModelViewSet):
         context = super().get_serializer_context()
         context['request'] = self.request
         return context
+    
+    # 註解：刪除功能已禁用，避免誤刪導致資料庫錯誤
+    # 唯一刪除方式是透過 flush_db 指令
+    # def destroy(self, request, *args, **kwargs):
+    #     """
+    #     刪除老師記錄：僅管理員可用
+    #     """
+    #     if not request.user.is_authenticated or not request.user.is_admin():
+    #         return Response(
+    #             {'detail': '只有管理員可以刪除老師'},
+    #             status=status.HTTP_403_FORBIDDEN
+    #         )
+    #     return super().destroy(request, *args, **kwargs)
 
 
 class CourseViewSet(viewsets.ModelViewSet):
@@ -691,16 +706,18 @@ class CourseViewSet(viewsets.ModelViewSet):
             )
         return super().partial_update(request, *args, **kwargs)
     
-    def destroy(self, request, *args, **kwargs):
-        """
-        刪除課程：僅管理員可用
-        """
-        if not request.user.is_authenticated or not request.user.is_admin():
-            return Response(
-                {'detail': '只有管理員可以刪除課程'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        return super().destroy(request, *args, **kwargs)
+    # 註解：刪除功能已禁用，避免誤刪導致資料庫錯誤
+    # 唯一刪除方式是透過 flush_db 指令
+    # def destroy(self, request, *args, **kwargs):
+    #     """
+    #     刪除課程：僅管理員可用
+    #     """
+    #     if not request.user.is_authenticated or not request.user.is_admin():
+    #         return Response(
+    #             {'detail': '只有管理員可以刪除課程'},
+    #             status=status.HTTP_403_FORBIDDEN
+    #         )
+    #     return super().destroy(request, *args, **kwargs)
     
     @action(detail=True, methods=['get'], url_path='student-status')
     def student_status(self, request, pk=None):
@@ -1106,14 +1123,25 @@ class QuestionBankViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """
         根據查詢參數進行多條件篩選
+        只有老師可以訪問（管理員需要先模擬老師身分）
         """
         queryset = super().get_queryset()
 
-        # 題庫：學生/會計不可用
+        # 題庫：只有老師可以訪問
         user = self.request.user
         if not user.is_authenticated:
             return queryset.none()
+        
+        # 管理員在非模擬狀態下不能訪問
+        if user.is_admin():
+            return queryset.none()
+        
+        # 學生和會計不可用
         if user.is_student() or user.is_accountant():
+            return queryset.none()
+        
+        # 只有老師可以訪問
+        if not user.is_teacher():
             return queryset.none()
         
         # 科目篩選
@@ -3747,8 +3775,16 @@ class ContentTemplateViewSet(viewsets.ModelViewSet):
         if not user.is_authenticated:
             return queryset.none()
 
+        # 管理員在非模擬狀態下不能訪問
+        if user.is_admin():
+            return queryset.none()
+
         # 會計不可用
         if user.is_accountant():
+            return queryset.none()
+        
+        # 只有老師可以訪問
+        if not user.is_teacher():
             return queryset.none()
             
         # 返回公開的 或 自己創建的
@@ -3757,22 +3793,49 @@ class ContentTemplateViewSet(viewsets.ModelViewSet):
         )
 
     def perform_create(self, serializer):
-        if self.request.user.is_authenticated:
-            serializer.save(created_by=self.request.user)
+        user = self.request.user
+        # 管理員在非模擬狀態下不能創建
+        if user.is_admin():
+            raise serializers.ValidationError('管理員需要先切換到老師身分才能執行此操作')
+        # 只有老師可以創建
+        if not user.is_teacher():
+            raise serializers.ValidationError('只有老師可以創建模板')
+        if user.is_authenticated:
+            serializer.save(created_by=user)
         else:
             serializer.save()
 
     def update(self, request, *args, **kwargs):
         # 檢查權限：只有創建者可以修改
         instance = self.get_object()
-        if request.user.is_authenticated and instance.created_by != request.user and not request.user.is_admin():
+        user = request.user
+        
+        # 管理員在非模擬狀態下不能修改
+        if user.is_admin():
+            return Response({'detail': '管理員需要先切換到老師身分才能執行此操作'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # 只有老師可以修改
+        if not user.is_teacher():
+            return Response({'detail': '只有老師可以修改此模板'}, status=status.HTTP_403_FORBIDDEN)
+        
+        if user.is_authenticated and instance.created_by != user:
              return Response({'detail': '只有創建者可以修改此模板'}, status=status.HTTP_403_FORBIDDEN)
         return super().update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
         # 檢查權限：只有創建者可以刪除
         instance = self.get_object()
-        if request.user.is_authenticated and instance.created_by != request.user and not request.user.is_admin():
+        user = request.user
+        
+        # 管理員在非模擬狀態下不能刪除
+        if user.is_admin():
+            return Response({'detail': '管理員需要先切換到老師身分才能執行此操作'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # 只有老師可以刪除
+        if not user.is_teacher():
+            return Response({'detail': '只有老師可以刪除此模板'}, status=status.HTTP_403_FORBIDDEN)
+        
+        if user.is_authenticated and instance.created_by != user:
              return Response({'detail': '只有創建者可以刪除此模板'}, status=status.HTTP_403_FORBIDDEN)
         return super().destroy(request, *args, **kwargs)
 
@@ -3794,6 +3857,10 @@ class LearningResourceViewSet(viewsets.ModelViewSet):
         if not user.is_authenticated:
             return queryset.none()
         
+        # 管理員在非模擬狀態下不能訪問
+        if user.is_admin():
+            return queryset.none()
+        
         # 支援 course query param 篩選
         course_id = self.request.query_params.get('course')
         if course_id:
@@ -3801,16 +3868,8 @@ class LearningResourceViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(course_id=int(course_id))
             except (ValueError, TypeError):
                 pass
-            
-        # 2. 管理員：顯示所有
-        if user.is_admin():
-            # 支援篩選
-            resource_type = self.request.query_params.get('resource_type')
-            if resource_type:
-                queryset = queryset.filter(resource_type=resource_type)
-            return queryset
         
-        # 3. 老師：只能看到自己課程的資源
+        # 2. 老師：只能看到自己課程的資源
         if user.is_teacher():
             try:
                 teacher = user.teacher_profile
@@ -3869,7 +3928,7 @@ class LearningResourceViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         """
-        創建 LearningResource：檢查課程是否屬於自己（老師）或管理員
+        創建 LearningResource：只有老師可以創建（管理員需要先模擬老師身分）
         """
         user = request.user
         if not user.is_authenticated:
@@ -3878,11 +3937,25 @@ class LearningResourceViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_401_UNAUTHORIZED
             )
         
+        # 管理員在非模擬狀態下不能創建
+        if user.is_admin():
+            return Response(
+                {'detail': '管理員需要先切換到老師身分才能執行此操作'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # 只有老師可以創建
+        if not user.is_teacher():
+            return Response(
+                {'detail': '只有老師可以創建教學資源'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         course = serializer.validated_data.get('course')
-        if user.is_teacher() and not user.is_admin():
+        if user.is_teacher():
             # 老師建立時必填 course（MVP 先禁止無課程公開資源）
             if not course:
                 return Response(
@@ -3908,7 +3981,7 @@ class LearningResourceViewSet(viewsets.ModelViewSet):
     
     def update(self, request, *args, **kwargs):
         """
-        更新 LearningResource：檢查課程是否屬於自己（老師）或管理員
+        更新 LearningResource：只有老師可以更新（管理員需要先模擬老師身分）
         """
         instance = self.get_object()
         user = request.user
@@ -3919,7 +3992,21 @@ class LearningResourceViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_401_UNAUTHORIZED
             )
         
-        if user.is_teacher() and not user.is_admin():
+        # 管理員在非模擬狀態下不能更新
+        if user.is_admin():
+            return Response(
+                {'detail': '管理員需要先切換到老師身分才能執行此操作'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # 只有老師可以更新
+        if not user.is_teacher():
+            return Response(
+                {'detail': '只有老師可以更新教學資源'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        if user.is_teacher():
             if instance.course:
                 try:
                     teacher = user.teacher_profile
@@ -3938,7 +4025,7 @@ class LearningResourceViewSet(viewsets.ModelViewSet):
     
     def partial_update(self, request, *args, **kwargs):
         """
-        部分更新 LearningResource：檢查課程是否屬於自己（老師）或管理員
+        部分更新 LearningResource：只有老師可以更新（管理員需要先模擬老師身分）
         """
         instance = self.get_object()
         user = request.user
@@ -3949,7 +4036,21 @@ class LearningResourceViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_401_UNAUTHORIZED
             )
         
-        if user.is_teacher() and not user.is_admin():
+        # 管理員在非模擬狀態下不能更新
+        if user.is_admin():
+            return Response(
+                {'detail': '管理員需要先切換到老師身分才能執行此操作'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # 只有老師可以更新
+        if not user.is_teacher():
+            return Response(
+                {'detail': '只有老師可以更新教學資源'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        if user.is_teacher():
             if instance.course:
                 try:
                     teacher = user.teacher_profile
@@ -3968,7 +4069,7 @@ class LearningResourceViewSet(viewsets.ModelViewSet):
     
     def destroy(self, request, *args, **kwargs):
         """
-        刪除 LearningResource：檢查課程是否屬於自己（老師）或管理員
+        刪除 LearningResource：只有老師可以刪除（管理員需要先模擬老師身分）
         """
         instance = self.get_object()
         user = request.user
@@ -3979,7 +4080,21 @@ class LearningResourceViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_401_UNAUTHORIZED
             )
         
-        if user.is_teacher() and not user.is_admin():
+        # 管理員在非模擬狀態下不能刪除
+        if user.is_admin():
+            return Response(
+                {'detail': '管理員需要先切換到老師身分才能執行此操作'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # 只有老師可以刪除
+        if not user.is_teacher():
+            return Response(
+                {'detail': '只有老師可以刪除教學資源'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        if user.is_teacher():
             if instance.course:
                 try:
                     teacher = user.teacher_profile

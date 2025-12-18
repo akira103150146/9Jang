@@ -70,12 +70,14 @@
           >
             權限
           </button>
-          <button
+          <!-- 註解：刪除功能已禁用，避免誤刪導致資料庫錯誤 -->
+          <!-- 唯一刪除方式是透過 flush_db 指令 -->
+          <!-- <button
             @click="deleteRole(role.id, role.name)"
             class="rounded-full bg-rose-500 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-600"
           >
             刪除
-          </button>
+          </button> -->
         </div>
       </div>
 

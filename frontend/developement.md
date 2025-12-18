@@ -68,7 +68,7 @@
 | `item` | ENUM('Transport', 'Meal', 'Book', 'Other') | | 收費名目。 |
 | `amount` | DECIMAL(10, 2) | | 收費金額。 |
 | `fee_date` | DATE | | 費用發生的日期。 |
-| `payment_status` | ENUM('Paid', 'Unpaid', 'Partial') | | 繳費狀態。 |
+| `payment_status` | ENUM('Paid', 'Unpaid') | | 繳費狀態。 |
 
 ## III. 點名與出缺勤模組
 

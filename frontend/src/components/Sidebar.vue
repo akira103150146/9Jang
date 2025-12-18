@@ -167,7 +167,7 @@ const allNavItems = [
   { name: 'courses', label: '課程管理', path: '/courses', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER', 'ACCOUNTANT'] },
   { name: 'attendance', label: '出缺勤', path: '/attendance', requiresAdmin: false, allowedRoles: ['ADMIN', 'ACCOUNTANT'] },
   { name: 'fees', label: '所有費用', path: '/fees', requiresAdmin: false, allowedRoles: ['ACCOUNTANT'] },
-  { name: 'questions', label: '題庫與資源', path: '/questions', requiresAdmin: false, allowedRoles: ['ADMIN', 'TEACHER'] },
+  { name: 'questions', label: '題庫與資源', path: '/questions', requiresAdmin: false, allowedRoles: ['TEACHER'] },
   // 老闆（ADMIN）不需要看到學生群組，必要時可用模擬登入老師視角
   { name: 'student-groups', label: '學生群組', path: '/student-groups', requiresAdmin: false, allowedRoles: ['TEACHER'] },
   // 學生不顯示訂便當系統側邊欄入口，改由首頁入口進入
