@@ -2,7 +2,7 @@
 
 from rest_framework import viewsets, status, serializers
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.decorators import action, api_view
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from django.db.models import Q, Count, Sum, Prefetch
 from django.db import models
@@ -1222,6 +1222,11 @@ class QuestionBankViewSet(viewsets.ModelViewSet):
             except ValueError:
                 pass
         
+        # 題目類型篩選
+        question_type = self.request.query_params.get('question_type', None)
+        if question_type:
+            queryset = queryset.filter(question_type=question_type)
+        
         # 標籤篩選（支援多個標籤）
         tags = self.request.query_params.getlist('tags[]')
         if tags:
@@ -1241,6 +1246,11 @@ class QuestionBankViewSet(viewsets.ModelViewSet):
         search = self.request.query_params.get('search', None)
         if search:
             queryset = queryset.filter(search_text_content__icontains=search)
+        
+        # 按創建時間降序排序（最新的在前），如果沒有指定其他排序
+        ordering = self.request.query_params.get('ordering', None)
+        if not ordering:
+            queryset = queryset.order_by('-created_at', '-question_id')
         
         return queryset
     
@@ -3635,6 +3645,114 @@ class CourseMaterialViewSet(viewsets.ModelViewSet):
 
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def generate_resource(request):
+    """
+    統一的資源生成 API
+    根據模式和篩選條件生成教學資源的結構化資料
+    """
+    from cramschool.resource_modes import ModeRegistry
+    
+    # 獲取基本參數
+    mode = request.data.get('mode', 'HANDOUT')
+    title = request.data.get('title', '自動生成的資源')
+    
+    # 獲取篩選條件
+    subject_id = request.data.get('subject_id')
+    level = request.data.get('level')
+    chapter = request.data.get('chapter')
+    difficulty = request.data.get('difficulty')
+    tag_ids = request.data.get('tag_ids', [])
+    source = request.data.get('source')
+    course_id = request.data.get('course_id')
+    
+    # 獲取模式特定參數
+    is_individualized = request.data.get('is_individualized', False)
+    student_group_ids = request.data.get('student_group_ids', [])
+    template_id = request.data.get('template_id')
+    
+    # 建立查詢
+    queryset = QuestionBank.objects.select_related('subject').prefetch_related('tags__tag').all()
+    
+    if subject_id:
+        queryset = queryset.filter(subject_id=subject_id)
+    if level:
+        queryset = queryset.filter(level=level)
+    if chapter:
+        queryset = queryset.filter(chapter__icontains=chapter)
+    if difficulty:
+        try:
+            queryset = queryset.filter(difficulty=int(difficulty))
+        except ValueError:
+            pass
+    if tag_ids:
+        queryset = queryset.filter(tags__tag_id__in=tag_ids).distinct()
+    if source:
+        queryset = queryset.filter(source=source)
+    
+    # 根據模式決定題目數量限制
+    if mode == 'ONLINE_QUIZ':
+        questions = queryset[:50]  # 線上測驗最多50題
+    else:
+        questions = queryset[:100]  # 講義模式最多100題
+    
+    # 生成結構化資料
+    question_data = []
+    for q in questions:
+        question_data.append({
+            'question_id': q.question_id,
+            'subject': q.subject.name if q.subject else None,
+            'level': q.get_level_display(),
+            'chapter': q.chapter,
+            'content': q.content,
+            'correct_answer': q.correct_answer,
+            'difficulty': q.difficulty,
+            'question_type': q.question_type,
+            'options': q.options,
+            'tags': [qt.tag.tag_name for qt in q.tags.all()]
+        })
+    
+    # 構建結構
+    structure = []
+    id_counter = 1
+    
+    # 如果有選擇 Template，先插入 Template 區塊
+    if template_id:
+        structure.append({
+            'id': id_counter,
+            'type': 'template',
+            'template_id': template_id
+        })
+        id_counter += 1
+    
+    # 添加題目區塊
+    for question in question_data:
+        structure.append({
+            'id': id_counter,
+            'type': 'question',
+            'question_id': question['question_id']
+        })
+        id_counter += 1
+    
+    response_data = {
+        'title': title,
+        'mode': mode,
+        'course_id': course_id,
+        'questions': question_data,
+        'structure': structure,
+        'total_count': len(question_data)
+    }
+    
+    # 根據模式添加特定參數
+    if mode == 'ONLINE_QUIZ':
+        response_data['is_individualized'] = is_individualized
+        response_data['student_group_ids'] = student_group_ids if is_individualized else []
+    
+    return Response(response_data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def generate_quiz(request):
     """
     根據篩選條件生成 Quiz 的結構化資料
@@ -3931,10 +4049,10 @@ class LearningResourceViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(
                     Q(course_id__in=teacher_course_ids) | Q(course__isnull=True)
                 )
-                # 支援篩選
-                resource_type = self.request.query_params.get('resource_type')
-                if resource_type:
-                    queryset = queryset.filter(resource_type=resource_type)
+                # 支援模式篩選
+                mode = self.request.query_params.get('mode')
+                if mode:
+                    queryset = queryset.filter(mode=mode)
                 return queryset
             except Teacher.DoesNotExist:
                 return queryset.none()
@@ -3968,10 +4086,10 @@ class LearningResourceViewSet(viewsets.ModelViewSet):
                     (Q(course__isnull=True) & Q(student_groups__isnull=True))
                 ).distinct()
                 
-                # 再次過濾 resource_type
-                resource_type = self.request.query_params.get('resource_type')
-                if resource_type:
-                    queryset = queryset.filter(resource_type=resource_type)
+                # 再次過濾模式
+                mode = self.request.query_params.get('mode')
+                if mode:
+                    queryset = queryset.filter(mode=mode)
                     
                 return queryset
                 
@@ -4120,6 +4238,69 @@ class LearningResourceViewSet(viewsets.ModelViewSet):
                     )
         
         return super().partial_update(request, *args, **kwargs)
+    
+    @action(detail=True, methods=['post'], url_path='export')
+    def export(self, request, pk=None):
+        """
+        匯出資源（PDF/HTML）
+        
+        請求參數：
+        - format_type: 輸出格式 (question_only, question_solution_answer, solution_only, answer_only)
+        """
+        from cramschool.resource_modes import ModeRegistry
+        
+        resource = self.get_object()
+        format_type = request.data.get('format_type', 'question_only')
+        
+        handler = ModeRegistry.get_handler(resource.mode)
+        if not handler:
+            return Response(
+                {'detail': f'不支援的模式: {resource.mode}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            output = handler.generate_output(resource, format_type)
+            return Response(output, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {'detail': f'匯出失敗: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=True, methods=['post'], url_path='grade')
+    def grade(self, request, pk=None):
+        """
+        評分提交（僅適用於支援評分的模式）
+        
+        請求參數：
+        - submission: 學生提交的答案字典
+        """
+        from cramschool.resource_modes import ModeRegistry
+        
+        resource = self.get_object()
+        submission = request.data.get('submission', {})
+        
+        handler = ModeRegistry.get_handler(resource.mode)
+        if not handler:
+            return Response(
+                {'detail': f'不支援的模式: {resource.mode}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            result = handler.grade_submission(resource, submission)
+            if result is None:
+                return Response(
+                    {'detail': '此模式不支援評分'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            return Response(result, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {'detail': f'評分失敗: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     def destroy(self, request, *args, **kwargs):
         """

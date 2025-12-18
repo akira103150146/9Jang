@@ -26,6 +26,10 @@ const props = defineProps({
   placeholder: {
     type: String,
     default: ''
+  },
+  templates: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -341,11 +345,47 @@ const toCompletionOption = (snippet) => {
 
 // 自定義自動完成
 const customCompletions = (context) => {
-  const word = context.matchBefore(/[\/\\]?\w*/)
+  const word = context.matchBefore(/[@\/\\]?\w*/)
   if (!word) return null
   
   const before = context.state.doc.sliceString(Math.max(0, context.pos - 100), context.pos)
   const completions = []
+  
+  // 模板快速引用（當輸入 @ 時）
+  if (word.text.startsWith('@')) {
+    const query = word.text.slice(1).toLowerCase()
+    // 從 props 或全局獲取模板列表
+    const templates = props.templates || []
+    const matches = templates
+      .filter(template => {
+        const title = (template.title || '').toLowerCase()
+        return title.includes(query)
+      })
+      .slice(0, 10)
+    
+    if (matches.length > 0) {
+      matches.forEach(template => {
+        completions.push({
+          label: `@${template.title}`,
+          type: 'template',
+          info: `模板 ID: ${template.template_id}`,
+          apply: (view, completion, from, to) => {
+            // 插入模板引用標記（可以自定義格式）
+            const insertText = `@template:${template.template_id}`
+            view.dispatch({
+              changes: { from, to, insert: insertText },
+              selection: { anchor: from + insertText.length },
+            })
+          }
+        })
+      })
+      return {
+        from: word.from,
+        options: completions
+      }
+    }
+    return null
+  }
   
   // Slash 命令（當輸入 / 時）
   if (word.text.startsWith('/')) {

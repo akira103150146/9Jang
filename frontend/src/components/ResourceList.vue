@@ -107,27 +107,29 @@ const router = useRouter()
 const resources = ref([])
 const loading = ref(false)
 const filters = reactive({
-  resource_type: ''
+  mode: ''
 })
 
-const getTypeColor = (type) => {
+const getModeColor = (mode) => {
   const map = {
-    'QUIZ': 'bg-green-50 text-green-700 ring-green-600/20',
-    'EXAM': 'bg-red-50 text-red-700 ring-red-600/20',
     'HANDOUT': 'bg-blue-50 text-blue-700 ring-blue-600/20',
-    'DOCUMENT': 'bg-slate-50 text-slate-700 ring-slate-600/20',
+    'ONLINE_QUIZ': 'bg-green-50 text-green-700 ring-green-600/20',
+    'LEETCODE': 'bg-purple-50 text-purple-700 ring-purple-600/20',
+    'LISTENING_TEST': 'bg-yellow-50 text-yellow-700 ring-yellow-600/20',
+    'FLASHCARD': 'bg-pink-50 text-pink-700 ring-pink-600/20',
   }
-  return map[type] || map['DOCUMENT']
+  return map[mode] || map['HANDOUT']
 }
 
-const getTypeName = (type) => {
+const getModeName = (mode) => {
   const map = {
-    'QUIZ': '小考',
-    'EXAM': '段考卷',
-    'HANDOUT': '講義',
-    'DOCUMENT': '一般文件',
+    'HANDOUT': '講義模式',
+    'ONLINE_QUIZ': '線上測驗模式',
+    'LEETCODE': '程式題模式',
+    'LISTENING_TEST': '聽力測驗模式',
+    'FLASHCARD': '單字卡模式',
   }
-  return map[type] || type
+  return map[mode] || mode
 }
 
 const formatDate = (dateString) => {
@@ -176,7 +178,7 @@ const deleteResource = async (id) => {
   }
 }
 
-watch(() => filters.resource_type, () => {
+watch(() => filters.mode, () => {
   fetchResources()
 })
 

@@ -515,7 +515,8 @@ class QuestionBankSerializer(serializers.ModelSerializer):
         model = QuestionBank
         fields = [
             'question_id', 'subject', 'subject_name', 'level', 'chapter', 'content',
-            'image_path', 'correct_answer', 'solution_content', 'difficulty', 
+            'image_path', 'correct_answer', 'solution_content', 'difficulty',
+            'question_type', 'options', 'metadata',
             'tags', 'tag_ids', 'tag_ids_input',
             'source', 'source_display', 'created_by', 'created_by_name',
             'imported_from_error_log', 'imported_student', 'imported_student_name',
@@ -1439,7 +1440,7 @@ class LearningResourceSerializer(serializers.ModelSerializer):
     class Meta:
         model = LearningResource
         fields = [
-            'resource_id', 'title', 'resource_type', 'course', 'course_name',
+            'resource_id', 'title', 'mode', 'course', 'course_name',
             'student_groups', 'student_group_ids', 'student_group_names',
             'structure', 'settings', 'tags', 'tag_ids', 'tag_ids_input',
             'created_by', 'created_by_name', 'is_individualized',

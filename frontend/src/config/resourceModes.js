@@ -1,0 +1,127 @@
+// config/resourceModes.js
+/**
+ * 資源模式註冊配置
+ * 定義各模式的編輯器和運行器組件
+ */
+
+export const resourceModes = {
+  HANDOUT: {
+    name: '講義模式',
+    editor: () => import('../components/resource-modes/HandoutEditor.vue'),
+    runner: () => import('../components/resource-runners/HandoutRunner.vue'),
+    icon: '📄',
+    description: '列印輸出為主，支援多種輸出格式',
+    defaultSettings: {
+      handout: {
+        paperSize: 'A4',
+        orientation: 'portrait',
+        outputFormats: ['question_only'],
+        margins: {
+          top: 20,
+          right: 20,
+          bottom: 20,
+          left: 20
+        },
+        fontSize: 12,
+        lineHeight: 1.5
+      }
+    }
+  },
+  ONLINE_QUIZ: {
+    name: '線上測驗模式',
+    editor: () => import('../components/resource-modes/OnlineQuizEditor.vue'),
+    runner: () => import('../components/resource-runners/OnlineQuizRunner.vue'),
+    icon: '📝',
+    description: '自動評分，支援選擇題和多選題',
+    defaultSettings: {
+      onlineQuiz: {
+        timeLimit: 3600, // 1小時
+        autoGrade: true,
+        showAnswerAfterSubmit: true,
+        allowRetake: false,
+        shuffleQuestions: false,
+        shuffleOptions: false
+      }
+    }
+  },
+  // 以下模式尚未實現，暫時註釋
+  // LEETCODE: {
+  //   name: '程式題模式',
+  //   editor: () => import('../components/resource-modes/LeetCodeEditor.vue'),
+  //   runner: () => import('../components/resource-runners/LeetCodeRunner.vue'),
+  //   icon: '💻',
+  //   description: '程式碼執行、測試用例',
+  //   defaultSettings: {
+  //     leetcode: {
+  //       language: 'python',
+  //       timeLimit: 30,
+  //       memoryLimit: 256,
+  //       testCases: [],
+  //       starterCode: '',
+  //       solutionTemplate: ''
+  //     }
+  //   }
+  // },
+  // LISTENING_TEST: {
+  //   name: '聽力測驗模式',
+  //   editor: () => import('../components/resource-modes/ListeningTestEditor.vue'),
+  //   runner: () => import('../components/resource-runners/ListeningTestRunner.vue'),
+  //   icon: '🎧',
+  //   description: '音訊播放、聽力題',
+  //   defaultSettings: {
+  //     listeningTest: {
+  //       audioUrl: '',
+  //       playCount: 2,
+  //       showTranscript: false,
+  //       questions: []
+  //     }
+  //   }
+  // },
+  // FLASHCARD: {
+  //   name: '單字卡模式',
+  //   editor: () => import('../components/resource-modes/FlashcardEditor.vue'),
+  //   runner: () => import('../components/resource-runners/FlashcardRunner.vue'),
+  //   icon: '🃏',
+  //   description: '記憶卡片、間隔重複',
+  //   defaultSettings: {
+  //     flashcard: {
+  //       studyMode: 'review',
+  //       spacedRepetition: true,
+  //       showHint: true,
+  //       autoFlip: false,
+  //       flipDelay: 3
+  //     }
+  //   }
+  // }
+}
+
+/**
+ * 獲取模式配置
+ */
+export function getModeConfig(mode) {
+  return resourceModes[mode] || null
+}
+
+/**
+ * 獲取所有模式列表
+ */
+export function getAllModes() {
+  return Object.keys(resourceModes).map(mode => ({
+    value: mode,
+    ...resourceModes[mode]
+  }))
+}
+
+/**
+ * 獲取模式名稱
+ */
+export function getModeName(mode) {
+  return resourceModes[mode]?.name || mode
+}
+
+/**
+ * 獲取模式圖標
+ */
+export function getModeIcon(mode) {
+  return resourceModes[mode]?.icon || '📄'
+}

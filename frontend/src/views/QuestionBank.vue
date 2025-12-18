@@ -47,17 +47,15 @@
             />
           </div>
 
-          <!-- 資源類型 -->
+          <!-- 模式選擇 -->
           <div>
-            <label class="block text-xs font-semibold text-slate-700 mb-1">資源類型 *</label>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">模式 *</label>
             <select
-              v-model="generatorForm.resource_type"
+              v-model="generatorForm.mode"
               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
             >
-              <option value="QUIZ">小考 (Quiz)</option>
-              <option value="EXAM">段考卷 (Exam)</option>
-              <option value="HANDOUT">講義 (Handout)</option>
-              <option value="DOCUMENT">一般文件</option>
+              <option value="HANDOUT">講義模式</option>
+              <option value="ONLINE_QUIZ">線上測驗模式</option>
             </select>
           </div>
 
@@ -101,8 +99,8 @@
             </select>
           </div>
 
-          <!-- 個別化設定（僅考卷） -->
-          <div v-if="generatorForm.resource_type === 'EXAM'">
+          <!-- 個別化設定（僅線上測驗模式） -->
+          <div v-if="generatorForm.mode === 'ONLINE_QUIZ'">
             <div class="space-y-2">
               <div class="flex items-center gap-2">
                 <input
@@ -172,6 +170,11 @@
       <ResourceList />
     </div>
 
+    <!-- 題庫 Tab -->
+    <div v-show="currentTab === 'questions'">
+      <QuestionList />
+    </div>
+
     <!-- 模板庫 Tab -->
     <div v-show="currentTab === 'templates'">
       <TemplateList />
@@ -188,28 +191,32 @@ import { useRouter } from 'vue-router'
 import { generationAPI, courseAPI, studentGroupAPI, learningResourceAPI, contentTemplateAPI } from '../services/api'
 import ResourceList from '../components/ResourceList.vue'
 import TemplateList from '../components/TemplateList.vue'
+import QuestionList from '../components/QuestionList.vue'
 
 // Tabs Configuration
-const currentTab = ref('resources')
+const currentTab = ref('questions')
 const tabs = [
+  { id: 'questions', name: '題庫' },
   { id: 'resources', name: '文件庫' },
   { id: 'templates', name: '模板庫' }
 ]
 
 const headerTitle = computed(() => {
   const map = {
+    'questions': '題庫管理',
     'resources': '教學資源管理',
     'templates': '內容模板管理'
   }
-  return map[currentTab.value]
+  return map[currentTab.value] || '題庫管理'
 })
 
 const headerDescription = computed(() => {
   const map = {
-    'resources': '創建、編輯與管理 Quiz、考卷與講義，支援題目生成',
+    'questions': '新增、編輯與管理題目，支援多種題目類型',
+    'resources': '創建、編輯與管理教學資源，支援多種模式',
     'templates': '管理可重複使用的內容模板'
   }
-  return map[currentTab.value]
+  return map[currentTab.value] || '新增、編輯與管理題目'
 })
 
 const courses = ref([])
@@ -222,7 +229,7 @@ const savingGenerated = ref(false)
 const generatedResource = ref(null)
 const generatorForm = ref({
   title: '',
-  resource_type: 'QUIZ',
+  mode: 'HANDOUT',
   course_id: '',
   paperSize: 'A4',
   template_id: '',
@@ -299,35 +306,23 @@ const generateResource = async () => {
 
   generating.value = true
   try {
-    // 準備生成 API 的參數（目前不使用篩選條件，篩選功能在 ResourceEditor 的題目庫 tab 中）
+    // 使用統一的生成 API
     const generateParams = {
+      mode: generatorForm.value.mode,
       subject_id: null,
       level: null,
       chapter: null,
       difficulty: null,
       tag_ids: [],
       source: null,
-      title: generatorForm.value.title.trim()
+      title: generatorForm.value.title.trim(),
+      course_id: generatorForm.value.course_id || null,
+      template_id: generatorForm.value.template_id || null,
+      is_individualized: generatorForm.value.mode === 'ONLINE_QUIZ' ? generatorForm.value.is_individualized : false,
+      student_group_ids: generatorForm.value.mode === 'ONLINE_QUIZ' && generatorForm.value.is_individualized ? generatorForm.value.student_group_ids : []
     }
-
-    // 根據資源類型調用不同的生成 API
-    let response
-    if (generatorForm.value.resource_type === 'QUIZ') {
-      response = await generationAPI.generateQuiz(generateParams)
-    } else if (generatorForm.value.resource_type === 'EXAM') {
-      response = await generationAPI.generateExam({
-        ...generateParams,
-        course_id: generatorForm.value.course_id || null,
-        is_individualized: generatorForm.value.is_individualized,
-        student_group_ids: generatorForm.value.is_individualized ? generatorForm.value.student_group_ids : []
-      })
-    } else {
-      // HANDOUT 或 DOCUMENT
-      response = await generationAPI.generateMaterial({
-        ...generateParams,
-        course_id: generatorForm.value.course_id || null
-      })
-    }
+    
+    const response = await generationAPI.generateResource(generateParams)
 
     // 將生成的題目列表轉換為 structure 格式
     const questions = response.data.questions || []
@@ -336,13 +331,32 @@ const generateResource = async () => {
     // 構建生成的資源對象
     generatedResource.value = {
       title: generatorForm.value.title.trim(),
-      resource_type: generatorForm.value.resource_type,
+      mode: generatorForm.value.mode,
       course: generatorForm.value.course_id || null,
-      student_group_ids: generatorForm.value.is_individualized ? generatorForm.value.student_group_ids : [],
-      settings: {
-        paperSize: generatorForm.value.paperSize,
-        orientation: 'portrait'
-      },
+      student_group_ids: generatorForm.value.mode === 'ONLINE_QUIZ' && generatorForm.value.is_individualized ? generatorForm.value.student_group_ids : [],
+      settings: (() => {
+        const modeKey = generatorForm.value.mode === 'HANDOUT' ? 'handout' : 'onlineQuiz'
+        if (generatorForm.value.mode === 'HANDOUT') {
+          return {
+            handout: {
+              paperSize: generatorForm.value.paperSize,
+              orientation: 'portrait',
+              outputFormats: ['question_only']
+            }
+          }
+        } else {
+          return {
+            onlineQuiz: {
+              timeLimit: 3600,
+              autoGrade: true,
+              showAnswerAfterSubmit: true,
+              allowRetake: false,
+              shuffleQuestions: false,
+              shuffleOptions: false
+            }
+          }
+        }
+      })(),
       structure: structure,
       questions: questions // 保留原始題目列表用於預覽
     }
@@ -369,7 +383,7 @@ const saveGeneratedResource = async () => {
   try {
     const payload = {
       title: generatedResource.value.title,
-      resource_type: generatedResource.value.resource_type,
+      mode: generatedResource.value.mode,
       course: generatedResource.value.course,
       student_group_ids: generatedResource.value.student_group_ids,
       settings: generatedResource.value.settings,
@@ -382,7 +396,7 @@ const saveGeneratedResource = async () => {
     // 重置表單
     generatorForm.value = {
       title: '',
-      resource_type: 'QUIZ',
+      mode: 'HANDOUT',
       course_id: '',
       paperSize: 'A4',
       template_id: '',
@@ -413,7 +427,7 @@ const openInEditor = async () => {
   try {
     const payload = {
       title: generatedResource.value.title,
-      resource_type: generatedResource.value.resource_type,
+      mode: generatedResource.value.mode,
       course: generatedResource.value.course,
       student_group_ids: generatedResource.value.student_group_ids,
       settings: generatedResource.value.settings,

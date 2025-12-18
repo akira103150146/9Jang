@@ -573,6 +573,14 @@ class QuestionBank(models.Model):
         ('imported_from_word', '從 Word 匯入'),
     ]
     
+    QUESTION_TYPE_CHOICES = [
+        ('SINGLE_CHOICE', '單選題'),
+        ('MULTIPLE_CHOICE', '多選題'),
+        ('FILL_IN_BLANK', '填充題'),
+        ('PROGRAMMING', '程式題'),
+        ('LISTENING', '聽力題'),
+    ]
+    
     # 核心欄位
     question_id = models.AutoField(primary_key=True, verbose_name='題目ID')
     subject = models.ForeignKey(
@@ -598,6 +606,28 @@ class QuestionBank(models.Model):
     difficulty = models.IntegerField(
         default=1,
         verbose_name='難度等級 (1-5)'
+    )
+    
+    # 題目類型相關欄位
+    question_type = models.CharField(
+        max_length=20,
+        choices=QUESTION_TYPE_CHOICES,
+        default='SINGLE_CHOICE',
+        verbose_name='題目類型'
+    )
+    options = models.JSONField(
+        default=list,
+        blank=True,
+        null=True,
+        verbose_name='選項',
+        help_text='選擇題的選項列表（JSON 格式）'
+    )
+    metadata = models.JSONField(
+        default=dict,
+        blank=True,
+        null=True,
+        verbose_name='模式特定元資料',
+        help_text='不同模式所需的額外資料（JSON 格式）'
     )
     
     # 題目來源資訊欄位
@@ -1301,21 +1331,23 @@ class ContentTemplate(models.Model):
 class LearningResource(models.Model):
     """
     教學資源模型 (統一 Quiz, Exam, Handout)
+    支援多種模式：講義、線上測驗、LeetCode、聽力測驗、單字卡等
     """
-    RESOURCE_TYPE_CHOICES = [
-        ('QUIZ', '小考'),
-        ('EXAM', '段考卷'),
-        ('HANDOUT', '講義'),
-        ('DOCUMENT', '一般文件'),
+    MODE_CHOICES = [
+        ('HANDOUT', '講義模式'),
+        ('ONLINE_QUIZ', '線上測驗模式'),
+        ('LEETCODE', '程式題模式'),
+        ('LISTENING_TEST', '聽力測驗模式'),
+        ('FLASHCARD', '單字卡模式'),
     ]
 
     resource_id = models.AutoField(primary_key=True, verbose_name='資源ID')
     title = models.CharField(max_length=200, verbose_name='標題')
-    resource_type = models.CharField(
+    mode = models.CharField(
         max_length=20,
-        choices=RESOURCE_TYPE_CHOICES,
-        default='DOCUMENT',
-        verbose_name='資源類型'
+        choices=MODE_CHOICES,
+        default='HANDOUT',
+        verbose_name='模式類型'
     )
     course = models.ForeignKey(
         'Course',
@@ -1370,7 +1402,7 @@ class LearningResource(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.title} ({self.get_resource_type_display()})"
+        return f"{self.title} ({self.get_mode_display()})"
 
 
 class Quiz(models.Model):

@@ -13,7 +13,7 @@ from .api_views import (
     RestaurantViewSet, GroupOrderViewSet, OrderViewSet, OrderItemViewSet,
     StudentGroupViewSet, QuizViewSet, ExamViewSet, CourseMaterialViewSet,
     ContentTemplateViewSet, LearningResourceViewSet,
-    upload_image, generate_quiz, generate_exam, generate_material
+    upload_image, generate_resource, generate_quiz, generate_exam, generate_material
 )
 
 # 建立一個 Router 實例
@@ -117,6 +117,8 @@ router.register(r'resources', LearningResourceViewSet)
 urlpatterns = [
     path('', include(router.urls)),
     path('upload-image/', upload_image, name='upload-image'),
+    path('generate-resource/', generate_resource, name='generate-resource'),
+    # 保留舊的 API 以向後兼容（可選，未來可移除）
     path('generate-quiz/', generate_quiz, name='generate-quiz'),
     path('generate-exam/', generate_exam, name='generate-exam'),
     path('generate-material/', generate_material, name='generate-material'),

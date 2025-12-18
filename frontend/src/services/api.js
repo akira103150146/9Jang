@@ -702,7 +702,7 @@ export const auditLogAPI = {
     if (filters.user) params.append('user', filters.user)
     if (filters.role) params.append('role', filters.role)
     if (filters.action_type) params.append('action_type', filters.action_type)
-    if (filters.resource_type) params.append('resource_type', filters.resource_type)
+    if (filters.mode) params.append('mode', filters.mode)
     const query = params.toString()
     return api.get(`/account/audit-logs/${query ? `?${query}` : ''}`)
   },
@@ -820,11 +820,15 @@ export const learningResourceAPI = {
   getById: (id) => api.get(`/cramschool/resources/${id}/`),
   create: (data) => api.post('/cramschool/resources/', data),
   update: (id, data) => api.put(`/cramschool/resources/${id}/`, data),
-  delete: (id) => api.delete(`/cramschool/resources/${id}/`)
+  delete: (id) => api.delete(`/cramschool/resources/${id}/`),
+  export: (id, formatType) => api.post(`/cramschool/resources/${id}/export/`, { format_type: formatType }),
+  grade: (id, submission) => api.post(`/cramschool/resources/${id}/grade/`, submission)
 }
 
 // Generation API
 export const generationAPI = {
+  generateResource: (data) => api.post('/cramschool/generate-resource/', data),
+  // 保留舊的 API 以向後兼容（可選，未來可移除）
   generateQuiz: (data) => api.post('/cramschool/generate-quiz/', data),
   generateExam: (data) => api.post('/cramschool/generate-exam/', data),
   generateMaterial: (data) => api.post('/cramschool/generate-material/', data)

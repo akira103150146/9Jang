@@ -25,7 +25,7 @@
       </div>
     </div>
     <div class="editor-container">
-      <MarkdownEditor ref="mdEditorRef" v-model="text" :placeholder="placeholder" />
+      <MarkdownEditor ref="mdEditorRef" v-model="text" :placeholder="placeholder" :templates="templates" />
     </div>
     <div class="preview-divider">
       <div class="divider-line"></div>
@@ -59,6 +59,10 @@ const props = defineProps({
     type: String,
     default: '開始輸入...',
   },
+  templates: {
+    type: Array,
+    default: () => []
+  }
 })
 
 const emit = defineEmits(['update:modelValue'])

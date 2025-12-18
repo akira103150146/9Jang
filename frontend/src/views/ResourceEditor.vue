@@ -33,25 +33,23 @@
             <input v-model="resource.title" type="text" class="w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border" placeholder="輸入文件標題...">
           </div>
 
-          <!-- 資源類型 -->
+          <!-- 模式選擇 -->
           <div class="space-y-3">
-            <label class="block text-sm font-medium text-slate-700">類型</label>
-            <select v-model="resource.resource_type" class="w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border">
-              <option value="QUIZ">小考 (Quiz)</option>
-              <option value="EXAM">段考卷 (Exam)</option>
-              <option value="HANDOUT">講義 (Handout)</option>
-              <option value="DOCUMENT">一般文件</option>
+            <label class="block text-sm font-medium text-slate-700">模式</label>
+            <select v-model="resource.mode" class="w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border">
+              <option value="HANDOUT">講義模式</option>
+              <option value="ONLINE_QUIZ">線上測驗模式</option>
             </select>
           </div>
 
-          <!-- 紙張設定 -->
-          <div class="space-y-3">
-            <label class="block text-sm font-medium text-slate-700">紙張大小</label>
-            <select v-model="resource.settings.paperSize" class="w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border">
-              <option value="A4">A4 (210mm x 297mm)</option>
-              <option value="B4">B4 (250mm x 353mm)</option>
-            </select>
-          </div>
+          <!-- 模式特定設定（動態載入） -->
+          <component
+            :is="modeEditorComponent"
+            v-if="modeEditorComponent"
+            :settings="resource.settings"
+            :structure="structure"
+            @update:settings="(newSettings) => { resource.settings = { ...resource.settings, ...newSettings } }"
+          />
 
           <!-- 課程綁定 -->
           <div class="space-y-3">
@@ -363,6 +361,7 @@
               <template v-if="block.type === 'text'">
                 <div class="prose max-w-none">
                   <RichTextEditor
+                    :templates="templates"
                     :ref="(el) => { if (el) markdownEditorRefs[block.id] = el }"
                     :model-value="toRT(block.content)"
                     :placeholder="'輸入文字...'"
@@ -423,13 +422,14 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted, watch, computed, nextTick } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, watch, computed, nextTick, shallowRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { learningResourceAPI, courseAPI, studentGroupAPI, hashtagAPI, questionBankAPI, subjectAPI, contentTemplateAPI } from '../services/api'
 import RichTextEditor from '../components/RichTextEditor.vue'
 import QuestionBlock from '../components/QuestionBlock.vue'
 import TemplateBlock from '../components/TemplateBlock.vue'
 import { useMarkdownRenderer } from '../composables/useMarkdownRenderer'
+import { getModeConfig } from '../config/resourceModes'
 
 // Simple debounce function
 const debounce = (func, wait) => {
@@ -475,17 +475,56 @@ const templateSearch = ref('')
 // Resource Data
 const resource = reactive({
   title: '未命名文件',
-  resource_type: 'QUIZ',
+  mode: 'HANDOUT',
   course: null,
   student_group_ids: [],
   tag_ids: [],
   settings: {
-    paperSize: 'A4',
-    orientation: 'portrait'
+    handout: {
+      paperSize: 'A4',
+      orientation: 'portrait'
+    }
   }
 })
 
 const structure = ref([])
+
+// 模式編輯器組件（動態載入）
+const modeEditorComponent = shallowRef(null)
+
+// 載入模式編輯器
+const loadModeEditor = async () => {
+  const modeConfig = getModeConfig(resource.mode)
+  if (modeConfig && modeConfig.editor) {
+    try {
+      const editorModule = await modeConfig.editor()
+      modeEditorComponent.value = editorModule.default || editorModule
+    } catch (error) {
+      console.error('載入模式編輯器失敗：', error)
+      modeEditorComponent.value = null
+    }
+  } else {
+    modeEditorComponent.value = null
+  }
+}
+
+// 更新設定
+const updateSettings = (newSettings) => {
+  resource.settings = { ...resource.settings, ...newSettings }
+}
+
+// 監聽模式變化，重新載入編輯器
+watch(() => resource.mode, () => {
+  loadModeEditor()
+  // 根據模式初始化設定
+  const modeConfig = getModeConfig(resource.mode)
+  if (modeConfig && modeConfig.defaultSettings) {
+    resource.settings = {
+      ...resource.settings,
+      ...modeConfig.defaultSettings
+    }
+  }
+}, { immediate: true })
 
 // Refs for page calculation
 const paperContainer = ref(null)
@@ -958,11 +997,18 @@ const fetchInitialData = async () => {
       const res = await learningResourceAPI.getById(route.params.id)
       const data = res.data
       resource.title = data.title
-      resource.resource_type = data.resource_type
+      resource.mode = data.mode || 'HANDOUT'
       resource.course = data.course
+      // 載入對應的模式編輯器
+      await loadModeEditor()
       resource.student_group_ids = data.student_group_ids || []
       resource.tag_ids = data.tag_ids || []
-      resource.settings = data.settings || { paperSize: 'A4', orientation: 'portrait' }
+      resource.settings = data.settings || {
+        handout: {
+          paperSize: 'A4',
+          orientation: 'portrait'
+        }
+      }
       structure.value = data.structure || []
     } else if (route.query.template_id) {
       // 如果從 template 創建，載入 template 內容
