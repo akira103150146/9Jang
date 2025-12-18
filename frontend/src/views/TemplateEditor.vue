@@ -54,6 +54,8 @@
                 @update:model-value="handleBlockEditorUpdate"
                 :templates="[]"
                 :questions="[]"
+                :auto-page-break="false"
+                paper-size="A4"
               />
             </div>
           </div>

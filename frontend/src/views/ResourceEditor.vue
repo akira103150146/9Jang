@@ -300,6 +300,8 @@
             @update:model-value="handleBlockEditorUpdate"
             :templates="templates"
             :questions="questions"
+            :auto-page-break="resource.mode === 'handout'"
+            :paper-size="resource.settings?.paperSize || 'A4'"
           />
         </div>
         

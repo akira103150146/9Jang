@@ -37,6 +37,31 @@
               </select>
             </div>
           </div>
+          
+          <!-- 批次選擇數量 -->
+          <div class="batch-select-section">
+            <div class="batch-info">
+              <span class="filtered-count">篩選結果: {{ filteredQuestions.length }} 題</span>
+              <span class="selected-count">已選: {{ selectedQuestionIds.length }} 題</span>
+            </div>
+            <div class="batch-actions">
+              <label class="batch-label">批次選擇:</label>
+              <input 
+                v-model.number="batchCount" 
+                type="number" 
+                min="1" 
+                :max="Math.min(100, filteredQuestions.length)"
+                class="batch-input" 
+                placeholder="數量" 
+              />
+              <button @click="selectBatch" class="btn-batch" :disabled="!batchCount || batchCount > 100 || batchCount > filteredQuestions.length">
+                選擇前 {{ batchCount || 0 }} 題
+              </button>
+              <button @click="clearSelection" class="btn-clear" :disabled="selectedQuestionIds.length === 0">
+                清除選擇
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- 題目列表 -->
@@ -45,9 +70,17 @@
             v-for="question in filteredQuestions"
             :key="question.question_id"
             class="question-item"
-            :class="{ selected: selectedQuestionId === question.question_id }"
-            @click="selectQuestion(question.question_id)"
+            :class="{ selected: selectedQuestionIds.includes(question.question_id) }"
+            @click="toggleQuestion(question.question_id)"
           >
+            <div class="question-checkbox">
+              <input 
+                type="checkbox" 
+                :checked="selectedQuestionIds.includes(question.question_id)"
+                @click.stop
+                @change="toggleQuestion(question.question_id)"
+              />
+            </div>
             <div class="question-info">
               <div class="question-meta">
                 <span class="question-id">Q{{ question.question_id }}</span>
@@ -65,8 +98,8 @@
         <!-- 底部按鈕 -->
         <div class="modal-footer">
           <button @click="close" class="btn-cancel">取消</button>
-          <button @click="confirm" class="btn-confirm" :disabled="!selectedQuestionId">
-            確認選擇
+          <button @click="confirm" class="btn-confirm" :disabled="selectedQuestionIds.length === 0">
+            確認選擇 ({{ selectedQuestionIds.length }} 題)
           </button>
         </div>
       </div>
@@ -99,7 +132,8 @@ const filters = ref({
   difficulty: ''
 })
 
-const selectedQuestionId = ref(null)
+const selectedQuestionIds = ref([])
+const batchCount = ref(null)
 
 // 取得所有科目
 const subjects = computed(() => {
@@ -133,20 +167,41 @@ const renderPreview = (content) => {
   return renderMarkdownWithLatex(text + (content.length > 100 ? '...' : ''))
 }
 
-const selectQuestion = (questionId) => {
-  selectedQuestionId.value = questionId
+const toggleQuestion = (questionId) => {
+  const index = selectedQuestionIds.value.indexOf(questionId)
+  if (index > -1) {
+    selectedQuestionIds.value.splice(index, 1)
+  } else {
+    if (selectedQuestionIds.value.length < 100) {
+      selectedQuestionIds.value.push(questionId)
+    }
+  }
+}
+
+const selectBatch = () => {
+  if (!batchCount.value || batchCount.value < 1) return
+  
+  const count = Math.min(batchCount.value, 100, filteredQuestions.value.length)
+  selectedQuestionIds.value = filteredQuestions.value
+    .slice(0, count)
+    .map(q => q.question_id)
+}
+
+const clearSelection = () => {
+  selectedQuestionIds.value = []
 }
 
 const confirm = () => {
-  if (selectedQuestionId.value) {
-    emit('select', selectedQuestionId.value)
+  if (selectedQuestionIds.value.length > 0) {
+    emit('select', selectedQuestionIds.value)
     close()
   }
 }
 
 const close = () => {
   emit('update:modelValue', false)
-  selectedQuestionId.value = null
+  selectedQuestionIds.value = []
+  batchCount.value = null
 }
 </script>
 
@@ -251,13 +306,115 @@ const close = () => {
   padding: 1rem;
 }
 
+.batch-select-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgb(226, 232, 240);
+}
+
+.batch-info {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.filtered-count {
+  color: rgb(71, 85, 105);
+  font-weight: 600;
+}
+
+.selected-count {
+  color: rgb(99, 102, 241);
+  font-weight: 600;
+}
+
+.batch-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.batch-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgb(71, 85, 105);
+}
+
+.batch-input {
+  width: 100px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid rgb(203, 213, 225);
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+}
+
+.batch-input:focus {
+  outline: none;
+  border-color: rgb(99, 102, 241);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.btn-batch,
+.btn-clear {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.btn-batch {
+  background: rgb(99, 102, 241);
+  color: white;
+}
+
+.btn-batch:hover:not(:disabled) {
+  background: rgb(79, 70, 229);
+}
+
+.btn-batch:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-clear {
+  background: rgb(239, 68, 68);
+  color: white;
+}
+
+.btn-clear:hover:not(:disabled) {
+  background: rgb(220, 38, 38);
+}
+
+.btn-clear:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .question-item {
+  display: flex;
+  gap: 0.75rem;
+  align-items: start;
   padding: 1rem;
   border: 2px solid rgb(226, 232, 240);
   border-radius: 0.5rem;
   margin-bottom: 0.75rem;
   cursor: pointer;
   transition: all 0.2s;
+}
+
+.question-checkbox {
+  flex-shrink: 0;
+  padding-top: 0.125rem;
+}
+
+.question-checkbox input[type="checkbox"] {
+  width: 1.125rem;
+  height: 1.125rem;
+  cursor: pointer;
 }
 
 .question-item:hover {

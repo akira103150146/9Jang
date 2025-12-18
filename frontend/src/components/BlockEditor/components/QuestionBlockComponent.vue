@@ -46,11 +46,60 @@ const handleSelectQuestion = () => {
   showSelector.value = true
 }
 
-const onQuestionSelected = (questionId) => {
-  // 更新節點屬性
-  props.updateAttributes({
-    questionId
-  })
+const onQuestionSelected = (questionIds) => {
+  // 如果是陣列(多選),處理批次插入
+  if (Array.isArray(questionIds)) {
+    // 取得編輯器實例
+    const editor = props.editor
+    if (!editor) return
+    
+    // 如果當前節點還沒有 questionId,設定第一個
+    if (!props.node.attrs.questionId && questionIds.length > 0) {
+      props.updateAttributes({
+        questionId: questionIds[0]
+      })
+      
+      // 插入剩餘的題目
+      if (questionIds.length > 1) {
+        const pos = props.getPos() + props.node.nodeSize
+        
+        // 批次插入其他題目 - 使用 insertContent 結構而非直接創建節點
+        const content = questionIds.slice(1).map(qId => ({
+          type: 'questionBlock',
+          attrs: {
+            id: `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            questionId: qId
+          }
+        }))
+        
+        editor.chain()
+          .focus()
+          .insertContentAt(pos, content)
+          .run()
+      }
+    } else {
+      // 如果當前節點已有題目,在後面插入所有選中的題目
+      const pos = props.getPos() + props.node.nodeSize
+      
+      const content = questionIds.map(qId => ({
+        type: 'questionBlock',
+        attrs: {
+          id: `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          questionId: qId
+        }
+      }))
+      
+      editor.chain()
+        .focus()
+        .insertContentAt(pos, content)
+        .run()
+    }
+  } else {
+    // 單選模式(向後兼容)
+    props.updateAttributes({
+      questionId: questionIds
+    })
+  }
 }
 </script>
 

@@ -26,6 +26,15 @@ const props = defineProps({
   questions: {
     type: Array,
     default: () => []
+  },
+  autoPageBreak: {
+    type: Boolean,
+    default: false
+  },
+  paperSize: {
+    type: String,
+    default: 'A4', // 'A4' or 'B4'
+    validator: (value) => ['A4', 'B4'].includes(value)
   }
 })
 
@@ -64,7 +73,112 @@ const editor = useEditor({
   onUpdate: ({ editor }) => {
     const json = editor.getJSON()
     emit('update:modelValue', json)
+    
+    // 如果啟用自動換頁,檢查並插入換頁符
+    if (props.autoPageBreak) {
+      checkAndInsertPageBreaks(editor)
+    }
   },
+})
+
+// 自動換頁檢查的防抖計時器
+let autoPageBreakTimeout = null
+
+// 檢查並自動插入換頁符
+function checkAndInsertPageBreaks(editor) {
+  // 使用防抖,避免頻繁觸發
+  if (autoPageBreakTimeout) {
+    clearTimeout(autoPageBreakTimeout)
+  }
+  
+  autoPageBreakTimeout = setTimeout(() => {
+    performPageBreakCheck(editor)
+  }, 500) // 500ms 防抖
+}
+
+function performPageBreakCheck(editor) {
+  if (!editor || !editor.view || !editor.view.dom) return
+  
+  // 取得編輯器 DOM 容器
+  const editorDOM = editor.view.dom
+  
+  // 取得紙張高度 (單位: mm)
+  const pageHeightMM = props.paperSize === 'A4' ? 297 : 353 // A4: 297mm, B4: 353mm
+  const paddingMM = 20 * 2 // 上下 padding 各 20mm
+  const contentHeightMM = pageHeightMM - paddingMM // 可用內容高度
+  
+  // 轉換為像素 (1mm ≈ 3.7795px at 96dpi)
+  const mmToPx = 3.7795
+  const pageHeightPx = contentHeightMM * mmToPx
+  
+  // 取得所有頂層節點的 DOM 元素
+  const nodes = []
+  const doc = editor.state.doc
+  
+  doc.forEach((node, offset, index) => {
+    try {
+      // 使用 editor.view.domAtPos 獲取 DOM 節點
+      const domPos = editor.view.domAtPos(offset + 1)
+      let domNode = domPos.node
+      
+      // 如果是文本節點,取其父元素
+      if (domNode.nodeType === Node.TEXT_NODE) {
+        domNode = domNode.parentElement
+      }
+      
+      if (domNode && domNode instanceof HTMLElement) {
+        nodes.push({
+          node,
+          domNode,
+          pos: offset,
+          height: domNode.offsetHeight
+        })
+      }
+    } catch (e) {
+      // 忽略錯誤
+    }
+  })
+  
+  // 計算需要插入換頁符的位置
+  let currentPageHeight = 0
+  const insertPositions = []
+  
+  nodes.forEach((item, index) => {
+    // 如果是換頁符,重置高度
+    if (item.node.type.name === 'pageBreak') {
+      currentPageHeight = 0
+      return
+    }
+    
+    // 檢查是否需要換頁
+    if (currentPageHeight + item.height > pageHeightPx && currentPageHeight > 0) {
+      // 檢查前一個節點是否已經是換頁符
+      if (index > 0 && nodes[index - 1].node.type.name !== 'pageBreak') {
+        insertPositions.push(item.pos)
+      }
+      currentPageHeight = item.height
+    } else {
+      currentPageHeight += item.height
+    }
+  })
+  
+  // 從後往前插入換頁符,避免位置偏移
+  insertPositions.reverse().forEach(pos => {
+    try {
+      editor.chain()
+        .insertContentAt(pos, { type: 'pageBreak' })
+        .run()
+    } catch (e) {
+      console.error('Failed to insert page break at position', pos, e)
+    }
+  })
+}
+
+// 清理計時器
+onBeforeUnmount(() => {
+  if (autoPageBreakTimeout) {
+    clearTimeout(autoPageBreakTimeout)
+  }
 })
 
 // 將現有的 structure 格式轉換為 Tiptap 格式
