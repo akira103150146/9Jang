@@ -950,6 +950,60 @@ class ExtraFeeViewSet(viewsets.ModelViewSet):
             status=status.HTTP_403_FORBIDDEN
         )
     
+    @action(detail=False, methods=['post'], url_path='batch-update')
+    def batch_update(self, request):
+        """
+        批次更新費用記錄的繳費狀態
+        請求格式: { "fee_ids": [1, 2, 3], "payment_status": "Paid" }
+        """
+        fee_ids = request.data.get('fee_ids', [])
+        payment_status = request.data.get('payment_status')
+        
+        if not fee_ids or not isinstance(fee_ids, list):
+            return Response(
+                {'detail': '請提供有效的費用 ID 列表'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if payment_status not in ['Paid', 'Unpaid']:
+            return Response(
+                {'detail': '繳費狀態必須是 Paid 或 Unpaid'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 獲取當前用戶的查詢集（確保權限檢查）
+        queryset = self.get_queryset()
+        
+        # 過濾出要更新的費用記錄
+        fees_to_update = queryset.filter(fee_id__in=fee_ids)
+        
+        if fees_to_update.count() != len(fee_ids):
+            return Response(
+                {'detail': '部分費用記錄不存在或無權限訪問'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 批次更新
+        updated_count = fees_to_update.update(payment_status=payment_status)
+        
+        # 記錄操作日誌
+        try:
+            from account.utils import log_audit
+            log_audit(
+                request, 'update', 'ExtraFee',
+                None, None,
+                description=f'批次更新 {updated_count} 筆費用記錄為 {payment_status}',
+                response_status=status.HTTP_200_OK
+            )
+        except:
+            pass
+        
+        return Response({
+            'detail': f'成功更新 {updated_count} 筆費用記錄',
+            'updated_count': updated_count,
+            'payment_status': payment_status
+        })
+    
     @action(detail=True, methods=['post'])
     def restore(self, request, pk=None):
         """

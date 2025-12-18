@@ -336,6 +336,14 @@ export const feeAPI = {
     return api.get(`/cramschool/fees/?${params.toString()}`)
   },
 
+  // 批次更新費用記錄
+  batchUpdate: (feeIds, paymentStatus) => {
+    return api.post('/cramschool/fees/batch-update/', {
+      fee_ids: feeIds,
+      payment_status: paymentStatus
+    })
+  },
+
   // 創建費用記錄
   create: (data) => api.post('/cramschool/fees/', data),
 

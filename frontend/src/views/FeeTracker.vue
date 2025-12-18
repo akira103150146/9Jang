@@ -88,67 +88,115 @@
       <p class="text-slate-500">載入中...</p>
     </div>
 
-    <div v-else class="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-slate-100">
-          <thead class="bg-slate-50">
-            <tr>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">學生</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">項目</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">金額</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">日期</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">狀態</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">備註</th>
-              <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">操作</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            <tr
-              v-for="fee in fees"
-              :key="fee.fee_id"
-              class="transition hover:bg-slate-50/70"
-            >
-              <td class="whitespace-nowrap px-4 py-4">
-                <p class="font-semibold text-slate-900">{{ fee.student_name }}</p>
-                <p class="text-xs text-slate-500">Fee #{{ fee.fee_id ?? '—' }}</p>
-              </td>
-              <td class="whitespace-nowrap px-4 py-4 text-slate-700">{{ getItemDisplay(fee.item) }}</td>
-              <td class="whitespace-nowrap px-4 py-4 font-semibold text-slate-900">${{ fee.amount }}</td>
-              <td class="whitespace-nowrap px-4 py-4 text-slate-700">{{ formatDate(fee.fee_date) }}</td>
-              <td class="whitespace-nowrap px-4 py-4">
-                <span
-                  class="rounded-full px-3 py-1 text-xs font-semibold"
-                  :class="getStatusClass(fee.payment_status)"
-                >
-                  {{ getStatusDisplay(fee.payment_status) }}
-                </span>
-              </td>
-              <td class="px-4 py-4 text-sm text-slate-700">
-                <p class="max-w-md truncate">{{ fee.notes || '—' }}</p>
-              </td>
-              <td class="whitespace-nowrap px-4 py-4 text-center">
-                <div class="flex justify-center gap-2">
-                  <router-link
-                    :to="`/fees/edit/${fee.fee_id || fee.id}`"
-                    class="rounded-full bg-sky-500 px-3 py-1 text-xs font-semibold text-white hover:bg-sky-600"
+    <div v-else class="space-y-4">
+      <!-- 批次操作按鈕 -->
+      <div v-if="selectedFees.length > 0" class="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-semibold text-slate-700">已選擇 {{ selectedFees.length }} 筆費用記錄</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button
+            @click="batchUpdateStatus('Paid')"
+            :disabled="batchUpdating"
+            class="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {{ batchUpdating ? '處理中...' : '標記為已繳費' }}
+          </button>
+          <button
+            @click="batchUpdateStatus('Unpaid')"
+            :disabled="batchUpdating"
+            class="rounded-lg bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {{ batchUpdating ? '處理中...' : '標記為未繳費' }}
+          </button>
+          <button
+            @click="clearSelection"
+            class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            取消選擇
+          </button>
+        </div>
+      </div>
+
+      <div class="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-slate-100">
+            <thead class="bg-slate-50">
+              <tr>
+                <th class="px-4 py-3 text-center">
+                  <input
+                    type="checkbox"
+                    :checked="isAllSelected"
+                    @change="toggleSelectAll"
+                    class="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                  />
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">學生</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">項目</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">金額</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">日期</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">狀態</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">備註</th>
+                <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">操作</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr
+                v-for="fee in fees"
+                :key="fee.fee_id"
+                class="transition hover:bg-slate-50/70"
+                :class="{ 'bg-sky-50/50': isSelected(fee.fee_id) }"
+              >
+                <td class="whitespace-nowrap px-4 py-4 text-center">
+                  <input
+                    type="checkbox"
+                    :checked="isSelected(fee.fee_id)"
+                    @change="toggleSelect(fee.fee_id)"
+                    class="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                  />
+                </td>
+                <td class="whitespace-nowrap px-4 py-4">
+                  <p class="font-semibold text-slate-900">{{ fee.student_name }}</p>
+                  <p class="text-xs text-slate-500">Fee #{{ fee.fee_id ?? '—' }}</p>
+                </td>
+                <td class="whitespace-nowrap px-4 py-4 text-slate-700">{{ getItemDisplay(fee.item) }}</td>
+                <td class="whitespace-nowrap px-4 py-4 font-semibold text-slate-900">${{ fee.amount }}</td>
+                <td class="whitespace-nowrap px-4 py-4 text-slate-700">{{ formatDate(fee.fee_date) }}</td>
+                <td class="whitespace-nowrap px-4 py-4">
+                  <span
+                    class="rounded-full px-3 py-1 text-xs font-semibold"
+                    :class="getStatusClass(fee.payment_status)"
                   >
-                    編輯
-                  </router-link>
-                </div>
-              </td>
-            </tr>
-            <tr v-if="fees.length === 0">
-              <td colspan="7" class="py-4 px-4 text-center text-slate-500">目前沒有費用記錄。</td>
-            </tr>
-          </tbody>
-        </table>
+                    {{ getStatusDisplay(fee.payment_status) }}
+                  </span>
+                </td>
+                <td class="px-4 py-4 text-sm text-slate-700">
+                  <p class="max-w-md truncate">{{ fee.notes || '—' }}</p>
+                </td>
+                <td class="whitespace-nowrap px-4 py-4 text-center">
+                  <div class="flex justify-center gap-2">
+                    <router-link
+                      :to="`/fees/edit/${fee.fee_id || fee.id}`"
+                      class="rounded-full bg-sky-500 px-3 py-1 text-xs font-semibold text-white hover:bg-sky-600"
+                    >
+                      編輯
+                    </router-link>
+                  </div>
+                </td>
+              </tr>
+              <tr v-if="fees.length === 0">
+                <td colspan="8" class="py-4 px-4 text-center text-slate-500">目前沒有費用記錄。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api, { feeAPI, studentAPI } from '../services/api'
 
@@ -158,6 +206,8 @@ const router = useRouter()
 const fees = ref([])
 const loading = ref(false)
 const selectedStudent = ref(null)
+const selectedFees = ref([])
+const batchUpdating = ref(false)
 
 const filters = ref({
   studentId: '',
@@ -239,6 +289,8 @@ const fetchFees = async () => {
     const realResponse = await api.get(url)
     const data = realResponse.data.results || realResponse.data
     fees.value = (Array.isArray(data) ? data : []).map((item) => normalizeFee(item))
+    // 清空選擇（因為列表已更新）
+    clearSelection()
   } catch (error) {
     console.error('獲取費用記錄失敗：', error)
     fees.value = []
@@ -276,6 +328,66 @@ const removeStudentFilter = async () => {
   filters.value.studentId = ''
   selectedStudent.value = null
   await applyFilters()
+}
+
+// 批次選擇相關功能
+const isSelected = (feeId) => {
+  return selectedFees.value.includes(feeId)
+}
+
+const toggleSelect = (feeId) => {
+  const index = selectedFees.value.indexOf(feeId)
+  if (index > -1) {
+    selectedFees.value.splice(index, 1)
+  } else {
+    selectedFees.value.push(feeId)
+  }
+}
+
+const isAllSelected = computed(() => {
+  return fees.value.length > 0 && selectedFees.value.length === fees.value.length
+})
+
+const toggleSelectAll = () => {
+  if (isAllSelected.value) {
+    selectedFees.value = []
+  } else {
+    selectedFees.value = fees.value.map(fee => fee.fee_id)
+  }
+}
+
+const clearSelection = () => {
+  selectedFees.value = []
+}
+
+const batchUpdateStatus = async (paymentStatus) => {
+  if (selectedFees.value.length === 0) {
+    alert('請至少選擇一筆費用記錄')
+    return
+  }
+
+  const statusText = paymentStatus === 'Paid' ? '已繳費' : '未繳費'
+  if (!confirm(`確定要將選中的 ${selectedFees.value.length} 筆費用記錄標記為「${statusText}」嗎？`)) {
+    return
+  }
+
+  batchUpdating.value = true
+  try {
+    await feeAPI.batchUpdate(selectedFees.value, paymentStatus)
+    alert(`成功更新 ${selectedFees.value.length} 筆費用記錄為「${statusText}」`)
+    clearSelection()
+    await fetchFees()
+  } catch (error) {
+    console.error('批次更新失敗:', error)
+    if (error.response?.data) {
+      const errorMsg = error.response.data.detail || JSON.stringify(error.response.data)
+      alert(`批次更新失敗：${errorMsg}`)
+    } else {
+      alert('批次更新失敗，請稍後再試')
+    }
+  } finally {
+    batchUpdating.value = false
+  }
 }
 
 onMounted(() => {
