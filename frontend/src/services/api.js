@@ -787,7 +787,8 @@ export const learningResourceAPI = {
   update: (id, data) => api.put(`/cramschool/resources/${id}/`, data),
   delete: (id) => api.delete(`/cramschool/resources/${id}/`),
   export: (id, formatType) => api.post(`/cramschool/resources/${id}/export/`, { format_type: formatType }),
-  grade: (id, submission) => api.post(`/cramschool/resources/${id}/grade/`, submission)
+  grade: (id, submission) => api.post(`/cramschool/resources/${id}/grade/`, submission),
+  bindToCourse: (id, courseId, action = 'add') => api.post(`/cramschool/resources/${id}/bind-to-course/`, { course_id: courseId, action })
 }
 
 // Generation API

@@ -88,15 +88,27 @@ const outputFormats = [
 // 確保 settings.handout 存在並使用雙向綁定
 const localSettings = computed({
   get: () => {
+    const defaultHandout = {
+      paperSize: 'A4',
+      orientation: 'portrait',
+      outputFormats: ['question_only'],
+      margins: { top: 20, right: 20, bottom: 20, left: 20 },
+      fontSize: 12,
+      lineHeight: 1.5
+    }
+    
     const currentSettings = { ...props.settings }
     if (!currentSettings.handout) {
+      currentSettings.handout = defaultHandout
+    } else {
+      // 確保所有必要的字段都存在
       currentSettings.handout = {
-        paperSize: 'A4',
-        orientation: 'portrait',
-        outputFormats: ['question_only'],
-        margins: { top: 20, right: 20, bottom: 20, left: 20 },
-        fontSize: 12,
-        lineHeight: 1.5
+        ...defaultHandout,
+        ...currentSettings.handout,
+        // 確保 outputFormats 一定是陣列
+        outputFormats: Array.isArray(currentSettings.handout.outputFormats) 
+          ? currentSettings.handout.outputFormats 
+          : ['question_only']
       }
     }
     return currentSettings

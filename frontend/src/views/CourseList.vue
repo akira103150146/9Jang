@@ -112,10 +112,11 @@
     </div>
 
     <!-- Course Detail Modal for Teachers -->
+    <!-- 使用 v-show 而不是 v-if，避免組件被銷毀 -->
     <CourseDetailModal
       v-if="selectedCourse"
-      :is-open="isCourseModalOpen"
-      :course="selectedCourse"
+      :is-open="isCourseModalOpen && !!selectedCourse"
+      :course="selectedCourse || {}"
       :is-teacher="!isAdmin"
       @close="closeCourseModal"
     />
@@ -260,7 +261,8 @@ const openCourseDetail = (course) => {
 
 const closeCourseModal = () => {
   isCourseModalOpen.value = false
-  selectedCourse.value = null
+  // 不要將 selectedCourse 設為 null，讓組件保持存在以便 watcher 正常工作
+  // selectedCourse.value = null
 }
 
 onMounted(() => {

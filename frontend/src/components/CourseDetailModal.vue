@@ -271,17 +271,18 @@ const fetchAvailableResources = async () => {
   }
 }
 
-watch(() => props.isOpen, (newVal) => {
-  if (newVal) {
+// 同時監聽 isOpen 和 course，確保兩者都準備好時才載入數據
+watch(() => [props.isOpen, props.course], ([newIsOpen, newCourse]) => {
+  if (newIsOpen && newCourse) {
     fetchData()
-  } else {
+  } else if (!newIsOpen) {
     // Reset state when closed
     resources.value = []
     showCreateResourceModal.value = false
     showBindResourceModal.value = false
     newResource.value = { title: '', mode: 'HANDOUT' }
   }
-})
+}, { immediate: true })
 
 watch(() => showBindResourceModal.value, (newVal) => {
   if (newVal) {
@@ -334,14 +335,7 @@ const createResource = async () => {
 const bindResource = async (resource) => {
   try {
     const courseId = props.course.course_id || props.course.id
-    
-    await axios.post(
-      `/api/resources/${resource.resource_id}/bind-to-course/`,
-      {
-        course_id: courseId,
-        action: 'add'
-      }
-    )
+    await learningResourceAPI.bindToCourse(resource.resource_id, courseId, 'add')
     
     alert('綁定成功')
     showBindResourceModal.value = false
@@ -360,13 +354,7 @@ const unbindResource = async (resource) => {
   try {
     const courseId = props.course.course_id || props.course.id
     
-    await axios.post(
-      `/api/resources/${resource.resource_id}/bind-to-course/`,
-      {
-        course_id: courseId,
-        action: 'remove'
-      }
-    )
+    await learningResourceAPI.bindToCourse(resource.resource_id, courseId, 'remove')
     
     alert('解除綁定成功')
     fetchData()

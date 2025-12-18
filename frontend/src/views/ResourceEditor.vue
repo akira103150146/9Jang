@@ -431,6 +431,17 @@ import TemplateBlock from '../components/TemplateBlock.vue'
 import { useMarkdownRenderer } from '../composables/useMarkdownRenderer'
 import { getModeConfig } from '../config/resourceModes'
 
+const props = defineProps({
+  id: {
+    type: String,
+    default: null
+  },
+  viewMode: {
+    type: Boolean,
+    default: false
+  }
+})
+
 // Simple debounce function
 const debounce = (func, wait) => {
   let timeout
@@ -494,6 +505,12 @@ const modeEditorComponent = shallowRef(null)
 
 // 載入模式編輯器
 const loadModeEditor = async () => {
+  // 在 viewMode 下不載入編輯器組件，避免響應式循環
+  if (props.viewMode) {
+    modeEditorComponent.value = null
+    return
+  }
+  
   const modeConfig = getModeConfig(resource.mode)
   if (modeConfig && modeConfig.editor) {
     try {
@@ -516,12 +533,14 @@ const updateSettings = (newSettings) => {
 // 監聽模式變化，重新載入編輯器
 watch(() => resource.mode, () => {
   loadModeEditor()
-  // 根據模式初始化設定
-  const modeConfig = getModeConfig(resource.mode)
-  if (modeConfig && modeConfig.defaultSettings) {
-    resource.settings = {
-      ...resource.settings,
-      ...modeConfig.defaultSettings
+  // 根據模式初始化設定（在 viewMode 下不修改 settings 以避免觸發自動保存）
+  if (!props.viewMode) {
+    const modeConfig = getModeConfig(resource.mode)
+    if (modeConfig && modeConfig.defaultSettings) {
+      resource.settings = {
+        ...resource.settings,
+        ...modeConfig.defaultSettings
+      }
     }
   }
 }, { immediate: true })
@@ -985,14 +1004,14 @@ const fetchInitialData = async () => {
       questionBankAPI.getAll(), // Fetch all for sidebar, optimize later with pagination/search API
       contentTemplateAPI.getAll()
     ])
-    
+
     courses.value = cRes.data.results || cRes.data
     studentGroups.value = gRes.data.results || gRes.data
     availableTags.value = tRes.data.results || tRes.data
     subjects.value = sRes.data.results || sRes.data
     questions.value = qRes.data.results || qRes.data
     templates.value = templateRes.data.results || templateRes.data
-    
+
     // If edit mode
     if (route.params.id) {
       const res = await learningResourceAPI.getById(route.params.id)
@@ -1004,12 +1023,25 @@ const fetchInitialData = async () => {
       await loadModeEditor()
       resource.student_group_ids = data.student_group_ids || []
       resource.tag_ids = data.tag_ids || []
-      resource.settings = data.settings || {
+      // 確保 settings 有完整的默認值
+      const defaultSettings = {
         handout: {
           paperSize: 'A4',
-          orientation: 'portrait'
+          orientation: 'portrait',
+          outputFormats: ['question_only'],
+          margins: { top: 20, right: 20, bottom: 20, left: 20 },
+          fontSize: 12,
+          lineHeight: 1.5
         }
       }
+      resource.settings = data.settings ? {
+        ...defaultSettings,
+        ...data.settings,
+        handout: {
+          ...defaultSettings.handout,
+          ...(data.settings.handout || {})
+        }
+      } : defaultSettings
       structure.value = data.structure || []
     } else if (route.query.template_id) {
       // 如果從 template 創建，載入 template 內容
@@ -1081,18 +1113,21 @@ const saveResource = async (manual = false) => {
   }
 }
 
-// Auto-save
+// Auto-save (only in edit mode, not in view mode)
 const debouncedSave = debounce(() => saveResource(false), 3000)
 
-watch(
-  [() => resource, structure],
-  () => {
-    if (route.params.id || resource.title !== '未命名文件') { // Only auto-save if editing or title changed
-      debouncedSave()
-    }
-  },
-  { deep: true }
-)
+// 只在非查看模式下啟用自動保存 watcher
+if (!props.viewMode) {
+  watch(
+    [() => resource, structure],
+    () => {
+      if (route.params.id || resource.title !== '未命名文件') { // Only auto-save if editing or title changed
+        debouncedSave()
+      }
+    },
+    { deep: true }
+  )
+}
 
 const print = async () => {
   // 使用 iframe 隔離列印內容，確保樣式不受影響
@@ -1399,16 +1434,18 @@ onMounted(() => {
   }, 200)
 })
 
-// 監聽結構和紙張大小變化
-watch(
-  [() => structure.value, () => resource.settings.paperSize],
-  () => {
-    setTimeout(() => {
-      ensurePages()
-    }, 100)
-  },
-  { deep: true }
-)
+// 監聽結構和紙張大小變化（在編輯模式下才需要）
+if (!props.viewMode) {
+  watch(
+    [() => structure.value, () => resource.settings.paperSize],
+    () => {
+      setTimeout(() => {
+        ensurePages()
+      }, 100)
+    },
+    { deep: true }
+  )
+}
 
 // 清理 ResizeObserver 和事件監聽器
 onUnmounted(() => {

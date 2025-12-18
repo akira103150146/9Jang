@@ -211,6 +211,13 @@ const router = createRouter({
       meta: { title: '新增教學資源', allowedRoles: ['TEACHER'] },
     },
     {
+      path: '/resources/view/:id',
+      name: 'resource-view',
+      component: ResourceEditor,
+      props: route => ({ id: route.params.id, viewMode: true }),
+      meta: { title: '查看教學資源', allowedRoles: ['TEACHER', 'STUDENT'] },
+    },
+    {
       path: '/resources/edit/:id',
       name: 'resource-edit',
       component: ResourceEditor,
