@@ -29,6 +29,7 @@ import ResourceEditor from '../views/ResourceEditor.vue'
 import TemplateEditor from '../views/TemplateEditor.vue'
 import QuestionForm from '../views/QuestionForm.vue'
 import QuestionImport from '../views/QuestionImport.vue'
+import BlockEditorTest from '../views/BlockEditorTest.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -203,6 +204,12 @@ const router = createRouter({
       name: 'question-import',
       component: QuestionImport,
       meta: { title: '匯入題目', allowedRoles: ['TEACHER'] },
+    },
+    {
+      path: '/block-editor-test',
+      name: 'block-editor-test',
+      component: BlockEditorTest,
+      meta: { title: 'Block Editor 測試', allowedRoles: ['TEACHER'] },
     },
     {
       path: '/resources/new',

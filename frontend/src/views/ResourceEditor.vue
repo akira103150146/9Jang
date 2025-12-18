@@ -280,141 +280,25 @@
 
       <!-- 畫布區域 -->
       <div 
-        class="flex-1 overflow-auto p-8 relative flex flex-col items-center gap-4" 
-        @dragover.prevent="handleDragOver"
-        @drop="handleDrop"
-        ref="canvasContainer"
+        class="flex-1 overflow-auto p-8 relative flex flex-col items-center gap-4"
       >
-        <!-- 磁吸對齊線 -->
+        <!-- BlockEditor 編輯器 -->
         <div
-          v-if="snapLine.show"
-          class="fixed pointer-events-none z-50"
-          :class="snapLine.type === 'horizontal' ? 'w-full h-0.5 bg-indigo-500' : 'w-0.5 h-full bg-indigo-500'"
-          :style="{
-            left: snapLine.type === 'vertical' ? `${snapLine.position}px` : '0',
-            top: snapLine.type === 'horizontal' ? `${snapLine.position}px` : '0',
-            opacity: snapLine.show ? 1 : 0,
-            transition: 'opacity 0.1s'
-          }"
-        ></div>
-
-        <!-- 動態生成的頁面 -->
-        <div
-          v-for="pageIndex in totalPages"
-          :key="pageIndex"
-          ref="pageContainers"
-          class="bg-white shadow-xl relative print:shadow-none print:mb-0 print-paper"
+          class="bg-white shadow-xl relative print:shadow-none print-paper"
           :class="[
-            resource.settings.paperSize === 'A4' ? 'w-[210mm]' : 'w-[250mm]',
-            pageIndex < totalPages ? 'mb-4' : ''
+            resource.settings.paperSize === 'A4' ? 'w-[210mm]' : 'w-[250mm]'
           ]"
           :style="{
             padding: '20mm',
-            minHeight: resource.settings.paperSize === 'A4' ? '297mm' : '353mm',
-            height: pageIndex === totalPages ? 'auto' : (resource.settings.paperSize === 'A4' ? '297mm' : '353mm')
+            minHeight: resource.settings.paperSize === 'A4' ? '297mm' : '353mm'
           }"
-          @dragover.prevent="handlePageDragOver($event, pageIndex)"
-          @drop="handlePageDrop($event, pageIndex)"
         >
-          <!-- 頁面標題 (僅編輯時顯示) -->
-          <div class="absolute -top-8 left-0 text-xs text-slate-400 font-medium print:hidden">
-            第 {{ pageIndex }} 頁
-          </div>
-
-          <!-- 區塊列表 -->
-          <div 
-            ref="pageContentContainers"
-            class="space-y-4 relative"
-            :data-page="pageIndex"
-          >
-            <div
-              v-for="(block, index) in getBlocksForPage(pageIndex)"
-              :key="block.id || `block-${index}`"
-              :data-block-id="block.id"
-              :data-block-index="getGlobalBlockIndex(block)"
-              draggable="true"
-              @dragstart="handleBlockDragStart($event, block, getGlobalBlockIndex(block))"
-              @dragend="handleBlockDragEnd"
-              @dragover.prevent="handleBlockDragOver($event, block, getGlobalBlockIndex(block))"
-              class="group relative border border-transparent hover:border-indigo-300 rounded p-1 -m-1 transition-all cursor-move"
-              :class="{ 
-                'break-inside-avoid': block.type === 'question',
-                'opacity-50': draggingBlock?.id === block.id,
-                'ring-2 ring-indigo-400': draggingBlock?.id === block.id
-              }"
-            >
-              <!-- 拖動手柄 -->
-              <div class="absolute -left-6 top-2 opacity-0 group-hover:opacity-100 print:hidden transition-opacity cursor-grab active:cursor-grabbing">
-                <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path>
-                </svg>
-              </div>
-
-              <!-- 區塊操作按鈕 (Hover 顯示) -->
-              <div class="absolute -right-8 top-0 opacity-0 group-hover:opacity-100 flex flex-col gap-1 print:hidden z-20">
-                <button @click="moveBlock(getGlobalBlockIndex(block), -1)" class="p-1 bg-white border border-slate-200 rounded text-slate-400 hover:text-indigo-600 shadow-sm" title="上移">↑</button>
-                <button @click="moveBlock(getGlobalBlockIndex(block), 1)" class="p-1 bg-white border border-slate-200 rounded text-slate-400 hover:text-indigo-600 shadow-sm" title="下移">↓</button>
-                <button @click="removeBlock(getGlobalBlockIndex(block))" class="p-1 bg-white border border-slate-200 rounded text-slate-400 hover:text-rose-600 shadow-sm" title="刪除">×</button>
-              </div>
-
-              <!-- 區塊內容 -->
-              <template v-if="block.type === 'text'">
-                <div class="prose max-w-none">
-                  <RichTextEditor
-                    :templates="templates"
-                    :ref="(el) => { if (el) markdownEditorRefs[block.id] = el }"
-                    :model-value="toRT(block.content)"
-                    :placeholder="'輸入文字...'"
-                    @update:model-value="(v) => (block.content = fromRT(v))"
-                    class="border-none shadow-none bg-transparent"
-                  />
-                </div>
-              </template>
-
-              <template v-else-if="block.type === 'question'">
-                <QuestionBlock :question-id="block.question_id" />
-              </template>
-
-              <template v-else-if="block.type === 'template'">
-                <TemplateBlock :template-id="block.template_id" />
-              </template>
-
-              <template v-else-if="block.type === 'page_break'">
-                <div class="flex items-center gap-4 py-4 select-none print:hidden">
-                  <div class="h-px bg-red-200 flex-1 border-t border-dashed border-red-300"></div>
-                  <span class="text-xs font-bold text-red-400 uppercase tracking-wider">強制分頁 (Page Break)</span>
-                  <div class="h-px bg-red-200 flex-1 border-t border-dashed border-red-300"></div>
-                </div>
-                <!-- 列印時實際產生分頁 -->
-                <div class="hidden print:block break-after-page"></div>
-              </template>
-            </div>
-
-            <!-- 插入指示器 (拖動時顯示) -->
-            <div
-              v-if="dragOverPage === pageIndex && dragOverIndex !== null"
-              class="h-1 bg-indigo-500 rounded-full transition-all"
-              :style="{ marginTop: '-0.5rem', marginBottom: '-0.5rem' }"
-            ></div>
-
-            <!-- 新增區塊按鈕 (僅最後一頁顯示) -->
-            <div v-if="pageIndex === totalPages" class="h-8 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity group print:hidden">
-              <div class="flex gap-2">
-                <button @click="addBlock('text')" class="px-3 py-1 bg-indigo-50 text-indigo-600 rounded text-xs font-bold hover:bg-indigo-100 transition-colors shadow-sm border border-indigo-200">+ 文字</button>
-                <button @click="sidebarOpen = true; currentTab = 'questions'" class="px-3 py-1 bg-indigo-50 text-indigo-600 rounded text-xs font-bold hover:bg-indigo-100 transition-colors shadow-sm border border-indigo-200">+ 題目</button>
-                <button @click="addBlock('page_break')" class="px-3 py-1 bg-red-50 text-red-600 rounded text-xs font-bold hover:bg-red-100 transition-colors shadow-sm border border-red-200">+ 分頁</button>
-              </div>
-            </div>
-          </div>
-          
-          <!-- 空白狀態提示 (僅第一頁且無內容時顯示) -->
-          <div v-if="pageIndex === 1 && structure.length === 0" class="h-40 flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-lg bg-slate-50/50">
-            <p>拖曳題目至此，或點擊下方按鈕開始編輯</p>
-            <div class="flex gap-2 mt-4">
-              <button @click="addBlock('text')" class="px-4 py-2 bg-white border border-slate-300 rounded shadow-sm text-sm hover:bg-slate-50 text-slate-700">新增文字區塊</button>
-              <button @click="sidebarOpen = true; currentTab = 'questions'" class="px-4 py-2 bg-indigo-600 border border-transparent rounded shadow-sm text-sm hover:bg-indigo-700 text-white">瀏覽題目庫</button>
-            </div>
-          </div>
+          <BlockEditor
+            :model-value="tiptapStructure"
+            @update:model-value="handleBlockEditorUpdate"
+            :templates="templates"
+            :questions="questions"
+          />
         </div>
       </div>
     </main>
@@ -425,11 +309,10 @@
 import { ref, reactive, onMounted, onUnmounted, watch, computed, nextTick, shallowRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { learningResourceAPI, courseAPI, studentGroupAPI, hashtagAPI, questionBankAPI, subjectAPI, contentTemplateAPI } from '../services/api'
-import RichTextEditor from '../components/RichTextEditor.vue'
-import QuestionBlock from '../components/QuestionBlock.vue'
-import TemplateBlock from '../components/TemplateBlock.vue'
+import BlockEditor from '../components/BlockEditor/BlockEditor.vue'
 import { useMarkdownRenderer } from '../composables/useMarkdownRenderer'
 import { getModeConfig } from '../config/resourceModes'
+import { legacyToTiptapStructure, tiptapToLegacyStructure } from '../components/BlockEditor/utils/structureConverter'
 
 const props = defineProps({
   id: {
@@ -499,6 +382,31 @@ const resource = reactive({
 })
 
 const structure = ref([])
+
+// Tiptap 格式的 structure（用於 BlockEditor）
+const tiptapStructure = computed({
+  get() {
+    if (Array.isArray(structure.value) && structure.value.length > 0) {
+      return legacyToTiptapStructure(structure.value)
+    }
+    return {
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [] }]
+    }
+  },
+  set(value) {
+    // 當 BlockEditor 更新時，轉換回舊格式
+    if (value && value.type === 'doc') {
+      structure.value = tiptapToLegacyStructure(value)
+    }
+  }
+})
+
+// 處理 BlockEditor 更新
+const handleBlockEditorUpdate = (newStructure) => {
+  tiptapStructure.value = newStructure
+  // 自動儲存會觸發
+}
 
 // 模式編輯器組件（動態載入）
 const modeEditorComponent = shallowRef(null)

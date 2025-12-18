@@ -42,22 +42,23 @@
           />
         </div>
 
-        <!-- Markdown + LaTeX 編輯器 -->
+        <!-- Block Editor -->
         <div>
           <label class="block text-sm font-semibold text-slate-700 mb-2">
-            內容 (Markdown + LaTeX) <span class="text-red-500">*</span>
+            內容 <span class="text-red-500">*</span>
           </label>
           <div class="space-y-3">
             <div class="border border-slate-300 rounded-lg overflow-hidden">
-              <RichTextEditor
-                :model-value="toRT(formData.content)"
-                :placeholder="'輸入模板內容...\n\n支援 Markdown 語法：\n- **粗體**\n- *斜體*\n- `程式碼`\n\n支援 LaTeX 數學公式：\n- 行內公式：$x^2 + y^2 = r^2$\n- 區塊公式：$$\n\\int_0^1 x^2 dx = \\frac{1}{3}\n$$'"
-                @update:model-value="(v) => (formData.content = fromRT(v))"
+              <BlockEditor
+                :model-value="tiptapStructure"
+                @update:model-value="handleBlockEditorUpdate"
+                :templates="[]"
+                :questions="[]"
               />
             </div>
           </div>
           <p class="mt-1 text-xs text-slate-500">
-            提示：使用 $$...$$ 表示區塊公式，使用 $...$ 表示行內公式
+            提示：輸入 / 查看所有可用的區塊類型
           </p>
         </div>
 
@@ -112,7 +113,8 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { contentTemplateAPI, hashtagAPI } from '../services/api'
-import RichTextEditor from '../components/RichTextEditor.vue'
+import BlockEditor from '../components/BlockEditor/BlockEditor.vue'
+import { legacyToTiptapStructure, tiptapToLegacyStructure } from '../components/BlockEditor/utils/structureConverter'
 
 const route = useRoute()
 const router = useRouter()
@@ -127,16 +129,52 @@ const formData = ref({
   is_public: false
 })
 
-const toRT = (v) => {
-  if (typeof v === 'string') return v
-  if (v && typeof v === 'object' && typeof v.text === 'string') return v
-  return ''
-}
+// Tiptap 格式的 structure
+const tiptapStructure = computed({
+  get() {
+    // 從 formData.content 或 structure 轉換
+    if (formData.value.content) {
+      // 如果有舊的文字內容，轉換為 Tiptap 格式
+      return {
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: formData.value.content ? [{ type: 'text', text: formData.value.content }] : []
+          }
+        ]
+      }
+    }
+    return {
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [] }]
+    }
+  },
+  set(value) {
+    // 當 BlockEditor 更新時，提取文字內容
+    if (value && value.type === 'doc' && value.content) {
+      const textBlocks = value.content
+        .filter(node => node.type === 'paragraph')
+        .map(node => {
+          if (node.content && Array.isArray(node.content)) {
+            return node.content
+              .filter(item => item.type === 'text')
+              .map(item => item.text || '')
+              .join('')
+          }
+          return ''
+        })
+        .filter(text => text.trim())
+        .join('\n\n')
+      
+      formData.value.content = textBlocks
+    }
+  }
+})
 
-const fromRT = (v) => {
-  if (typeof v === 'string') return v
-  if (v && typeof v === 'object' && typeof v.text === 'string') return v.text
-  return ''
+// 處理 BlockEditor 更新
+const handleBlockEditorUpdate = (newStructure) => {
+  tiptapStructure.value = newStructure
 }
 
 const fetchHashtags = async () => {
@@ -160,9 +198,12 @@ const fetchTemplate = async () => {
     formData.value.is_public = template.is_public || false
     formData.value.tag_ids = template.tag_ids || []
     
-    // 從 structure 中提取內容
+    // 從 structure 中載入內容
     if (template.structure && Array.isArray(template.structure) && template.structure.length > 0) {
-      // 合併所有 text 類型的區塊內容
+      // 轉換為 Tiptap 格式
+      tiptapStructure.value = legacyToTiptapStructure(template.structure)
+      
+      // 同時保留舊格式的內容（向後相容）
       formData.value.content = template.structure
         .filter(block => block.type === 'text' && block.content)
         .map(block => block.content)
@@ -254,6 +295,7 @@ onMounted(() => {
   line-height: 1.6;
 }
 </style>
+
 
 
 

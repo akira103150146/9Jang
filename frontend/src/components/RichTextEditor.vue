@@ -1,40 +1,72 @@
 <template>
   <div class="rich-text-editor">
     <div class="editor-toolbar">
+      <!-- 模式切換按鈕 -->
       <div class="toolbar-group">
-        <span class="toolbar-group-label">插入</span>
-        <button @click="insertInlineLatex" class="toolbar-btn" title="插入行內公式 $...$">∑</button>
-        <button @click="insertBlockLatex" class="toolbar-btn" title="插入區塊公式 $$...$$">∫</button>
-        <button @click="insertCodeBlock" class="toolbar-btn" title="插入程式碼區塊">&lt;/&gt;</button>
+        <button 
+          @click="mode = 'edit'" 
+          :class="{ 'is-active': mode === 'edit' }"
+          class="toolbar-btn mode-toggle"
+          title="編輯模式"
+        >
+          ✏️ 編輯
+        </button>
+        <button 
+          @click="mode = 'preview'" 
+          :class="{ 'is-active': mode === 'preview' }"
+          class="toolbar-btn mode-toggle"
+          title="預覽模式（可拖動重新排序）"
+        >
+          👁️ 預覽
+        </button>
       </div>
 
       <div class="toolbar-divider"></div>
 
-      <div class="toolbar-group">
-        <span class="toolbar-group-label">物件</span>
-        <button @click="insertDiagram2D" class="toolbar-btn" title="插入 2D 圖形（以 fenced block 表示）">📊</button>
-        <button @click="insertDiagram3D" class="toolbar-btn" title="插入 3D 圖形（以 fenced block 表示）">🎲</button>
-        <button @click="insertCircuit" class="toolbar-btn" title="插入電路圖（以 fenced block 表示）">⚡</button>
-      </div>
+      <!-- 編輯工具（僅在編輯模式顯示） -->
+      <template v-if="mode === 'edit'">
+        <div class="toolbar-group">
+          <span class="toolbar-group-label">插入</span>
+          <button @click="insertInlineLatex" class="toolbar-btn" title="插入行內公式 $...$">∑</button>
+          <button @click="insertBlockLatex" class="toolbar-btn" title="插入區塊公式 $$...$$">∫</button>
+          <button @click="insertCodeBlock" class="toolbar-btn" title="插入程式碼區塊">&lt;/&gt;</button>
+        </div>
 
-      <div class="toolbar-divider"></div>
+        <div class="toolbar-divider"></div>
 
-      <div class="toolbar-group">
-        <span class="toolbar-group-label">Snippets</span>
-        <button @click="openSnippets" class="toolbar-btn" title="管理 Snippets（自動完成 / 自訂片段）">✨</button>
+        <div class="toolbar-group">
+          <span class="toolbar-group-label">物件</span>
+          <button @click="insertDiagram2D" class="toolbar-btn" title="插入 2D 圖形（以 fenced block 表示）">📊</button>
+          <button @click="insertDiagram3D" class="toolbar-btn" title="插入 3D 圖形（以 fenced block 表示）">🎲</button>
+          <button @click="insertCircuit" class="toolbar-btn" title="插入電路圖（以 fenced block 表示）">⚡</button>
+        </div>
+
+        <div class="toolbar-divider"></div>
+
+        <div class="toolbar-group">
+          <span class="toolbar-group-label">Snippets</span>
+          <button @click="openSnippets" class="toolbar-btn" title="管理 Snippets（自動完成 / 自訂片段）">✨</button>
+        </div>
+      </template>
+
+      <!-- 預覽模式提示 -->
+      <div v-else class="toolbar-group">
+        <span class="toolbar-hint">💡 拖動區塊以重新排序內容</span>
       </div>
     </div>
-    <div class="editor-container">
+
+    <!-- 編輯模式 -->
+    <div v-if="mode === 'edit'" class="editor-container">
       <MarkdownEditor ref="mdEditorRef" v-model="text" :placeholder="placeholder" :templates="templates" />
     </div>
-    <div class="preview-divider">
-      <div class="divider-line"></div>
-      <span class="divider-label">預覽</span>
-      <div class="divider-line"></div>
-    </div>
-    <div class="preview-container">
-      <RichTextPreview :content="text" @jump-to="jumpTo" />
-    </div>
+
+    <!-- 預覽模式 -->
+    <DraggablePreview 
+      v-else 
+      :content="text" 
+      @update:content="handlePreviewUpdate"
+      class="preview-mode-container"
+    />
 
     <SnippetManagerModal
       v-if="snippetModalOpen"
@@ -47,7 +79,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import MarkdownEditor from './MarkdownEditor.vue'
-import RichTextPreview from './RichTextPreview.vue'
+import DraggablePreview from './DraggablePreview.vue'
 import SnippetManagerModal from './SnippetManagerModal.vue'
 
 const props = defineProps({
@@ -70,6 +102,7 @@ const emit = defineEmits(['update:modelValue'])
 const mdEditorRef = ref(null)
 const text = ref('')
 const snippetModalOpen = ref(false)
+const mode = ref('edit') // 'edit' | 'preview'
 
 const normalizeIncoming = (value) => {
   if (typeof value === 'string') return value
@@ -127,26 +160,8 @@ const insertSnippetFromModal = (snippet) => {
   snippetModalOpen.value = false
 }
 
-const jumpTo = (payload) => {
-  const replace = payload?.replace || null
-  if (replace && Number.isFinite(replace.pos) && Number.isFinite(replace.len)) {
-    const p = replace.pos
-    const l = replace.len
-    const rep = String(replace.text ?? '')
-    text.value = `${text.value.slice(0, p)}${rep}${text.value.slice(p + l)}`
-    mdEditorRef.value?.focusAtPos?.(p + rep.length)
-    return
-  }
-
-  const pos = payload?.pos
-  const line = payload?.line
-  if (Number.isFinite(pos) && pos >= 0) {
-    mdEditorRef.value?.focusAtPos?.(pos)
-    return
-  }
-  if (Number.isFinite(line) && line >= 1) {
-    mdEditorRef.value?.focusAtLine?.(line)
-  }
+const handlePreviewUpdate = (newContent) => {
+  text.value = newContent
 }
 </script>
 
@@ -154,7 +169,7 @@ const jumpTo = (payload) => {
 .rich-text-editor {
   border: 1px solid rgb(203, 213, 225);
   border-radius: 0.5rem;
-  overflow: visible; /* 改為 visible，讓內部容器處理 overflow */
+  overflow: visible;
   background: white;
   display: flex;
   flex-direction: column;
@@ -188,6 +203,13 @@ const jumpTo = (payload) => {
   white-space: nowrap;
 }
 
+.toolbar-hint {
+  font-size: 0.875rem;
+  color: rgb(100, 116, 139);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 .toolbar-btn {
   padding: 0.5rem;
   border: none;
@@ -208,6 +230,11 @@ const jumpTo = (payload) => {
   color: white;
 }
 
+.toolbar-btn.mode-toggle {
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+}
+
 .toolbar-divider {
   width: 1px;
   height: 24px;
@@ -220,7 +247,6 @@ const jumpTo = (payload) => {
   min-height: 300px;
   max-height: 600px;
   overflow-y: auto;
-  border-bottom: 1px solid rgb(203, 213, 225);
 }
 
 .editor-content {
@@ -230,35 +256,8 @@ const jumpTo = (payload) => {
   word-wrap: break-word;
 }
 
-.preview-divider {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  background: rgb(248, 250, 252);
-  border-bottom: 1px solid rgb(203, 213, 225);
-}
-
-.divider-line {
-  flex: 1;
-  height: 1px;
-  background: rgb(203, 213, 225);
-}
-
-.divider-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: rgb(100, 116, 139);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.preview-container {
-  min-height: 200px;
-  padding: 1rem;
-  overflow-y: auto;
-  max-height: 500px;
-  background: rgb(249, 250, 251);
+.preview-mode-container {
+  /* DraggablePreview 組件會處理自己的樣式 */
 }
 
 :deep(.ProseMirror) {
