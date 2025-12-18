@@ -51,22 +51,23 @@
       <div
         v-for="resource in resources"
         :key="resource.resource_id"
-        class="group relative flex flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:border-indigo-300 hover:shadow-md transition-all"
+        @click="showResourcePreview(resource)"
+        class="group relative flex flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer"
       >
         <div class="flex items-start justify-between mb-2">
           <span
             class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset"
-            :class="getTypeColor(resource.resource_type)"
+            :class="getModeColor(resource.mode)"
           >
-            {{ getTypeName(resource.resource_type) }}
+            {{ getModeName(resource.mode) }}
           </span>
           <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button @click="editResource(resource.resource_id)" class="p-1 text-slate-400 hover:text-indigo-600" title="編輯">
+            <button @click.stop="editResource(resource.resource_id)" class="p-1 text-slate-400 hover:text-indigo-600" title="編輯">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
               </svg>
             </button>
-            <button @click="deleteResource(resource.resource_id)" class="p-1 text-slate-400 hover:text-rose-600" title="刪除">
+            <button @click.stop="deleteResource(resource.resource_id)" class="p-1 text-slate-400 hover:text-rose-600" title="刪除">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
               </svg>
@@ -75,9 +76,7 @@
         </div>
         
         <h3 class="text-base font-bold text-slate-900 mb-1 line-clamp-1">
-          <router-link :to="`/resources/edit/${resource.resource_id}`" class="hover:text-indigo-600 hover:underline">
-            {{ resource.title }}
-          </router-link>
+          {{ resource.title }}
         </h3>
         
         <div class="text-xs text-slate-500 mb-4 flex items-center gap-2">
@@ -94,6 +93,99 @@
       </div>
     </div>
 
+    <!-- 資源預覽 Modal -->
+    <div
+      v-if="previewResource"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
+      @click.self="closePreview"
+    >
+      <div class="bg-white rounded-xl shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between p-6 border-b border-slate-200">
+          <div class="flex items-center gap-3">
+            <span
+              class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset"
+              :class="getModeColor(previewResource.mode)"
+            >
+              {{ getModeName(previewResource.mode) }}
+            </span>
+            <h2 class="text-xl font-bold text-slate-900">{{ previewResource.title }}</h2>
+          </div>
+          <button
+            @click="closePreview"
+            class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="flex-1 overflow-y-auto p-6 bg-slate-50">
+          <div v-if="loadingPreview" class="text-center py-12 text-slate-500">
+            載入中...
+          </div>
+          <div v-else-if="previewError" class="text-center py-12 text-rose-500">
+            載入失敗，請稍後再試
+          </div>
+          <div v-else-if="previewResource.structure && previewResource.structure.length > 0">
+            <!-- 模擬紙張效果 -->
+            <div class="bg-white shadow-lg rounded-lg p-8 mx-auto max-w-4xl">
+              <div class="space-y-6">
+                <div
+                  v-for="(block, index) in previewResource.structure"
+                  :key="block.id || index"
+                  class="break-inside-avoid"
+                >
+                  <!-- 文字區塊 -->
+                  <div v-if="block.type === 'text'" class="prose max-w-none">
+                    <RichTextPreview :content="block.content" />
+                  </div>
+
+                  <!-- 題目區塊 -->
+                  <div v-else-if="block.type === 'question'">
+                    <QuestionBlock :question-id="block.question_id" />
+                  </div>
+
+                  <!-- 模板區塊 -->
+                  <div v-else-if="block.type === 'template'">
+                    <TemplateBlock :template-id="block.template_id" />
+                  </div>
+
+                  <!-- 分頁標記（預覽時顯示為分隔線） -->
+                  <div v-else-if="block.type === 'page_break'" class="flex items-center gap-4 py-4">
+                    <div class="h-px bg-slate-200 flex-1"></div>
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">分頁</span>
+                    <div class="h-px bg-slate-200 flex-1"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-else class="text-center py-12 text-slate-400">
+            此文件尚無內容
+          </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="flex items-center justify-end gap-3 p-6 border-t border-slate-200">
+          <button
+            @click="closePreview"
+            class="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50"
+          >
+            關閉
+          </button>
+          <button
+            @click="editResource(previewResource.resource_id)"
+            class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
+          >
+            編輯文件
+          </button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -101,13 +193,19 @@
 import { ref, reactive, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { learningResourceAPI } from '../services/api'
+import RichTextPreview from './RichTextPreview.vue'
+import QuestionBlock from './QuestionBlock.vue'
+import TemplateBlock from './TemplateBlock.vue'
 
 const router = useRouter()
 
 const resources = ref([])
 const loading = ref(false)
+const previewResource = ref(null)
+const loadingPreview = ref(false)
+const previewError = ref(false)
 const filters = reactive({
-  mode: ''
+  resource_type: ''
 })
 
 const getModeColor = (mode) => {
@@ -178,7 +276,33 @@ const deleteResource = async (id) => {
   }
 }
 
-watch(() => filters.mode, () => {
+const showResourcePreview = async (resource) => {
+  // 如果只有基本信息，需要獲取完整的資源詳情（包含 structure）
+  if (!resource.structure) {
+    loadingPreview.value = true
+    previewError.value = false
+    try {
+      const response = await learningResourceAPI.getById(resource.resource_id)
+      previewResource.value = response.data
+    } catch (error) {
+      console.error('獲取資源詳情失敗：', error)
+      previewError.value = true
+      previewResource.value = resource
+    } finally {
+      loadingPreview.value = false
+    }
+  } else {
+    previewResource.value = resource
+  }
+}
+
+const closePreview = () => {
+  previewResource.value = null
+  loadingPreview.value = false
+  previewError.value = false
+}
+
+watch(() => filters.resource_type, () => {
   fetchResources()
 })
 

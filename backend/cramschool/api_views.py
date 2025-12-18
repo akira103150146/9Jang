@@ -4143,24 +4143,20 @@ class LearningResourceViewSet(viewsets.ModelViewSet):
         
         course = serializer.validated_data.get('course')
         if user.is_teacher():
-            # 老師建立時必填 course（MVP 先禁止無課程公開資源）
-            if not course:
-                return Response(
-                    {'detail': '老師建立資源時必須指定課程'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            try:
-                teacher = user.teacher_profile
-                if course.teacher != teacher:
+            # 如果指定了 course，驗證是否為自己的課程
+            if course:
+                try:
+                    teacher = user.teacher_profile
+                    if course.teacher != teacher:
+                        return Response(
+                            {'detail': '只能在自己課程下創建資源'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                except Teacher.DoesNotExist:
                     return Response(
-                        {'detail': '只能在自己課程下創建資源'},
+                        {'detail': '找不到老師資料'},
                         status=status.HTTP_403_FORBIDDEN
                     )
-            except Teacher.DoesNotExist:
-                return Response(
-                    {'detail': '找不到老師資料'},
-                    status=status.HTTP_403_FORBIDDEN
-                )
         
         serializer.save(created_by=user)
         headers = self.get_success_headers(serializer.data)

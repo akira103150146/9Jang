@@ -55,7 +55,7 @@
           <div class="space-y-3">
             <label class="block text-sm font-medium text-slate-700">所屬課程</label>
             <select v-model="resource.course" class="w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border">
-              <option :value="null">未綁定</option>
+              <option :value="null">未綁定（通用資源）</option>
               <option v-for="c in courses" :key="c.course_id" :value="c.course_id">
                 {{ c.course_name }}
               </option>
@@ -1032,6 +1032,7 @@ const fetchInitialData = async () => {
 // Saving
 const saveResource = async (manual = false) => {
   if (!resource.title) return
+  
   isSaving.value = true
   
   const payload = {
@@ -1041,11 +1042,21 @@ const saveResource = async (manual = false) => {
     student_group_ids: resource.student_group_ids
   }
   
+  // #region agent log
+  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:1033',message:'saveResource called',data:{hasRouteId:!!route.params.id,resourceTitle:resource.title,resourceMode:resource.mode,hasCourse:!!resource.course,structureLength:structure.value.length},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'I'})}).catch(()=>{});
+  // #endregion
+  
   try {
     let response
     if (route.params.id) {
+      // #region agent log
+      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:1048',message:'updating existing resource',data:{resourceId:route.params.id,payloadKeys:Object.keys(payload),course:payload.course,mode:payload.mode},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'I'})}).catch(()=>{});
+      // #endregion
       response = await learningResourceAPI.update(route.params.id, payload)
     } else {
+      // #region agent log
+      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:1053',message:'creating new resource',data:{payloadKeys:Object.keys(payload),course:payload.course,mode:payload.mode},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'I'})}).catch(()=>{});
+      // #endregion
       response = await learningResourceAPI.create(payload)
       // Redirect to edit mode if created
       if (!route.params.id && manual) {
@@ -1053,9 +1064,18 @@ const saveResource = async (manual = false) => {
       }
     }
     lastSaved.value = new Date()
+    // #region agent log
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:1063',message:'save successful',data:{savedAt:lastSaved.value},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'I'})}).catch(()=>{});
+    // #endregion
   } catch (error) {
     console.error('Save failed', error)
-    if (manual) alert('儲存失敗')
+    // #region agent log
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:1068',message:'save failed',data:{errorMessage:error.message,errorResponse:error.response?.data,errorStatus:error.response?.status,payloadCourse:payload.course,payloadMode:payload.mode},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'I'})}).catch(()=>{});
+    // #endregion
+    if (manual) {
+      const errorMsg = error.response?.data?.detail || '儲存失敗，請稍後再試'
+      alert(errorMsg)
+    }
   } finally {
     isSaving.value = false
   }
