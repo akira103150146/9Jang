@@ -1,21 +1,11 @@
 <template>
   <node-view-wrapper class="template-block-wrapper">
     <div class="template-block">
-      <!-- 模板選擇器 -->
+      <!-- 模板選擇器 - 改為按鈕 -->
       <div v-if="!node.attrs.templateId" class="template-selector">
-        <select
-          @change="handleTemplateSelect"
-          class="template-select"
-        >
-          <option value="">選擇模板...</option>
-          <option 
-            v-for="template in availableTemplates" 
-            :key="template.template_id"
-            :value="template.template_id"
-          >
-            {{ template.title }}
-          </option>
-        </select>
+        <button @click="showSelector = true" class="btn-select-template">
+          📄 選擇模板
+        </button>
       </div>
       
       <!-- 模板預覽 -->
@@ -57,6 +47,13 @@
       <!-- 子區塊內容 -->
       <node-view-content class="content" />
     </div>
+
+    <!-- 模板選擇器 Modal -->
+    <TemplateSelectorModal
+      v-model="showSelector"
+      :templates="availableTemplates"
+      @select="onTemplateSelected"
+    />
   </node-view-wrapper>
 </template>
 
@@ -65,6 +62,7 @@ import { ref, watch, computed, inject } from 'vue'
 import { NodeViewWrapper, NodeViewContent, nodeViewProps } from '@tiptap/vue-3'
 import { contentTemplateAPI } from '../../../services/api'
 import { useMarkdownRenderer } from '../../../composables/useMarkdownRenderer'
+import TemplateSelectorModal from './TemplateSelectorModal.vue'
 
 const props = defineProps(nodeViewProps)
 
@@ -75,6 +73,7 @@ const availableTemplates = inject('templates', ref([]))
 
 const templateData = ref(null)
 const loading = ref(false)
+const showSelector = ref(false)
 
 // 載入模板數據
 const loadTemplate = async (templateId) => {
@@ -101,20 +100,15 @@ watch(() => props.node.attrs.templateId, (newId) => {
   }
 }, { immediate: true })
 
-const handleTemplateSelect = (event) => {
-  const templateId = parseInt(event.target.value)
-  if (templateId) {
-    props.updateAttributes({
-      templateId
-    })
-  }
+const onTemplateSelected = (templateId) => {
+  props.updateAttributes({
+    templateId
+  })
 }
 
 const handleChangeTemplate = () => {
-  props.updateAttributes({
-    templateId: null
-  })
-  templateData.value = null
+  // 打開選擇器而不是清除
+  showSelector.value = true
 }
 
 const renderTemplateBlock = (block) => {
@@ -138,22 +132,26 @@ const renderTemplateBlock = (block) => {
 
 .template-selector {
   padding: 1rem;
+  display: flex;
+  justify-content: center;
 }
 
-.template-select {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid rgb(226, 232, 240);
+.btn-select-template {
+  padding: 0.75rem 1.5rem;
   border-radius: 0.375rem;
   font-size: 0.875rem;
-  background: white;
+  font-weight: 600;
   cursor: pointer;
+  background: white;
+  border: 2px dashed rgb(203, 213, 225);
+  color: rgb(100, 116, 139);
+  transition: all 0.2s;
 }
 
-.template-select:focus {
-  outline: none;
+.btn-select-template:hover {
   border-color: rgb(147, 51, 234);
-  box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.1);
+  background: rgb(250, 245, 255);
+  color: rgb(147, 51, 234);
 }
 
 .template-preview {

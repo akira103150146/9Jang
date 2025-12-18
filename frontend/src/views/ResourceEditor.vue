@@ -281,6 +281,8 @@
       <!-- 畫布區域 -->
       <div 
         class="flex-1 overflow-auto p-8 relative flex flex-col items-center gap-4"
+        @dragover.prevent="handleDragOver"
+        @drop="handleDrop"
       >
         <!-- BlockEditor 編輯器 -->
         <div
@@ -299,6 +301,26 @@
             :templates="templates"
             :questions="questions"
           />
+        </div>
+        
+        <!-- JSON 結構顯示 (開發用) -->
+        <div class="mt-4 bg-white shadow-xl rounded-lg p-4 print:hidden">
+          <div class="flex justify-between items-center mb-2">
+            <h3 class="text-sm font-bold text-slate-700">JSON 結構 (即時)</h3>
+            <button @click="showJson = !showJson" class="text-xs text-indigo-600 hover:text-indigo-800">
+              {{ showJson ? '隱藏' : '顯示' }}
+            </button>
+          </div>
+          <div v-show="showJson">
+            <div class="mb-2">
+              <span class="text-xs font-semibold text-slate-600">Tiptap Format:</span>
+              <pre class="bg-slate-100 p-3 rounded text-xs overflow-auto max-h-64 mt-1">{{ JSON.stringify(tiptapStructure, null, 2) }}</pre>
+            </div>
+            <div>
+              <span class="text-xs font-semibold text-slate-600">Legacy Format (structure):</span>
+              <pre class="bg-slate-100 p-3 rounded text-xs overflow-auto max-h-64 mt-1">{{ JSON.stringify(structure, null, 2) }}</pre>
+            </div>
+          </div>
         </div>
       </div>
     </main>
@@ -382,6 +404,7 @@ const resource = reactive({
 })
 
 const structure = ref([])
+const showJson = ref(true) // 預設顯示 JSON
 
 // Tiptap 格式的 structure（用於 BlockEditor）
 const tiptapStructure = computed({
@@ -597,6 +620,7 @@ const addQuestionBlock = (question) => {
     question_id: question.question_id
   }
   structure.value.push(newBlock)
+  
   // 自動新增頁面如果需要的話
   setTimeout(() => {
     ensurePages()
@@ -611,6 +635,7 @@ const addTemplateBlock = (template) => {
     template_id: template.template_id
   }
   structure.value.push(newBlock)
+  
   // 自動新增頁面如果需要的話
   setTimeout(() => {
     ensurePages()

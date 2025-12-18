@@ -5,7 +5,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onBeforeUnmount, provide } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount, provide, computed } from 'vue'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import { LaTeXBlock, TemplateBlock, Diagram2DBlock, Diagram3DBlock, CircuitBlock, QuestionBlock, PageBreakBlock } from './extensions'
@@ -32,8 +32,8 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 // 提供模板列表給子組件
-provide('templates', ref(props.templates))
-provide('questions', ref(props.questions))
+provide('templates', computed(() => props.templates))
+provide('questions', computed(() => props.questions))
 
 // 初始化編輯器
 const editor = useEditor({

@@ -18,30 +18,39 @@
       
       <node-view-content class="content" />
     </div>
+
+    <!-- 題目選擇器 -->
+    <QuestionSelectorModal
+      v-model="showSelector"
+      :questions="availableQuestions"
+      @select="onQuestionSelected"
+    />
   </node-view-wrapper>
 </template>
 
 <script setup>
-import { inject } from 'vue'
+import { ref, inject } from 'vue'
 import { NodeViewWrapper, NodeViewContent, nodeViewProps } from '@tiptap/vue-3'
 import QuestionBlock from '../../QuestionBlock.vue'
+import QuestionSelectorModal from './QuestionSelectorModal.vue'
 
 const props = defineProps(nodeViewProps)
 
 // 從父組件注入可用的題目列表
 const availableQuestions = inject('questions', [])
 
+const showSelector = ref(false)
+
 const handleSelectQuestion = () => {
-  // 這裡可以打開一個題目選擇對話框
-  // 暫時使用第一個題目作為範例
-  if (availableQuestions.value && availableQuestions.value.length > 0) {
-    props.updateAttributes({
-      questionId: availableQuestions.value[0].question_id
-    })
-  } else {
-    // 可以觸發事件讓父組件打開題目選擇器
-    alert('請從側邊欄拖動題目到此處，或點擊側邊欄的題目庫')
-  }
+  // 打開題目選擇器
+  showSelector.value = true
+}
+
+const onQuestionSelected = (questionId) => {
+  // 更新節點屬性
+  props.updateAttributes({
+    questionId
+  })
 }
 </script>
 

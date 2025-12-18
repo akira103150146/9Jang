@@ -9,8 +9,8 @@
       <div class="bg-white rounded-lg shadow-lg p-6">
         <BlockEditor
           v-model="content"
-          :templates="[]"
-          :questions="[]"
+          :templates="templates"
+          :questions="questions"
         />
       </div>
 
@@ -23,8 +23,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import BlockEditor from '../components/BlockEditor/BlockEditor.vue'
+import { contentTemplateAPI, questionBankAPI } from '../services/api'
 
 const content = ref({
   type: 'doc',
@@ -34,5 +35,23 @@ const content = ref({
       content: []
     }
   ]
+})
+
+// 載入題目和模板
+const questions = ref([])
+const templates = ref([])
+
+onMounted(async () => {
+  try {
+    // 載入題目
+    const questionsResponse = await questionBankAPI.getAll()
+    questions.value = questionsResponse.data.results || questionsResponse.data || []
+    
+    // 載入模板
+    const templatesResponse = await contentTemplateAPI.getAll()
+    templates.value = templatesResponse.data.results || templatesResponse.data || []
+  } catch (error) {
+    console.error('Failed to load questions/templates:', error)
+  }
 })
 </script>
