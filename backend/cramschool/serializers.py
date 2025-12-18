@@ -204,8 +204,9 @@ class TeacherSerializer(serializers.ModelSerializer):
         
         if not username:
             raise serializers.ValidationError({'username': '帳號不能為空'})
+        # 如果沒有提供密碼，使用 username 作為預設密碼
         if not password:
-            raise serializers.ValidationError({'password': '創建老師時必須提供密碼'})
+            password = username
         
         # 根據 permission_level 決定 role
         if permission_level == 'Admin':
@@ -280,8 +281,9 @@ class TeacherSerializer(serializers.ModelSerializer):
             # 如果沒有用戶，創建新的用戶
             if not username:
                 raise serializers.ValidationError({'username': '帳號不能為空'})
+            # 如果沒有提供密碼，使用 username 作為預設密碼
             if not password:
-                raise serializers.ValidationError({'password': '必須提供密碼'})
+                password = username
             
             email = f"{username}@teacher.local"
             counter = 1

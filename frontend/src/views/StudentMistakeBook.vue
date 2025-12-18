@@ -93,6 +93,12 @@
             </div>
             <div class="flex shrink-0 gap-2">
               <button
+                class="rounded-full bg-indigo-500 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-600"
+                @click.stop="openView(note)"
+              >
+                檢視
+              </button>
+              <button
                 class="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
                 @click.stop="openEdit(note)"
               >
@@ -109,6 +115,67 @@
         </div>
       </div>
     </section>
+
+    <!-- 檢視 Modal -->
+    <div
+      v-if="showViewModal && selectedNoteForView"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm"
+      @click.self="closeViewModal"
+    >
+      <div class="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-xl font-bold text-slate-900">筆記詳情</h3>
+          <button @click="closeViewModal" class="text-slate-400 hover:text-slate-600">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <div class="flex items-center gap-3 mb-3">
+              <span v-if="selectedNoteForView.subject" class="text-sm text-slate-600">
+                {{ selectedNoteForView.subject }}
+              </span>
+              <span class="text-sm text-slate-600">
+                {{ formatDateTime(selectedNoteForView.updated_at) }}
+              </span>
+            </div>
+            <h4 class="text-lg font-semibold text-slate-900 mb-2">{{ selectedNoteForView.title }}</h4>
+            <div v-if="selectedNoteForView.content" class="text-sm text-slate-700 mb-3 markdown-preview" v-html="renderMarkdownWithLatex(selectedNoteForView.content)"></div>
+            <div v-else class="text-sm text-slate-500 italic">（無內容）</div>
+          </div>
+
+          <div v-if="selectedNoteForView.images && selectedNoteForView.images.length > 0" class="rounded-lg border border-slate-200 bg-white p-4">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-sm font-semibold text-slate-700">筆記照片</h4>
+              <span class="text-xs text-slate-500">{{ selectedNoteForView.images.length }} 張</span>
+            </div>
+            <div class="grid grid-cols-1 gap-4">
+              <div v-for="img in selectedNoteForView.images" :key="img.image_id" class="flex justify-center">
+                <ImageRotator :image-url="img.image_url || img.image_path" :alt="img.caption || '筆記圖片'" />
+              </div>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
+            <button
+              @click="closeViewModal"
+              class="rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              關閉
+            </button>
+            <button
+              @click="editFromView"
+              class="rounded-full bg-indigo-500 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-600"
+            >
+              編輯
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- 編輯/新增 Modal -->
     <div
@@ -235,6 +302,11 @@
 import { ref, onMounted } from 'vue'
 import { studentMistakeNoteAPI, studentMistakeNoteImageAPI } from '../services/api'
 import { compressImageFile } from '../utils/imageCompress'
+import { useMarkdownRenderer } from '../composables/useMarkdownRenderer'
+import ImageRotator from '../components/ImageRotator.vue'
+
+// 使用 Markdown 渲染 composable
+const { renderMarkdownWithLatex } = useMarkdownRenderer()
 
 const notes = ref([])
 const loading = ref(false)
@@ -243,6 +315,10 @@ const showModal = ref(false)
 const editingId = ref(null)
 const uploading = ref(false)
 const uploadProgress = ref([])
+
+// 檢視相關 state
+const showViewModal = ref(false)
+const selectedNoteForView = ref(null)
 
 const search = ref('')
 
@@ -408,6 +484,26 @@ const removeNote = async (note) => {
     console.error('刪除失敗：', e)
     alert('刪除失敗，請稍後再試')
   }
+}
+
+// 檢視相關方法
+const openView = (note) => {
+  selectedNoteForView.value = note
+  showViewModal.value = true
+}
+
+const closeViewModal = () => {
+  showViewModal.value = false
+  selectedNoteForView.value = null
+}
+
+const editFromView = () => {
+  if (!selectedNoteForView.value) return
+  closeViewModal()
+  // 延遲一下確保 Modal 關閉動畫完成
+  setTimeout(() => {
+    openEdit(selectedNoteForView.value)
+  }, 100)
 }
 
 onMounted(() => {

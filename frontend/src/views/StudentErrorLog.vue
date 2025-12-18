@@ -605,16 +605,9 @@
               <h4 class="text-sm font-semibold text-slate-700">錯題照片</h4>
               <span class="text-xs text-slate-500">{{ selectedError.images.length }} 張</span>
             </div>
-            <div class="grid grid-cols-3 gap-3 sm:grid-cols-4">
-              <div v-for="img in selectedError.images" :key="img.image_id" class="relative">
-                <img :src="img.image_url || img.image_path" class="h-24 w-full rounded-xl object-cover border border-slate-200" />
-                <button
-                  type="button"
-                  class="absolute top-2 right-2 rounded-full bg-rose-600/90 text-white text-xs px-2 py-1 hover:bg-rose-700"
-                  @click="deleteErrorImage(img)"
-                >
-                  刪除
-                </button>
+            <div class="grid grid-cols-1 gap-4">
+              <div v-for="img in selectedError.images" :key="img.image_id" class="flex justify-center">
+                <ImageRotator :image-url="img.image_url || img.image_path" :alt="img.caption || '錯題圖片'" />
               </div>
             </div>
           </div>

@@ -15,19 +15,19 @@
 
         <!-- 登入表單 -->
         <form @submit.prevent="handleLogin" class="space-y-6">
-          <!-- Email 輸入 -->
+          <!-- 帳號輸入 -->
           <div>
             <label for="email" class="block text-sm font-semibold text-slate-700 mb-2">
-              電子郵件
+              帳號或 Email
             </label>
             <input
               id="email"
               v-model="form.email"
-              type="email"
+              type="text"
               required
-              autocomplete="email"
+              autocomplete="username"
               class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 focus:outline-none transition"
-              placeholder="sunroad0418@gmail.com"
+              placeholder="請輸入帳號或 Email"
             />
           </div>
 

@@ -339,11 +339,16 @@ router.beforeEach(async (to, from, next) => {
   const roleBasedFilter = getRoleBasedRouteFilter(effectiveRole)
   if (roleBasedFilter && !roleBasedFilter(to.path)) {
     // 特殊處理：如果是學生訪問首頁，自動重定向到學生首頁
+    // 注意：這個檢查理論上不會被觸發，因為學生的 allowedPaths 包含 '/'
+    // 但保留此邏輯作為安全措施
     if (effectiveRole === 'STUDENT' && to.path === '/') {
       next('/student-home')
       return
     }
 
+    // 如果會計訪問不被允許的路徑，重定向到首頁（會計的 allowedPaths 包含 '/'）
+    // 如果首頁本身也不被允許，這會造成無限循環
+    // 但由於所有角色的過濾器都允許訪問 '/'，所以不會有問題
     alert('您沒有權限訪問此頁面')
     next('/')
     return
@@ -399,9 +404,10 @@ function getRoleBasedRouteFilter(role) {
 
   if (role === 'TEACHER') {
     return (path) => {
-      // 老師可以訪問：課程、題庫/資源/模板、學生群組、訂便當、學生列表/錯題本
+      // 老師可以訪問：課程、題庫/資源/模板、學生群組、訂便當、學生列表/錯題本、首頁
       // 注意：老師不能訪問 /attendance 頁面（已在學生管理中處理）
       const allowedPrefixes = [
+        '/',
         '/courses',
         '/questions',
         '/resources',

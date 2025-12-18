@@ -199,12 +199,33 @@ class Command(BaseCommand):
                     raise ValueError(f'查找欄位 "{field}" 不存在於資料中')
                 lookup[field] = data[field]
 
+        # 處理 CustomUser 的密碼（需要特殊處理）
+        password = None
+        is_custom_user = (model == CustomUser or 
+                         (hasattr(model, '_meta') and 
+                          f"{model._meta.app_label}.{model._meta.model_name}" == 
+                          f"{CustomUser._meta.app_label}.{CustomUser._meta.model_name}"))
+        
+        if is_custom_user:
+            # 提取密碼，如果沒有則使用預設值（username）
+            password = data.pop('password', None)
+            if not password:
+                # 如果沒有指定密碼，使用 username 作為預設密碼
+                password = data.get('username', 'password123')
+            # 確保密碼不會被包含在 defaults 中
+            if 'password' in data:
+                del data['password']
+
         # 執行創建或更新
         if lookup and not dry_run:
             obj, created = model.objects.update_or_create(
                 defaults=data,
                 **lookup
             )
+            # 如果是 CustomUser，設置密碼
+            if is_custom_user and password and obj:
+                obj.set_password(password)
+                obj.save()
         elif lookup and dry_run:
             # Dry run 模式：檢查是否存在
             exists = model.objects.filter(**lookup).exists()
@@ -216,8 +237,16 @@ class Command(BaseCommand):
                 created = True
                 obj = None
             else:
-                obj = model.objects.create(**data)
-                created = True
+                # 如果是 CustomUser，使用 create_user 方法來正確處理密碼
+                if is_custom_user and password:
+                    obj = CustomUser.objects.create_user(
+                        password=password,
+                        **data
+                    )
+                    created = True
+                else:
+                    obj = model.objects.create(**data)
+                    created = True
 
         # 保存到 created_objects 以便後續引用
         if obj:
@@ -231,19 +260,25 @@ class Command(BaseCommand):
                 key = str(obj.pk)
             created_objects[model_key][key] = obj
 
-        # 輸出結果
+        # 輸出結果（包含密碼資訊）
         if created:
             action = '創建' if not dry_run else '將創建'
             display_name = self.get_display_name(model, data)
+            message = f'  ✓ {action}: {display_name}'
+            if is_custom_user and password and not dry_run:
+                message += f' (密碼: {password})'
             self.stdout.write(
-                self.style.SUCCESS(f'  ✓ {action}: {display_name}')
+                self.style.SUCCESS(message)
             )
             return 'created'
         else:
             action = '更新' if not dry_run else '將更新'
             display_name = self.get_display_name(model, data)
+            message = f'  ↻ {action}: {display_name}'
+            if is_custom_user and password and not dry_run:
+                message += f' (密碼已更新: {password})'
             self.stdout.write(
-                self.style.WARNING(f'  ↻ {action}: {display_name}')
+                self.style.WARNING(message)
             )
             return 'updated'
 

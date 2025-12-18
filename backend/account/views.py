@@ -9,6 +9,10 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 import json
 import time
+import os
+import logging
+
+logger = logging.getLogger(__name__)
 # from .models import CustomUser
 from .serializers import (
     CustomUserSerializer, RoleSerializer, RolePermissionSerializer,
@@ -239,6 +243,19 @@ def login_view(request):
     """
     用戶登入，返回 JWT token
     """
+    # #region agent log
+    log_path = '/home/akira/github/9Jang/.cursor/debug.log'
+    try:
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        log_entry = {'sessionId': 'debug-session', 'runId': 'run1', 'hypothesisId': 'A,B,D', 'location': 'account/views.py:242', 'message': 'Login view entry', 'data': {'email_param': str(request.data.get('email')), 'has_password': bool(request.data.get('password'))}, 'timestamp': int(time.time() * 1000)}
+        with open(log_path, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(log_entry, ensure_ascii=False) + '\n')
+            f.flush()
+        logger.debug(f"Login attempt: email={request.data.get('email')}")
+    except Exception as log_err:
+        logger.error(f"Failed to write log: {log_err}", exc_info=True)
+    # #endregion agent log
+    
     email = request.data.get('email')
     password = request.data.get('password')
     
@@ -251,18 +268,67 @@ def login_view(request):
     # 嘗試使用 email 或 username 登入
     user = None
     try:
+        # #region agent log
+        try:
+            with open(log_path, 'a', encoding='utf-8') as f:
+                f.write(json.dumps({'sessionId': 'debug-session', 'runId': 'run1', 'hypothesisId': 'A', 'location': 'account/views.py:254', 'message': 'Before email lookup', 'data': {'email': str(email)}, 'timestamp': int(time.time() * 1000)}) + '\n')
+        except: pass
+        # #endregion agent log
+        
         # 先嘗試用 email 查找用戶
         user_obj = CustomUser.objects.filter(email=email).first()
+        
+        # #region agent log
+        try:
+            with open(log_path, 'a', encoding='utf-8') as f:
+                f.write(json.dumps({'sessionId': 'debug-session', 'runId': 'run1', 'hypothesisId': 'A', 'location': 'account/views.py:256', 'message': 'Email lookup result', 'data': {'found_by_email': bool(user_obj), 'username_if_found': str(user_obj.username) if user_obj else None, 'user_id_if_found': user_obj.id if user_obj else None, 'is_active_if_found': user_obj.is_active if user_obj else None}, 'timestamp': int(time.time() * 1000)}) + '\n')
+        except: pass
+        # #endregion agent log
+        
         if user_obj:
             user = authenticate(request, username=user_obj.username, password=password)
+            # #region agent log
+            try:
+                with open(log_path, 'a', encoding='utf-8') as f:
+                    f.write(json.dumps({'sessionId': 'debug-session', 'runId': 'run1', 'hypothesisId': 'B', 'location': 'account/views.py:258', 'message': 'Authenticate by email path', 'data': {'authenticated': bool(user), 'username_used': str(user_obj.username)}, 'timestamp': int(time.time() * 1000)}) + '\n')
+            except: pass
+            # #endregion agent log
         else:
             # 如果 email 不存在，嘗試用 username
+            # #region agent log
+            try:
+                username_exists = CustomUser.objects.filter(username=email).exists()
+                with open(log_path, 'a', encoding='utf-8') as f:
+                    f.write(json.dumps({'sessionId': 'debug-session', 'runId': 'run1', 'hypothesisId': 'A', 'location': 'account/views.py:260', 'message': 'Before username lookup', 'data': {'username': str(email), 'username_exists': username_exists}, 'timestamp': int(time.time() * 1000)}) + '\n')
+            except: pass
+            # #endregion agent log
+            
             user = authenticate(request, username=email, password=password)
+            
+            # #region agent log
+            try:
+                with open(log_path, 'a', encoding='utf-8') as f:
+                    f.write(json.dumps({'sessionId': 'debug-session', 'runId': 'run1', 'hypothesisId': 'B', 'location': 'account/views.py:261', 'message': 'Authenticate by username path', 'data': {'authenticated': bool(user), 'username_used': str(email)}, 'timestamp': int(time.time() * 1000)}) + '\n')
+            except: pass
+            # #endregion agent log
     except Exception as e:
+        # #region agent log
+        try:
+            with open(log_path, 'a', encoding='utf-8') as f:
+                f.write(json.dumps({'sessionId': 'debug-session', 'runId': 'run1', 'hypothesisId': 'E', 'location': 'account/views.py:262', 'message': 'Exception during login', 'data': {'exception_type': str(type(e).__name__), 'exception_message': str(e)}, 'timestamp': int(time.time() * 1000)}) + '\n')
+        except: pass
+        # #endregion agent log
         return Response(
             {'detail': '登入失敗'},
             status=status.HTTP_401_UNAUTHORIZED
         )
+    
+    # #region agent log
+    try:
+        with open(log_path, 'a', encoding='utf-8') as f:
+            f.write(json.dumps({'sessionId': 'debug-session', 'runId': 'run1', 'hypothesisId': 'C', 'location': 'account/views.py:267', 'message': 'After authentication check', 'data': {'user_not_none': bool(user is not None), 'user_id': user.id if user else None, 'is_active': user.is_active if user else None, 'username': str(user.username) if user else None}, 'timestamp': int(time.time() * 1000)}) + '\n')
+    except: pass
+    # #endregion agent log
     
     if user is not None:
         if user.is_active:
@@ -302,6 +368,12 @@ def login_view(request):
                 status=status.HTTP_403_FORBIDDEN
             )
     else:
+        # #region agent log
+        try:
+            with open(log_path, 'a', encoding='utf-8') as f:
+                f.write(json.dumps({'sessionId': 'debug-session', 'runId': 'run1', 'hypothesisId': 'B', 'location': 'account/views.py:304', 'message': 'Login failed - user is None', 'data': {'email_param': str(email)}, 'timestamp': int(time.time() * 1000)}) + '\n')
+        except: pass
+        # #endregion agent log
         return Response(
             {'detail': '帳號或密碼錯誤'},
             status=status.HTTP_401_UNAUTHORIZED
