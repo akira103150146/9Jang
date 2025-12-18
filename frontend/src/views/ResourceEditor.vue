@@ -884,6 +884,7 @@ const handlePageDragOver = (event, pageIndex) => {
 
 const handlePageDrop = (event, pageIndex) => {
   event.preventDefault()
+  event.stopPropagation() // 阻止事件冒泡到父元素
   
   if (!draggingBlock.value) {
     // 可能是從側邊欄拖動的題目
