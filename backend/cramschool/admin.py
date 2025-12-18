@@ -3,7 +3,7 @@ from .models import (
     Student, Teacher, Course, StudentEnrollment, EnrollmentPeriod, ExtraFee, 
     SessionRecord, Attendance, Leave, Subject, QuestionBank, Hashtag, QuestionTag,
     StudentAnswer, ErrorLog, Restaurant, GroupOrder, Order, OrderItem,
-    StudentGroup, Quiz, Exam, CourseMaterial, AssessmentSubmission
+    StudentGroup, AssessmentSubmission
 )
 
 @admin.register(Student)
@@ -30,24 +30,6 @@ class StudentGroupAdmin(admin.ModelAdmin):
     list_display = ('name', 'created_by', 'created_at')
     filter_horizontal = ('students',)
 
-@admin.register(Quiz)
-class QuizAdmin(admin.ModelAdmin):
-    list_display = ('title', 'course', 'is_individualized', 'created_by')
-    list_filter = ('is_individualized', 'course')
-    filter_horizontal = ('questions', 'student_groups')
-
-@admin.register(Exam)
-class ExamAdmin(admin.ModelAdmin):
-    list_display = ('title', 'course', 'is_individualized', 'available_from', 'available_until')
-    list_filter = ('is_individualized', 'course')
-    filter_horizontal = ('questions', 'student_groups')
-
-@admin.register(CourseMaterial)
-class CourseMaterialAdmin(admin.ModelAdmin):
-    list_display = ('title', 'course', 'is_individualized', 'created_by')
-    list_filter = ('is_individualized', 'course')
-    filter_horizontal = ('questions', 'student_groups')
-
 @admin.register(QuestionBank)
 class QuestionBankAdmin(admin.ModelAdmin):
     list_display = ('chapter', 'subject', 'difficulty', 'created_by')
@@ -55,7 +37,7 @@ class QuestionBankAdmin(admin.ModelAdmin):
 
 @admin.register(AssessmentSubmission)
 class AssessmentSubmissionAdmin(admin.ModelAdmin):
-    list_display = ('student', 'quiz', 'exam', 'score', 'status', 'submitted_at')
+    list_display = ('student', 'learning_resource', 'score', 'status', 'submitted_at')
     list_filter = ('status',)
 
 # Register other models with default configuration

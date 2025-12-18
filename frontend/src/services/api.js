@@ -764,44 +764,6 @@ export const studentGroupAPI = {
   removeStudents: (id, studentIds) => api.post(`/cramschool/student-groups/${id}/remove-students/`, { student_ids: studentIds })
 }
 
-// Quiz API
-export const quizAPI = {
-  getAll: (params = {}) => {
-    const query = new URLSearchParams(params).toString()
-    return api.get(`/cramschool/quizzes/?${query}`)
-  },
-  getById: (id) => api.get(`/cramschool/quizzes/${id}/`),
-  create: (data) => api.post('/cramschool/quizzes/', data),
-  update: (id, data) => api.put(`/cramschool/quizzes/${id}/`, data),
-  delete: (id) => api.delete(`/cramschool/quizzes/${id}/`),
-  submit: (id, data) => api.post(`/cramschool/quizzes/${id}/submit/`, data)
-}
-
-// Exam API
-export const examAPI = {
-  getAll: (params = {}) => {
-    const query = new URLSearchParams(params).toString()
-    return api.get(`/cramschool/exams/?${query}`)
-  },
-  getById: (id) => api.get(`/cramschool/exams/${id}/`),
-  create: (data) => api.post('/cramschool/exams/', data),
-  update: (id, data) => api.put(`/cramschool/exams/${id}/`, data),
-  delete: (id) => api.delete(`/cramschool/exams/${id}/`),
-  submit: (id, data) => api.post(`/cramschool/exams/${id}/submit/`, data)
-}
-
-// CourseMaterial API
-export const courseMaterialAPI = {
-  getAll: (params = {}) => {
-    const query = new URLSearchParams(params).toString()
-    return api.get(`/cramschool/materials/?${query}`)
-  },
-  getById: (id) => api.get(`/cramschool/materials/${id}/`),
-  create: (data) => api.post('/cramschool/materials/', data),
-  update: (id, data) => api.put(`/cramschool/materials/${id}/`, data),
-  delete: (id) => api.delete(`/cramschool/materials/${id}/`)
-}
-
 // ContentTemplate API
 export const contentTemplateAPI = {
   getAll: (params = {}) => {
@@ -814,7 +776,7 @@ export const contentTemplateAPI = {
   delete: (id) => api.delete(`/cramschool/templates/${id}/`)
 }
 
-// LearningResource API
+// LearningResource API - 統一的教學資源管理 API
 export const learningResourceAPI = {
   getAll: (params = {}) => {
     const query = new URLSearchParams(params).toString()
@@ -830,11 +792,7 @@ export const learningResourceAPI = {
 
 // Generation API
 export const generationAPI = {
-  generateResource: (data) => api.post('/cramschool/generate-resource/', data),
-  // 保留舊的 API 以向後兼容（可選，未來可移除）
-  generateQuiz: (data) => api.post('/cramschool/generate-quiz/', data),
-  generateExam: (data) => api.post('/cramschool/generate-exam/', data),
-  generateMaterial: (data) => api.post('/cramschool/generate-material/', data)
+  generateResource: (data) => api.post('/cramschool/generate-resource/', data)
 }
 
 // Role Switch API

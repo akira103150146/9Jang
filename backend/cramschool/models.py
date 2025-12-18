@@ -826,7 +826,7 @@ class QuestionTag(models.Model):
 
 class AssessmentSubmission(models.Model):
     """
-    測驗/考卷提交記錄模型
+    教學資源提交記錄模型（統一處理測驗、考卷等提交）
     """
     STATUS_CHOICES = [
         ('Pending', 'Pending'),
@@ -840,21 +840,13 @@ class AssessmentSubmission(models.Model):
         related_name='submissions',
         verbose_name='學生'
     )
-    quiz = models.ForeignKey(
-        'Quiz',
+    learning_resource = models.ForeignKey(
+        'LearningResource',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='submissions',
-        verbose_name='測驗'
-    )
-    exam = models.ForeignKey(
-        'Exam',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='submissions',
-        verbose_name='考卷'
+        verbose_name='教學資源'
     )
     score = models.DecimalField(
         max_digits=5,
@@ -871,8 +863,8 @@ class AssessmentSubmission(models.Model):
     submitted_at = models.DateTimeField(auto_now_add=True, verbose_name='提交時間')
 
     class Meta:
-        verbose_name = '測驗提交'
-        verbose_name_plural = '測驗提交'
+        verbose_name = '教學資源提交'
+        verbose_name_plural = '教學資源提交'
         ordering = ['-submitted_at']
 
     def __str__(self):
@@ -1364,12 +1356,10 @@ class LearningResource(models.Model):
         default='HANDOUT',
         verbose_name='模式類型'
     )
-    course = models.ForeignKey(
+    courses = models.ManyToManyField(
         'Course',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
         related_name='learning_resources',
+        blank=True,
         verbose_name='所屬課程'
     )
     student_groups = models.ManyToManyField(
@@ -1418,158 +1408,3 @@ class LearningResource(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.get_mode_display()})"
-
-
-class Quiz(models.Model):
-    """
-    Quiz 模型
-    用於建立小測驗
-    """
-    quiz_id = models.AutoField(primary_key=True, verbose_name='Quiz ID')
-    title = models.CharField(max_length=200, verbose_name='標題')
-    course = models.ForeignKey(
-        Course,
-        on_delete=models.CASCADE,
-        related_name='quizzes',
-        verbose_name='課程'
-    )
-    questions = models.ManyToManyField(
-        QuestionBank,
-        related_name='quizzes',
-        verbose_name='題目'
-    )
-    student_groups = models.ManyToManyField(
-        StudentGroup,
-        related_name='quizzes',
-        blank=True,
-        verbose_name='學生群組'
-    )
-    is_individualized = models.BooleanField(
-        default=False,
-        verbose_name='是否為個別化測驗'
-    )
-    created_by = models.ForeignKey(
-        CustomUser,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='created_quizzes',
-        verbose_name='建立者'
-    )
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='建立時間')
-    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新時間')
-
-    class Meta:
-        verbose_name = 'Quiz'
-        verbose_name_plural = 'Quizzes'
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return f"{self.title} - {self.course.course_name}"
-
-
-class Exam(models.Model):
-    """
-    考卷模型
-    支援個別化教學，可以設定特定學生群組可見
-    """
-    exam_id = models.AutoField(primary_key=True, verbose_name='考卷ID')
-    title = models.CharField(max_length=200, verbose_name='標題')
-    course = models.ForeignKey(
-        Course,
-        on_delete=models.CASCADE,
-        related_name='exams',
-        verbose_name='課程'
-    )
-    questions = models.ManyToManyField(
-        QuestionBank,
-        related_name='exams',
-        verbose_name='題目'
-    )
-    student_groups = models.ManyToManyField(
-        StudentGroup,
-        related_name='exams',
-        blank=True,
-        verbose_name='學生群組'
-    )
-    is_individualized = models.BooleanField(
-        default=False,
-        verbose_name='是否為個別化考卷'
-    )
-    created_by = models.ForeignKey(
-        CustomUser,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='created_exams',
-        verbose_name='建立者'
-    )
-    available_from = models.DateTimeField(
-        null=True,
-        blank=True,
-        verbose_name='開放時間'
-    )
-    available_until = models.DateTimeField(
-        null=True,
-        blank=True,
-        verbose_name='截止時間'
-    )
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='建立時間')
-    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新時間')
-
-    class Meta:
-        verbose_name = '考卷'
-        verbose_name_plural = '考卷'
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return f"{self.title} - {self.course.course_name}"
-
-
-class CourseMaterial(models.Model):
-    """
-    上課講義模型
-    """
-    material_id = models.AutoField(primary_key=True, verbose_name='講義ID')
-    title = models.CharField(max_length=200, verbose_name='標題')
-    course = models.ForeignKey(
-        Course,
-        on_delete=models.CASCADE,
-        related_name='materials',
-        verbose_name='課程'
-    )
-    content = models.TextField(verbose_name='講義內容 (Markdown + LaTeX)')
-    questions = models.ManyToManyField(
-        QuestionBank,
-        related_name='materials',
-        blank=True,
-        verbose_name='引用的題目'
-    )
-    student_groups = models.ManyToManyField(
-        StudentGroup,
-        related_name='materials',
-        blank=True,
-        verbose_name='學生群組'
-    )
-    is_individualized = models.BooleanField(
-        default=False,
-        verbose_name='是否為個別化講義'
-    )
-    created_by = models.ForeignKey(
-        CustomUser,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='created_materials',
-        verbose_name='建立者'
-    )
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='建立時間')
-    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新時間')
-
-    class Meta:
-        verbose_name = '上課講義'
-        verbose_name_plural = '上課講義'
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return f"{self.title} - {self.course.course_name}"

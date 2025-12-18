@@ -333,15 +333,6 @@
                     "name": "高職英文",
                     "code": "ENG_VOCATIONAL"
                 }
-            },
-            {
-                "lookup_fields": [
-                    "name"
-                ],
-                "data": {
-                    "name": "國文",
-                    "code": "CHI"
-                }
             }
         ],
         "cramschool.Course": [

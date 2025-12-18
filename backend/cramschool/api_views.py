@@ -20,7 +20,7 @@ from .models import (
     Student, Teacher, Course, StudentEnrollment, EnrollmentPeriod, ExtraFee, 
     SessionRecord, Attendance, Leave, Subject, QuestionBank, Hashtag, QuestionTag,
     StudentAnswer, ErrorLog, Restaurant, GroupOrder, Order, OrderItem,
-    StudentGroup, Quiz, Exam, CourseMaterial, AssessmentSubmission,
+    StudentGroup, AssessmentSubmission,
     ContentTemplate, LearningResource, StudentMistakeNote, StudentMistakeNoteImage, ErrorLogImage
 )
 
@@ -33,7 +33,7 @@ from .serializers import (
     StudentAnswerSerializer, ErrorLogSerializer,
     StudentMistakeNoteImageSerializer, ErrorLogImageSerializer,
     RestaurantSerializer, GroupOrderSerializer, OrderSerializer, OrderItemSerializer,
-    StudentGroupSerializer, QuizSerializer, ExamSerializer, CourseMaterialSerializer,
+    StudentGroupSerializer,
     ContentTemplateSerializer, LearningResourceSerializer, StudentMistakeNoteSerializer
 )
 
@@ -2879,1074 +2879,6 @@ class StudentGroupViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class QuizViewSet(viewsets.ModelViewSet):
-    """
-    提供 Quiz 模型 CRUD 操作的 API 視圖集
-    """
-    queryset = Quiz.objects.select_related('course', 'created_by').prefetch_related(
-        Prefetch('questions', queryset=QuestionBank.objects.select_related('subject')),
-        'student_groups__students'
-    ).all()
-    serializer_class = QuizSerializer
-    permission_classes = [IsAuthenticated]
-    
-    def get_serializer_class(self):
-        if self.action == 'retrieve':
-            from .serializers import QuizDetailSerializer
-            return QuizDetailSerializer
-        return self.serializer_class
-
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        context['request'] = self.request
-        return context
-    
-    def get_queryset(self):
-        """
-        根據用戶角色過濾 Quiz
-        """
-        queryset = super().get_queryset()
-        
-        # 如果用戶未認證，返回空查詢集
-        if not self.request.user.is_authenticated:
-            return queryset.none()
-        
-        # 支援 course query param 篩選
-        course_id = self.request.query_params.get('course')
-        if course_id:
-            try:
-                queryset = queryset.filter(course_id=int(course_id))
-            except (ValueError, TypeError):
-                pass
-        
-        # 管理員：可以看到所有 Quiz
-        if self.request.user.is_admin():
-            return queryset
-        
-        # 老師：只能看到自己課程的 Quiz
-        if self.request.user.is_teacher():
-            try:
-                teacher = self.request.user.teacher_profile
-                teacher_course_ids = Course.objects.filter(teacher=teacher).values_list('course_id', flat=True)
-                queryset = queryset.filter(course_id__in=teacher_course_ids)
-                return queryset
-            except Teacher.DoesNotExist:
-                return queryset.none()
-        
-        # 學生只能看到自己報名課程的 Quiz，且符合群組可見性
-        if self.request.user.is_student():
-            try:
-                student = self.request.user.student_profile
-                enrolled_course_ids = StudentEnrollment.objects.filter(
-                    student=student,
-                    is_active=True,
-                    is_deleted=False
-                ).values_list('course_id', flat=True)
-                
-                queryset = queryset.filter(course_id__in=enrolled_course_ids)
-                
-                # 過濾個別化測驗
-                queryset = queryset.filter(
-                    Q(is_individualized=False) |
-                    Q(student_groups__students=student)
-                ).distinct()
-                
-                return queryset
-            except Student.DoesNotExist:
-                return queryset.none()
-        
-        # 會計看不到 Quiz
-        if self.request.user.is_accountant():
-            return queryset.none()
-        
-        return queryset.none()
-    
-    def create(self, request, *args, **kwargs):
-        """
-        創建 Quiz：檢查課程是否屬於自己（老師）或管理員
-        """
-        user = request.user
-        if not user.is_authenticated:
-            return Response(
-                {'detail': '需要登入'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        course = serializer.validated_data.get('course')
-        if user.is_teacher() and not user.is_admin():
-            if not course:
-                return Response(
-                    {'detail': '老師建立測驗時必須指定課程'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            try:
-                teacher = user.teacher_profile
-                if course.teacher != teacher:
-                    return Response(
-                        {'detail': '只能在自己課程下創建測驗'},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
-            except Teacher.DoesNotExist:
-                return Response(
-                    {'detail': '找不到老師資料'},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-        
-        return super().create(request, *args, **kwargs)
-    
-    def update(self, request, *args, **kwargs):
-        """
-        更新 Quiz：檢查課程是否屬於自己（老師）或管理員
-        """
-        instance = self.get_object()
-        user = request.user
-        
-        if not user.is_authenticated:
-            return Response(
-                {'detail': '需要登入'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        
-        if user.is_teacher() and not user.is_admin():
-            if instance.course:
-                try:
-                    teacher = user.teacher_profile
-                    if instance.course.teacher != teacher:
-                        return Response(
-                            {'detail': '只能編輯自己課程的測驗'},
-                            status=status.HTTP_403_FORBIDDEN
-                        )
-                except Teacher.DoesNotExist:
-                    return Response(
-                        {'detail': '找不到老師資料'},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
-        
-        return super().update(request, *args, **kwargs)
-    
-    def partial_update(self, request, *args, **kwargs):
-        """
-        部分更新 Quiz：檢查課程是否屬於自己（老師）或管理員
-        """
-        instance = self.get_object()
-        user = request.user
-        
-        if not user.is_authenticated:
-            return Response(
-                {'detail': '需要登入'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        
-        if user.is_teacher() and not user.is_admin():
-            if instance.course:
-                try:
-                    teacher = user.teacher_profile
-                    if instance.course.teacher != teacher:
-                        return Response(
-                            {'detail': '只能編輯自己課程的測驗'},
-                            status=status.HTTP_403_FORBIDDEN
-                        )
-                except Teacher.DoesNotExist:
-                    return Response(
-                        {'detail': '找不到老師資料'},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
-        
-        return super().partial_update(request, *args, **kwargs)
-    
-    def destroy(self, request, *args, **kwargs):
-        """
-        刪除 Quiz：檢查課程是否屬於自己（老師）或管理員
-        """
-        instance = self.get_object()
-        user = request.user
-        
-        if not user.is_authenticated:
-            return Response(
-                {'detail': '需要登入'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        
-        if user.is_teacher() and not user.is_admin():
-            if instance.course:
-                try:
-                    teacher = user.teacher_profile
-                    if instance.course.teacher != teacher:
-                        return Response(
-                            {'detail': '只能刪除自己課程的測驗'},
-                            status=status.HTTP_403_FORBIDDEN
-                        )
-                except Teacher.DoesNotExist:
-                    return Response(
-                        {'detail': '找不到老師資料'},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
-        
-        return super().destroy(request, *args, **kwargs)
-
-    @action(detail=True, methods=['post'])
-    def submit(self, request, pk=None):
-        """
-        提交測驗作答
-        request.data: {
-            'answers': [
-                {'question_id': 1, 'answer_text': 'A', 'image_path': 'path/to/image.jpg'}
-            ]
-        }
-        """
-        if not request.user.is_authenticated or not request.user.is_student():
-            return Response({'detail': '只有學生可以提交測驗'}, status=status.HTTP_403_FORBIDDEN)
-            
-        try:
-            student = request.user.student_profile
-        except Student.DoesNotExist:
-            return Response({'detail': '找不到學生資料'}, status=status.HTTP_404_NOT_FOUND)
-            
-        quiz = self.get_object()
-        answers_data = request.data.get('answers', [])
-        
-        # 檢查是否已經提交過 (可選：是否允許重複提交)
-        # 這裡假設每次提交都是新的 AssessmentSubmission
-        
-        submission = AssessmentSubmission.objects.create(
-            student=student,
-            quiz=quiz,
-            status='Pending' # 待批改 (或如果有自動批改則設為 Graded)
-        )
-        
-        total_score = 0
-        is_fully_graded = True
-        
-        for ans_data in answers_data:
-            question_id = ans_data.get('question_id')
-            answer_text = ans_data.get('answer_text')
-            image_path = ans_data.get('image_path')
-            
-            try:
-                question = QuestionBank.objects.get(question_id=question_id)
-            except QuestionBank.DoesNotExist:
-                continue
-                
-            is_correct = False
-            # 自動批改邏輯 (僅針對選擇題或簡單填空)
-            # 假設 correct_answer 存的是標準答案
-            if answer_text and question.correct_answer:
-                # 簡單比對 (去除空白與大小寫)
-                if answer_text.strip().lower() == question.correct_answer.strip().lower():
-                    is_correct = True
-                    total_score += 1 # 假設每題1分，或者需要題目分數欄位 (目前沒有，暫定1分)
-            
-            # 創建單題作答記錄
-            StudentAnswer.objects.create(
-                student=student,
-                question=question,
-                test_name=quiz.title,
-                submission=submission,
-                is_correct=is_correct,
-                scanned_file_path=image_path
-            )
-            
-            # 更新錯題本
-            if not is_correct:
-                error_log, created = ErrorLog.objects.get_or_create(
-                    student=student,
-                    question=question,
-                    defaults={'error_count': 1, 'review_status': 'New'}
-                )
-                if not created:
-                    error_log.error_count += 1
-                    error_log.review_status = 'Reviewing'
-                    error_log.save()
-        
-        submission.score = total_score
-        submission.status = 'Graded' # 簡單邏輯：全部自動批改完成
-        submission.save()
-        
-        return Response({
-            'message': '測驗提交成功',
-            'submission_id': submission.submission_id,
-            'score': total_score
-        })
-
-
-class ExamViewSet(viewsets.ModelViewSet):
-    """
-    提供 Exam 模型 CRUD 操作的 API 視圖集
-    支援個別化教學，學生只能看到自己群組的考卷
-    """
-    queryset = Exam.objects.select_related('course', 'created_by').prefetch_related(
-        Prefetch('questions', queryset=QuestionBank.objects.select_related('subject')),
-        'student_groups__students'
-    ).all()
-    serializer_class = ExamSerializer
-    permission_classes = [IsAuthenticated]
-    
-    def get_serializer_class(self):
-        if self.action == 'retrieve':
-            from .serializers import ExamDetailSerializer
-            return ExamDetailSerializer
-        return self.serializer_class
-    
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        context['request'] = self.request
-        return context
-    
-    def get_queryset(self):
-        """
-        根據用戶角色過濾 Exam
-        """
-        queryset = super().get_queryset()
-        
-        # 如果用戶未認證，返回空查詢集
-        if not self.request.user.is_authenticated:
-            return queryset.none()
-        
-        # 支援 course query param 篩選
-        course_id = self.request.query_params.get('course')
-        if course_id:
-            try:
-                queryset = queryset.filter(course_id=int(course_id))
-            except (ValueError, TypeError):
-                pass
-        
-        # 管理員：可以看到所有 Exam
-        if self.request.user.is_admin():
-            return queryset
-        
-        # 老師：只能看到自己課程的 Exam
-        if self.request.user.is_teacher():
-            try:
-                teacher = self.request.user.teacher_profile
-                teacher_course_ids = Course.objects.filter(teacher=teacher).values_list('course_id', flat=True)
-                queryset = queryset.filter(course_id__in=teacher_course_ids)
-                return queryset
-            except Teacher.DoesNotExist:
-                return queryset.none()
-        
-        # 學生只能看到自己報名課程的 Exam，且符合群組可見性
-        if self.request.user.is_student():
-            try:
-                student = self.request.user.student_profile
-                enrolled_course_ids = StudentEnrollment.objects.filter(
-                    student=student,
-                    is_active=True,
-                    is_deleted=False
-                ).values_list('course_id', flat=True)
-                
-                # 過濾課程
-                queryset = queryset.filter(course_id__in=enrolled_course_ids)
-                
-                # 過濾個別化考卷：只顯示學生所屬群組的考卷，或非個別化的考卷
-                queryset = queryset.filter(
-                    Q(is_individualized=False) |  # 非個別化考卷，所有學生可見
-                    Q(student_groups__students=student)  # 個別化考卷，但學生在群組中
-                ).distinct()
-                
-                return queryset
-            except Student.DoesNotExist:
-                return queryset.none()
-        
-        # 會計看不到 Exam
-        if self.request.user.is_accountant():
-            return queryset.none()
-
-        return queryset.none()
-    
-    def create(self, request, *args, **kwargs):
-        """
-        創建 Exam：檢查課程是否屬於自己（老師）或管理員
-        """
-        user = request.user
-        if not user.is_authenticated:
-            return Response(
-                {'detail': '需要登入'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        course = serializer.validated_data.get('course')
-        if user.is_teacher() and not user.is_admin():
-            if not course:
-                return Response(
-                    {'detail': '老師建立考卷時必須指定課程'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            try:
-                teacher = user.teacher_profile
-                if course.teacher != teacher:
-                    return Response(
-                        {'detail': '只能在自己課程下創建考卷'},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
-            except Teacher.DoesNotExist:
-                return Response(
-                    {'detail': '找不到老師資料'},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-        
-        return super().create(request, *args, **kwargs)
-    
-    def update(self, request, *args, **kwargs):
-        """
-        更新 Exam：檢查課程是否屬於自己（老師）或管理員
-        """
-        instance = self.get_object()
-        user = request.user
-        
-        if not user.is_authenticated:
-            return Response(
-                {'detail': '需要登入'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        
-        if user.is_teacher() and not user.is_admin():
-            if instance.course:
-                try:
-                    teacher = user.teacher_profile
-                    if instance.course.teacher != teacher:
-                        return Response(
-                            {'detail': '只能編輯自己課程的考卷'},
-                            status=status.HTTP_403_FORBIDDEN
-                        )
-                except Teacher.DoesNotExist:
-                    return Response(
-                        {'detail': '找不到老師資料'},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
-        
-        return super().update(request, *args, **kwargs)
-    
-    def partial_update(self, request, *args, **kwargs):
-        """
-        部分更新 Exam：檢查課程是否屬於自己（老師）或管理員
-        """
-        instance = self.get_object()
-        user = request.user
-        
-        if not user.is_authenticated:
-            return Response(
-                {'detail': '需要登入'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        
-        if user.is_teacher() and not user.is_admin():
-            if instance.course:
-                try:
-                    teacher = user.teacher_profile
-                    if instance.course.teacher != teacher:
-                        return Response(
-                            {'detail': '只能編輯自己課程的考卷'},
-                            status=status.HTTP_403_FORBIDDEN
-                        )
-                except Teacher.DoesNotExist:
-                    return Response(
-                        {'detail': '找不到老師資料'},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
-        
-        return super().partial_update(request, *args, **kwargs)
-    
-    def destroy(self, request, *args, **kwargs):
-        """
-        刪除 Exam：檢查課程是否屬於自己（老師）或管理員
-        """
-        instance = self.get_object()
-        user = request.user
-        
-        if not user.is_authenticated:
-            return Response(
-                {'detail': '需要登入'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        
-        if user.is_teacher() and not user.is_admin():
-            if instance.course:
-                try:
-                    teacher = user.teacher_profile
-                    if instance.course.teacher != teacher:
-                        return Response(
-                            {'detail': '只能刪除自己課程的考卷'},
-                            status=status.HTTP_403_FORBIDDEN
-                        )
-                except Teacher.DoesNotExist:
-                    return Response(
-                        {'detail': '找不到老師資料'},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
-        
-        return super().destroy(request, *args, **kwargs)
-
-    @action(detail=True, methods=['post'])
-    def submit(self, request, pk=None):
-        """
-        提交考卷作答
-        """
-        if not request.user.is_authenticated or not request.user.is_student():
-            return Response({'detail': '只有學生可以提交考卷'}, status=status.HTTP_403_FORBIDDEN)
-            
-        try:
-            student = request.user.student_profile
-        except Student.DoesNotExist:
-            return Response({'detail': '找不到學生資料'}, status=status.HTTP_404_NOT_FOUND)
-            
-        exam = self.get_object()
-        answers_data = request.data.get('answers', [])
-        
-        submission = AssessmentSubmission.objects.create(
-            student=student,
-            exam=exam,
-            status='Pending'
-        )
-        
-        total_score = 0
-        
-        for ans_data in answers_data:
-            question_id = ans_data.get('question_id')
-            answer_text = ans_data.get('answer_text')
-            image_path = ans_data.get('image_path')
-            
-            try:
-                question = QuestionBank.objects.get(question_id=question_id)
-            except QuestionBank.DoesNotExist:
-                continue
-                
-            is_correct = False
-            if answer_text and question.correct_answer:
-                if answer_text.strip().lower() == question.correct_answer.strip().lower():
-                    is_correct = True
-                    total_score += 1
-            
-            StudentAnswer.objects.create(
-                student=student,
-                question=question,
-                test_name=exam.title,
-                submission=submission,
-                is_correct=is_correct,
-                scanned_file_path=image_path
-            )
-            
-            if not is_correct:
-                error_log, created = ErrorLog.objects.get_or_create(
-                    student=student,
-                    question=question,
-                    defaults={'error_count': 1, 'review_status': 'New'}
-                )
-                if not created:
-                    error_log.error_count += 1
-                    error_log.review_status = 'Reviewing'
-                    error_log.save()
-        
-        submission.score = total_score
-        submission.status = 'Graded'
-        submission.save()
-        
-        return Response({
-            'message': '考卷提交成功',
-            'submission_id': submission.submission_id,
-            'score': total_score
-        })
-
-
-class CourseMaterialViewSet(viewsets.ModelViewSet):
-    """
-    提供 CourseMaterial 模型 CRUD 操作的 API 視圖集
-    """
-    queryset = CourseMaterial.objects.select_related('course', 'created_by').prefetch_related(
-        Prefetch('questions', queryset=QuestionBank.objects.select_related('subject'))
-    ).all()
-    serializer_class = CourseMaterialSerializer
-    permission_classes = [IsAuthenticated]
-    
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        context['request'] = self.request
-        return context
-    
-    def get_queryset(self):
-        """
-        根據用戶角色過濾 CourseMaterial
-        """
-        queryset = super().get_queryset()
-
-        # 如果用戶未認證，返回空查詢集
-        if not self.request.user.is_authenticated:
-            return queryset.none()
-
-        # 支援 course query param 篩選
-        course_id = self.request.query_params.get('course')
-        if course_id:
-            try:
-                queryset = queryset.filter(course_id=int(course_id))
-            except (ValueError, TypeError):
-                pass
-
-        # 管理員：可以看到所有 CourseMaterial
-        if self.request.user.is_admin():
-            return queryset
-
-        # 老師：只能看到自己課程的 CourseMaterial
-        if self.request.user.is_teacher():
-            try:
-                teacher = self.request.user.teacher_profile
-                teacher_course_ids = Course.objects.filter(teacher=teacher).values_list('course_id', flat=True)
-                queryset = queryset.filter(course_id__in=teacher_course_ids)
-                return queryset
-            except Teacher.DoesNotExist:
-                return queryset.none()
-
-        # 學生只能看到自己報名課程的講義
-        if self.request.user.is_student():
-            try:
-                student = self.request.user.student_profile
-                enrolled_course_ids = StudentEnrollment.objects.filter(
-                    student=student,
-                    is_active=True,
-                    is_deleted=False
-                ).values_list('course_id', flat=True)
-
-                queryset = queryset.filter(course_id__in=enrolled_course_ids)
-
-                # 過濾個別化講義
-                queryset = queryset.filter(
-                    Q(is_individualized=False) |
-                    Q(student_groups__students=student)
-                ).distinct()
-
-                return queryset
-            except Student.DoesNotExist:
-                return queryset.none()
-
-        # 會計看不到 CourseMaterial
-        if self.request.user.is_accountant():
-            return queryset.none()
-
-        return queryset.none()
-    
-    def create(self, request, *args, **kwargs):
-        """
-        創建 CourseMaterial：檢查課程是否屬於自己（老師）或管理員
-        """
-        user = request.user
-        if not user.is_authenticated:
-            return Response(
-                {'detail': '需要登入'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        course = serializer.validated_data.get('course')
-        if user.is_teacher() and not user.is_admin():
-            # 老師建立時必填 course（MVP 先禁止無課程公開資源）
-            if not course:
-                return Response(
-                    {'detail': '老師建立講義時必須指定課程'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            # 老師只能在自己課程下創建
-            try:
-                teacher = user.teacher_profile
-                if course.teacher != teacher:
-                    return Response(
-                        {'detail': '只能在自己課程下創建講義'},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
-            except Teacher.DoesNotExist:
-                return Response(
-                    {'detail': '找不到老師資料'},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-        
-        serializer.save(created_by=user)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-    
-    def update(self, request, *args, **kwargs):
-        """
-        更新 CourseMaterial：檢查課程是否屬於自己（老師）或管理員
-        """
-        instance = self.get_object()
-        user = request.user
-        
-        if not user.is_authenticated:
-            return Response(
-                {'detail': '需要登入'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        
-        if user.is_teacher() and not user.is_admin():
-            if instance.course:
-                try:
-                    teacher = user.teacher_profile
-                    if instance.course.teacher != teacher:
-                        return Response(
-                            {'detail': '只能編輯自己課程的講義'},
-                            status=status.HTTP_403_FORBIDDEN
-                        )
-                except Teacher.DoesNotExist:
-                    return Response(
-                        {'detail': '找不到老師資料'},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
-        
-        return super().update(request, *args, **kwargs)
-    
-    def partial_update(self, request, *args, **kwargs):
-        """
-        部分更新 CourseMaterial：檢查課程是否屬於自己（老師）或管理員
-        """
-        instance = self.get_object()
-        user = request.user
-        
-        if not user.is_authenticated:
-            return Response(
-                {'detail': '需要登入'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        
-        if user.is_teacher() and not user.is_admin():
-            if instance.course:
-                try:
-                    teacher = user.teacher_profile
-                    if instance.course.teacher != teacher:
-                        return Response(
-                            {'detail': '只能編輯自己課程的講義'},
-                            status=status.HTTP_403_FORBIDDEN
-                        )
-                except Teacher.DoesNotExist:
-                    return Response(
-                        {'detail': '找不到老師資料'},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
-        
-        return super().partial_update(request, *args, **kwargs)
-    
-    def destroy(self, request, *args, **kwargs):
-        """
-        刪除 CourseMaterial：檢查課程是否屬於自己（老師）或管理員
-        """
-        instance = self.get_object()
-        user = request.user
-        
-        if not user.is_authenticated:
-            return Response(
-                {'detail': '需要登入'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        
-        if user.is_teacher() and not user.is_admin():
-            if instance.course:
-                try:
-                    teacher = user.teacher_profile
-                    if instance.course.teacher != teacher:
-                        return Response(
-                            {'detail': '只能刪除自己課程的講義'},
-                            status=status.HTTP_403_FORBIDDEN
-                        )
-                except Teacher.DoesNotExist:
-                    return Response(
-                        {'detail': '找不到老師資料'},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
-        
-        return super().destroy(request, *args, **kwargs)
-
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def generate_resource(request):
-    """
-    統一的資源生成 API
-    根據模式和篩選條件生成教學資源的結構化資料
-    """
-    from cramschool.resource_modes import ModeRegistry
-    
-    # 獲取基本參數
-    mode = request.data.get('mode', 'HANDOUT')
-    title = request.data.get('title', '自動生成的資源')
-    
-    # 獲取篩選條件
-    subject_id = request.data.get('subject_id')
-    level = request.data.get('level')
-    chapter = request.data.get('chapter')
-    difficulty = request.data.get('difficulty')
-    tag_ids = request.data.get('tag_ids', [])
-    source = request.data.get('source')
-    course_id = request.data.get('course_id')
-    
-    # 獲取模式特定參數
-    is_individualized = request.data.get('is_individualized', False)
-    student_group_ids = request.data.get('student_group_ids', [])
-    template_id = request.data.get('template_id')
-    
-    # 建立查詢
-    queryset = QuestionBank.objects.select_related('subject').prefetch_related('tags__tag').all()
-    
-    if subject_id:
-        queryset = queryset.filter(subject_id=subject_id)
-    if level:
-        queryset = queryset.filter(level=level)
-    if chapter:
-        queryset = queryset.filter(chapter__icontains=chapter)
-    if difficulty:
-        try:
-            queryset = queryset.filter(difficulty=int(difficulty))
-        except ValueError:
-            pass
-    if tag_ids:
-        queryset = queryset.filter(tags__tag_id__in=tag_ids).distinct()
-    if source:
-        queryset = queryset.filter(source=source)
-    
-    # 根據模式決定題目數量限制
-    if mode == 'ONLINE_QUIZ':
-        questions = queryset[:50]  # 線上測驗最多50題
-    else:
-        questions = queryset[:100]  # 講義模式最多100題
-    
-    # 生成結構化資料
-    question_data = []
-    for q in questions:
-        question_data.append({
-            'question_id': q.question_id,
-            'subject': q.subject.name if q.subject else None,
-            'level': q.get_level_display(),
-            'chapter': q.chapter,
-            'content': q.content,
-            'correct_answer': q.correct_answer,
-            'difficulty': q.difficulty,
-            'question_type': q.question_type,
-            'options': q.options,
-            'tags': [qt.tag.tag_name for qt in q.tags.all()]
-        })
-    
-    # 構建結構
-    structure = []
-    id_counter = 1
-    
-    # 如果有選擇 Template，先插入 Template 區塊
-    if template_id:
-        structure.append({
-            'id': id_counter,
-            'type': 'template',
-            'template_id': template_id
-        })
-        id_counter += 1
-    
-    # 添加題目區塊
-    for question in question_data:
-        structure.append({
-            'id': id_counter,
-            'type': 'question',
-            'question_id': question['question_id']
-        })
-        id_counter += 1
-    
-    response_data = {
-        'title': title,
-        'mode': mode,
-        'course_id': course_id,
-        'questions': question_data,
-        'structure': structure,
-        'total_count': len(question_data)
-    }
-    
-    # 根據模式添加特定參數
-    if mode == 'ONLINE_QUIZ':
-        response_data['is_individualized'] = is_individualized
-        response_data['student_group_ids'] = student_group_ids if is_individualized else []
-    
-    return Response(response_data)
-
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def generate_quiz(request):
-    """
-    根據篩選條件生成 Quiz 的結構化資料
-    """
-    # 獲取篩選條件
-    subject_id = request.data.get('subject_id')
-    level = request.data.get('level')
-    chapter = request.data.get('chapter')
-    difficulty = request.data.get('difficulty')
-    tag_ids = request.data.get('tag_ids', [])
-    source = request.data.get('source')
-    course_id = request.data.get('course_id')
-    title = request.data.get('title', '自動生成的 Quiz')
-    
-    # 建立查詢
-    queryset = QuestionBank.objects.select_related('subject').prefetch_related('tags__tag').all()
-    
-    if subject_id:
-        queryset = queryset.filter(subject_id=subject_id)
-    if level:
-        queryset = queryset.filter(level=level)
-    if chapter:
-        queryset = queryset.filter(chapter__icontains=chapter)
-    if difficulty:
-        try:
-            queryset = queryset.filter(difficulty=int(difficulty))
-        except ValueError:
-            pass
-    if tag_ids:
-        queryset = queryset.filter(tags__tag_id__in=tag_ids).distinct()
-    if source:
-        queryset = queryset.filter(source=source)
-    
-    questions = queryset[:50]  # 限制最多50題
-    
-    # 生成結構化資料
-    question_data = []
-    for q in questions:
-        question_data.append({
-            'question_id': q.question_id,
-            'subject': q.subject.name if q.subject else None,
-            'level': q.get_level_display(),
-            'chapter': q.chapter,
-            'content': q.content,
-            'correct_answer': q.correct_answer,
-            'difficulty': q.difficulty,
-            'tags': [qt.tag.tag_name for qt in q.tags.all()]
-        })
-    
-    return Response({
-        'title': title,
-        'course_id': course_id,
-        'questions': question_data,
-        'total_count': len(question_data)
-    })
-
-
-@api_view(['POST'])
-def generate_exam(request):
-    """
-    根據篩選條件生成 Exam 的結構化資料
-    """
-    # 獲取篩選條件
-    subject_id = request.data.get('subject_id')
-    level = request.data.get('level')
-    chapter = request.data.get('chapter')
-    difficulty = request.data.get('difficulty')
-    tag_ids = request.data.get('tag_ids', [])
-    source = request.data.get('source')
-    course_id = request.data.get('course_id')
-    title = request.data.get('title', '自動生成的考卷')
-    is_individualized = request.data.get('is_individualized', False)
-    student_group_ids = request.data.get('student_group_ids', [])
-    
-    # 建立查詢
-    queryset = QuestionBank.objects.select_related('subject').prefetch_related('tags__tag').all()
-    
-    if subject_id:
-        queryset = queryset.filter(subject_id=subject_id)
-    if level:
-        queryset = queryset.filter(level=level)
-    if chapter:
-        queryset = queryset.filter(chapter__icontains=chapter)
-    if difficulty:
-        try:
-            queryset = queryset.filter(difficulty=int(difficulty))
-        except ValueError:
-            pass
-    if tag_ids:
-        queryset = queryset.filter(tags__tag_id__in=tag_ids).distinct()
-    if source:
-        queryset = queryset.filter(source=source)
-    
-    questions = queryset[:100]  # 限制最多100題
-    
-    # 生成結構化資料
-    question_data = []
-    for q in questions:
-        question_data.append({
-            'question_id': q.question_id,
-            'subject': q.subject.name if q.subject else None,
-            'level': q.get_level_display(),
-            'chapter': q.chapter,
-            'content': q.content,
-            'correct_answer': q.correct_answer,
-            'difficulty': q.difficulty,
-            'tags': [qt.tag.tag_name for qt in q.tags.all()]
-        })
-    
-    return Response({
-        'title': title,
-        'course_id': course_id,
-        'is_individualized': is_individualized,
-        'student_group_ids': student_group_ids,
-        'questions': question_data,
-        'total_count': len(question_data)
-    })
-
-
-@api_view(['POST'])
-def generate_material(request):
-    """
-    根據篩選條件生成 CourseMaterial 的結構化資料
-    """
-    # 獲取篩選條件
-    subject_id = request.data.get('subject_id')
-    level = request.data.get('level')
-    chapter = request.data.get('chapter')
-    difficulty = request.data.get('difficulty')
-    tag_ids = request.data.get('tag_ids', [])
-    source = request.data.get('source')
-    course_id = request.data.get('course_id')
-    title = request.data.get('title', '自動生成的講義')
-    content = request.data.get('content', '')  # 講義內容（Markdown）
-    
-    # 建立查詢（用於引用的題目）
-    queryset = QuestionBank.objects.select_related('subject').prefetch_related('tags__tag').all()
-    
-    if subject_id:
-        queryset = queryset.filter(subject_id=subject_id)
-    if level:
-        queryset = queryset.filter(level=level)
-    if chapter:
-        queryset = queryset.filter(chapter__icontains=chapter)
-    if difficulty:
-        try:
-            queryset = queryset.filter(difficulty=int(difficulty))
-        except ValueError:
-            pass
-    if tag_ids:
-        queryset = queryset.filter(tags__tag_id__in=tag_ids).distinct()
-    if source:
-        queryset = queryset.filter(source=source)
-    
-    questions = queryset[:200]  # 限制最多200題
-    
-    # 生成結構化資料
-    question_data = []
-    for q in questions:
-        question_data.append({
-            'question_id': q.question_id,
-            'subject': q.subject.name if q.subject else None,
-            'level': q.get_level_display(),
-            'chapter': q.chapter,
-            'content': q.content,
-            'correct_answer': q.correct_answer,
-            'difficulty': q.difficulty,
-            'tags': [qt.tag.tag_name for qt in q.tags.all()]
-        })
-    
-    return Response({
-        'title': title,
-        'course_id': course_id,
-        'content': content,
-        'questions': question_data,
-        'total_count': len(question_data)
-    })
-
-
 class ContentTemplateViewSet(viewsets.ModelViewSet):
     """
     提供 ContentTemplate 模型 CRUD 操作的 API 視圖集
@@ -4031,7 +2963,7 @@ class LearningResourceViewSet(viewsets.ModelViewSet):
     """
     提供 LearningResource 模型 CRUD 操作的 API 視圖集
     """
-    queryset = LearningResource.objects.select_related('course', 'created_by').prefetch_related('tags', 'student_groups').all()
+    queryset = LearningResource.objects.prefetch_related('courses', 'tags', 'student_groups').select_related('created_by').all()
     serializer_class = LearningResourceSerializer
     permission_classes = [IsAuthenticated]
 
@@ -4048,11 +2980,11 @@ class LearningResourceViewSet(viewsets.ModelViewSet):
         if user.is_admin():
             return queryset.none()
         
-        # 支援 course query param 篩選
+        # 支援 course query param 篩選 (改為多對多)
         course_id = self.request.query_params.get('course')
         if course_id:
             try:
-                queryset = queryset.filter(course_id=int(course_id))
+                queryset = queryset.filter(courses__course_id=int(course_id))
             except (ValueError, TypeError):
                 pass
         
@@ -4062,8 +2994,8 @@ class LearningResourceViewSet(viewsets.ModelViewSet):
                 teacher = user.teacher_profile
                 teacher_course_ids = Course.objects.filter(teacher=teacher).values_list('course_id', flat=True)
                 queryset = queryset.filter(
-                    Q(course_id__in=teacher_course_ids) | Q(course__isnull=True)
-                )
+                    Q(courses__course_id__in=teacher_course_ids) | ~Q(courses__isnull=False)
+                ).distinct()
                 # 支援模式篩選
                 mode = self.request.query_params.get('mode')
                 if mode:
@@ -4094,11 +3026,11 @@ class LearningResourceViewSet(viewsets.ModelViewSet):
                 
                 queryset = queryset.filter(
                     # 課程匹配
-                    Q(course__in=enrolled_course_ids) |
+                    Q(courses__course_id__in=enrolled_course_ids) |
                     # 群組匹配
                     Q(student_groups__in=student_group_ids) |
                     # 既沒綁課程也沒綁群組 (公開資源?)
-                    (Q(course__isnull=True) & Q(student_groups__isnull=True))
+                    (~Q(courses__isnull=False) & ~Q(student_groups__isnull=False))
                 ).distinct()
                 
                 # 再次過濾模式
@@ -4141,22 +3073,23 @@ class LearningResourceViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
-        course = serializer.validated_data.get('course')
-        if user.is_teacher():
-            # 如果指定了 course，驗證是否為自己的課程
-            if course:
-                try:
-                    teacher = user.teacher_profile
-                    if course.teacher != teacher:
-                        return Response(
-                            {'detail': '只能在自己課程下創建資源'},
-                            status=status.HTTP_403_FORBIDDEN
-                        )
-                except Teacher.DoesNotExist:
+        course_ids = request.data.get('course_ids', [])
+        if user.is_teacher() and course_ids:
+            # 如果指定了 courses，驗證是否都為自己的課程
+            try:
+                teacher = user.teacher_profile
+                teacher_course_ids = Course.objects.filter(teacher=teacher).values_list('course_id', flat=True)
+                invalid_courses = [cid for cid in course_ids if cid not in teacher_course_ids]
+                if invalid_courses:
                     return Response(
-                        {'detail': '找不到老師資料'},
+                        {'detail': f'只能在自己課程下創建資源，無效的課程ID: {invalid_courses}'},
                         status=status.HTTP_403_FORBIDDEN
                     )
+            except Teacher.DoesNotExist:
+                return Response(
+                    {'detail': '找不到老師資料'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
         
         serializer.save(created_by=user)
         headers = self.get_success_headers(serializer.data)
@@ -4234,21 +3167,98 @@ class LearningResourceViewSet(viewsets.ModelViewSet):
             )
         
         if user.is_teacher():
-            if instance.course:
-                try:
-                    teacher = user.teacher_profile
-                    if instance.course.teacher != teacher:
-                        return Response(
-                            {'detail': '只能編輯自己課程的資源'},
-                            status=status.HTTP_403_FORBIDDEN
-                        )
-                except Teacher.DoesNotExist:
+            # 檢查是否為該資源相關課程的老師
+            try:
+                teacher = user.teacher_profile
+                resource_course_ids = instance.courses.values_list('course_id', flat=True)
+                teacher_course_ids = Course.objects.filter(teacher=teacher).values_list('course_id', flat=True)
+                
+                # 如果資源有綁定課程，檢查是否至少有一個是自己的課程
+                if resource_course_ids and not any(cid in teacher_course_ids for cid in resource_course_ids):
                     return Response(
-                        {'detail': '找不到老師資料'},
+                        {'detail': '只能編輯自己課程的資源'},
                         status=status.HTTP_403_FORBIDDEN
                     )
+            except Teacher.DoesNotExist:
+                return Response(
+                    {'detail': '找不到老師資料'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
         
         return super().partial_update(request, *args, **kwargs)
+    
+    @action(detail=True, methods=['post'], url_path='bind-to-course')
+    def bind_to_course(self, request, pk=None):
+        """
+        將教學資源綁定到課程（或從課程解除綁定）
+        
+        請求參數：
+        - course_id: 課程ID
+        - action: 'add' 或 'remove'
+        """
+        resource = self.get_object()
+        user = request.user
+        
+        if not user.is_authenticated:
+            return Response(
+                {'detail': '需要登入'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        if not user.is_teacher():
+            return Response(
+                {'detail': '只有老師可以綁定教學資源到課程'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        course_id = request.data.get('course_id')
+        action_type = request.data.get('action', 'add')
+        
+        if not course_id:
+            return Response(
+                {'detail': '需要提供 course_id'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            course = Course.objects.get(course_id=course_id)
+            teacher = user.teacher_profile
+            
+            # 驗證是否為自己的課程
+            if course.teacher != teacher:
+                return Response(
+                    {'detail': '只能在自己的課程下綁定資源'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            if action_type == 'add':
+                resource.courses.add(course)
+                message = f'已將資源綁定到課程 {course.course_name}'
+            elif action_type == 'remove':
+                resource.courses.remove(course)
+                message = f'已從課程 {course.course_name} 解除綁定'
+            else:
+                return Response(
+                    {'detail': 'action 必須是 add 或 remove'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            return Response({
+                'detail': message,
+                'resource_id': resource.resource_id,
+                'course_ids': list(resource.courses.values_list('course_id', flat=True))
+            }, status=status.HTTP_200_OK)
+            
+        except Course.DoesNotExist:
+            return Response(
+                {'detail': '課程不存在'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Teacher.DoesNotExist:
+            return Response(
+                {'detail': '找不到老師資料'},
+                status=status.HTTP_403_FORBIDDEN
+            )
     
     @action(detail=True, methods=['post'], url_path='export')
     def export(self, request, pk=None):
@@ -4356,3 +3366,108 @@ class LearningResourceViewSet(viewsets.ModelViewSet):
                     )
         
         return super().destroy(request, *args, **kwargs)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def generate_resource(request):
+    """
+    統一的資源生成 API
+    根據模式和篩選條件生成教學資源的結構化資料
+    """
+    from cramschool.resource_modes import ModeRegistry
+    
+    # 獲取基本參數
+    mode = request.data.get('mode', 'HANDOUT')
+    title = request.data.get('title', '自動生成的資源')
+    
+    # 獲取篩選條件
+    subject_id = request.data.get('subject_id')
+    level = request.data.get('level')
+    chapter = request.data.get('chapter')
+    difficulty = request.data.get('difficulty')
+    tag_ids = request.data.get('tag_ids', [])
+    source = request.data.get('source')
+    course_id = request.data.get('course_id')
+    
+    # 獲取模式特定參數
+    is_individualized = request.data.get('is_individualized', False)
+    student_group_ids = request.data.get('student_group_ids', [])
+    template_id = request.data.get('template_id')
+    
+    # 建立查詢
+    queryset = QuestionBank.objects.select_related('subject').prefetch_related('tags__tag').all()
+    
+    if subject_id:
+        queryset = queryset.filter(subject_id=subject_id)
+    if level:
+        queryset = queryset.filter(level=level)
+    if chapter:
+        queryset = queryset.filter(chapter__icontains=chapter)
+    if difficulty:
+        try:
+            queryset = queryset.filter(difficulty=int(difficulty))
+        except ValueError:
+            pass
+    if tag_ids:
+        queryset = queryset.filter(tags__tag_id__in=tag_ids).distinct()
+    if source:
+        queryset = queryset.filter(source=source)
+    
+    # 根據模式決定題目數量限制
+    if mode == 'ONLINE_QUIZ':
+        questions = queryset[:50]  # 線上測驗最多50題
+    else:
+        questions = queryset[:100]  # 講義模式最多100題
+    
+    # 生成結構化資料
+    question_data = []
+    for q in questions:
+        question_data.append({
+            'question_id': q.question_id,
+            'subject': q.subject.name if q.subject else None,
+            'level': q.get_level_display(),
+            'chapter': q.chapter,
+            'content': q.content,
+            'correct_answer': q.correct_answer,
+            'difficulty': q.difficulty,
+            'question_type': q.question_type,
+            'options': q.options,
+            'tags': [qt.tag.tag_name for qt in q.tags.all()]
+        })
+    
+    # 構建結構
+    structure = []
+    id_counter = 1
+    
+    # 如果有選擇 Template，先插入 Template 區塊
+    if template_id:
+        structure.append({
+            'id': id_counter,
+            'type': 'template',
+            'template_id': template_id
+        })
+        id_counter += 1
+    
+    # 添加題目區塊
+    for question in question_data:
+        structure.append({
+            'id': id_counter,
+            'type': 'question',
+            'question_id': question['question_id']
+        })
+        id_counter += 1
+    
+    response_data = {
+        'title': title,
+        'mode': mode,
+        'course_id': course_id,
+        'questions': question_data,
+        'structure': structure,
+        'total_count': len(question_data)
+    }
+    
+    # 根據模式添加特定參數
+    if mode == 'ONLINE_QUIZ':
+        response_data['is_individualized'] = is_individualized
+        response_data['student_group_ids'] = student_group_ids if is_individualized else []
+    
+    return Response(response_data)

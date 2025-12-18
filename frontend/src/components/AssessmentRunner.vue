@@ -124,7 +124,7 @@
 
 <script>
 import { ref, computed, onMounted } from 'vue'
-import { quizAPI, examAPI, uploadImageAPI, getBackendBaseURL } from '../services/api'
+import { learningResourceAPI, uploadImageAPI, getBackendBaseURL } from '../services/api'
 
 export default {
   name: 'AssessmentRunner',
@@ -172,11 +172,9 @@ export default {
       loading.value = true
       try {
         let res
-        if (props.assessmentType === 'quiz') {
-          res = await quizAPI.getById(props.assessmentData.quiz_id)
-        } else {
-          res = await examAPI.getById(props.assessmentData.exam_id)
-        }
+        // 統一使用 learningResourceAPI
+        const resourceId = props.assessmentType === 'quiz' ? props.assessmentData.quiz_id : props.assessmentData.exam_id
+        res = await learningResourceAPI.getById(resourceId)
         questions.value = res.data.questions || []
         initAnswers(questions.value)
       } catch (error) {
@@ -233,10 +231,9 @@ export default {
           answers: Object.values(answers.value)
         }
         
-        const id = props.assessmentType === 'quiz' ? props.assessmentData.quiz_id : props.assessmentData.exam_id
-        const api = props.assessmentType === 'quiz' ? quizAPI : examAPI
-        
-        await api.submit(id, payload)
+        // 統一使用 learningResourceAPI
+        const resourceId = props.assessmentType === 'quiz' ? props.assessmentData.quiz_id : props.assessmentData.exam_id
+        await learningResourceAPI.submit(resourceId, payload)
         
         alert('提交成功！')
         emit('submit')

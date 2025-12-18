@@ -151,7 +151,7 @@
 
 <script>
 import { ref, watch, computed } from 'vue'
-import { courseMaterialAPI, quizAPI, examAPI } from '../services/api'
+import { learningResourceAPI } from '../services/api'
 import AssessmentRunner from './AssessmentRunner.vue'
 
 export default {
@@ -197,20 +197,15 @@ export default {
       try {
         const courseId = props.course.course_id || props.course.id
         
-        // Fetch materials (使用 course query param)
-        const materialsRes = await courseMaterialAPI.getAll({ course: courseId })
-        const materialsData = materialsRes.data.results || materialsRes.data
-        materials.value = Array.isArray(materialsData) ? materialsData : []
-
-        // Fetch quizzes (使用 course query param)
-        const quizzesRes = await quizAPI.getAll({ course: courseId })
-        const quizzesData = quizzesRes.data.results || quizzesRes.data
-        quizzes.value = Array.isArray(quizzesData) ? quizzesData : []
-
-        // Fetch exams (使用 course query param)
-        const examsRes = await examAPI.getAll({ course: courseId })
-        const examsData = examsRes.data.results || examsRes.data
-        exams.value = Array.isArray(examsData) ? examsData : []
+        // 統一使用 learningResourceAPI 獲取所有教學資源
+        const resourcesRes = await learningResourceAPI.getAll({ course: courseId })
+        const resourcesData = resourcesRes.data.results || resourcesRes.data
+        const allResources = Array.isArray(resourcesData) ? resourcesData : []
+        
+        // 根據模式分類資源
+        materials.value = allResources.filter(r => r.mode === 'HANDOUT')
+        quizzes.value = allResources.filter(r => r.mode === 'ONLINE_QUIZ')
+        exams.value = allResources.filter(r => ['LEETCODE', 'LISTENING_TEST', 'FLASHCARD'].includes(r.mode))
       } catch (error) {
         console.error('Error fetching course data:', error)
         materials.value = []

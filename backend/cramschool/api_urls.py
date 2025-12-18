@@ -11,9 +11,9 @@ from .api_views import (
     StudentMistakeNoteViewSet,
     StudentMistakeNoteImageViewSet, ErrorLogImageViewSet,
     RestaurantViewSet, GroupOrderViewSet, OrderViewSet, OrderItemViewSet,
-    StudentGroupViewSet, QuizViewSet, ExamViewSet, CourseMaterialViewSet,
+    StudentGroupViewSet,
     ContentTemplateViewSet, LearningResourceViewSet,
-    upload_image, generate_resource, generate_quiz, generate_exam, generate_material
+    upload_image, generate_resource
 )
 
 # 建立一個 Router 實例
@@ -98,15 +98,6 @@ router.register(r'order-items', OrderItemViewSet)
 # 將 StudentGroupViewSet 註冊到 'student-groups' 這個 URL 前綴下
 router.register(r'student-groups', StudentGroupViewSet)
 
-# 將 QuizViewSet 註冊到 'quizzes' 這個 URL 前綴下
-router.register(r'quizzes', QuizViewSet)
-
-# 將 ExamViewSet 註冊到 'exams' 這個 URL 前綴下
-router.register(r'exams', ExamViewSet)
-
-# 將 CourseMaterialViewSet 註冊到 'materials' 這個 URL 前綴下
-router.register(r'materials', CourseMaterialViewSet)
-
 # 將 ContentTemplateViewSet 註冊到 'templates' 這個 URL 前綴下
 router.register(r'templates', ContentTemplateViewSet)
 
@@ -118,8 +109,4 @@ urlpatterns = [
     path('', include(router.urls)),
     path('upload-image/', upload_image, name='upload-image'),
     path('generate-resource/', generate_resource, name='generate-resource'),
-    # 保留舊的 API 以向後兼容（可選，未來可移除）
-    path('generate-quiz/', generate_quiz, name='generate-quiz'),
-    path('generate-exam/', generate_exam, name='generate-exam'),
-    path('generate-material/', generate_material, name='generate-material'),
 ]

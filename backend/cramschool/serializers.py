@@ -6,7 +6,7 @@ from .models import (
     Student, Teacher, Course, StudentEnrollment, EnrollmentPeriod, ExtraFee, 
     SessionRecord, Attendance, Leave, Subject, QuestionBank, Hashtag, QuestionTag,
     StudentAnswer, ErrorLog, Restaurant, GroupOrder, Order, OrderItem,
-    StudentGroup, Quiz, Exam, CourseMaterial, AssessmentSubmission,
+    StudentGroup, AssessmentSubmission,
     ContentTemplate, LearningResource, StudentMistakeNote, StudentMistakeNoteImage, ErrorLogImage
 )
 
@@ -1035,359 +1035,6 @@ class StudentGroupSerializer(serializers.ModelSerializer):
         return instance
 
 
-class QuizSerializer(serializers.ModelSerializer):
-    """
-    Quiz 序列化器
-    """
-    course_name = serializers.SerializerMethodField()
-    created_by_name = serializers.SerializerMethodField()
-    questions_count = serializers.SerializerMethodField()
-    question_details = serializers.SerializerMethodField()
-    student_groups_count = serializers.SerializerMethodField()
-    student_group_names = serializers.SerializerMethodField()
-    question_ids = serializers.ListField(
-        child=serializers.IntegerField(),
-        write_only=True,
-        required=False,
-        help_text='題目ID列表（寫入用）'
-    )
-    student_group_ids = serializers.ListField(
-        child=serializers.IntegerField(),
-        write_only=True,
-        required=False,
-        help_text='學生群組ID列表（寫入用）'
-    )
-    
-    class Meta:
-        model = Quiz
-        fields = [
-            'quiz_id', 'title', 'course', 'course_name', 'questions', 'question_ids',
-            'questions_count', 'question_details', 'student_groups', 'student_group_ids',
-            'student_groups_count', 'student_group_names', 'is_individualized',
-            'created_by', 'created_by_name',
-            'created_at', 'updated_at'
-        ]
-        read_only_fields = [
-            'quiz_id', 'course_name', 'questions_count', 'question_details', 
-            'student_groups_count', 'student_group_names', 'created_by_name', 
-            'created_at', 'updated_at', 'questions'
-        ]
-    
-    def get_course_name(self, obj):
-        return obj.course.course_name if obj.course else None
-    
-    def get_created_by_name(self, obj):
-        return obj.created_by.username if obj.created_by else None
-    
-    def get_questions_count(self, obj):
-        # 使用 prefetch_related 後，直接使用 len() 避免額外查詢
-        if hasattr(obj, '_prefetched_objects_cache') and 'questions' in obj._prefetched_objects_cache:
-            return len(obj.questions.all())
-        return obj.questions.count()
-    
-    def get_question_details(self, obj):
-        return [
-            {
-                'question_id': q.question_id,
-                'chapter': q.chapter,
-                'subject_name': q.subject.name if q.subject else None,
-                'difficulty': q.difficulty
-            }
-            for q in obj.questions.all()
-        ]
-    
-    def get_student_groups_count(self, obj):
-        # 使用 prefetch_related 後，直接使用 len() 避免額外查詢
-        if hasattr(obj, '_prefetched_objects_cache') and 'student_groups' in obj._prefetched_objects_cache:
-            return len(obj.student_groups.all())
-        return obj.student_groups.count()
-    
-    def get_student_group_names(self, obj):
-        return [g.name for g in obj.student_groups.all()]
-    
-    def create(self, validated_data):
-        question_ids = validated_data.pop('question_ids', [])
-        student_group_ids = validated_data.pop('student_group_ids', [])
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            validated_data['created_by'] = request.user
-        
-        quiz = Quiz.objects.create(**validated_data)
-        
-        # 關聯題目
-        if question_ids:
-            questions = QuestionBank.objects.filter(question_id__in=question_ids)
-            quiz.questions.set(questions)
-            
-        # 關聯學生群組
-        if student_group_ids:
-            groups = StudentGroup.objects.filter(group_id__in=student_group_ids)
-            quiz.student_groups.set(groups)
-        
-        return quiz
-    
-    def update(self, instance, validated_data):
-        question_ids = validated_data.pop('question_ids', None)
-        student_group_ids = validated_data.pop('student_group_ids', None)
-        
-        # 更新基本資訊
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-        
-        # 如果提供了 question_ids，則更新題目關聯
-        if question_ids is not None:
-            questions = QuestionBank.objects.filter(question_id__in=question_ids)
-            instance.questions.set(questions)
-            
-        # 如果提供了 student_group_ids，則更新學生群組關聯
-        if student_group_ids is not None:
-            groups = StudentGroup.objects.filter(group_id__in=student_group_ids)
-            instance.student_groups.set(groups)
-        
-        return instance
-
-
-class QuizDetailSerializer(QuizSerializer):
-    """
-    Quiz 詳細序列化器 (包含完整題目內容)
-    """
-    questions = QuestionBankSerializer(many=True, read_only=True)
-
-
-
-class ExamSerializer(serializers.ModelSerializer):
-    """
-    考卷序列化器
-    """
-    course_name = serializers.SerializerMethodField()
-    created_by_name = serializers.SerializerMethodField()
-    questions_count = serializers.SerializerMethodField()
-    question_details = serializers.SerializerMethodField()
-    student_groups_count = serializers.SerializerMethodField()
-    student_group_names = serializers.SerializerMethodField()
-    question_ids = serializers.ListField(
-        child=serializers.IntegerField(),
-        write_only=True,
-        required=False,
-        help_text='題目ID列表（寫入用）'
-    )
-    student_group_ids = serializers.ListField(
-        child=serializers.IntegerField(),
-        write_only=True,
-        required=False,
-        help_text='學生群組ID列表（寫入用）'
-    )
-    
-    class Meta:
-        model = Exam
-        fields = [
-            'exam_id', 'title', 'course', 'course_name', 'questions', 'question_ids',
-            'questions_count', 'question_details', 'student_groups', 'student_group_ids',
-            'student_groups_count', 'student_group_names', 'is_individualized',
-            'created_by', 'created_by_name', 'available_from', 'available_until',
-            'created_at', 'updated_at'
-        ]
-        read_only_fields = [
-            'exam_id', 'course_name', 'questions_count', 'question_details',
-            'student_groups_count', 'student_group_names', 'created_by_name',
-            'created_at', 'updated_at', 'questions'
-        ]
-    
-    def get_course_name(self, obj):
-        return obj.course.course_name if obj.course else None
-    
-    def get_created_by_name(self, obj):
-        return obj.created_by.username if obj.created_by else None
-    
-    def get_questions_count(self, obj):
-        # 使用 prefetch_related 後，直接使用 len() 避免額外查詢
-        if hasattr(obj, '_prefetched_objects_cache') and 'questions' in obj._prefetched_objects_cache:
-            return len(obj.questions.all())
-        return obj.questions.count()
-    
-    def get_question_details(self, obj):
-        return [
-            {
-                'question_id': q.question_id,
-                'chapter': q.chapter,
-                'subject_name': q.subject.name if q.subject else None,
-                'difficulty': q.difficulty
-            }
-            for q in obj.questions.all()
-        ]
-    
-    def get_student_groups_count(self, obj):
-        # 使用 prefetch_related 後，直接使用 len() 避免額外查詢
-        if hasattr(obj, '_prefetched_objects_cache') and 'student_groups' in obj._prefetched_objects_cache:
-            return len(obj.student_groups.all())
-        return obj.student_groups.count()
-    
-    def get_student_group_names(self, obj):
-        return [g.name for g in obj.student_groups.all()]
-    
-    def create(self, validated_data):
-        question_ids = validated_data.pop('question_ids', [])
-        student_group_ids = validated_data.pop('student_group_ids', [])
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            validated_data['created_by'] = request.user
-        
-        exam = Exam.objects.create(**validated_data)
-        
-        # 關聯題目
-        if question_ids:
-            questions = QuestionBank.objects.filter(question_id__in=question_ids)
-            exam.questions.set(questions)
-        
-        # 關聯學生群組
-        if student_group_ids:
-            groups = StudentGroup.objects.filter(group_id__in=student_group_ids)
-            exam.student_groups.set(groups)
-        
-        return exam
-    
-    def update(self, instance, validated_data):
-        question_ids = validated_data.pop('question_ids', None)
-        student_group_ids = validated_data.pop('student_group_ids', None)
-        
-        # 更新基本資訊
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-        
-        # 如果提供了 question_ids，則更新題目關聯
-        if question_ids is not None:
-            questions = QuestionBank.objects.filter(question_id__in=question_ids)
-            instance.questions.set(questions)
-        
-        # 如果提供了 student_group_ids，則更新學生群組關聯
-        if student_group_ids is not None:
-            groups = StudentGroup.objects.filter(group_id__in=student_group_ids)
-            instance.student_groups.set(groups)
-        
-        return instance
-
-
-class ExamDetailSerializer(ExamSerializer):
-    """
-    Exam 詳細序列化器 (包含完整題目內容)
-    """
-    questions = QuestionBankSerializer(many=True, read_only=True)
-
-
-class CourseMaterialSerializer(serializers.ModelSerializer):
-    """
-    上課講義序列化器
-    """
-    course_name = serializers.SerializerMethodField()
-    created_by_name = serializers.SerializerMethodField()
-    questions_count = serializers.SerializerMethodField()
-    question_details = serializers.SerializerMethodField()
-    student_groups_count = serializers.SerializerMethodField()
-    student_group_names = serializers.SerializerMethodField()
-    question_ids = serializers.ListField(
-        child=serializers.IntegerField(),
-        write_only=True,
-        required=False,
-        help_text='題目ID列表（寫入用）'
-    )
-    student_group_ids = serializers.ListField(
-        child=serializers.IntegerField(),
-        write_only=True,
-        required=False,
-        help_text='學生群組ID列表（寫入用）'
-    )
-    
-    class Meta:
-        model = CourseMaterial
-        fields = [
-            'material_id', 'title', 'course', 'course_name', 'content',
-            'questions', 'question_ids', 'questions_count', 'question_details',
-            'student_groups', 'student_group_ids', 'student_groups_count', 'student_group_names', 'is_individualized',
-            'created_by', 'created_by_name', 'created_at', 'updated_at'
-        ]
-        read_only_fields = [
-            'material_id', 'course_name', 'questions_count', 'question_details',
-            'student_groups_count', 'student_group_names', 'created_by_name', 
-            'created_at', 'updated_at'
-        ]
-    
-    def get_course_name(self, obj):
-        return obj.course.course_name if obj.course else None
-    
-    def get_created_by_name(self, obj):
-        return obj.created_by.username if obj.created_by else None
-    
-    def get_questions_count(self, obj):
-        # 使用 prefetch_related 後，直接使用 len() 避免額外查詢
-        if hasattr(obj, '_prefetched_objects_cache') and 'questions' in obj._prefetched_objects_cache:
-            return len(obj.questions.all())
-        return obj.questions.count()
-    
-    def get_question_details(self, obj):
-        return [
-            {
-                'question_id': q.question_id,
-                'chapter': q.chapter,
-                'subject_name': q.subject.name if q.subject else None,
-                'difficulty': q.difficulty
-            }
-            for q in obj.questions.all()
-        ]
-    
-    def get_student_groups_count(self, obj):
-        # 使用 prefetch_related 後，直接使用 len() 避免額外查詢
-        if hasattr(obj, '_prefetched_objects_cache') and 'student_groups' in obj._prefetched_objects_cache:
-            return len(obj.student_groups.all())
-        return obj.student_groups.count()
-    
-    def get_student_group_names(self, obj):
-        return [g.name for g in obj.student_groups.all()]
-    
-    def create(self, validated_data):
-        question_ids = validated_data.pop('question_ids', [])
-        student_group_ids = validated_data.pop('student_group_ids', [])
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            validated_data['created_by'] = request.user
-        
-        material = CourseMaterial.objects.create(**validated_data)
-        
-        # 關聯題目
-        if question_ids:
-            questions = QuestionBank.objects.filter(question_id__in=question_ids)
-            material.questions.set(questions)
-            
-        # 關聯學生群組
-        if student_group_ids:
-            groups = StudentGroup.objects.filter(group_id__in=student_group_ids)
-            material.student_groups.set(groups)
-        
-        return material
-    
-    def update(self, instance, validated_data):
-        question_ids = validated_data.pop('question_ids', None)
-        student_group_ids = validated_data.pop('student_group_ids', None)
-        
-        # 更新基本資訊
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-        
-        # 如果提供了 question_ids，則更新題目關聯
-        if question_ids is not None:
-            questions = QuestionBank.objects.filter(question_id__in=question_ids)
-            instance.questions.set(questions)
-            
-        # 如果提供了 student_group_ids，則更新學生群組關聯
-        if student_group_ids is not None:
-            groups = StudentGroup.objects.filter(group_id__in=student_group_ids)
-            instance.student_groups.set(groups)
-        
-        return instance
-
-
 class ContentTemplateSerializer(serializers.ModelSerializer):
     """
     內容模板序列化器
@@ -1452,12 +1099,17 @@ class LearningResourceSerializer(serializers.ModelSerializer):
     """
     教學資源序列化器
     """
-    course_name = serializers.SerializerMethodField()
+    course_names = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
     tags = serializers.SerializerMethodField()
     tag_ids = serializers.SerializerMethodField()
     student_group_names = serializers.SerializerMethodField()
     tag_ids_input = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False
+    )
+    course_ids = serializers.ListField(
         child=serializers.IntegerField(),
         write_only=True,
         required=False
@@ -1471,20 +1123,20 @@ class LearningResourceSerializer(serializers.ModelSerializer):
     class Meta:
         model = LearningResource
         fields = [
-            'resource_id', 'title', 'mode', 'course', 'course_name',
+            'resource_id', 'title', 'mode', 'courses', 'course_ids', 'course_names',
             'student_groups', 'student_group_ids', 'student_group_names',
             'structure', 'settings', 'tags', 'tag_ids', 'tag_ids_input',
             'created_by', 'created_by_name', 'is_individualized',
             'available_from', 'available_until', 'created_at', 'updated_at'
         ]
         read_only_fields = [
-            'resource_id', 'course_name', 'student_groups', 'student_group_names',
+            'resource_id', 'courses', 'course_names', 'student_groups', 'student_group_names',
             'tags', 'tag_ids', 'created_by', 'created_by_name',
             'created_at', 'updated_at'
         ]
 
-    def get_course_name(self, obj):
-        return obj.course.course_name if obj.course else None
+    def get_course_names(self, obj):
+        return [course.course_name for course in obj.courses.all()]
 
     def get_created_by_name(self, obj):
         return obj.created_by.username if obj.created_by else None
@@ -1500,12 +1152,17 @@ class LearningResourceSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         tag_ids = validated_data.pop('tag_ids_input', [])
+        course_ids = validated_data.pop('course_ids', [])
         student_group_ids = validated_data.pop('student_group_ids', [])
         request = self.context.get('request')
         if request and request.user.is_authenticated:
             validated_data['created_by'] = request.user
         
         resource = LearningResource.objects.create(**validated_data)
+        
+        if course_ids:
+            courses = Course.objects.filter(course_id__in=course_ids)
+            resource.courses.set(courses)
         
         if tag_ids:
             tags = Hashtag.objects.filter(tag_id__in=tag_ids)
@@ -1519,11 +1176,16 @@ class LearningResourceSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         tag_ids = validated_data.pop('tag_ids_input', None)
+        course_ids = validated_data.pop('course_ids', None)
         student_group_ids = validated_data.pop('student_group_ids', None)
         
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
+        
+        if course_ids is not None:
+            courses = Course.objects.filter(course_id__in=course_ids)
+            instance.courses.set(courses)
         
         if tag_ids is not None:
             tags = Hashtag.objects.filter(tag_id__in=tag_ids)
