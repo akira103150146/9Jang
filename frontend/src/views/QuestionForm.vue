@@ -253,7 +253,35 @@
           />
         </div>
 
+        <!-- 題目來源 -->
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-2">
+            題目來源
+          </label>
+          <div class="flex gap-2 items-center">
+            <select
+              v-model="formData.source"
+              class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            >
+              <option v-for="option in sourceOptions" :key="option" :value="option">
+                {{ option }}
+              </option>
+            </select>
+            <input
+              v-if="formData.source === '其他'"
+              v-model="formData.customSource"
+              type="text"
+              placeholder="請輸入來源"
+              class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            />
+          </div>
+          <p class="mt-1 text-xs text-slate-500">
+            選擇題目來源，如果是老師手動新增則為「九章自命題」，從錯題本匯入則為「學生錯題」
+          </p>
+        </div>
+
         <!-- 標籤分類 -->
+
         <div>
           <label class="block text-sm font-semibold text-slate-700 mb-2">標籤分類</label>
           <div class="border border-slate-300 rounded-lg p-3 min-h-[100px] max-h-[300px] overflow-y-auto">
@@ -300,6 +328,8 @@ const saving = ref(false)
 const hashtags = ref([])
 const subjects = ref([])
 const importedStudentName = ref('')
+const sourceOptions = ref(['九章自命題', '學生錯題', '學測', '會考', '統測', '模擬考', '基測', '其他'])
+const customSource = ref('')
 
 const formData = ref({
   subject: '',
@@ -312,6 +342,7 @@ const formData = ref({
   solution_content: { format: 'markdown', text: '' },
   difficulty: 1,
   tag_ids: [],
+  source: '九章自命題',
   metadata: {}
 })
 
@@ -495,6 +526,17 @@ const fetchQuestion = async () => {
 }
 
 // 載入科目和標籤
+const fetchSourceOptions = async () => {
+  try {
+    const response = await questionBankAPI.getSourceOptions()
+    if (response.data && response.data.options) {
+      sourceOptions.value = [...response.data.options, '其他']
+    }
+  } catch (error) {
+    console.error('獲取來源選項失敗：', error)
+  }
+}
+
 const fetchSubjects = async () => {
   try {
     const response = await subjectAPI.getAll()
@@ -580,6 +622,14 @@ const removeOption = (index) => {
 }
 
 // 儲存題目
+// 處理來源字段
+const getSourceValue = () => {
+  if (formData.value.source === '其他' && customSource.value) {
+    return customSource.value
+  }
+  return formData.value.source || '九章自命題'
+}
+
 const saveQuestion = async () => {
   // 驗證必填欄位
   if (!formData.value.subject) {

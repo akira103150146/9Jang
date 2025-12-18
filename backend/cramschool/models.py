@@ -567,10 +567,15 @@ class QuestionBank(models.Model):
         ('VCS', 'Vocational School'),
     ]
     
-    SOURCE_CHOICES = [
-        ('teacher_created', '老師新增'),
-        ('imported_from_error_log', '從錯題本匯入'),
-        ('imported_from_word', '從 Word 匯入'),
+    # 預設來源選項（僅供參考，實際使用字串存儲以保持擴展性）
+    DEFAULT_SOURCE_OPTIONS = [
+        '九章自命題',
+        '學生錯題',
+        '學測',
+        '會考',
+        '統測',
+        '模擬考',
+        '基測',
     ]
     
     QUESTION_TYPE_CHOICES = [
@@ -653,12 +658,14 @@ class QuestionBank(models.Model):
         help_text='題目來源詳細資訊（例如：101統測B）'
     )
     
-    # 新增欄位：題目來源
+    # 新增欄位：題目來源（使用字串以保持擴展性）
     source = models.CharField(
-        max_length=30,
-        choices=SOURCE_CHOICES,
-        default='teacher_created',
-        verbose_name='題目來源'
+        max_length=100,
+        blank=True,
+        null=True,
+        default='九章自命題',
+        verbose_name='題目來源',
+        help_text='題目來源，例如：九章自命題、學生錯題、學測、會考、統測、模擬考、基測等'
     )
     created_by = models.ForeignKey(
         CustomUser,
@@ -745,7 +752,15 @@ class QuestionBank(models.Model):
         """
         在保存時自動從 solution_content JSON 中提取純文字
         存入 search_text_content 欄位
+        並自動處理題目來源設置
         """
+        # 處理題目來源
+        if self.imported_from_error_log and not self.source:
+            self.source = '學生錯題'
+        if not self.source:
+            self.source = '九章自命題'
+        
+        # 處理搜尋文字內容
         if self.solution_content:
             text_parts = self.extract_text_from_tiptap_json(self.solution_content)
             self.search_text_content = ' '.join(text_parts)

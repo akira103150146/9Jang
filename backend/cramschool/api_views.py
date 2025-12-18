@@ -1170,7 +1170,7 @@ class QuestionBankViewSet(viewsets.ModelViewSet):
     提供 QuestionBank 模型 CRUD 操作的 API 視圖集
     支援多條件篩選：科目、年級、章節、難度、標籤、來源
     """
-    queryset = QuestionBank.objects.select_related('subject', 'created_by', 'imported_from_error_log').prefetch_related('tags__tag').all()
+    queryset = QuestionBank.objects.select_related('subject', 'created_by', 'imported_from_error_log').prefetch_related('tags__tag', 'imported_from_error_log__images').all()
     serializer_class = QuestionBankSerializer
     permission_classes = [IsAuthenticated]
     
@@ -1228,7 +1228,8 @@ class QuestionBankViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(question_type=question_type)
         
         # 標籤篩選（支援多個標籤）
-        tags = self.request.query_params.getlist('tags[]')
+        # 同時支援 tags[] 和 tags 兩種格式
+        tags = self.request.query_params.getlist('tags[]') or self.request.query_params.getlist('tags')
         if tags:
             try:
                 tag_ids = [int(tag) for tag in tags]
@@ -1305,6 +1306,20 @@ class QuestionBankViewSet(viewsets.ModelViewSet):
         
         # 只返回前 10 個結果
         return Response(chapters[:10])
+    
+    @action(detail=False, methods=['get'])
+    def source_options(self, request):
+        """
+        獲取題目來源的預設選項列表
+        """
+        from .models import QuestionBank
+        options = QuestionBank.DEFAULT_SOURCE_OPTIONS
+        return Response({
+            'options': options,
+            'default': '九章自命題'
+        })
+    
+
     
     @action(detail=False, methods=['post'])
     def preview_from_word(self, request):

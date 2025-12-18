@@ -504,6 +504,7 @@ class QuestionBankSerializer(serializers.ModelSerializer):
     created_by_name = serializers.SerializerMethodField()
     source_display = serializers.SerializerMethodField()
     imported_student_name = serializers.SerializerMethodField()
+    error_log_images = serializers.SerializerMethodField()
     tag_ids_input = serializers.ListField(
         child=serializers.IntegerField(),
         write_only=True,
@@ -520,12 +521,12 @@ class QuestionBankSerializer(serializers.ModelSerializer):
             'tags', 'tag_ids', 'tag_ids_input',
             'source', 'source_display', 'created_by', 'created_by_name',
             'imported_from_error_log', 'imported_student', 'imported_student_name',
-            'question_number', 'origin', 'origin_detail',
+            'error_log_images', 'question_number', 'origin', 'origin_detail',
             'created_at', 'updated_at'
         ]
         read_only_fields = [
             'question_id', 'tags', 'tag_ids', 'subject_name', 'source_display',
-            'created_by_name', 'created_at', 'updated_at'
+            'created_by_name', 'error_log_images', 'created_at', 'updated_at'
         ]
     
     def get_tags(self, obj):
@@ -554,14 +555,44 @@ class QuestionBankSerializer(serializers.ModelSerializer):
     
     def get_source_display(self, obj):
         """
-        獲取來源顯示名稱
+        獲取來源顯示名稱（直接返回 source 字段值）
         """
-        return obj.get_source_display() if obj.source else None
+        return obj.source if obj.source else '九章自命題'
 
     def get_imported_student_name(self, obj):
         if getattr(obj, 'imported_student', None):
             return obj.imported_student.name
         return None
+    
+    def get_error_log_images(self, obj):
+        """
+        獲取錯題本圖片（如果題目是從錯題本匯入的）
+        """
+        if not obj.imported_from_error_log:
+            return []
+        
+        request = self.context.get('request')
+        images = obj.imported_from_error_log.images.all().order_by('sort_order', 'image_id')
+        
+        result = []
+        for img in images:
+            image_url = None
+            if img.image_path:
+                if img.image_path.startswith('http'):
+                    image_url = img.image_path
+                elif request:
+                    image_url = request.build_absolute_uri(f'/media/{img.image_path}')
+                else:
+                    image_url = f'/media/{img.image_path}'
+            
+            result.append({
+                'image_id': img.image_id,
+                'image_url': image_url,
+                'caption': img.caption or '',
+                'sort_order': img.sort_order
+            })
+        
+        return result
     
     def create(self, validated_data):
         """

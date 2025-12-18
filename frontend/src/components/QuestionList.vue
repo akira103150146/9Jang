@@ -87,6 +87,20 @@
             </option>
           </select>
         </div>
+
+        <!-- 來源篩選 -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">來源</label>
+          <select
+            v-model="filters.source"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+          >
+            <option value="">全部</option>
+            <option v-for="source in sourceOptions" :key="source" :value="source">
+              {{ source }}
+            </option>
+          </select>
+        </div>
       </div>
 
       <div class="mt-4 flex justify-end gap-2">
@@ -125,86 +139,106 @@
     </div>
 
     <!-- 題目列表 -->
-    <div v-if="loading" class="text-center py-12 text-slate-500">載入中...</div>
-    <div v-else-if="questions.length === 0" class="text-center py-12 text-slate-400 bg-slate-50 rounded-lg border border-dashed border-slate-200">
-      尚無題目，點擊右上角新增
-    </div>
-    <div v-else>
-      <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">
+    <div ref="questionsContainer">
+      <!-- 空狀態 -->
+      <div v-if="!loading && questions.length === 0" class="text-center py-12 text-slate-400 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+        尚無題目，點擊右上角新增
+      </div>
+      
+      <!-- 題目列表（始終渲染，loading 時顯示遮罩） -->
+      <div v-if="questions.length > 0" class="relative">
+        <!-- 加載遮罩（覆蓋在內容上方，不改變內容高度） -->
         <div
-          v-for="question in questions"
-          :key="question.question_id"
-          @click="showQuestionPreview(question)"
-          class="group relative flex flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer"
+          v-if="loading"
+          class="absolute inset-0 z-10 flex items-center justify-center bg-white/90 backdrop-blur-sm rounded-lg pointer-events-none"
         >
-        <div class="flex items-start justify-between mb-2">
-          <span
-            class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset"
-            :class="getTypeColor(question.question_type)"
-          >
-            {{ getTypeName(question.question_type) }}
-          </span>
-          <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button @click.stop="editQuestion(question.question_id)" class="p-1 text-slate-400 hover:text-indigo-600" title="編輯">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-              </svg>
-            </button>
-            <button @click.stop="deleteQuestion(question.question_id)" class="p-1 text-slate-400 hover:text-rose-600" title="刪除">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-              </svg>
-            </button>
+          <div class="text-center">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mb-2"></div>
+            <p class="text-sm text-slate-600">載入中...</p>
           </div>
         </div>
+        
+        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6" :class="{ 'opacity-60': loading }">
+          <div
+            v-for="question in questions"
+            :key="question.question_id"
+            @click="showQuestionPreview(question)"
+            class="group relative flex flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer"
+          >
+            <div class="flex items-start justify-between mb-2">
+              <span
+                class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset"
+                :class="getTypeColor(question.question_type)"
+              >
+                {{ getTypeName(question.question_type) }}
+              </span>
+              <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button @click.stop="editQuestion(question.question_id)" class="p-1 text-slate-400 hover:text-indigo-600" title="編輯">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                  </svg>
+                </button>
+                <button @click.stop="deleteQuestion(question.question_id)" class="p-1 text-slate-400 hover:text-rose-600" title="刪除">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            </div>
 
-        <h3 class="text-base font-bold text-slate-900 mb-1 line-clamp-1">
-          Q{{ question.question_id }}
-        </h3>
+            <h3 class="text-base font-bold text-slate-900 mb-1 line-clamp-1">
+              Q{{ question.question_id }}
+            </h3>
 
-        <div class="text-xs text-slate-500 mb-2 flex items-center gap-2 flex-wrap">
-          <span>{{ question.subject_name || '無科目' }}</span>
-          <span>•</span>
-          <span>{{ getLevelName(question.level) }}</span>
-          <span>•</span>
-          <span>{{ question.chapter || '無章節' }}</span>
-        </div>
+            <div class="text-xs text-slate-500 mb-2 flex items-center gap-2 flex-wrap">
+              <span>{{ question.subject_name || '無科目' }}</span>
+              <span>•</span>
+              <span>{{ getLevelName(question.level) }}</span>
+              <span>•</span>
+              <span>{{ question.chapter || '無章節' }}</span>
+              <span v-if="question.source_display || question.source">•</span>
+              <span v-if="question.source_display || question.source" class="text-indigo-600 font-medium">
+                {{ question.source_display || question.source || '九章自命題' }}
+              </span>
+            </div>
 
-        <div class="text-sm text-slate-700 mb-3 line-clamp-3">
-          {{ getContentPreview(question.content) }}
-        </div>
+            <div class="text-sm text-slate-700 mb-3 line-clamp-3">
+              {{ getContentPreview(question.content) }}
+            </div>
 
-        <div class="flex items-center justify-between mt-auto">
-          <div class="flex items-center gap-2">
-            <div class="flex items-center">
-              <span class="text-xs text-slate-500">難度：</span>
-              <div class="flex ml-1">
-                <span v-for="i in 5" :key="i" class="text-xs" :class="i <= question.difficulty ? 'text-yellow-500' : 'text-slate-300'">★</span>
+            <div class="flex items-center justify-between mt-auto">
+              <div class="flex items-center gap-2">
+                <div class="flex items-center">
+                  <span class="text-xs text-slate-500">難度：</span>
+                  <div class="flex ml-1">
+                    <span v-for="i in 5" :key="i" class="text-xs" :class="i <= question.difficulty ? 'text-yellow-500' : 'text-slate-300'">★</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex flex-wrap gap-1">
+                <span
+                  v-for="tag in (question.tags || []).slice(0, 3)"
+                  :key="tag"
+                  class="text-xs text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded"
+                >
+                  #{{ tag }}
+                </span>
+                <span v-if="(question.tags || []).length > 3" class="text-xs text-slate-400">
+                  +{{ (question.tags || []).length - 3 }}
+                </span>
               </div>
             </div>
           </div>
-          <div class="flex flex-wrap gap-1">
-            <span
-              v-for="tag in (question.tags || []).slice(0, 3)"
-              :key="tag"
-              class="text-xs text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded"
-            >
-              #{{ tag }}
-            </span>
-            <span v-if="(question.tags || []).length > 3" class="text-xs text-slate-400">
-              +{{ (question.tags || []).length - 3 }}
-            </span>
-          </div>
-        </div>
         </div>
       </div>
 
       <!-- 分頁控件 -->
-      <div v-if="pagination.totalPages > 1" class="flex items-center justify-center gap-2 mt-6">
+      <div v-if="pagination.totalPages > 1 && questions.length > 0" class="flex items-center justify-center gap-2 mt-6">
         <button
-          @click="goToPage(pagination.currentPage - 1)"
+          @click.prevent="goToPage(pagination.currentPage - 1)"
           :disabled="pagination.currentPage === 1"
           class="px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          type="button"
         >
           上一頁
         </button>
@@ -212,9 +246,10 @@
           第 {{ pagination.currentPage }} / {{ pagination.totalPages }} 頁（共 {{ pagination.totalCount }} 題）
         </span>
         <button
-          @click="goToPage(pagination.currentPage + 1)"
+          @click.prevent="goToPage(pagination.currentPage + 1)"
           :disabled="pagination.currentPage === pagination.totalPages"
           class="px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          type="button"
         >
           下一頁
         </button>
@@ -259,6 +294,28 @@
             <h3 class="text-sm font-semibold text-slate-700 mb-2">題目內容</h3>
             <div class="border border-slate-200 rounded-lg p-4 bg-slate-50">
               <RichTextPreview :content="getQuestionContent(previewQuestion)" />
+              
+              <!-- 錯題本圖片（如果題目是從錯題本匯入的） -->
+              <div v-if="previewQuestion.error_log_images && previewQuestion.error_log_images.length > 0" class="mt-4">
+                <div class="text-xs font-semibold text-slate-600 mb-2">學生上傳的錯題圖片：</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div
+                    v-for="img in previewQuestion.error_log_images"
+                    :key="img.image_id"
+                    class="relative border border-slate-300 rounded-lg overflow-hidden bg-white"
+                  >
+                    <img
+                      :src="img.image_url"
+                      :alt="img.caption || '錯題圖片'"
+                      class="w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
+                      @click="openImageModal(img.image_url, img.caption)"
+                    />
+                    <div v-if="img.caption" class="p-2 text-xs text-slate-600 bg-slate-50 border-t border-slate-200">
+                      {{ img.caption }}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -336,11 +393,37 @@
         </div>
       </div>
     </div>
+
+    <!-- 圖片預覽 Modal -->
+    <div
+      v-if="imageModal.open"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75"
+      @click.self="closeImageModal"
+    >
+      <div class="relative max-w-5xl max-h-[90vh] mx-4">
+        <button
+          @click="closeImageModal"
+          class="absolute top-4 right-4 z-10 p-2 text-white bg-black bg-opacity-50 rounded-full hover:bg-opacity-75 transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+          </svg>
+        </button>
+        <img
+          :src="imageModal.url"
+          :alt="imageModal.caption || '圖片預覽'"
+          class="max-w-full max-h-[90vh] rounded-lg shadow-2xl"
+        />
+        <div v-if="imageModal.caption" class="mt-2 text-center text-white text-sm bg-black bg-opacity-50 rounded-lg p-2">
+          {{ imageModal.caption }}
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch, onActivated } from 'vue'
+import { ref, reactive, onMounted, watch, onActivated, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { questionBankAPI, subjectAPI, hashtagAPI } from '../services/api'
 import RichTextPreview from './RichTextPreview.vue'
@@ -350,8 +433,12 @@ const router = useRouter()
 const questions = ref([])
 const subjects = ref([])
 const tags = ref([])
+const sourceOptions = ref([])
 const loading = ref(false)
 const previewQuestion = ref(null)
+const imageModal = ref({ open: false, url: '', caption: '' })
+const questionsContainer = ref(null)
+let savedScrollPosition = 0
 
 const pagination = reactive({
   currentPage: 1,
@@ -366,7 +453,8 @@ const filters = reactive({
   chapter: '',
   difficulty: '',
   question_type: '',
-  tag_id: ''
+  tag_id: '',
+  source: ''
 })
 
 const getTypeColor = (type) => {
@@ -413,9 +501,17 @@ const getContentPreview = (content) => {
 }
 
 const fetchQuestions = async () => {
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionList.vue:266',message:'fetchQuestions called',data:{filters:JSON.parse(JSON.stringify(filters))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
+  // 保存當前滾動位置
+  const mainElement = document.querySelector('main')
+  const mainScroll = mainElement ? mainElement.scrollTop : 0
+  const windowScroll = window.pageYOffset || document.documentElement.scrollTop
+  savedScrollPosition = mainScroll || windowScroll
+  
+  // 在設置 loading 之前，先保存滾動位置到 main 元素的 data 屬性
+  if (mainElement) {
+    mainElement.dataset.savedScrollTop = savedScrollPosition.toString()
+  }
+  
   loading.value = true
   try {
     const params = {}
@@ -425,21 +521,14 @@ const fetchQuestions = async () => {
     if (filters.difficulty) params.difficulty = filters.difficulty
     if (filters.question_type) params.question_type = filters.question_type
     if (filters.tag_id) params.tags = [filters.tag_id]
-
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionList.vue:277',message:'API request params',data:{params:JSON.parse(JSON.stringify(params))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
+    if (filters.source) params.source = filters.source
 
     // 添加分頁參數
+    // 注意：DRF 的 PageNumberPagination 不支援 page_size 查詢參數
+    // 使用默認的 PAGE_SIZE (10)，由後端設定
     params.page = pagination.currentPage
-    params.page_size = pagination.pageSize
 
     const response = await questionBankAPI.getAll({ params })
-    
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionList.vue:280',message:'API response received',data:{hasResults:!!response.data.results,resultsLength:response.data.results?.length||0,dataLength:Array.isArray(response.data)?response.data.length:0,responseKeys:Object.keys(response.data||{})},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
-
     const questionsData = response.data.results || response.data || []
     
     // 更新分頁資訊
@@ -451,10 +540,6 @@ const fetchQuestions = async () => {
       pagination.totalCount = questionsData.length
       pagination.totalPages = 1
     }
-    
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionList.vue:283',message:'Questions data processed',data:{questionsDataLength:questionsData.length,firstQuestionId:questionsData[0]?.question_id||null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
 
     // 確保每個題目都有必要的欄位
     questions.value = questionsData.map(q => ({
@@ -463,18 +548,31 @@ const fetchQuestions = async () => {
       options: q.options || [],
       tags: q.tags || []
     }))
-    
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionList.vue:290',message:'Questions set to reactive',data:{questionsLength:questions.value.length,questionIds:questions.value.map(q=>q.question_id).slice(0,5)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-    // #endregion
   } catch (error) {
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionList.vue:293',message:'Error fetching questions',data:{errorMessage:error.message,errorStatus:error.response?.status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-    // #endregion
     console.error('獲取題目失敗：', error)
     questions.value = []
   } finally {
+    // 先更新 loading 狀態，但保持內容可見以避免高度變化
     loading.value = false
+    
+    // 由於現在使用遮罩而不是替換內容，內容高度不會改變，所以不需要恢復滾動位置
+    // 但為了保險起見，如果滾動位置被改變了，我們還是要恢復
+    await nextTick()
+    
+    const mainElement = document.querySelector('main')
+    const mainScroll = mainElement ? mainElement.scrollTop : 0
+    
+    // 只有在滾動位置被意外改變時才恢復（差異超過 10px）
+    if (mainElement && savedScrollPosition > 0 && Math.abs(mainScroll - savedScrollPosition) > 10) {
+      requestAnimationFrame(() => {
+        const targetScroll = mainElement.dataset.savedScrollTop ? parseFloat(mainElement.dataset.savedScrollTop) : savedScrollPosition
+        mainElement.scrollTop = targetScroll
+        delete mainElement.dataset.savedScrollTop
+      })
+    } else if (mainElement && mainElement.dataset.savedScrollTop) {
+      // 清除保存的滾動位置
+      delete mainElement.dataset.savedScrollTop
+    }
   }
 }
 
@@ -498,6 +596,25 @@ const fetchTags = async () => {
   }
 }
 
+const fetchSourceOptions = async () => {
+  try {
+    const response = await questionBankAPI.getSourceOptions()
+    sourceOptions.value = response.data.options || []
+  } catch (error) {
+    console.warn('獲取來源選項失敗：', error)
+    // 如果 API 失敗，使用預設選項
+    sourceOptions.value = [
+      '九章自命題',
+      '學生錯題',
+      '學測',
+      '會考',
+      '統測',
+      '模擬考',
+      '基測',
+    ]
+  }
+}
+
 const handleSearch = () => {
   pagination.currentPage = 1
   fetchQuestions()
@@ -510,16 +627,15 @@ const resetFilters = () => {
   filters.difficulty = ''
   filters.question_type = ''
   filters.tag_id = ''
+  filters.source = ''
   pagination.currentPage = 1
   fetchQuestions()
 }
 
-const goToPage = (page) => {
+const goToPage = async (page) => {
   if (page >= 1 && page <= pagination.totalPages) {
     pagination.currentPage = page
-    fetchQuestions()
-    // 滾動到頂部
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    await fetchQuestions()
   }
 }
 
@@ -540,6 +656,14 @@ const showQuestionPreview = async (question) => {
 
 const closePreview = () => {
   previewQuestion.value = null
+}
+
+const openImageModal = (url, caption = '') => {
+  imageModal.value = { open: true, url, caption }
+}
+
+const closeImageModal = () => {
+  imageModal.value = { open: false, url: '', caption: '' }
 }
 
 const getQuestionContent = (question) => {
@@ -593,19 +717,14 @@ const deleteQuestion = async (id) => {
 }
 
 onMounted(() => {
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionList.vue:347',message:'Component mounted',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
   fetchSubjects()
   fetchTags()
+  fetchSourceOptions()
   fetchQuestions()
 })
 
 // 監聽路由變化，當從其他頁面返回時刷新列表
 onActivated(() => {
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionList.vue:356',message:'Component activated (route returned)',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
   fetchQuestions()
 })
 </script>

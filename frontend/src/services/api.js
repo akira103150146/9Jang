@@ -477,6 +477,9 @@ export const questionBankAPI = {
     return api.get(`/cramschool/questions/search_chapters/?${params.toString()}`)
   },
 
+  // 獲取題目來源選項
+  getSourceOptions: () => api.get('/cramschool/questions/source_options/'),
+
   // 預覽 Word 檔案中的題目（不匯入）
   previewFromWord: (formData) => api.post('/cramschool/questions/preview_from_word/', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
