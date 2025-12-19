@@ -367,12 +367,12 @@
 
       <!-- 畫布區域 -->
       <div 
-        class="flex-1 overflow-auto p-8 relative"
+        class="flex-1 overflow-auto relative bg-slate-100"
         @dragover.prevent="handleDragOver"
         @drop="handleDrop"
       >
         <!-- BlockEditor 編輯器 -->
-        <div class="bg-white shadow-xl relative print:shadow-none print-paper mx-auto"
+        <div class="relative print:shadow-none print-paper mx-auto bg-white shadow-sm my-8"
           :class="[
             resource.settings?.handout?.paperSize === 'A4' || resource.settings?.paperSize === 'A4' ? 'w-[210mm]' : 'w-[250mm]'
           ]"
@@ -1698,6 +1698,29 @@ onUnmounted(() => {
     overflow: visible !important;
   }
   
+  /* 移除編輯器外層的灰色背景和間距 */
+  .bg-slate-100 {
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  /* 移除紙張容器的陰影和間距 */
+  .print-paper {
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 20mm !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+  
+  /* 確保編輯器容器正確顯示 */
+  .block-editor-container {
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
   .break-after-page {
     page-break-after: always;
     break-after: page;
@@ -1749,10 +1772,10 @@ onUnmounted(() => {
 @media print {
   @page {
     size: A4;
-    margin: 0;
+    margin: 20mm;
   }
   
-  /* 強制隱藏所有捲軸 */
+  /* 確保內容可見 */
   * {
     overflow: visible !important;
     scrollbar-width: none !important;
@@ -1764,6 +1787,11 @@ onUnmounted(() => {
     width: 0 !important;
     height: 0 !important;
     background: transparent !important;
+  }
+  
+  /* 移除背景色 */
+  body {
+    background: white !important;
   }
   
   /* 強制隱藏側邊欄及其所有子元素 - 使用多種選擇器確保匹配 */
