@@ -119,6 +119,14 @@ const handleEscape = () => {
   background: white;
 }
 
+/* 當區塊被選中或有焦點時的樣式 */
+.latex-block-wrapper.ProseMirror-selectednode .latex-block:not(.is-editing),
+.latex-block-wrapper:has(.ProseMirror-focused) .latex-block:not(.is-editing) {
+  border-color: rgb(59, 130, 246);
+  background: rgb(239, 246, 255);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
 .latex-editor {
   display: flex;
   flex-direction: column;

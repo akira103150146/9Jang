@@ -128,6 +128,15 @@ const renderTemplateBlock = (block) => {
   border: 2px solid rgb(147, 51, 234);
   border-radius: 0.5rem;
   background: rgb(250, 245, 255);
+  transition: all 0.2s;
+}
+
+/* 當區塊被選中或有焦點時的樣式 */
+.template-block-wrapper.ProseMirror-selectednode .template-block,
+.template-block-wrapper:has(.ProseMirror-focused) .template-block {
+  border-color: rgb(126, 34, 206);
+  background: rgb(243, 232, 255);
+  box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.1);
 }
 
 .template-selector {

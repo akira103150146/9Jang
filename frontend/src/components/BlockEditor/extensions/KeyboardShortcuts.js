@@ -5,23 +5,9 @@ export const KeyboardShortcuts = Extension.create({
 
   addKeyboardShortcuts() {
     return {
-      // Enter: 在空區塊時新增段落，否則換行
-      'Enter': ({ editor }) => {
-        const { state } = editor
-        const { $from, $to } = state.selection
-
-        // 如果選中整個空區塊
-        if ($from.parent.type.name !== 'paragraph' && $from.parent.textContent.length === 0) {
-          return editor.chain().focus().setParagraph().run()
-        }
-
-        // 如果當前是空段落，保持段落
-        if ($from.parent.type.name === 'paragraph' && $from.parent.textContent.length === 0) {
-          return false // 讓預設行為處理
-        }
-
-        // 否則換行
-        return false
+      // Shift+Enter: 插入硬換行(br)
+      'Shift-Enter': ({ editor }) => {
+        return editor.chain().focus().setHardBreak().run()
       },
 
       // Backspace: 在空區塊開頭時刪除區塊

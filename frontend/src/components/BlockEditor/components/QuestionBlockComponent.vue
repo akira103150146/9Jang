@@ -114,6 +114,15 @@ const onQuestionSelected = (questionIds) => {
   border: 2px solid rgb(34, 197, 94);
   border-radius: 0.5rem;
   background: rgb(240, 253, 244);
+  transition: all 0.2s;
+}
+
+/* 當區塊被選中或有焦點時的樣式 */
+.question-block-wrapper.ProseMirror-selectednode .question-block,
+.question-block-wrapper:has(.ProseMirror-focused) .question-block {
+  border-color: rgb(22, 163, 74);
+  background: rgb(220, 252, 231);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
 }
 
 .question-header {

@@ -1,5 +1,11 @@
 <template>
   <div class="block-editor">
+    <!-- 游標位置指示器 -->
+    <div v-if="editor && currentNodeType" class="cursor-indicator">
+      <span class="indicator-icon">{{ getNodeIcon(currentNodeType) }}</span>
+      <span class="indicator-text">{{ getNodeLabel(currentNodeType) }}</span>
+    </div>
+    
     <editor-content :editor="editor" class="editor-content" />
   </div>
 </template>
@@ -44,6 +50,9 @@ const emit = defineEmits(['update:modelValue'])
 provide('templates', computed(() => props.templates))
 provide('questions', computed(() => props.questions))
 
+// 追蹤當前游標所在的節點類型
+const currentNodeType = ref(null)
+
 // 初始化編輯器
 const editor = useEditor({
   extensions: [
@@ -65,12 +74,15 @@ const editor = useEditor({
     Nesting,
   ],
   content: convertToTiptapFormat(props.modelValue),
+  editable: true,
   editorProps: {
     attributes: {
       class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl focus:outline-none',
     },
   },
   onUpdate: ({ editor }) => {
+    // 設置標誌防止 watch 循環更新
+    isUpdatingFromEditor = true
     const json = editor.getJSON()
     emit('update:modelValue', json)
     
@@ -78,6 +90,17 @@ const editor = useEditor({
     if (props.autoPageBreak) {
       checkAndInsertPageBreaks(editor)
     }
+    
+    // 重置標誌
+    setTimeout(() => {
+      isUpdatingFromEditor = false
+    }, 100)
+  },
+  onSelectionUpdate: ({ editor }) => {
+    // 更新當前節點類型
+    const { $from } = editor.state.selection
+    const node = $from.parent
+    currentNodeType.value = node ? node.type.name : null
   },
 })
 
@@ -174,6 +197,46 @@ function performPageBreakCheck(editor) {
   })
 }
 
+// 取得節點圖標
+const getNodeIcon = (nodeType) => {
+  const icons = {
+    'questionBlock': '❓',
+    'templateBlock': '📄',
+    'latexBlock': '𝑓',
+    'diagram2DBlock': '📊',
+    'diagram3DBlock': '🎲',
+    'circuitBlock': '⚡',
+    'pageBreak': '📄',
+    'heading': '📝',
+    'paragraph': '¶',
+    'bulletList': '•',
+    'orderedList': '1.',
+    'codeBlock': '</>',
+    'blockquote': '"'
+  }
+  return icons[nodeType] || '📝'
+}
+
+// 取得節點標籤
+const getNodeLabel = (nodeType) => {
+  const labels = {
+    'questionBlock': '題目區塊',
+    'templateBlock': '模板區塊',
+    'latexBlock': 'LaTeX 區塊',
+    'diagram2DBlock': '2D 圖表',
+    'diagram3DBlock': '3D 圖表',
+    'circuitBlock': '電路圖',
+    'pageBreak': '換頁符',
+    'heading': '標題',
+    'paragraph': '段落',
+    'bulletList': '無序列表',
+    'orderedList': '有序列表',
+    'codeBlock': '程式碼',
+    'blockquote': '引用'
+  }
+  return labels[nodeType] || nodeType
+}
+
 // 清理計時器
 onBeforeUnmount(() => {
   if (autoPageBreakTimeout) {
@@ -256,12 +319,15 @@ function convertToTiptapFormat(structure) {
 }
 
 // 監聽外部變更
+// 添加一個標誌來防止循環更新
+let isUpdatingFromEditor = false
+
 watch(() => props.modelValue, (newValue) => {
-  if (!editor.value) return
-  
+  if (!editor.value || isUpdatingFromEditor) return
+
   const currentContent = editor.value.getJSON()
   const newContent = convertToTiptapFormat(newValue)
-  
+
   // 避免不必要的更新
   if (JSON.stringify(currentContent) !== JSON.stringify(newContent)) {
     editor.value.commands.setContent(newContent, false)
@@ -280,6 +346,47 @@ onBeforeUnmount(() => {
   width: 100%;
   min-height: 500px;
   padding: 20mm;
+  position: relative;
+}
+
+/* 游標位置指示器 */
+.cursor-indicator {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: linear-gradient(135deg, rgb(99, 102, 241), rgb(139, 92, 246));
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  margin-bottom: 1rem;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.indicator-icon {
+  font-size: 1.125rem;
+}
+
+.indicator-text {
+  letter-spacing: 0.025em;
 }
 
 .editor-content {
@@ -390,11 +497,27 @@ onBeforeUnmount(() => {
 :deep(.ProseMirror > [data-type]) {
   position: relative;
   padding-left: 0;
-  transition: background 0.2s;
+  transition: background 0.2s, box-shadow 0.2s, border-color 0.2s;
+  border-radius: 4px;
 }
 
 :deep(.ProseMirror > [data-type]:hover) {
   background: rgb(249, 250, 251);
+}
+
+/* 選中區塊的視覺反饋 */
+:deep(.ProseMirror > [data-type].ProseMirror-selectednode),
+:deep(.ProseMirror > [data-type].has-focus) {
+  background: rgb(238, 242, 255) !important;
+  box-shadow: 0 0 0 2px rgb(99, 102, 241);
+  border-radius: 4px;
+}
+
+/* 游標所在區塊的邊框提示 */
+:deep(.ProseMirror-focused > [data-type]:has(.ProseMirror-focused)) {
+  outline: 2px solid rgb(99, 102, 241);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 /* 嵌套區塊的縮排 */
