@@ -16,9 +16,6 @@ function generateId() {
  * @returns {Array} tokens 陣列，每個 token 包含 type 和 content
  */
 export function parseSmartPaste(text) {
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'smartPasteParser.js:18', message: 'parseSmartPaste entry', data: { hasText: !!text, textLength: text?.length, textPreview: text?.substring(0, 200) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
-  // #endregion
 
   if (!text || !text.trim()) {
     return []
@@ -32,10 +29,6 @@ export function parseSmartPaste(text) {
 
   const tokens = []
   const lines = text.split(/\r?\n/)
-
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'smartPasteParser.js:30', message: 'Lines split', data: { lineCount: lines.length, firstFewLines: lines.slice(0, 5) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
-  // #endregion
 
   // 第一步：找出所有跨行的 $$...$$ 區塊
   // 使用正則表達式匹配整個文本中的 $$...$$（允許跨行）
@@ -67,9 +60,6 @@ export function parseSmartPaste(text) {
   while (i < lines.length) {
     const line = lines[i]
 
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'smartPasteParser.js:58', message: 'Processing line', data: { lineIndex: i, line: line, lineLength: line.length }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B,D' }) }).catch(() => { });
-    // #endregion
 
     // 檢查當前行是否在跨行 LaTeX 區塊內
     const blockLatexBlock = blockLatexBlocks.find(block =>
@@ -126,9 +116,6 @@ export function parseSmartPaste(text) {
     if (headingMatch) {
       const level = headingMatch[1].length
       const content = headingMatch[2].trim()
-      // #region agent log
-      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'smartPasteParser.js:112', message: 'Heading detected', data: { level, content }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
-      // #endregion
       tokens.push({
         type: 'heading',
         level,
@@ -168,9 +155,6 @@ export function parseSmartPaste(text) {
     const orderedListMatch = line.match(/^(\d+)\.\s+(.+)$/)
     if (orderedListMatch) {
       const content = orderedListMatch[2].trim()
-      // #region agent log
-      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'smartPasteParser.js:152', message: 'Ordered list detected', data: { content }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
-      // #endregion
       tokens.push({
         type: 'orderedList',
         content
@@ -198,9 +182,6 @@ export function parseSmartPaste(text) {
 
       if (blockquoteLines.length > 0) {
         const blockquoteText = blockquoteLines.join('\n')
-        // #region agent log
-        fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'smartPasteParser.js:175', message: 'Blockquote detected', data: { lineCount: blockquoteLines.length, contentPreview: blockquoteText.substring(0, 100) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'F' }) }).catch(() => { });
-        // #endregion
 
         // 檢查是否包含圖片語法
         const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g
@@ -355,9 +336,6 @@ export function parseSmartPaste(text) {
         const hasPairedDollars = /\$[^$]+\$/.test(normalizedText)
         const hasInlineLatex = hasPairedDollars && !hasBlockLatex
 
-        // #region agent log
-        fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'smartPasteParser.js:193', message: 'Paragraph created', data: { lineCount: paragraphLines.length, hasInlineLatex, contentPreview: paragraphText.substring(0, 100) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
-        // #endregion
 
         tokens.push({
           type: 'paragraph',
@@ -382,9 +360,6 @@ export function parseSmartPaste(text) {
     return tokens.slice(0, 100)
   }
 
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'smartPasteParser.js:214', message: 'parseSmartPaste exit', data: { tokenCount: tokens.length, tokenTypes: tokens.map(t => t.type), tokensPreview: tokens.slice(0, 3) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A,B' }) }).catch(() => { });
-  // #endregion
 
   return tokens
 }

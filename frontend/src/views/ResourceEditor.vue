@@ -1458,21 +1458,41 @@ const replaceAllImages = async () => {
     // 從後往前替換（避免位置偏移）
     positions.sort((a, b) => b.pos - a.pos)
     
+    // 使用單一 transaction 來批量替換，確保所有操作原子性
+    const tr = editor.state.tr
+    
     for (const item of positions) {
-      editor.chain()
-        .focus()
-        .setTextSelection(item.pos)
-        .deleteSelection()
-        .insertContent({
-          type: 'image',
-          attrs: {
+      if (item.type === 'placeholder') {
+        // 對於 imagePlaceholder 節點，需要獲取節點大小並使用 replaceWith
+        const node = editor.state.doc.nodeAt(item.pos)
+        if (node && node.type.name === 'imagePlaceholder') {
+          const nodeSize = node.nodeSize
+          const imageNode = editor.schema.nodes.image.create({
             src: item.newUrl,
             alt: item.alt,
             title: item.filename
-          }
-        })
-        .run()
-      replacedCount++
+          })
+          tr.replaceWith(item.pos, item.pos + nodeSize, imageNode)
+          replacedCount++
+        }
+      } else {
+        // 對於已存在的 image 節點，只需要更新屬性
+        const node = editor.state.doc.nodeAt(item.pos)
+        if (node && node.type.name === 'image') {
+          tr.setNodeMarkup(item.pos, null, {
+            ...node.attrs,
+            src: item.newUrl,
+            alt: item.alt,
+            title: item.filename
+          })
+          replacedCount++
+        }
+      }
+    }
+    
+    // 一次性執行所有替換
+    if (replacedCount > 0) {
+      editor.view.dispatch(tr)
     }
     
     if (replacedCount > 0) {

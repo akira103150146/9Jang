@@ -25,9 +25,6 @@ function parseInlineContent(text) {
   for (const part of latexParts) {
     if (part.isLatex) {
       // 行內 LaTeX：使用 inlineLatex node
-      // #region agent log
-      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'nodeConverter.js:25', message: 'Inline LaTeX detected', data: { formula: part.text }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run3', hypothesisId: 'G,H' }) }).catch(() => { });
-      // #endregion
       content.push({
         type: 'inlineLatex',
         attrs: {
@@ -55,9 +52,6 @@ function preprocessText(text) {
   // 注意：LaTeX 內的 \ 不應該被處理，但因為 LaTeX 已經在 parseInlineLatex 中提取出來了，所以這裡處理的是剩餘的文字
   let processedText = text.replace(/\\\s*$/gm, '\n')
 
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'nodeConverter.js:48', message: 'Text preprocessed', data: { originalLength: text.length, processedLength: processedText.length, hasLineBreaks: processedText.includes('\n') }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run3', hypothesisId: 'I' }) }).catch(() => { });
-  // #endregion
 
   return processedText
 }
@@ -164,9 +158,6 @@ function parseMarkdownInline(text) {
  * @returns {Object} Tiptap 節點結構
  */
 export function createNodeFromToken(token, editor = null, imageMappings = null) {
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'nodeConverter.js:141', message: 'createNodeFromToken called', data: { tokenType: token.type, hasContent: !!token.content }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C' }) }).catch(() => { });
-  // #endregion
 
   switch (token.type) {
     case 'latex':
@@ -219,9 +210,6 @@ export function createNodeFromToken(token, editor = null, imageMappings = null) 
       }
 
     case 'blockquote':
-      // #region agent log
-      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'nodeConverter.js:191', message: 'Blockquote node created', data: { hasContent: !!token.content, hasImages: !!token.hasImages }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'F' }) }).catch(() => { });
-      // #endregion
 
       // 如果 blockquote 包含圖片，需要拆分內容
       if (token.hasImages && token.images && token.images.length > 0) {
@@ -335,9 +323,6 @@ export function createNodeFromToken(token, editor = null, imageMappings = null) 
 
     case 'paragraph':
       const paragraphContent = parseInlineContent(token.content)
-      // #region agent log
-      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'nodeConverter.js:192', message: 'Paragraph node created', data: { contentLength: paragraphContent.length, isBold: !!token.isBold, contentPreview: paragraphContent.slice(0, 2) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C' }) }).catch(() => { });
-      // #endregion
       // 如果標記為粗體，為所有文字添加粗體標記
       if (token.isBold && paragraphContent.length > 0) {
         paragraphContent.forEach(part => {
@@ -373,15 +358,7 @@ export function createNodeFromToken(token, editor = null, imageMappings = null) 
  * @returns {Array} Tiptap 節點陣列
  */
 export function createNodesFromTokens(tokens, editor = null, imageMappings = null) {
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'nodeConverter.js:227', message: 'createNodesFromTokens called', data: { tokenCount: tokens.length }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C' }) }).catch(() => { });
-  // #endregion
-
   const nodes = tokens.map(token => createNodeFromToken(token, editor, imageMappings))
-
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'nodeConverter.js:232', message: 'createNodesFromTokens exit', data: { nodeCount: nodes.length, nodeTypes: nodes.map(n => n.type) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C' }) }).catch(() => { });
-  // #endregion
 
   return nodes
 }

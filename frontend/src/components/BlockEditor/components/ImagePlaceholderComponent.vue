@@ -19,15 +19,10 @@
 </template>
 
 <script setup>
-import { ref, computed, inject } from 'vue'
-import { NodeViewWrapper } from '@tiptap/vue-3'
+import { ref, computed, inject, nextTick } from 'vue'
+import { NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3'
 
-const props = defineProps({
-  node: { type: Object, required: true },
-  updateAttributes: { type: Function, required: true },
-  deleteNode: { type: Function, required: true },
-  editor: { type: Object, required: true }
-})
+const props = defineProps(nodeViewProps)
 
 const isHovering = ref(false)
 
@@ -39,76 +34,31 @@ const originalPath = computed(() => props.node.attrs.originalPath)
 
 // 打開圖片選擇器
 const openImageSelector = () => {
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImagePlaceholderComponent.vue:41',message:'openImageSelector called',data:{nodeId:props.node.attrs.id,filename:props.node.attrs.filename},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,E'})}).catch(()=>{});
-  // #endregion
-  
   // 通過 emit 事件通知父組件
   const event = new CustomEvent('openImageSelector', {
     detail: {
       placeholderNode: props.node,
       placeholderNodeId: props.node.attrs.id, // 傳遞節點 ID 用於匹配
       onSelect: (selectedUrl) => {
-        // #region agent log
-        fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImagePlaceholderComponent.vue:48',message:'onSelect called',data:{selectedUrl,nodeId:props.node.attrs.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,B'})}).catch(()=>{});
-        // #endregion
+        // 使用 getPos() 直接獲取節點位置（這是 Tiptap NodeView 提供的方法）
+        const pos = props.getPos()
         
-        // 找到當前節點的位置 - 使用節點 ID 或屬性來匹配
-        const { state } = props.editor
-        let pos = null
-        const targetId = props.node.attrs.id
-        const targetFilename = props.node.attrs.filename
-        
-        // #region agent log
-        fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImagePlaceholderComponent.vue:55',message:'Searching for node',data:{targetId,targetFilename},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-        // #endregion
-        
-        state.doc.descendants((node, nodePos) => {
-          // 使用節點 ID 或檔名來匹配
-          if (node.type.name === 'imagePlaceholder') {
-            const nodeId = node.attrs.id
-            const nodeFilename = node.attrs.filename
-            // #region agent log
-            fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImagePlaceholderComponent.vue:62',message:'Checking node',data:{nodeId,nodeFilename,matchesId:nodeId===targetId,matchesFilename:nodeFilename===targetFilename},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-            // #endregion
-            
-            if (nodeId === targetId || (nodeFilename === targetFilename && targetId)) {
-              pos = nodePos
-              // #region agent log
-              fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImagePlaceholderComponent.vue:68',message:'Node found',data:{pos,nodeId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-              // #endregion
-              return false
-            }
-          }
-        })
-        
-        // #region agent log
-        fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImagePlaceholderComponent.vue:75',message:'Before replace',data:{pos,hasPos:pos!==null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,B,C'})}).catch(()=>{});
-        // #endregion
-        
-        if (pos !== null) {
-          // 替換為真實圖片節點
-          props.editor.chain()
-            .focus()
-            .setTextSelection(pos)
-            .deleteSelection()
-            .insertContent({
-              type: 'image',
-              attrs: {
-                src: selectedUrl,
-                alt: props.node.attrs.alt || props.node.attrs.filename,
-                title: props.node.attrs.filename
-              }
-            })
-            .run()
+        if (pos !== null && pos !== undefined) {
+          // 獲取節點大小，用於正確刪除整個 block 節點
+          const nodeSize = props.node.nodeSize
           
-          // #region agent log
-          fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImagePlaceholderComponent.vue:93',message:'Replace command executed',data:{success:true},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B,D'})}).catch(()=>{});
-          // #endregion
-        } else {
-          // #region agent log
-          fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImagePlaceholderComponent.vue:97',message:'Node position not found',data:{targetId,targetFilename},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C,E'})}).catch(()=>{});
-          // #endregion
+          // 替換為真實圖片節點 - 使用 replaceWith 直接替換節點
+          // 這是最可靠的方法，因為它會在同一個 transaction 中完成替換
+          const imageNode = props.editor.schema.nodes.image.create({
+            src: selectedUrl,
+            alt: props.node.attrs.alt || props.node.attrs.filename,
+            title: props.node.attrs.filename
+          })
+          
+          // 使用 replaceWith 替換節點
+          const tr = props.editor.state.tr
+          tr.replaceWith(pos, pos + nodeSize, imageNode)
+          props.editor.view.dispatch(tr)
         }
       }
     }
