@@ -108,24 +108,28 @@ class StudentViewSet(viewsets.ModelViewSet):
             return Student.objects.none()
         
         # 先進行 annotate 聚合計算（在過濾之前）
+        # 注意：使用 distinct=True 避免多個 JOIN 導致的笛卡爾積問題
         queryset = Student.objects.select_related('user').annotate(
-            # 預先計算總費用
+            # 預先計算總費用（使用 distinct 避免重複計算）
             _total_fees=Sum(
                 'extra_fees__amount',
-                filter=Q(extra_fees__is_deleted=False)
+                filter=Q(extra_fees__is_deleted=False),
+                distinct=True
             ),
-            # 預先計算未繳費用
+            # 預先計算未繳費用（使用 distinct 避免重複計算）
             _unpaid_fees=Sum(
                 'extra_fees__amount',
                 filter=Q(
                     extra_fees__is_deleted=False,
                     extra_fees__payment_status='Unpaid'
-                )
+                ),
+                distinct=True
             ),
-            # 預先計算報名課程數量
+            # 預先計算報名課程數量（使用 distinct 避免重複計算）
             _enrollments_count=Count(
                 'enrollments',
-                filter=Q(enrollments__is_deleted=False)
+                filter=Q(enrollments__is_deleted=False),
+                distinct=True
             )
         )
         
@@ -2460,17 +2464,22 @@ class GroupOrderViewSet(viewsets.ModelViewSet):
         user = self.request.user
         created_by_teacher = None
 
-        # 僅允許老師建立團購，並自動綁定 created_by
-        if not user.is_authenticated or not user.is_teacher():
-            raise _DRFPermissionError('只有老師可以建立團購')
+        # 僅允許老師和會計建立團購，並自動綁定 created_by
+        if not user.is_authenticated or (not user.is_teacher() and not user.is_accountant()):
+            raise _DRFPermissionError('只有老師或會計可以建立團購')
 
-        try:
-            created_by_teacher = user.teacher_profile
-        except Exception:
+        # 如果是老師，綁定 teacher_profile；如果是會計，created_by 設為 None
+        if user.is_teacher():
+            try:
+                created_by_teacher = user.teacher_profile
+            except Exception:
+                created_by_teacher = None
+
+            if created_by_teacher is None:
+                raise _DRFPermissionError('找不到老師資料，無法建立團購')
+        else:
+            # 會計創建團購時，created_by 設為 None
             created_by_teacher = None
-
-        if created_by_teacher is None:
-            raise _DRFPermissionError('找不到老師資料，無法建立團購')
 
         # 生成唯一連結
         unique_link = f"order-{uuid.uuid4().hex[:12]}"
@@ -2584,20 +2593,21 @@ class GroupOrderViewSet(viewsets.ModelViewSet):
             
             if not existing_fee:
                 try:
+                    # 備註：讓會計可追溯是哪位老師發起的團購
+                    teacher_name = group_order.created_by.name if group_order.created_by else '未知'
+                    notes_text = (
+                        f"餐費/團購：{group_order.title}｜店家：{group_order.restaurant.name if group_order.restaurant else '未知'}｜"
+                        f"發起老師：{teacher_name}｜團購ID:{group_order.group_order_id}｜訂單ID:{order.order_id}"
+                    )
+                    
                     fee = ExtraFee.objects.create(
                         student=order.student,
                         item='Meal',
                         amount=order.total_amount,
                         fee_date=today,
-                        payment_status='Unpaid'
+                        payment_status='Unpaid',
+                        notes=notes_text
                     )
-                    # 備註：讓會計可追溯是哪位老師發起的團購
-                    teacher_name = group_order.created_by.name if group_order.created_by else '未知'
-                    fee.notes = (
-                        f"餐費/團購：{group_order.title}｜店家：{group_order.restaurant.name if group_order.restaurant else '未知'}｜"
-                        f"發起老師：{teacher_name}｜團購ID:{group_order.group_order_id}｜訂單ID:{order.order_id}"
-                    )
-                    fee.save()
                     created_fees.append(fee.fee_id)
                 except Exception as e:
                     # 如果創建失敗（可能是 notes 欄位問題），記錄錯誤但繼續
