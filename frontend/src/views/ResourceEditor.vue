@@ -48,7 +48,7 @@
             v-if="modeEditorComponent"
             :settings="resource.settings"
             :structure="structure"
-            @update:settings="(newSettings) => { resource.settings = { ...resource.settings, ...newSettings } }"
+            @update:settings="updateSettings"
           />
 
           <!-- 課程綁定 -->
@@ -96,6 +96,26 @@
                 {{ t.tag_name }}
               </option>
             </select>
+          </div>
+
+          <!-- JSON 結構顯示 (開發用) -->
+          <div class="space-y-3 mt-6 pt-6 border-t border-slate-200">
+            <div class="flex justify-between items-center">
+              <label class="block text-sm font-medium text-slate-700">JSON 結構 (開發)</label>
+              <button @click="showJson = !showJson" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
+                {{ showJson ? '隱藏' : '顯示' }}
+              </button>
+            </div>
+            <div v-show="showJson" class="space-y-3">
+              <div>
+                <span class="text-xs font-semibold text-slate-600 block mb-1">Tiptap Format:</span>
+                <pre class="bg-slate-50 p-2 rounded text-[10px] overflow-auto max-h-40 border border-slate-200">{{ JSON.stringify(tiptapStructure, null, 2) }}</pre>
+              </div>
+              <div>
+                <span class="text-xs font-semibold text-slate-600 block mb-1">Legacy Format:</span>
+                <pre class="bg-slate-50 p-2 rounded text-[10px] overflow-auto max-h-40 border border-slate-200">{{ JSON.stringify(structure, null, 2) }}</pre>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -280,19 +300,18 @@
 
       <!-- 畫布區域 -->
       <div 
-        class="flex-1 overflow-auto p-8 relative flex flex-col items-center gap-4"
+        class="flex-1 overflow-auto p-8 relative"
         @dragover.prevent="handleDragOver"
         @drop="handleDrop"
       >
         <!-- BlockEditor 編輯器 -->
-        <div
-          class="bg-white shadow-xl relative print:shadow-none print-paper"
+        <div class="bg-white shadow-xl relative print:shadow-none print-paper mx-auto"
           :class="[
-            resource.settings.paperSize === 'A4' ? 'w-[210mm]' : 'w-[250mm]'
+            resource.settings?.handout?.paperSize === 'A4' || resource.settings?.paperSize === 'A4' ? 'w-[210mm]' : 'w-[250mm]'
           ]"
           :style="{
             padding: '20mm',
-            minHeight: resource.settings.paperSize === 'A4' ? '297mm' : '353mm'
+            minHeight: (resource.settings?.handout?.paperSize === 'A4' || resource.settings?.paperSize === 'A4') ? '297mm' : '353mm'
           }"
         >
           <BlockEditor
@@ -300,29 +319,9 @@
             @update:model-value="handleBlockEditorUpdate"
             :templates="templates"
             :questions="questions"
-            :auto-page-break="resource.mode === 'handout'"
-            :paper-size="resource.settings?.paperSize || 'A4'"
+            :auto-page-break="resource.mode === 'HANDOUT'"
+            :paper-size="resource.settings?.handout?.paperSize || resource.settings?.paperSize || 'A4'"
           />
-        </div>
-        
-        <!-- JSON 結構顯示 (開發用) -->
-        <div class="mt-4 bg-white shadow-xl rounded-lg p-4 print:hidden">
-          <div class="flex justify-between items-center mb-2">
-            <h3 class="text-sm font-bold text-slate-700">JSON 結構 (即時)</h3>
-            <button @click="showJson = !showJson" class="text-xs text-indigo-600 hover:text-indigo-800">
-              {{ showJson ? '隱藏' : '顯示' }}
-            </button>
-          </div>
-          <div v-show="showJson">
-            <div class="mb-2">
-              <span class="text-xs font-semibold text-slate-600">Tiptap Format:</span>
-              <pre class="bg-slate-100 p-3 rounded text-xs overflow-auto max-h-64 mt-1">{{ JSON.stringify(tiptapStructure, null, 2) }}</pre>
-            </div>
-            <div>
-              <span class="text-xs font-semibold text-slate-600">Legacy Format (structure):</span>
-              <pre class="bg-slate-100 p-3 rounded text-xs overflow-auto max-h-64 mt-1">{{ JSON.stringify(structure, null, 2) }}</pre>
-            </div>
-          </div>
         </div>
       </div>
     </main>
@@ -381,6 +380,7 @@ const sidebarOpen = ref(true)
 const currentTab = ref('settings')
 const isSaving = ref(false)
 const lastSaved = ref(null)
+const isInitializing = ref(true) // 標記是否正在初始化，避免觸發自動保存
 const courses = ref([])
 const studentGroups = ref([])
 const availableTags = ref([])
@@ -406,7 +406,7 @@ const resource = reactive({
 })
 
 const structure = ref([])
-const showJson = ref(true) // 預設顯示 JSON
+const showJson = ref(false) // 預設隱藏 JSON
 
 // Tiptap 格式的 structure（用於 BlockEditor）
 const tiptapStructure = computed({
@@ -458,16 +458,17 @@ const loadModeEditor = async () => {
   }
 }
 
-// 更新設定
+// 更新設定（避免在初始化期間觸發不必要的更新）
 const updateSettings = (newSettings) => {
+  if (isInitializing.value) return
   resource.settings = { ...resource.settings, ...newSettings }
 }
 
 // 監聽模式變化，重新載入編輯器
 watch(() => resource.mode, () => {
   loadModeEditor()
-  // 根據模式初始化設定（在 viewMode 下不修改 settings 以避免觸發自動保存）
-  if (!props.viewMode) {
+  // 根據模式初始化設定（在 viewMode 或初始化期間不修改 settings）
+  if (!props.viewMode && !isInitializing.value) {
     const modeConfig = getModeConfig(resource.mode)
     if (modeConfig && modeConfig.defaultSettings) {
       resource.settings = {
@@ -478,14 +479,8 @@ watch(() => resource.mode, () => {
   }
 }, { immediate: true })
 
-// Refs for page calculation
-const paperContainer = ref(null)
-const contentContainer = ref(null)
+// Refs (保留用於未來可能的功能)
 const canvasContainer = ref(null)
-const pageContainers = ref([])
-const pageContentContainers = ref([])
-const totalPages = ref(1)
-const markdownEditorRefs = ref({})
 
 const toRT = (v) => {
   if (typeof v === 'string') return v
@@ -596,22 +591,6 @@ const addBlock = async (type, content = '') => {
     question_id: null
   }
   structure.value.push(newBlock)
-  
-  // 如果是文字區塊，等待 DOM 更新後自動聚焦
-  if (type === 'text') {
-    await nextTick()
-    setTimeout(() => {
-      const editor = markdownEditorRefs.value[newBlock.id]
-      if (editor && editor.focus) {
-        editor.focus()
-      }
-    }, 100)
-  }
-  
-  // 自動新增頁面如果需要的話
-  setTimeout(() => {
-    ensurePages()
-  }, 100)
   return newBlock
 }
 
@@ -637,11 +616,6 @@ const addTemplateBlock = (template) => {
     template_id: template.template_id
   }
   structure.value.push(newBlock)
-  
-  // 自動新增頁面如果需要的話
-  setTimeout(() => {
-    ensurePages()
-  }, 100)
   return newBlock
 }
 
@@ -652,10 +626,6 @@ const handleTemplateDragStart = (event, template) => {
 
 const removeBlock = (index) => {
   structure.value.splice(index, 1)
-  // 重新計算頁數
-  setTimeout(() => {
-    ensurePages()
-  }, 100)
 }
 
 const moveBlock = (index, direction) => {
@@ -663,97 +633,9 @@ const moveBlock = (index, direction) => {
   const temp = structure.value[index]
   structure.value[index] = structure.value[index + direction]
   structure.value[index + direction] = temp
-  setTimeout(() => {
-    ensurePages()
-  }, 100)
 }
 
-// 獲取區塊所在的頁面
-const getBlockPage = (blockIndex) => {
-  if (!pageContentContainers.value.length) return 1
-  
-  // 計算累積高度來判斷區塊應該在哪一頁
-  const pageHeightMm = resource.settings.paperSize === 'A4' ? 297 : 353
-  const usableHeightMm = pageHeightMm - 40 // 減去 padding
-  
-  // 簡單實現：根據區塊索引和每頁可容納的區塊數估算
-  // 實際應該根據 DOM 位置計算，這裡先簡化
-  let currentHeight = 0
-  let currentPage = 1
-  
-  for (let i = 0; i < blockIndex; i++) {
-    // 估算每個區塊的高度（這裡簡化為固定值，實際應該測量）
-    const estimatedBlockHeight = 50 // mm，實際應該動態計算
-    if (currentHeight + estimatedBlockHeight > usableHeightMm) {
-      currentPage++
-      currentHeight = estimatedBlockHeight
-    } else {
-      currentHeight += estimatedBlockHeight
-    }
-  }
-  
-  return currentPage
-}
-
-// 獲取指定頁面的區塊 - 根據累積高度分配
-const getBlocksForPage = (pageIndex) => {
-  if (pageIndex > totalPages.value || structure.value.length === 0) return []
-  if (totalPages.value === 1) return structure.value
-  
-  const pageHeightMm = resource.settings.paperSize === 'A4' ? 297 : 353
-  const usableHeightMm = pageHeightMm - 40 // 減去上下 padding
-  
-  // 計算每個區塊應該在哪一頁
-  const pageBlocks = []
-  let currentPage = 1
-  let currentPageHeight = 0
-  
-  for (let i = 0; i < structure.value.length; i++) {
-    const block = structure.value[i]
-    
-    // 估算區塊高度（mm）- 實際應該從已渲染的 DOM 獲取
-    let blockHeightMm = 40 // 默認高度
-    
-    // 嘗試從 DOM 獲取實際高度（如果已經渲染）
-    if (canvasContainer.value) {
-      const blockEl = canvasContainer.value.querySelector(`[data-block-id="${block.id}"]`)
-      if (blockEl) {
-        // 獲取實際高度並轉換為 mm
-        const rect = blockEl.getBoundingClientRect()
-        const mmToPx = 3.7795 // 簡化轉換
-        blockHeightMm = rect.height / mmToPx
-      }
-    }
-    
-    // 如果當前頁面放不下，移到下一頁
-    if (currentPageHeight + blockHeightMm > usableHeightMm && currentPageHeight > 0) {
-      currentPage++
-      currentPageHeight = blockHeightMm
-    } else {
-      currentPageHeight += blockHeightMm
-    }
-    
-    // 如果這個區塊屬於目標頁面，添加到結果中
-    if (currentPage === pageIndex) {
-      pageBlocks.push(block)
-    } else if (currentPage > pageIndex) {
-      // 已經超過目標頁面，停止
-      break
-    }
-  }
-  
-  return pageBlocks
-}
-
-// 獲取區塊的全域索引
-const getGlobalBlockIndex = (block) => {
-  return structure.value.findIndex(b => b.id === block.id)
-}
-
-// 確保有足夠的頁面
-const ensurePages = () => {
-  calculatePages()
-}
+// 舊的頁面計算函數已移除，現在由 BlockEditor 的自動換頁功能處理
 
 // Drag & Drop - 從側邊欄拖動題目
 const handleDragStart = (event, question) => {
@@ -821,19 +703,7 @@ const handleBlockDragOver = (event, block, index) => {
 const handlePageDragOver = (event, pageIndex) => {
   event.preventDefault()
   if (!draggingBlock.value) return
-  
   dragOverPage.value = pageIndex
-  
-  // 如果拖動到頁面底部，顯示插入指示器
-  const rect = event.currentTarget.getBoundingClientRect()
-  const mouseY = event.clientY
-  const pageBottom = rect.bottom
-  
-  if (mouseY > pageBottom - 50) {
-    // 接近頁面底部，在最後插入
-    const pageBlocks = getBlocksForPage(pageIndex)
-    dragOverIndex.value = pageBlocks.length
-  }
 }
 
 const handlePageDrop = (event, pageIndex) => {
@@ -864,11 +734,6 @@ const handlePageDrop = (event, pageIndex) => {
   dragOverPage.value = null
   dragOverIndex.value = null
   snapLine.show = false
-  
-  // 確保頁面足夠
-  setTimeout(() => {
-    ensurePages()
-  }, 100)
 }
 
 // 磁吸對齊檢查
@@ -930,6 +795,7 @@ const checkSnapAlignment = (event, block, index) => {
 
 // Data Fetching
 const fetchInitialData = async () => {
+  isInitializing.value = true // 開始初始化
   try {
     const [cRes, gRes, tRes, sRes, qRes, templateRes] = await Promise.all([
       courseAPI.getAll(),
@@ -993,6 +859,12 @@ const fetchInitialData = async () => {
     }
   } catch (error) {
     console.error('Failed to load data', error)
+  } finally {
+    // 初始化完成後，等待一個 tick 再啟用自動保存
+    await nextTick()
+    setTimeout(() => {
+      isInitializing.value = false
+    }, 100)
   }
 }
 
@@ -1009,21 +881,11 @@ const saveResource = async (manual = false) => {
     student_group_ids: resource.student_group_ids
   }
   
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:1033',message:'saveResource called',data:{hasRouteId:!!route.params.id,resourceTitle:resource.title,resourceMode:resource.mode,hasCourse:!!resource.course,structureLength:structure.value.length},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'I'})}).catch(()=>{});
-  // #endregion
-  
   try {
     let response
     if (route.params.id) {
-      // #region agent log
-      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:1048',message:'updating existing resource',data:{resourceId:route.params.id,payloadKeys:Object.keys(payload),course:payload.course,mode:payload.mode},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'I'})}).catch(()=>{});
-      // #endregion
       response = await learningResourceAPI.update(route.params.id, payload)
     } else {
-      // #region agent log
-      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:1053',message:'creating new resource',data:{payloadKeys:Object.keys(payload),course:payload.course,mode:payload.mode},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'I'})}).catch(()=>{});
-      // #endregion
       response = await learningResourceAPI.create(payload)
       // Redirect to edit mode if created
       if (!route.params.id && manual) {
@@ -1031,14 +893,8 @@ const saveResource = async (manual = false) => {
       }
     }
     lastSaved.value = new Date()
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:1063',message:'save successful',data:{savedAt:lastSaved.value},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'I'})}).catch(()=>{});
-    // #endregion
   } catch (error) {
     console.error('Save failed', error)
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:1068',message:'save failed',data:{errorMessage:error.message,errorResponse:error.response?.data,errorStatus:error.response?.status,payloadCourse:payload.course,payloadMode:payload.mode},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'I'})}).catch(()=>{});
-    // #endregion
     if (manual) {
       const errorMsg = error.response?.data?.detail || '儲存失敗，請稍後再試'
       alert(errorMsg)
@@ -1052,10 +908,22 @@ const saveResource = async (manual = false) => {
 const debouncedSave = debounce(() => saveResource(false), 3000)
 
 // 只在非查看模式下啟用自動保存 watcher
+// 注意：不要監聽 isSaving 和 lastSaved，避免遞迴更新
 if (!props.viewMode) {
   watch(
-    [() => resource, structure],
+    [
+      () => resource.title,
+      () => resource.mode,
+      () => resource.course,
+      () => resource.student_group_ids,
+      () => resource.tag_ids,
+      () => resource.settings,
+      structure
+    ],
     () => {
+      // 初始化期間不觸發自動保存
+      if (isInitializing.value) return
+      
       if (route.params.id || resource.title !== '未命名文件') { // Only auto-save if editing or title changed
         debouncedSave()
       }
@@ -1178,53 +1046,7 @@ const print = async () => {
   }, 1000)
 }
 
-// 計算總頁數 - 根據實際內容高度
-const calculatePages = () => {
-  if (structure.value.length === 0) {
-    totalPages.value = 1
-    return
-  }
-  
-  // 等待 DOM 更新
-  setTimeout(() => {
-    const pageHeightMm = resource.settings.paperSize === 'A4' ? 297 : 353
-    const usableHeightMm = pageHeightMm - 40 // 減去上下 padding
-    
-    let currentPageHeight = 0
-    let pages = 1
-    
-    // 遍歷所有區塊來計算需要的頁數
-    for (let i = 0; i < structure.value.length; i++) {
-      const block = structure.value[i]
-      
-      // 估算區塊高度（mm）
-      let blockHeightMm = 40 // 默認高度
-      
-      // 嘗試從 DOM 獲取實際高度
-      if (canvasContainer.value) {
-        const blockEl = canvasContainer.value.querySelector(`[data-block-id="${block.id}"]`)
-        if (blockEl) {
-          const rect = blockEl.getBoundingClientRect()
-          const mmToPx = 3.7795
-          blockHeightMm = rect.height / mmToPx
-        }
-      }
-      
-      // 如果當前頁面放不下，新增一頁
-      if (currentPageHeight + blockHeightMm > usableHeightMm && currentPageHeight > 0) {
-        pages++
-        currentPageHeight = blockHeightMm
-      } else {
-        currentPageHeight += blockHeightMm
-      }
-    }
-    
-    // 至少需要 1 頁，確保有足夠的頁面
-    totalPages.value = Math.max(1, pages)
-  }, 150)
-}
-
-// 使用 ResizeObserver 監聽內容變化
+// 頁面計算已由 BlockEditor 的自動換頁功能處理
 let resizeObserver = null
 
 // 鍵盤快捷鍵處理
@@ -1345,50 +1167,14 @@ onMounted(() => {
   
   // 添加全局鍵盤事件監聽器
   window.addEventListener('keydown', handleKeyboardShortcuts)
-  
-  // 等待 DOM 更新後計算頁數
-  setTimeout(() => {
-    if (canvasContainer.value) {
-      calculatePages()
-      
-      // 設置 ResizeObserver 來監聽內容變化
-      resizeObserver = new ResizeObserver(() => {
-        calculatePages()
-      })
-      
-      // 監聽所有頁面容器
-      if (pageContentContainers.value.length > 0) {
-        pageContentContainers.value.forEach(container => {
-          if (container) resizeObserver.observe(container)
-        })
-      }
-      
-      // 也監聽整個畫布容器
-      resizeObserver.observe(canvasContainer.value)
-    }
-  }, 200)
 })
 
-// 監聽結構和紙張大小變化（在編輯模式下才需要）
-if (!props.viewMode) {
-  watch(
-    [() => structure.value, () => resource.settings.paperSize],
-    () => {
-      setTimeout(() => {
-        ensurePages()
-      }, 100)
-    },
-    { deep: true }
-  )
-}
-
-// 清理 ResizeObserver 和事件監聽器
+// 清理事件監聽器
 onUnmounted(() => {
   // 移除鍵盤事件監聽器
   window.removeEventListener('keydown', handleKeyboardShortcuts)
   
-  if (resizeObserver && contentContainer.value) {
-    resizeObserver.unobserve(contentContainer.value)
+  if (resizeObserver) {
     resizeObserver.disconnect()
   }
 })

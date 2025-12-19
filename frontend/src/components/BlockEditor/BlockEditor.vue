@@ -149,12 +149,30 @@ function performPageBreakCheck(editor) {
         domNode = domNode.parentElement
       }
       
+      // 向上查找，直到找到頂層的塊級元素（ProseMirror 的直接子元素）
+      while (domNode && domNode.parentElement && domNode.parentElement.classList && !domNode.parentElement.classList.contains('ProseMirror')) {
+        domNode = domNode.parentElement
+      }
+      
       if (domNode && domNode instanceof HTMLElement) {
+        // 獲取元素的完整高度，包括 margin
+        const rect = domNode.getBoundingClientRect()
+        const computedStyle = window.getComputedStyle(domNode)
+        const marginTop = parseFloat(computedStyle.marginTop) || 0
+        const marginBottom = parseFloat(computedStyle.marginBottom) || 0
+        let totalHeight = rect.height + marginTop + marginBottom
+        
+        // 特殊處理：換頁符不應該計入高度計算
+        // 因為它代表的是分頁點，而不是實際內容
+        if (node.type.name === 'pageBreak') {
+          totalHeight = 0
+        }
+        
         nodes.push({
           node,
           domNode,
           pos: offset,
-          height: domNode.offsetHeight
+          height: totalHeight
         })
       }
     } catch (e) {

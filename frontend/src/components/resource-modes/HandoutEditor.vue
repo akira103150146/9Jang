@@ -51,19 +51,11 @@
         </div>
       </div>
     </div>
-
-    <!-- 紙張模擬預覽 -->
-    <PaperPreview
-      :paper-size="localSettings.handout.paperSize"
-      :orientation="localSettings.handout.orientation"
-      :structure="structure"
-    />
   </div>
 </template>
 
 <script setup>
 import { computed, watch } from 'vue'
-import PaperPreview from '../PaperPreview.vue'
 
 const props = defineProps({
   settings: {
@@ -119,10 +111,14 @@ const localSettings = computed({
 })
 
 // 監聽設定變化並同步
-watch(() => localSettings.value.handout, (newHandout) => {
-  emit('update:settings', {
-    ...props.settings,
-    handout: newHandout
-  })
-}, { deep: true })
+// 使用 immediate: false 避免初始化時觸發
+watch(() => localSettings.value.handout, (newHandout, oldHandout) => {
+  // 只在實際變化時才 emit，避免不必要的更新
+  if (JSON.stringify(newHandout) !== JSON.stringify(oldHandout)) {
+    emit('update:settings', {
+      ...props.settings,
+      handout: newHandout
+    })
+  }
+}, { deep: true, immediate: false })
 </script>
