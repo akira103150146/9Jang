@@ -222,7 +222,7 @@ const router = createRouter({
       name: 'resource-view',
       component: ResourceEditor,
       props: route => ({ id: route.params.id, viewMode: true }),
-      meta: { title: '查看教學資源', allowedRoles: ['TEACHER', 'STUDENT'] },
+      meta: { title: '查看教學資源', allowedRoles: ['ADMIN', 'TEACHER', 'STUDENT'] },
     },
     {
       path: '/resources/edit/:id',
@@ -341,9 +341,19 @@ router.beforeEach(async (to, from, next) => {
   // 檢查管理員是否在模擬狀態下訪問老師專用頁面
   if (user.role === 'ADMIN' && effectiveRole === 'ADMIN') {
     // 管理員在非模擬狀態下，不允許訪問老師專用頁面
-    const teacherOnlyPaths = ['/questions', '/resources', '/templates']
+    // 例外：允許管理員以唯讀模式查看資源
+    const teacherOnlyPaths = ['/questions', '/templates']
+    const teacherOnlyResourcePaths = ['/resources/new', '/resources/edit']
+
     if (teacherOnlyPaths.some(path => to.path.startsWith(path))) {
       alert('管理員需要先切換到老師身分才能訪問此功能')
+      next('/')
+      return
+    }
+
+    // 檢查資源相關路徑（允許查看，但不允許新增和編輯）
+    if (teacherOnlyResourcePaths.some(path => to.path.startsWith(path))) {
+      alert('管理員需要先切換到老師身分才能編輯資源')
       next('/')
       return
     }
@@ -392,7 +402,8 @@ router.beforeEach(async (to, from, next) => {
 // 根據角色過濾路由的函數
 function getRoleBasedRouteFilter(role) {
   // 依需求：老闆（ADMIN）不是「全能」，有明確允許/禁止的模組
-  // 注意：管理員在非模擬狀態下不能訪問老師專用頁面（題庫與資源）
+  // 注意：管理員在非模擬狀態下不能訪問老師專用頁面（題庫與資源編輯）
+  // 例外：管理員可以以唯讀模式查看資源
   if (role === 'ADMIN') {
     return (path) => {
       // 允許：儀表板、學生、老師、課程、請假、角色管理、操作記錄
@@ -406,7 +417,12 @@ function getRoleBasedRouteFilter(role) {
         '/audit-logs',
       ]
 
-      // 禁止：學生群組、訂便當、學生首頁、題庫與資源（必要時透過模擬登入切換視角）
+      // 特殊處理：允許管理員查看資源（唯讀）
+      if (path.startsWith('/resources/view/')) {
+        return true
+      }
+
+      // 禁止：學生群組、訂便當、學生首頁、題庫、資源編輯、模板
       const excludedPrefixes = ['/student-groups', '/lunch-orders', '/student-home', '/questions', '/resources', '/templates']
       if (excludedPrefixes.some(excluded => path.startsWith(excluded))) {
         return false

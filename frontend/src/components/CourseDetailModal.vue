@@ -10,12 +10,12 @@
           <div class="sm:flex sm:items-start">
             <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
               <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                {{ course?.course_name }} - 課程管理
+                {{ course?.course_name }} - {{ isTeacher ? '課程管理' : '課程文件' }}
               </h3>
               
               <div class="mt-4">
-                <!-- 操作按鈕區 -->
-                <div class="flex gap-2 mb-4">
+                <!-- 操作按鈕區（僅老師可見） -->
+                <div v-if="isTeacher" class="flex gap-2 mb-4">
                   <button
                     @click="showCreateResourceModal = true"
                     class="bg-indigo-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-600"
@@ -60,15 +60,17 @@
                           <button @click="viewResource(resource)" class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-md text-sm font-medium hover:bg-indigo-100">
                             查看
                           </button>
-                          <button @click="editResource(resource)" class="bg-sky-50 text-sky-700 px-3 py-1 rounded-md text-sm font-medium hover:bg-sky-100">
-                            編輯
-                          </button>
-                          <button @click="unbindResource(resource)" class="bg-amber-50 text-amber-700 px-3 py-1 rounded-md text-sm font-medium hover:bg-amber-100">
-                            解除綁定
-                          </button>
-                          <button @click="deleteResource(resource)" class="bg-rose-50 text-rose-700 px-3 py-1 rounded-md text-sm font-medium hover:bg-rose-100">
-                            刪除
-                          </button>
+                          <template v-if="isTeacher">
+                            <button @click="editResource(resource)" class="bg-sky-50 text-sky-700 px-3 py-1 rounded-md text-sm font-medium hover:bg-sky-100">
+                              編輯
+                            </button>
+                            <button @click="unbindResource(resource)" class="bg-amber-50 text-amber-700 px-3 py-1 rounded-md text-sm font-medium hover:bg-amber-100">
+                              解除綁定
+                            </button>
+                            <button @click="deleteResource(resource)" class="bg-rose-50 text-rose-700 px-3 py-1 rounded-md text-sm font-medium hover:bg-rose-100">
+                              刪除
+                            </button>
+                          </template>
                         </div>
                       </div>
                     </div>
@@ -187,7 +189,7 @@
 
 <script setup>
 import { ref, watch } from 'vue'
-import { learningResourceAPI } from '../services/api'
+import { learningResourceAPI, courseAPI } from '../services/api'
 import axios from 'axios'
 
 const props = defineProps({
@@ -238,9 +240,9 @@ const fetchData = async () => {
   try {
     const courseId = props.course.course_id || props.course.id
     
-    // Fetch resources (使用 course query param)
-    const resourcesRes = await learningResourceAPI.getAll({ course: courseId })
-    const resourcesData = resourcesRes.data.results || resourcesRes.data
+    // 使用新的課程資源 API endpoint
+    const resourcesRes = await courseAPI.getResources(courseId)
+    const resourcesData = resourcesRes.data
     resources.value = Array.isArray(resourcesData) ? resourcesData : []
   } catch (error) {
     console.error('Error fetching course data:', error)

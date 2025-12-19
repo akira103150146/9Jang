@@ -12,7 +12,7 @@
       </div>
 
       <!-- Tab 切換 -->
-      <div class="flex border-b border-slate-100">
+      <div v-if="!viewMode" class="flex border-b border-slate-100">
         <button
           v-for="tab in ['settings', 'questions', 'templates']"
           :key="tab"
@@ -23,6 +23,9 @@
           {{ tab === 'settings' ? '文件設定' : tab === 'questions' ? '題目庫' : '模板庫' }}
         </button>
       </div>
+      <div v-else class="border-b border-slate-100 py-3 text-center">
+        <span class="text-sm font-medium text-slate-600">唯讀模式</span>
+      </div>
 
       <div class="flex-1 overflow-y-auto p-4">
         <!-- 設定面板 -->
@@ -30,13 +33,13 @@
           <!-- 基本資訊 -->
           <div class="space-y-3">
             <label class="block text-sm font-medium text-slate-700">標題</label>
-            <input v-model="resource.title" type="text" class="w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border" placeholder="輸入文件標題...">
+            <input v-model="resource.title" type="text" :disabled="viewMode" class="w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed" placeholder="輸入文件標題...">
           </div>
 
           <!-- 模式選擇 -->
           <div class="space-y-3">
             <label class="block text-sm font-medium text-slate-700">模式</label>
-            <select v-model="resource.mode" class="w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border">
+            <select v-model="resource.mode" :disabled="viewMode" class="w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed">
               <option value="HANDOUT">講義模式</option>
               <option value="ONLINE_QUIZ">線上測驗模式</option>
             </select>
@@ -54,7 +57,7 @@
           <!-- 課程綁定 -->
           <div class="space-y-3">
             <label class="block text-sm font-medium text-slate-700">所屬課程</label>
-            <select v-model="resource.course" class="w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border">
+            <select v-model="resource.course" :disabled="viewMode" class="w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed">
               <option :value="null">未綁定（通用資源）</option>
               <option v-for="c in courses" :key="c.course_id" :value="c.course_id">
                 {{ c.course_name }}
@@ -72,7 +75,8 @@
                   :id="`group-${g.group_id}`"
                   :value="g.group_id"
                   v-model="resource.student_group_ids"
-                  class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  :disabled="viewMode"
+                  class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                 <label :for="`group-${g.group_id}`" class="ml-2 block text-sm text-gray-900">
                   {{ g.name }}
@@ -87,10 +91,10 @@
             <div class="flex flex-wrap gap-2 mb-2">
               <span v-for="tagId in resource.tag_ids" :key="tagId" class="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800">
                 #{{ getTagName(tagId) }}
-                <button @click="removeTag(tagId)" class="ml-1 text-indigo-600 hover:text-indigo-900">×</button>
+                <button v-if="!viewMode" @click="removeTag(tagId)" class="ml-1 text-indigo-600 hover:text-indigo-900">×</button>
               </span>
             </div>
-            <select @change="addTag($event.target.value)" class="w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border">
+            <select v-if="!viewMode" @change="addTag($event.target.value)" class="w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border">
               <option value="">+ 新增標籤</option>
               <option v-for="t in availableTags" :key="t.tag_id" :value="t.tag_id">
                 {{ t.tag_name }}
@@ -289,7 +293,7 @@
             </svg>
             列印 / 預覽 PDF
           </button>
-          <button @click="saveResource(true)" class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+          <button v-if="!viewMode" @click="saveResource(true)" class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
             </svg>

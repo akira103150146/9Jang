@@ -271,7 +271,10 @@ export const courseAPI = {
   delete: (id) => api.delete(`/cramschool/courses/${id}/`),
 
   // 獲取課程的學生狀態統計
-  getStudentStatus: (id) => api.get(`/cramschool/courses/${id}/student-status/`)
+  getStudentStatus: (id) => api.get(`/cramschool/courses/${id}/student-status/`),
+
+  // 獲取課程的所有教學資源
+  getResources: (id) => api.get(`/cramschool/courses/${id}/resources/`)
 }
 
 // Enrollment API

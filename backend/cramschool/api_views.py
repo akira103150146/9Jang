@@ -791,6 +791,57 @@ class CourseViewSet(viewsets.ModelViewSet):
             'leave_count': leave_count,
             'inactive_count': inactive_count,  # 暫停（期間不在區間內）
         })
+    
+    @action(detail=True, methods=['get'], url_path='resources')
+    def get_resources(self, request, pk=None):
+        """
+        獲取課程的所有教學資源
+        管理員可以查看所有老師綁定在課程的教學資源
+        老師只能查看自己的課程資源
+        """
+        course = self.get_object()
+        user = request.user
+        
+        if not user.is_authenticated:
+            return Response(
+                {'detail': '需要登入'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        # 管理員可以查看所有課程的資源
+        if user.is_admin():
+            resources = LearningResource.objects.filter(
+                courses=course
+            ).prefetch_related('courses', 'tags', 'student_groups').select_related('created_by')
+            serializer = LearningResourceSerializer(resources, many=True, context={'request': request})
+            return Response(serializer.data)
+        
+        # 老師只能查看自己課程的資源
+        if user.is_teacher():
+            try:
+                teacher = user.teacher_profile
+                # 確認這是老師的課程
+                if course.teacher != teacher:
+                    return Response(
+                        {'detail': '您沒有權限查看此課程的資源'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+                resources = LearningResource.objects.filter(
+                    courses=course
+                ).prefetch_related('courses', 'tags', 'student_groups').select_related('created_by')
+                serializer = LearningResourceSerializer(resources, many=True, context={'request': request})
+                return Response(serializer.data)
+            except Teacher.DoesNotExist:
+                return Response(
+                    {'detail': '找不到老師資料'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        
+        # 其他角色不允許訪問
+        return Response(
+            {'detail': '您沒有權限查看課程資源'},
+            status=status.HTTP_403_FORBIDDEN
+        )
 
 
 class EnrollmentPeriodViewSet(viewsets.ModelViewSet):
@@ -2976,9 +3027,20 @@ class LearningResourceViewSet(viewsets.ModelViewSet):
         if not user.is_authenticated:
             return queryset.none()
         
-        # 管理員在非模擬狀態下不能訪問
+        # 管理員可以查看所有資源（唯讀模式）
         if user.is_admin():
-            return queryset.none()
+            # 支援 course query param 篩選
+            course_id = self.request.query_params.get('course')
+            if course_id:
+                try:
+                    queryset = queryset.filter(courses__course_id=int(course_id))
+                except (ValueError, TypeError):
+                    pass
+            # 支援模式篩選
+            mode = self.request.query_params.get('mode')
+            if mode:
+                queryset = queryset.filter(mode=mode)
+            return queryset
         
         # 支援 course query param 篩選 (改為多對多)
         course_id = self.request.query_params.get('course')
