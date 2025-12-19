@@ -54,15 +54,27 @@
             @update:settings="updateSettings"
           />
 
-          <!-- 課程綁定 -->
+          <!-- 課程綁定（多選） -->
           <div class="space-y-3">
-            <label class="block text-sm font-medium text-slate-700">所屬課程</label>
-            <select v-model="resource.course" :disabled="viewMode" class="w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed">
-              <option :value="null">未綁定（通用資源）</option>
-              <option v-for="c in courses" :key="c.course_id" :value="c.course_id">
-                {{ c.course_name }}
-              </option>
-            </select>
+            <label class="block text-sm font-medium text-slate-700">綁定課程（可多選）</label>
+            <div class="space-y-2 max-h-40 overflow-y-auto border border-slate-200 rounded p-2">
+              <div v-for="c in courses" :key="c.course_id" class="flex items-center">
+                <input
+                  type="checkbox"
+                  :id="`course-${c.course_id}`"
+                  :value="c.course_id"
+                  v-model="resource.course_ids"
+                  :disabled="viewMode"
+                  class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                <label :for="`course-${c.course_id}`" class="ml-2 text-sm text-slate-700">
+                  {{ c.course_name }}
+                </label>
+              </div>
+              <div v-if="courses.length === 0" class="text-sm text-slate-500 italic">
+                沒有可用的課程
+              </div>
+            </div>
           </div>
 
           <!-- 學生群組 -->
@@ -83,6 +95,57 @@
                 </label>
               </div>
             </div>
+          </div>
+
+          <!-- 圖片上傳 -->
+          <div class="space-y-3">
+            <label class="block text-sm font-medium text-slate-700">圖片管理</label>
+            <button 
+              @click="openImageFolderUpload" 
+              class="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-slate-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              :disabled="viewMode || uploadingImages"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              {{ uploadingImages ? '上傳中...' : '上傳圖片資料夾' }}
+              <span v-if="imageMappings.size > 0" class="ml-2 px-2 py-0.5 bg-white text-indigo-600 rounded-full text-xs font-semibold">
+                {{ imageMappings.size }}
+              </span>
+            </button>
+            <p v-if="imageMappings.size > 0" class="text-xs text-slate-500">
+              已上傳 {{ imageMappings.size }} 張圖片
+            </p>
+            <div v-if="imageMappings.size > 0" class="flex gap-2">
+              <button 
+                @click="replaceAllImages" 
+                class="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-slate-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                :disabled="viewMode || replacingImages"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                {{ replacingImages ? '替換中...' : '替換' }}
+              </button>
+              <button 
+                @click="clearImageMappings" 
+                class="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-slate-400 disabled:cursor-not-allowed flex items-center justify-center"
+                :disabled="viewMode"
+                title="清空當前文件的圖片映射表"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+            <input
+              ref="imageFolderInput"
+              type="file"
+              multiple
+              accept="image/png,image/jpeg,image/jpg,image/gif"
+              @change="handleImageFolderUpload"
+              style="display: none"
+            />
           </div>
 
           <!-- 標籤 -->
@@ -319,12 +382,15 @@
           }"
         >
           <BlockEditor
+            ref="blockEditorRef"
             :model-value="tiptapStructure"
             @update:model-value="handleBlockEditorUpdate"
             :templates="templates"
             :questions="questions"
             :auto-page-break="resource.mode === 'HANDOUT'"
             :paper-size="resource.settings?.handout?.paperSize || resource.settings?.paperSize || 'A4'"
+            :image-mappings="imageMappings"
+            @request-upload="openImageFolderUpload"
           />
         </div>
       </div>
@@ -335,7 +401,7 @@
 <script setup>
 import { ref, reactive, onMounted, onUnmounted, watch, computed, nextTick, shallowRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { learningResourceAPI, courseAPI, studentGroupAPI, hashtagAPI, questionBankAPI, subjectAPI, contentTemplateAPI } from '../services/api'
+import { learningResourceAPI, courseAPI, studentGroupAPI, hashtagAPI, questionBankAPI, subjectAPI, contentTemplateAPI, uploadImageAPI } from '../services/api'
 import BlockEditor from '../components/BlockEditor/BlockEditor.vue'
 import { useMarkdownRenderer } from '../composables/useMarkdownRenderer'
 import { getModeConfig } from '../config/resourceModes'
@@ -398,7 +464,7 @@ const templateSearch = ref('')
 const resource = reactive({
   title: '未命名文件',
   mode: 'HANDOUT',
-  course: null,
+  course_ids: [],
   student_group_ids: [],
   tag_ids: [],
   settings: {
@@ -411,6 +477,58 @@ const resource = reactive({
 
 const structure = ref([])
 const showJson = ref(false) // 預設隱藏 JSON
+
+// 圖片映射表: Map<原檔名, 後端URL>
+// 每個資源文件有獨立的映射表，使用資源 ID 作為 key
+const imageMappings = ref(new Map())
+const imageFolderInput = ref(null)
+const uploadingImages = ref(false)
+const replacingImages = ref(false)
+const blockEditorRef = ref(null)
+
+// 獲取當前資源的映射表 key
+const getImageMappingKey = () => {
+  // 如果有資源 ID，使用資源 ID；否則使用臨時 key（基於標題）
+  const resourceId = route.params.id
+  if (resourceId) {
+    return `resource_${resourceId}`
+  }
+  // 新文件使用標題作為臨時 key
+  return `temp_${resource.title || 'untitled'}`
+}
+
+// 載入當前資源的映射表
+const loadImageMappings = () => {
+  const key = getImageMappingKey()
+  const saved = localStorage.getItem(`imageMappings_${key}`)
+  if (saved) {
+    try {
+      imageMappings.value = new Map(JSON.parse(saved))
+    } catch (error) {
+      console.error('載入圖片映射表失敗:', error)
+      imageMappings.value = new Map()
+    }
+  } else {
+    imageMappings.value = new Map()
+  }
+}
+
+// 保存當前資源的映射表
+const saveImageMappings = () => {
+  const key = getImageMappingKey()
+  localStorage.setItem(`imageMappings_${key}`, 
+    JSON.stringify(Array.from(imageMappings.value.entries()))
+  )
+}
+
+// 清空當前資源的映射表
+const clearImageMappings = () => {
+  if (confirm('確定要清空當前文件的圖片映射表嗎？這不會刪除已上傳的圖片，只是清除映射關係。')) {
+    imageMappings.value.clear()
+    saveImageMappings()
+    alert('已清空當前文件的圖片映射表')
+  }
+}
 
 // Tiptap 格式的 structure（用於 BlockEditor）
 const tiptapStructure = computed({
@@ -823,7 +941,7 @@ const fetchInitialData = async () => {
       const data = res.data
       resource.title = data.title
       resource.mode = data.mode || 'HANDOUT'
-      resource.course = data.course
+      resource.course_ids = data.courses?.map(c => c.course_id) || []
       // 載入對應的模式編輯器
       await loadModeEditor()
       resource.student_group_ids = data.student_group_ids || []
@@ -848,6 +966,9 @@ const fetchInitialData = async () => {
         }
       } : defaultSettings
       structure.value = data.structure || []
+      
+      // 載入該資源的圖片映射表
+      loadImageMappings()
     } else if (route.query.template_id) {
       // 如果從 template 創建，載入 template 內容
       try {
@@ -859,6 +980,11 @@ const fetchInitialData = async () => {
         }
       } catch (error) {
         console.error('載入模板失敗：', error)
+      }
+      
+      // 如果是新文件，載入臨時映射表
+      if (!route.params.id) {
+        loadImageMappings()
       }
     }
   } catch (error) {
@@ -893,7 +1019,18 @@ const saveResource = async (manual = false) => {
       response = await learningResourceAPI.create(payload)
       // Redirect to edit mode if created
       if (!route.params.id && manual) {
-        router.replace(`/resources/edit/${response.data.resource_id}`)
+        const newResourceId = response.data.resource_id
+        router.replace(`/resources/edit/${newResourceId}`)
+        
+        // 新資源創建後，將臨時映射表遷移到資源專屬的映射表
+        const tempKey = getImageMappingKey()
+        const resourceKey = `resource_${newResourceId}`
+        const tempMappings = localStorage.getItem(`imageMappings_${tempKey}`)
+        if (tempMappings) {
+          localStorage.setItem(`imageMappings_${resourceKey}`, tempMappings)
+          localStorage.removeItem(`imageMappings_${tempKey}`)
+          loadImageMappings() // 重新載入映射表
+        }
       }
     }
     lastSaved.value = new Date()
@@ -918,7 +1055,7 @@ if (!props.viewMode) {
     [
       () => resource.title,
       () => resource.mode,
-      () => resource.course,
+      () => resource.course_ids,
       () => resource.student_group_ids,
       () => resource.tag_ids,
       () => resource.settings,
@@ -1163,6 +1300,192 @@ const handleKeyboardShortcuts = (event) => {
       console.warn('無法讀取剪貼板:', err)
     })
     return
+  }
+}
+
+// 打開圖片資料夾上傳
+const openImageFolderUpload = () => {
+  imageFolderInput.value?.click()
+}
+
+// 處理圖片資料夾上傳
+const handleImageFolderUpload = async (event) => {
+  const files = Array.from(event.target.files || [])
+  
+  // 過濾出圖片檔案
+  const imageFiles = files.filter(file => 
+    file.type.startsWith('image/')
+  )
+  
+  if (imageFiles.length === 0) {
+    alert('未找到圖片檔案')
+    event.target.value = ''
+    return
+  }
+  
+  uploadingImages.value = true
+  
+  try {
+    // 批次上傳 - 暫時使用單張上傳 API，後續需要後端支援批次上傳
+    const uploadPromises = imageFiles.map(file => 
+      uploadImageAPI.upload(file).then(response => ({
+        originalName: file.name,
+        url: response.data.url || response.data.image_url || response.data.url
+      })).catch(error => {
+        console.error(`上傳 ${file.name} 失敗:`, error)
+        return null
+      })
+    )
+    
+    const results = await Promise.all(uploadPromises)
+    
+    // 建立映射表 - 檢查檔名衝突
+    const conflictWarnings = []
+    const successfulUploads = results.filter(r => r !== null)
+    
+    successfulUploads.forEach(result => {
+      // 檢查是否會覆蓋現有映射
+      if (imageMappings.value.has(result.originalName)) {
+        if (!conflictWarnings.includes(result.originalName)) {
+          conflictWarnings.push(result.originalName)
+        }
+      }
+      // 使用原始檔名作為 key（這樣可以匹配 Markdown）
+      // 注意：如果檔名重複，後面的會覆蓋前面的
+      imageMappings.value.set(result.originalName, result.url)
+    })
+    
+    // 持久化到 localStorage（使用資源專屬的 key）
+    saveImageMappings()
+    
+    let message = `成功上傳 ${successfulUploads.length} 張圖片`
+    if (conflictWarnings.length > 0) {
+      message += `\n\n注意：有 ${conflictWarnings.length} 個檔名重複（${conflictWarnings.join(', ')}），已覆蓋舊的映射。`
+    }
+    alert(message)
+    
+  } catch (error) {
+    console.error('圖片上傳失敗:', error)
+    alert('圖片上傳失敗: ' + (error.message || '未知錯誤'))
+  } finally {
+    uploadingImages.value = false
+    // 清空選擇
+    event.target.value = ''
+  }
+}
+
+// 替換所有圖片
+const replaceAllImages = async () => {
+  if (!blockEditorRef.value || !blockEditorRef.value.editor) {
+    return
+  }
+  
+  replacingImages.value = true
+  
+  try {
+    const editor = blockEditorRef.value.editor
+    const { state } = editor
+    let replacedCount = 0
+    const positions = []
+    
+    // 遍歷文檔找到所有需要替換的節點及其位置
+    state.doc.descendants((node, pos) => {
+      // 處理 image 節點
+      if (node.type.name === 'image') {
+        const title = node.attrs?.title || ''
+        const alt = node.attrs?.alt || ''
+        const src = node.attrs?.src || ''
+        
+        // 優先從 title 提取檔名（貼上時設置的）
+        let filename = null
+        if (title) {
+          filename = title.split('/').pop().split('\\').pop()
+        } else if (alt && !alt.startsWith('http') && !alt.includes('://')) {
+          filename = alt.split('/').pop().split('\\').pop()
+        } else if (src && !src.startsWith('http')) {
+          filename = src.split('/').pop().split('\\').pop()
+        } else if (src) {
+          const urlParts = src.split('/')
+          const lastPart = urlParts[urlParts.length - 1]
+          if (lastPart.includes('.')) {
+            filename = lastPart.split('?')[0].split('#')[0]
+          }
+        }
+        
+        if (filename) {
+          let newUrl = null
+          if (imageMappings.value.has(filename)) {
+            newUrl = imageMappings.value.get(filename)
+          } else {
+            // 嘗試不區分大小寫匹配
+            for (const [key, url] of imageMappings.value.entries()) {
+              if (key.toLowerCase() === filename.toLowerCase()) {
+                newUrl = url
+                filename = key // 使用正確的檔名
+                break
+              }
+            }
+          }
+          
+          if (newUrl) {
+            positions.push({
+              type: 'image',
+              pos: pos,
+              newUrl: newUrl,
+              filename: filename,
+              alt: node.attrs?.alt || filename
+            })
+          }
+        }
+      }
+      
+      // 處理 imagePlaceholder 節點
+      if (node.type.name === 'imagePlaceholder') {
+        const filename = node.attrs?.filename || ''
+        if (filename && imageMappings.value.has(filename)) {
+          const newUrl = imageMappings.value.get(filename)
+          positions.push({
+            type: 'placeholder',
+            pos: pos,
+            newUrl: newUrl,
+            filename: filename,
+            alt: node.attrs?.alt || filename
+          })
+        }
+      }
+    })
+    
+    // 從後往前替換（避免位置偏移）
+    positions.sort((a, b) => b.pos - a.pos)
+    
+    for (const item of positions) {
+      editor.chain()
+        .focus()
+        .setTextSelection(item.pos)
+        .deleteSelection()
+        .insertContent({
+          type: 'image',
+          attrs: {
+            src: item.newUrl,
+            alt: item.alt,
+            title: item.filename
+          }
+        })
+        .run()
+      replacedCount++
+    }
+    
+    if (replacedCount > 0) {
+      alert(`成功替換 ${replacedCount} 張圖片`)
+    } else {
+      alert('沒有找到需要替換的圖片')
+    }
+    
+  } catch (error) {
+    console.error('替換圖片失敗:', error)
+    alert('替換圖片失敗: ' + (error.message || '未知錯誤'))
+  } finally {
+    replacingImages.value = false
   }
 }
 

@@ -25,6 +25,59 @@
         <div v-if="!hasConfig && !isEditing" class="empty-placeholder">
           點擊「編輯配置」添加電路圖
         </div>
+        <svg 
+          v-else
+          :width="circuitConfig.width || 600"
+          :height="circuitConfig.height || 400"
+          class="circuit-svg"
+          viewBox="0 0 600 400"
+        >
+          <!-- 繪製連線 -->
+          <g v-for="wire in circuitConfig.wires || []" :key="`wire-${wire.from}-${wire.to}`">
+            <line
+              :x1="getNodePosition(wire.from).x"
+              :y1="getNodePosition(wire.from).y"
+              :x2="getNodePosition(wire.to).x"
+              :y2="getNodePosition(wire.to).y"
+              stroke="black"
+              stroke-width="2"
+            />
+          </g>
+          
+          <!-- 繪製元件 -->
+          <g v-for="component in circuitConfig.components || []" :key="component.id">
+            <!-- 電阻 -->
+            <g v-if="component.type === 'resistor'" :transform="`translate(${component.position.x}, ${component.position.y})`">
+              <rect x="-20" y="-5" width="40" height="10" fill="white" stroke="black" stroke-width="2"/>
+              <text x="0" y="-10" text-anchor="middle" font-size="12">{{ component.label }}</text>
+              <text x="0" y="20" text-anchor="middle" font-size="10">{{ component.value }}</text>
+            </g>
+            
+            <!-- 檢流計 -->
+            <g v-else-if="component.type === 'galvanometer'" :transform="`translate(${component.position.x}, ${component.position.y})`">
+              <circle cx="0" cy="0" r="15" fill="white" stroke="black" stroke-width="2"/>
+              <text x="0" y="5" text-anchor="middle" font-size="14" font-weight="bold">{{ component.label }}</text>
+            </g>
+            
+            <!-- 電池 -->
+            <g v-else-if="component.type === 'battery'" :transform="`translate(${component.position.x}, ${component.position.y})`">
+              <line x1="0" y1="-15" x2="0" y2="-5" stroke="black" stroke-width="3"/>
+              <line x1="0" y1="5" x2="0" y2="15" stroke="black" stroke-width="1"/>
+              <text x="15" y="5" font-size="12">{{ component.label }}</text>
+              <text x="15" y="18" font-size="10">{{ component.value }}</text>
+            </g>
+          </g>
+          
+          <!-- 繪製節點 -->
+          <g v-for="node in circuitConfig.nodes || []" :key="node.id">
+            <circle
+              :cx="node.position.x"
+              :cy="node.position.y"
+              r="3"
+              fill="black"
+            />
+          </g>
+        </svg>
       </div>
       
       <node-view-content class="content" />
@@ -33,7 +86,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { NodeViewWrapper, NodeViewContent, nodeViewProps } from '@tiptap/vue-3'
 
 const props = defineProps(nodeViewProps)
@@ -45,6 +98,25 @@ const containerRef = ref(null)
 const hasConfig = computed(() => {
   return props.node.attrs.config && Object.keys(props.node.attrs.config).length > 0
 })
+
+// 解析電路配置
+const circuitConfig = computed(() => {
+  const config = props.node.attrs.config || {}
+  return config
+})
+
+// 獲取節點或元件的位置
+const getNodePosition = (id) => {
+  // 先在 nodes 中查找
+  const node = circuitConfig.value.nodes?.find(n => n.id === id)
+  if (node) return node.position
+  
+  // 再在 components 中查找
+  const component = circuitConfig.value.components?.find(c => c.id === id)
+  if (component) return component.position
+  
+  return { x: 0, y: 0 }
+}
 
 const handleSave = () => {
   try {
@@ -114,16 +186,22 @@ const handleSave = () => {
 
 .circuit-container {
   width: 100%;
-  height: 400px;
+  min-height: 400px;
   background: white;
   border-radius: 0.5rem;
-}
-
-.circuit-container.empty {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: auto;
+}
+
+.circuit-container.empty {
   border: 2px dashed rgb(203, 213, 225);
+}
+
+.circuit-svg {
+  max-width: 100%;
+  height: auto;
 }
 
 .empty-placeholder {

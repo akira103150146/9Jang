@@ -1,4 +1,6 @@
 export { LaTeXBlock } from './LaTeXBlock'
+export { InlineLatex } from './InlineLatex'
+export { ImagePlaceholder } from './ImagePlaceholder'
 export { TemplateBlock } from './TemplateBlock'
 export { Diagram2DBlock } from './Diagram2DBlock'
 export { Diagram3DBlock } from './Diagram3DBlock'

@@ -622,11 +622,24 @@ export const studentAnswerAPI = {
 
 // Image Upload API
 export const uploadImageAPI = {
-  // 上傳圖片
+  // 上傳單張圖片
   upload: (file) => {
     const formData = new FormData()
     formData.append('image', file)
     return api.post('/cramschool/upload-image/', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      }
+    })
+  },
+  // 批次上傳圖片（如果後端支援）
+  batchUpload: (files) => {
+    const formData = new FormData()
+    files.forEach((file, index) => {
+      formData.append('images', file)
+      formData.append(`original_names`, file.name)
+    })
+    return api.post('/cramschool/batch-upload-images/', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       }
