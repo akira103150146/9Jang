@@ -1,12 +1,15 @@
 <template>
-  <div class="block-editor">
+  <div class="block-editor-container">
     <!-- 游標位置指示器 -->
     <div v-if="editor && currentNodeType" class="cursor-indicator">
       <span class="indicator-icon">{{ getNodeIcon(currentNodeType) }}</span>
       <span class="indicator-text">{{ getNodeLabel(currentNodeType) }}</span>
     </div>
     
-    <editor-content :editor="editor" class="editor-content" />
+    <!-- 白色紙張區域 -->
+    <div class="paper-sheet">
+      <editor-content :editor="editor" class="editor-content" />
+    </div>
   </div>
 </template>
 
@@ -14,11 +17,13 @@
 import { ref, watch, onMounted, onBeforeUnmount, provide, computed } from 'vue'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
-import { LaTeXBlock, TemplateBlock, Diagram2DBlock, Diagram3DBlock, CircuitBlock, QuestionBlock, PageBreakBlock } from './extensions'
+import { LaTeXBlock, InlineLatex, TemplateBlock, Diagram2DBlock, Diagram3DBlock, CircuitBlock, QuestionBlock, PageBreakBlock } from './extensions'
 import { SlashCommands } from './extensions/SlashCommands'
 import { KeyboardShortcuts } from './extensions/KeyboardShortcuts'
 import { DragHandle } from './extensions/DragHandle'
 import { Nesting } from './extensions/Nesting'
+import { parseSmartPaste } from './utils/smartPasteParser'
+import { createNodesFromTokens } from './utils/nodeConverter'
 
 const props = defineProps({
   modelValue: {
@@ -62,6 +67,7 @@ const editor = useEditor({
       },
     }),
     LaTeXBlock,
+    InlineLatex,
     TemplateBlock,
     Diagram2DBlock,
     Diagram3DBlock,
@@ -78,6 +84,72 @@ const editor = useEditor({
   editorProps: {
     attributes: {
       class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl focus:outline-none',
+    },
+    handlePaste: (view, event, slice) => {
+      // #region agent log
+      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BlockEditor.vue:87',message:'handlePaste called',data:{hasClipboardData:!!event.clipboardData},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      
+      // 取得貼上的純文字內容
+      const text = event.clipboardData?.getData('text/plain')
+      
+      // #region agent log
+      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BlockEditor.vue:90',message:'Text extracted',data:{hasText:!!text,textLength:text?.length,textPreview:text?.substring(0,100)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      
+      if (!text) return false
+      
+      try {
+        // 使用智能解析器解析內容
+        const tokens = parseSmartPaste(text)
+        
+        // #region agent log
+        fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BlockEditor.vue:95',message:'Tokens parsed',data:{tokenCount:tokens.length,tokens:tokens.map(t=>({type:t.type,hasContent:!!t.content,contentPreview:t.content?.substring(0,50)}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
+        
+        // 如果沒有特殊格式，使用預設行為
+        if (tokens.length === 1 && tokens[0].type === 'paragraph' && !tokens[0].hasInlineLatex) {
+          // 檢查是否包含 Markdown 格式
+          const hasMarkdown = /^#{1,6}\s+|^[-*+]\s+|^\d+\.\s+/.test(text)
+          // #region agent log
+          fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BlockEditor.vue:99',message:'Checking markdown',data:{hasMarkdown,willUseDefault:!hasMarkdown},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
+          if (!hasMarkdown) {
+            return false // 使用預設貼上行為
+          }
+        }
+        
+        // 防止預設貼上行為
+        event.preventDefault()
+        
+        // 創建節點
+        const nodes = createNodesFromTokens(tokens)
+        
+        // #region agent log
+        fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BlockEditor.vue:109',message:'Nodes created',data:{nodeCount:nodes.length,hasEditor:!!editor.value,nodes:nodes.map(n=>({type:n.type,hasAttrs:!!n.attrs}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C,D'})}).catch(()=>{});
+        // #endregion
+        
+        // 使用編輯器實例插入內容
+        // editor 在 handlePaste 執行時應該已經初始化
+        if (nodes.length > 0 && editor.value) {
+          // #region agent log
+          fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BlockEditor.vue:114',message:'Inserting content',data:{nodeCount:nodes.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+          // #endregion
+          editor.value.chain().focus().insertContent(nodes).run()
+          // #region agent log
+          fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BlockEditor.vue:115',message:'Content inserted',data:{success:true},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+          // #endregion
+        }
+        
+        return true
+      } catch (error) {
+        // #region agent log
+        fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BlockEditor.vue:118',message:'Error in handlePaste',data:{errorMessage:error.message,errorStack:error.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,B,C,D'})}).catch(()=>{});
+        // #endregion
+        console.error('智能貼上處理失敗:', error)
+        // 發生錯誤時使用預設行為
+        return false
+      }
     },
   },
   onUpdate: ({ editor }) => {
@@ -360,11 +432,42 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.block-editor {
+/* 編輯器外層容器 - 灰色背景 */
+.block-editor-container {
   width: 100%;
-  min-height: 500px;
-  padding: 20mm;
+  min-height: 100vh;
+  background: #e5e7eb;
+  padding: 2rem;
   position: relative;
+}
+
+/* 白色紙張 */
+.paper-sheet {
+  background: white;
+  max-width: 210mm;
+  margin: 0 auto;
+  padding: 20mm;
+  min-height: 297mm;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 列印時的樣式調整 */
+@media print {
+  /* 移除外層容器的背景和 padding */
+  .block-editor-container {
+    background: white;
+    padding: 0;
+    min-height: auto;
+  }
+  
+  /* 移除紙張的陰影和邊距限制 */
+  .paper-sheet {
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    min-height: auto;
+    box-shadow: none;
+  }
 }
 
 /* 游標位置指示器 */
@@ -386,6 +489,13 @@ onBeforeUnmount(() => {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   margin-bottom: 1rem;
   animation: fadeIn 0.2s ease-in-out;
+}
+
+/* 列印時隱藏游標指示器 */
+@media print {
+  .cursor-indicator {
+    display: none !important;
+  }
 }
 
 @keyframes fadeIn {

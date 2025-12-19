@@ -1,14 +1,7 @@
 <template>
   <node-view-wrapper class="page-break-wrapper">
-    <div class="page-break-block print:hidden">
-      <div class="flex items-center gap-4 py-4 select-none">
-        <div class="h-px bg-red-200 flex-1 border-t border-dashed border-red-300"></div>
-        <span class="text-xs font-bold text-red-400 uppercase tracking-wider">強制分頁 (Page Break)</span>
-        <div class="h-px bg-red-200 flex-1 border-t border-dashed border-red-300"></div>
-      </div>
-    </div>
-    <!-- 列印時實際產生分頁 -->
-    <div class="hidden print:block break-after-page"></div>
+    <!-- 編輯模式：顯示灰色間隔 -->
+    <div class="page-break-gap"></div>
   </node-view-wrapper>
 </template>
 
@@ -20,17 +13,56 @@ defineProps(nodeViewProps)
 
 <style scoped>
 .page-break-wrapper {
-  margin: 1rem 0;
+  /* 負邊距讓灰色區域延伸到紙張外，露出背後的灰色背景 */
+  margin-left: -20mm;
+  margin-right: -20mm;
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+  padding: 0;
 }
 
-.page-break-block {
-  width: 100%;
+/* 灰色間隔區域 */
+.page-break-gap {
+  height: 2rem;
+  background: #e5e7eb;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+/* 在間隔中央顯示小標籤（僅編輯模式） */
+.page-break-gap::after {
+  content: '分頁';
+  background: rgba(255, 255, 255, 0.95);
+  padding: 0.375rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  border: 1px solid #d1d5db;
+}
+
+/* 列印時的處理 */
 @media print {
-  .break-after-page {
-    page-break-after: always;
-    break-after: page;
+  /* 隱藏整個分頁包裝器 */
+  .page-break-wrapper {
+    margin: 0;
+    padding: 0;
+    height: 0;
+    overflow: hidden;
+  }
+  
+  /* 灰色間隔在列印時不顯示 */
+  .page-break-gap {
+    display: none;
+  }
+  
+  /* 實際產生分頁效果 */
+  .page-break-wrapper {
+    page-break-before: always;
+    break-before: page;
   }
 }
 </style>

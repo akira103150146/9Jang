@@ -3184,20 +3184,8 @@ class LearningResourceViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        if user.is_teacher():
-            if instance.course:
-                try:
-                    teacher = user.teacher_profile
-                    if instance.course.teacher != teacher:
-                        return Response(
-                            {'detail': '只能編輯自己課程的資源'},
-                            status=status.HTTP_403_FORBIDDEN
-                        )
-                except Teacher.DoesNotExist:
-                    return Response(
-                        {'detail': '找不到老師資料'},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
+        # 注意：移除了舊的 instance.course 檢查，因為現在是多對多關係
+        # 老師可以更新自己課程的資源，或者未綁定課程的資源
         
         return super().update(request, *args, **kwargs)
     
@@ -3412,20 +3400,8 @@ class LearningResourceViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        if user.is_teacher():
-            if instance.course:
-                try:
-                    teacher = user.teacher_profile
-                    if instance.course.teacher != teacher:
-                        return Response(
-                            {'detail': '只能刪除自己課程的資源'},
-                            status=status.HTTP_403_FORBIDDEN
-                        )
-                except Teacher.DoesNotExist:
-                    return Response(
-                        {'detail': '找不到老師資料'},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
+        # 注意：移除了舊的 instance.course 檢查，因為現在是多對多關係
+        # 老師可以刪除自己課程的資源，或者未綁定課程的資源
         
         return super().destroy(request, *args, **kwargs)
 @api_view(['POST'])
