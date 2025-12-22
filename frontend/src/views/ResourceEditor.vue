@@ -350,6 +350,20 @@
         </div>
 
         <div class="flex items-center gap-3">
+          <!-- 預覽模式切換按鈕 -->
+          <button 
+            @click="togglePreviewMode" 
+            class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            :class="isPreviewMode 
+              ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
+              : 'text-slate-700 bg-white border border-slate-300 hover:bg-slate-50'"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            {{ isPreviewMode ? '編輯模式' : '預覽模式' }}
+          </button>
           <button @click="print" class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -371,8 +385,57 @@
         @dragover.prevent="handleDragOver"
         @drop="handleDrop"
       >
-        <!-- BlockEditor 編輯器 -->
-        <div class="relative print:shadow-none print-paper mx-auto bg-white shadow-sm my-8"
+        <!-- 預覽模式 -->
+        <div v-if="isPreviewMode" class="preview-container">
+          <iframe 
+            ref="previewIframe"
+            class="preview-iframe"
+            sandbox="allow-same-origin"
+          ></iframe>
+        </div>
+        
+        <!-- 編輯模式 -->
+        <template v-else>
+          <!-- 講義模式：多個獨立紙張容器 -->
+          <div v-if="resource.mode === 'HANDOUT'" class="p-8" ref="handoutContainerRef">
+          <div 
+            v-for="(pageContent, pageIndex) in handoutPages" 
+            :key="`page-${pageIndex}`"
+            class="paper-container mx-auto bg-white shadow-md mb-8 relative"
+            :class="[
+              (resource.settings?.handout?.paperSize === 'A4' || resource.settings?.paperSize === 'A4') ? 'w-[210mm]' : 'w-[250mm]'
+            ]"
+            :style="{
+              height: (resource.settings?.handout?.paperSize === 'A4' || resource.settings?.paperSize === 'A4') ? '297mm' : '353mm',
+              padding: '20mm',
+              overflow: 'hidden'
+            }"
+          >
+            <!-- 頁碼顯示 -->
+            <div class="page-number-display absolute top-4 right-4 bg-white/90 px-3 py-1 rounded text-sm font-semibold text-gray-600 shadow-sm border border-gray-200">
+              第 {{ pageIndex + 1 }} 頁
+            </div>
+            
+            <!-- 該頁的 BlockEditor（可編輯） -->
+            <BlockEditor
+              :ref="el => { if (el) pageEditorRefs[pageIndex] = el }"
+              :model-value="{ type: 'doc', content: pageContent }"
+              @update:model-value="(newContent) => handlePageEditorUpdate(pageIndex, newContent.content || [])"
+              :templates="templates"
+              :questions="questions"
+              :auto-page-break="false"
+              :paper-size="resource.settings?.handout?.paperSize || resource.settings?.paperSize || 'A4'"
+              :image-mappings="imageMappings"
+              :readonly="false"
+              :show-page-numbers="false"
+              :ignore-external-updates="isUpdatingFromPageEditor"
+              @request-upload="openImageFolderUpload"
+            />
+          </div>
+        </div>
+        
+        <!-- 其他模式：單一編輯器 -->
+        <div v-else class="relative print:shadow-none print-paper mx-auto bg-white shadow-sm my-8"
           :class="[
             resource.settings?.handout?.paperSize === 'A4' || resource.settings?.paperSize === 'A4' ? 'w-[210mm]' : 'w-[250mm]'
           ]"
@@ -393,6 +456,7 @@
             @request-upload="openImageFolderUpload"
           />
         </div>
+        </template>
       </div>
     </main>
   </div>
@@ -478,6 +542,12 @@ const resource = reactive({
 const structure = ref([])
 const showJson = ref(false) // 預設隱藏 JSON
 
+// 講義模式下直接使用 Tiptap JSON（避免轉換丟失）
+const tiptapStructureRef = ref({
+  type: 'doc',
+  content: [{ type: 'paragraph', content: [] }]
+})
+
 // 圖片映射表: Map<原檔名, 後端URL>
 // 每個資源文件有獨立的映射表，使用資源 ID 作為 key
 const imageMappings = ref(new Map())
@@ -485,6 +555,10 @@ const imageFolderInput = ref(null)
 const uploadingImages = ref(false)
 const replacingImages = ref(false)
 const blockEditorRef = ref(null)
+
+// 預覽模式狀態
+const isPreviewMode = ref(false)
+const previewIframe = ref(null)
 
 // 獲取當前資源的映射表 key
 const getImageMappingKey = () => {
@@ -531,8 +605,17 @@ const clearImageMappings = () => {
 }
 
 // Tiptap 格式的 structure（用於 BlockEditor）
+// 在講義模式下，直接使用 tiptapStructureRef，避免轉換丟失
 const tiptapStructure = computed({
   get() {
+    // 講義模式：直接使用 Tiptap JSON
+    if (resource.mode === 'HANDOUT') {
+      // #region agent log
+      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:tiptapStructure:get',message:'取得 tiptapStructure',data:{mode:resource.mode,contentLength:tiptapStructureRef.value?.content?.length || 0,hasDoc:tiptapStructureRef.value?.type === 'doc'},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'E'})}).catch(()=>{});
+      // #endregion
+      return tiptapStructureRef.value
+    }
+    // 其他模式：從舊格式轉換
     if (Array.isArray(structure.value) && structure.value.length > 0) {
       return legacyToTiptapStructure(structure.value)
     }
@@ -542,7 +625,16 @@ const tiptapStructure = computed({
     }
   },
   set(value) {
-    // 當 BlockEditor 更新時，轉換回舊格式
+    // 講義模式：直接更新 Tiptap JSON
+    if (resource.mode === 'HANDOUT') {
+      tiptapStructureRef.value = value
+      // 同時更新 structure.value 以便保存（轉換為舊格式）
+      if (value && value.type === 'doc') {
+        structure.value = tiptapToLegacyStructure(value)
+      }
+      return
+    }
+    // 其他模式：轉換回舊格式
     if (value && value.type === 'doc') {
       structure.value = tiptapToLegacyStructure(value)
     }
@@ -553,6 +645,264 @@ const tiptapStructure = computed({
 const handleBlockEditorUpdate = (newStructure) => {
   tiptapStructure.value = newStructure
   // 自動儲存會觸發
+}
+
+// 節點高度估算函數
+function estimateNodeHeight(node) {
+  const baseHeights = {
+    paragraph: 60,
+    heading: { 1: 100, 2: 80, 3: 70, 4: 60, 5: 50, 6: 50 },
+    latexBlock: 150,
+    image: 200,
+    imagePlaceholder: 200,
+    bulletList: 80,
+    orderedList: 80,
+    blockquote: 80,
+    codeBlock: 100,
+    questionBlock: 300,
+    templateBlock: 200,
+    diagram2DBlock: 200,
+    diagram3DBlock: 200,
+    circuitBlock: 200,
+  }
+  
+  // 根據節點類型返回估算高度
+  if (node.type === 'heading') {
+    const level = node.attrs?.level || 1
+    return baseHeights.heading[level] || 60
+  }
+  
+  // 列表節點需要考慮子項數量
+  if (node.type === 'bulletList' || node.type === 'orderedList') {
+    const itemCount = node.content?.length || 1
+    return baseHeights[node.type] * Math.max(1, itemCount)
+  }
+  
+  return baseHeights[node.type] || 60
+}
+
+// 存儲每個頁面的編輯器實例引用（用於跨頁編輯同步）
+const pageEditorRefs = ref([])
+// 防止循環更新的標誌
+const isUpdatingFromPageEditor = ref(false)
+// 講義容器引用（用於檢查滾動）
+const handoutContainerRef = ref(null)
+// 畫布容器引用
+const canvasContainerRef = ref(null)
+
+// 計算講義模式的頁面分割
+const handoutPages = computed(() => {
+  if (resource.mode !== 'HANDOUT') return []
+  
+  const paperSize = resource.settings?.handout?.paperSize || resource.settings?.paperSize || 'A4'
+  const pageHeightPx = paperSize === 'A4' ? 971 : 1183 // A4: 257mm * 3.7795, B4: 313mm * 3.7795
+  const pages = []
+  let currentPage = []
+  let currentHeight = 0
+  
+  // 取得 Tiptap 結構的內容
+  const content = tiptapStructure.value?.content || []
+  
+  // 遍歷所有頂層節點
+  content.forEach((node) => {
+    // 如果是分頁符號，強制開始新頁
+    if (node.type === 'pageBreak') {
+      if (currentPage.length > 0) {
+        pages.push([...currentPage])
+        currentPage = []
+        currentHeight = 0
+      }
+      return // 分頁符號本身不加入任何頁面
+    }
+    
+    // 估算節點高度
+    const estimatedHeight = estimateNodeHeight(node)
+    
+    // 如果加入此節點會超過頁面高度，且當前頁已有內容
+    if (currentHeight + estimatedHeight > pageHeightPx && currentPage.length > 0) {
+      // 完整節點移到下一頁（不分割）
+      pages.push([...currentPage])
+      currentPage = [node]
+      currentHeight = estimatedHeight
+    } else {
+      // 節點可以放在當前頁
+      currentPage.push(node)
+      currentHeight += estimatedHeight
+    }
+  })
+  
+  // 加入最後一頁
+  if (currentPage.length > 0) {
+    pages.push(currentPage)
+  }
+  
+  // 如果沒有任何內容，至少返回一頁空頁
+  if (pages.length === 0) {
+    pages.push([])
+  }
+  
+  // #region agent log
+  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:handoutPages:result',message:'頁面分割結果',data:{totalPages:pages.length,contentLength:content.length,firstPageNodes:pages[0]?.length || 0,secondPageNodes:pages[1]?.length || 0},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'G'})}).catch(()=>{});
+  // #endregion
+  
+  return pages
+})
+
+// 檢查頁面內容是否超過頁面高度，如果超過則自動分割
+const checkAndSplitPage = async (pageIndex, pageContent) => {
+  const paperSize = resource.settings?.handout?.paperSize || resource.settings?.paperSize || 'A4'
+  const pageHeightPx = paperSize === 'A4' ? 971 : 1183
+  
+  // 等待 DOM 更新
+  await nextTick()
+  
+  // 嘗試獲取實際 DOM 高度
+  const editorRef = pageEditorRefs.value[pageIndex]
+  let actualHeight = 0
+  
+  if (editorRef && editorRef.editor && editorRef.editor.view) {
+    const editorDOM = editorRef.editor.view.dom
+    if (editorDOM) {
+      // 獲取游標提示方塊的高度
+      const cursorIndicator = document.querySelector('.cursor-indicator')
+      let cursorIndicatorHeight = 0
+      if (cursorIndicator) {
+        cursorIndicatorHeight = cursorIndicator.offsetHeight
+        const marginBottom = parseFloat(window.getComputedStyle(cursorIndicator).marginBottom) || 0
+        cursorIndicatorHeight += marginBottom
+      }
+      
+      // 實際內容高度 = scrollHeight - cursorIndicatorHeight
+      actualHeight = editorDOM.scrollHeight - cursorIndicatorHeight
+    }
+  }
+  
+  // 如果無法獲取實際高度，使用估算高度
+  if (actualHeight === 0) {
+    pageContent.forEach((node) => {
+      actualHeight += estimateNodeHeight(node)
+    })
+  }
+  
+  // 如果內容超過頁面高度，需要分割
+  if (actualHeight > pageHeightPx && pageContent.length > 0) {
+    const currentPage = []
+    const nextPage = []
+    let currentHeight = 0
+    
+    // 將節點分配到當前頁和下一頁
+    pageContent.forEach((node) => {
+      const nodeHeight = estimateNodeHeight(node)
+      
+      // 如果加入此節點會超過頁面，且當前頁已有內容
+      if (currentHeight + nodeHeight > pageHeightPx && currentPage.length > 0) {
+        // 完整節點移到下一頁（不分割）
+        nextPage.push(node)
+      } else {
+        currentPage.push(node)
+        currentHeight += nodeHeight
+      }
+    })
+    
+    return { currentPage, nextPage, needsNewPage: nextPage.length > 0 }
+  }
+  
+  return { currentPage: pageContent, nextPage: [], needsNewPage: false }
+}
+
+// 處理單頁編輯器更新（跨頁編輯同步）
+const handlePageEditorUpdate = async (pageIndex, pageContent) => {
+  // #region agent log
+  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:handlePageEditorUpdate:entry',message:'函數入口',data:{pageIndex,pageContentLength:pageContent?.length || 0,pageContentTypes:pageContent?.map(n => n.type).slice(0,5) || []},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'A'})}).catch(()=>{});
+  // #endregion
+  
+  // 防止循環更新
+  if (isUpdatingFromPageEditor.value) {
+    return
+  }
+  
+  isUpdatingFromPageEditor.value = true
+  
+  try {
+    // 從所有頁面的編輯器實例獲取內容並合併成連續流（不插入任何 pageBreak）
+    const newContent = []
+    
+    // #region agent log
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:handlePageEditorUpdate:beforeMerge',message:'合併前',data:{pageEditorRefsLength:pageEditorRefs.value.length,validRefs:pageEditorRefs.value.filter(r => r && r.editor).length},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+    
+    // 只從編輯器實例獲取內容，不使用 currentPages（避免使用舊的分頁結果）
+    for (let idx = 0; idx < pageEditorRefs.value.length; idx++) {
+      const editorRef = pageEditorRefs.value[idx]
+      
+      if (idx === pageIndex) {
+        // 使用更新後的頁面內容
+        if (pageContent && pageContent.length > 0) {
+          newContent.push(...pageContent)
+          // #region agent log
+          fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:handlePageEditorUpdate:addCurrent',message:'添加當前頁',data:{idx,length:pageContent.length,total:newContent.length},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'C'})}).catch(()=>{});
+          // #endregion
+        }
+      } else if (editorRef && editorRef.editor) {
+        // 從其他頁面的編輯器實例獲取當前內容
+        const pageJson = editorRef.editor.getJSON()
+        if (pageJson?.content && pageJson.content.length > 0) {
+          newContent.push(...pageJson.content)
+          // #region agent log
+          fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:handlePageEditorUpdate:addOther',message:'添加其他頁',data:{idx,length:pageJson.content.length,total:newContent.length},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'C'})}).catch(()=>{});
+          // #endregion
+        }
+      }
+      // 如果編輯器實例不存在，跳過（不添加任何內容）
+      // 這樣可以避免使用舊的 currentPages 導致內容重複
+      // 注意：完全不插入 pageBreak，讓 handoutPages computed 自動根據內容高度計算分頁
+    }
+    
+    // #region agent log
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:handlePageEditorUpdate:afterMerge',message:'合併後',data:{newContentLength:newContent.length,newContentTypes:newContent.map(n => n.type).slice(0,10)},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
+    
+    // 過濾無效節點（空的 paragraph 節點會被 Tiptap 過濾掉，所以我們先過濾掉）
+    const validContent = newContent.filter(n => {
+      if (!n || !n.type) return false
+      // 空的 paragraph 節點會被 Tiptap 過濾，但我們保留它們，因為它們可能是有意義的空白
+      // 實際上，Tiptap 會自動處理這些，所以我們不需要過濾
+      return true
+    })
+    
+    // #region agent log
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:handlePageEditorUpdate:beforeUpdate',message:'更新前',data:{validContentLength:validContent.length,pagesBefore:handoutPages.value.length},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'E'})}).catch(()=>{});
+    // #endregion
+    
+    // 更新主 tiptapStructure（講義模式下直接更新 tiptapStructureRef，避免轉換丟失）
+    if (resource.mode === 'HANDOUT') {
+      tiptapStructureRef.value = {
+        type: 'doc',
+        content: validContent
+      }
+      // 同時更新 structure.value 以便保存（轉換為舊格式）
+      structure.value = tiptapToLegacyStructure(tiptapStructureRef.value)
+      
+      // 等待響應式更新完成，確保 handoutPages 能正確重新計算
+      await nextTick()
+      // 再次等待，確保所有 computed 屬性都重新計算完成
+      await nextTick()
+      
+      // #region agent log
+      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:handlePageEditorUpdate:afterUpdate',message:'更新後',data:{pagesAfter:handoutPages.value.length,contentLength:tiptapStructureRef.value?.content?.length || 0},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'F'})}).catch(()=>{});
+      // #endregion
+    } else {
+      tiptapStructure.value = {
+        type: 'doc',
+        content: validContent
+      }
+    }
+  } finally {
+    // 延遲重置標誌，確保所有響應式更新完成
+    setTimeout(() => {
+      isUpdatingFromPageEditor.value = false
+    }, 150)
+  }
 }
 
 // 模式編輯器組件（動態載入）
@@ -587,6 +937,13 @@ const updateSettings = (newSettings) => {
 }
 
 // 監聽模式變化，重新載入編輯器
+// 監聽 handoutPages 長度變化，重置 pageEditorRefs
+watch(() => handoutPages.value.length, (newLength) => {
+  if (pageEditorRefs.value.length !== newLength) {
+    pageEditorRefs.value = new Array(newLength).fill(null)
+  }
+}, { immediate: true })
+
 watch(() => resource.mode, () => {
   loadModeEditor()
   // 根據模式初始化設定（在 viewMode 或初始化期間不修改 settings）
@@ -967,6 +1324,26 @@ const fetchInitialData = async () => {
       } : defaultSettings
       structure.value = data.structure || []
       
+      // #region agent log
+      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:fetchInitialData:afterLoad',message:'資料載入後',data:{mode:resource.mode,structureLength:structure.value.length,hasStructure:!!data.structure},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
+      
+      // 講義模式：初始化 tiptapStructureRef
+      if (resource.mode === 'HANDOUT') {
+        if (Array.isArray(structure.value) && structure.value.length > 0) {
+          tiptapStructureRef.value = legacyToTiptapStructure(structure.value)
+        } else {
+          tiptapStructureRef.value = {
+            type: 'doc',
+            content: [{ type: 'paragraph', content: [] }]
+          }
+        }
+        
+        // #region agent log
+        fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:fetchInitialData:tiptapInit',message:'tiptapStructureRef 初始化',data:{contentLength:tiptapStructureRef.value?.content?.length || 0,hasDoc:tiptapStructureRef.value?.type === 'doc'},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'D'})}).catch(()=>{});
+        // #endregion
+      }
+      
       // 載入該資源的圖片映射表
       loadImageMappings()
     } else if (route.query.template_id) {
@@ -977,6 +1354,11 @@ const fetchInitialData = async () => {
         if (template.structure && template.structure.length > 0) {
           // 將 template 的 structure 插入到文件開頭
           structure.value = [...template.structure]
+          
+          // 講義模式：初始化 tiptapStructureRef
+          if (resource.mode === 'HANDOUT') {
+            tiptapStructureRef.value = legacyToTiptapStructure(structure.value)
+          }
         }
       } catch (error) {
         console.error('載入模板失敗：', error)
@@ -1073,25 +1455,294 @@ if (!props.viewMode) {
   )
 }
 
-const print = async () => {
+// 監聽內容變化,在預覽模式下自動更新預覽
+const debouncedPreviewUpdate = debounce(() => {
+  if (isPreviewMode.value) {
+    renderPreview()
+  }
+}, 500)
+
+watch(
+  () => tiptapStructure.value,
+  () => {
+    if (isPreviewMode.value) {
+      debouncedPreviewUpdate()
+    }
+  },
+  { deep: true }
+)
+
+// 生成預覽內容的通用函數
+const generatePrintPreview = async (iframeDoc, iframeWindow, triggerPrint = false) => {
   // 使用 iframe 隔離列印內容，確保樣式不受影響
   await nextTick() // 確保 DOM 已更新
   
-  // 獲取所有有內容的頁面
-  const paperElements = document.querySelectorAll('.print-paper')
-  const pagesWithContent = Array.from(paperElements).filter(page => {
+  // 獲取紙張大小設定
+  const paperSize = resource.settings?.handout?.paperSize || resource.settings?.paperSize || 'A4'
+  const paperWidth = paperSize === 'A4' ? '210mm' : '250mm'
+  const paperHeight = paperSize === 'A4' ? '297mm' : '353mm'
+  
+  // 檢查原始頁面中的 KaTeX 元素
+  // #region agent log
+  const allKatexInPage = document.querySelectorAll('.katex')
+  const katexSample = allKatexInPage[0] ? {
+    innerHTML: allKatexInPage[0].innerHTML.substring(0, 100),
+    className: allKatexInPage[0].className,
+    computedFont: window.getComputedStyle(allKatexInPage[0]).fontFamily
+  } : null
+  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:originalPageKatex',message:'原始頁面 KaTeX',data:{totalKatex:allKatexInPage.length,sample:katexSample},timestamp:Date.now(),sessionId:'debug-session',runId:'latex-debug',hypothesisId:'L'})}).catch(()=>{});
+  // #endregion
+  
+  // 獲取所有有內容的頁面 - 支持 .print-paper 和 .paper-container
+  const printPaperElements = document.querySelectorAll('.print-paper')
+  const paperContainerElements = document.querySelectorAll('.paper-container')
+  const allPaperElements = [...printPaperElements, ...paperContainerElements]
+  
+  // #region agent log
+  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:paperElements',message:'紙張元素數量',data:{printPaper:printPaperElements.length,paperContainer:paperContainerElements.length,total:allPaperElements.length},timestamp:Date.now(),sessionId:'debug-session',runId:'latex-debug',hypothesisId:'A'})}).catch(()=>{});
+  // #endregion
+  
+  const pagesWithContent = Array.from(allPaperElements).filter(page => {
     // 檢查頁面是否有實際內容（排除空白頁）
     const hasBlocks = page.querySelector('[data-block-id]')
     const hasText = page.textContent.trim().length > 0
-    return hasBlocks || hasText
+    const hasProseMirror = page.querySelector('.ProseMirror')
+    
+    // #region agent log
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:filterPage',message:'頁面過濾',data:{hasBlocks:!!hasBlocks,hasText,textLength:page.textContent.trim().length,hasProseMirror:!!hasProseMirror},timestamp:Date.now(),sessionId:'debug-session',runId:'latex-debug',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+    
+    return hasBlocks || hasText || hasProseMirror
   })
   
+  // #region agent log
+  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:afterFilter',message:'過濾後',data:{pagesWithContent:pagesWithContent.length},timestamp:Date.now(),sessionId:'debug-session',runId:'latex-debug',hypothesisId:'B'})}).catch(()=>{});
+  // #endregion
+  
   if (pagesWithContent.length === 0) {
-    alert('沒有可列印的內容')
-    return
+    if (triggerPrint) {
+      alert('沒有可列印的內容')
+      return null
+    }
+    // 預覽模式:顯示空白頁面
+    const container = iframeDoc.createElement('div')
+    container.style.background = 'white'
+    container.style.width = paperSize === 'A4' ? '210mm' : '250mm'
+    container.style.minHeight = paperSize === 'A4' ? '297mm' : '353mm'
+    container.style.padding = '20mm'
+    container.style.margin = '0 auto'
+    iframeDoc.body.appendChild(container)
+    return container
   }
   
-  // 創建 iframe 用於列印
+  // #region agent log
+  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:generatePrintPreview:iframeCreated',message:'iframe 已創建',data:{hasIframeDoc:!!iframeDoc,triggerPrint},timestamp:Date.now(),sessionId:'debug-session',runId:'preview-debug',hypothesisId:'I'})}).catch(()=>{});
+  // #endregion
+  
+  // 複製必要的樣式表
+  const stylesheets = Array.from(document.styleSheets)
+  let styleContent = ''
+  let katexStylesheetFound = false
+  let externalStylesheetsCount = 0
+  
+  // 首先確保 KaTeX CSS 被載入(從 CDN 或本地)
+  const katexCSSLink = iframeDoc.createElement('link')
+  katexCSSLink.rel = 'stylesheet'
+  katexCSSLink.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css'
+  katexCSSLink.crossOrigin = 'anonymous'
+  iframeDoc.head.appendChild(katexCSSLink)
+  
+  for (const sheet of stylesheets) {
+    try {
+      if (sheet.href) {
+        // 檢查是否為 KaTeX 樣式表
+        if (sheet.href.includes('katex')) {
+          katexStylesheetFound = true
+          // #region agent log
+          fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:katexStylesheet',message:'找到 KaTeX 樣式表',data:{href:sheet.href},timestamp:Date.now(),sessionId:'debug-session',runId:'latex-debug',hypothesisId:'I'})}).catch(()=>{});
+          // #endregion
+        }
+        // 外部樣式表
+        const link = iframeDoc.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = sheet.href
+        iframeDoc.head.appendChild(link)
+        externalStylesheetsCount++
+      } else {
+        // 內聯樣式表
+        const rules = Array.from(sheet.cssRules || [])
+        for (const rule of rules) {
+          styleContent += rule.cssText + '\n'
+        }
+      }
+    } catch (e) {
+      // 跨域樣式表可能無法訪問，跳過
+      console.warn('無法複製樣式表:', e)
+    }
+  }
+  
+  // #region agent log
+  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:stylesheetsProcessed',message:'樣式表處理完成',data:{katexStylesheetFound,externalStylesheetsCount,inlineStyleLength:styleContent.length,addedKatexCDN:true,addedSqrtFix:true},timestamp:Date.now(),sessionId:'debug-session',runId:'latex-sqrt-fix',hypothesisId:'I'})}).catch(()=>{});
+  // #endregion
+  
+  // 添加內聯樣式
+  const styleEl = iframeDoc.createElement('style')
+  
+  styleEl.textContent = styleContent + `
+    @page {
+      size: ${paperSize};
+      margin: 0;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background: white;
+    }
+    .print-paper, .paper-container {
+      width: ${paperWidth};
+      min-height: ${paperHeight};
+      padding: 20mm;
+      margin: 0 auto;
+      background: white;
+      box-sizing: border-box;
+      page-break-after: always;
+      break-after: page;
+    }
+    .print-paper:last-child, .paper-container:last-child {
+      page-break-after: auto;
+      break-after: auto;
+    }
+    /* KaTeX 根號修復 - 防止根號線異常延長 */
+    .katex .sqrt > .vlist-t {
+      border-left-width: 0.04em !important;
+    }
+    .katex .sqrt .vlist-t .vlist-r .vlist .pstrut,
+    .katex .sqrt .vlist-t .vlist-s {
+      min-width: 0 !important;
+    }
+    .katex .sqrt .sqrt-sign {
+      position: relative !important;
+    }
+    /* 確保根號內容不會影響根號線高度 */
+    .katex .sqrt .vlist-t {
+      display: inline-table !important;
+      table-layout: auto !important;
+    }
+    /* 修復根號線過長問題 */
+    .katex .sqrt > .root {
+      margin-left: 0.27777778em !important;
+      margin-right: -0.55555556em !important;
+    }
+  `
+  iframeDoc.head.appendChild(styleEl)
+  
+  // 複製頁面內容到 iframe
+  const container = iframeDoc.createElement('div')
+  container.style.background = 'white'
+  
+  pagesWithContent.forEach((page, index) => {
+    const clone = page.cloneNode(true)
+    
+    // #region agent log
+    const katexElementsInPage = page.querySelectorAll('.katex')
+    const katexElementsInClone = clone.querySelectorAll('.katex')
+    const sqrtInClone = clone.querySelectorAll('.katex .sqrt')
+    const sqrtSample = sqrtInClone[0] ? {
+      outerHTML: sqrtInClone[0].outerHTML.substring(0, 300),
+      computedBorderWidth: sqrtInClone[0].querySelector('.vlist-t') ? window.getComputedStyle(sqrtInClone[0].querySelector('.vlist-t')).borderLeftWidth : 'none'
+    } : null
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:clonePage',message:'複製頁面',data:{pageIndex:index,katexInOriginal:katexElementsInPage.length,katexInClone:katexElementsInClone.length,sqrtInClone:sqrtInClone.length,sqrtSample},timestamp:Date.now(),sessionId:'debug-session',runId:'latex-sqrt-debug',hypothesisId:'K'})}).catch(()=>{});
+    // #endregion
+    
+    // 確保所有樣式都被複製
+    const computedStyle = window.getComputedStyle(page)
+    clone.style.cssText = computedStyle.cssText
+    clone.style.margin = '0'
+    clone.style.marginBottom = index < pagesWithContent.length - 1 ? '20mm' : '0'
+    container.appendChild(clone)
+  })
+  
+  iframeDoc.body.appendChild(container)
+  
+  // #region agent log
+  const allKatexInIframe = iframeDoc.querySelectorAll('.katex')
+  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:afterAppend',message:'內容添加到 iframe 後',data:{totalKatexElements:allKatexInIframe.length,sampleKatexStyles:allKatexInIframe[0] ? window.getComputedStyle(allKatexInIframe[0]).fontFamily : 'none'},timestamp:Date.now(),sessionId:'debug-session',runId:'latex-debug',hypothesisId:'K'})}).catch(()=>{});
+  // #endregion
+  
+  // 等待 KaTeX CSS 載入完成(增加等待時間以確保樣式完全套用)
+  await new Promise(resolve => setTimeout(resolve, 500))
+  
+  // 手動修復所有根號元素的高度問題
+  const allSqrts = iframeDoc.querySelectorAll('.katex .sqrt')
+  let sqrtFixed = 0
+  allSqrts.forEach(sqrt => {
+    // 找到根號內的 vlist-t 元素(這是控制根號線高度的元素)
+    const vlistT = sqrt.querySelector('.vlist-t')
+    if (vlistT) {
+      // 強制設置合理的高度,防止異常延長
+      const vlistR = vlistT.querySelector('.vlist-r')
+      if (vlistR) {
+        const vlist = vlistR.querySelector('.vlist')
+        if (vlist) {
+          // 計算實際需要的高度
+          const children = Array.from(vlist.children)
+          let maxHeight = 0
+          children.forEach(child => {
+            if (child.classList && !child.classList.contains('pstrut')) {
+              const height = child.offsetHeight || parseFloat(child.style.height) || 0
+              maxHeight = Math.max(maxHeight, height)
+            }
+          })
+          
+          // 設置合理的高度限制
+          if (maxHeight > 0) {
+            vlist.style.height = `${maxHeight * 1.2}px`
+            vlist.style.maxHeight = `${maxHeight * 1.2}px`
+          }
+          sqrtFixed++
+        }
+      }
+      // 同時限制邊框線的高度
+      vlistT.style.maxHeight = '2em'
+    }
+  })
+  
+  // #region agent log
+  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:sqrtManualFix',message:'手動修復根號',data:{totalSqrts:allSqrts.length,sqrtFixed},timestamp:Date.now(),sessionId:'debug-session',runId:'latex-sqrt-manualfix',hypothesisId:'M'})}).catch(()=>{});
+  // #endregion
+  
+  // 再等待一段時間確保 DOM 更新
+  await new Promise(resolve => setTimeout(resolve, 500))
+  
+  // #region agent log
+  const finalKatexCheck = iframeDoc.querySelectorAll('.katex')
+  const sqrtElements = iframeDoc.querySelectorAll('.katex .sqrt')
+  const katexFontCheck = finalKatexCheck[0] ? {
+    fontFamily: window.getComputedStyle(finalKatexCheck[0]).fontFamily,
+    fontSize: window.getComputedStyle(finalKatexCheck[0]).fontSize,
+    display: window.getComputedStyle(finalKatexCheck[0]).display,
+    visibility: window.getComputedStyle(finalKatexCheck[0]).visibility
+  } : null
+  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:beforeTrigger',message:'觸發列印前最終檢查',data:{katexCount:finalKatexCheck.length,sqrtCount:sqrtElements.length,katexStyles:katexFontCheck},timestamp:Date.now(),sessionId:'debug-session',runId:'latex-sqrt-manualfix',hypothesisId:'J'})}).catch(()=>{});
+  // #endregion
+  
+  // 根據參數決定是否觸發列印
+  if (triggerPrint) {
+    // 觸發列印
+    iframeWindow.focus()
+    iframeWindow.print()
+  }
+  
+  return container
+}
+
+// 簡化後的 print() 函數
+const print = async () => {
+  // #region agent log
+  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:entry',message:'函數入口',data:{mode:resource.mode,hasHandoutPages:handoutPages.value?.length || 0},timestamp:Date.now(),sessionId:'debug-session',runId:'latex-debug',hypothesisId:'A'})}).catch(()=>{});
+  // #endregion
+  
+  // 創建臨時 iframe 用於列印
   const printFrame = document.createElement('iframe')
   printFrame.style.position = 'fixed'
   printFrame.style.right = '0'
@@ -1108,83 +1759,49 @@ const print = async () => {
   })
   
   const iframeDoc = printFrame.contentDocument || printFrame.contentWindow.document
+  const iframeWindow = printFrame.contentWindow
   
-  // 複製必要的樣式表
-  const stylesheets = Array.from(document.styleSheets)
-  let styleContent = ''
-  
-  for (const sheet of stylesheets) {
-    try {
-      if (sheet.href) {
-        // 外部樣式表
-        const link = iframeDoc.createElement('link')
-        link.rel = 'stylesheet'
-        link.href = sheet.href
-        iframeDoc.head.appendChild(link)
-      } else {
-        // 內聯樣式表
-        const rules = Array.from(sheet.cssRules || [])
-        for (const rule of rules) {
-          styleContent += rule.cssText + '\n'
-        }
-      }
-    } catch (e) {
-      // 跨域樣式表可能無法訪問，跳過
-      console.warn('無法複製樣式表:', e)
-    }
-  }
-  
-  // 添加內聯樣式
-  const styleEl = iframeDoc.createElement('style')
-  styleEl.textContent = styleContent + `
-    @page {
-      size: ${resource.settings.paperSize === 'A4' ? 'A4' : 'B4'};
-      margin: 0;
-    }
-    body {
-      margin: 0;
-      padding: 0;
-      background: white;
-    }
-    .print-paper {
-      width: ${resource.settings.paperSize === 'A4' ? '210mm' : '250mm'};
-      min-height: ${resource.settings.paperSize === 'A4' ? '297mm' : '353mm'};
-      padding: 20mm;
-      margin: 0 auto;
-      background: white;
-      box-sizing: border-box;
-    }
-    /* KaTeX 分數樣式已從 markdown-preview.css 中自動包含 */
-  `
-  iframeDoc.head.appendChild(styleEl)
-  
-  // 複製頁面內容到 iframe
-  const container = iframeDoc.createElement('div')
-  container.style.background = 'white'
-  
-  pagesWithContent.forEach((page, index) => {
-    const clone = page.cloneNode(true)
-    // 確保所有樣式都被複製
-    const computedStyle = window.getComputedStyle(page)
-    clone.style.cssText = computedStyle.cssText
-    clone.style.margin = '0'
-    clone.style.marginBottom = index < pagesWithContent.length - 1 ? '20mm' : '0'
-    container.appendChild(clone)
-  })
-  
-  iframeDoc.body.appendChild(container)
-  
-  // 等待內容渲染
-  await new Promise(resolve => setTimeout(resolve, 500))
-  
-  // 觸發列印
-  printFrame.contentWindow.focus()
-  printFrame.contentWindow.print()
+  // 生成預覽並觸發列印
+  await generatePrintPreview(iframeDoc, iframeWindow, true)
   
   // 列印完成後清理
   setTimeout(() => {
     document.body.removeChild(printFrame)
   }, 1000)
+}
+
+// 預覽函數
+const renderPreview = async () => {
+  if (!previewIframe.value) return
+  
+  const iframe = previewIframe.value
+  
+  // 確保 iframe 已載入
+  if (!iframe.contentDocument || !iframe.contentDocument.body) {
+    iframe.src = 'about:blank'
+    await new Promise(resolve => {
+      iframe.onload = resolve
+    })
+  }
+  
+  const iframeDoc = iframe.contentDocument || iframe.contentWindow.document
+  const iframeWindow = iframe.contentWindow
+  
+  // 清空 iframe 內容
+  iframeDoc.body.innerHTML = ''
+  iframeDoc.head.innerHTML = ''
+  
+  await generatePrintPreview(iframeDoc, iframeWindow, false)
+}
+
+// 切換預覽模式
+const togglePreviewMode = async () => {
+  isPreviewMode.value = !isPreviewMode.value
+  
+  if (isPreviewMode.value) {
+    await nextTick()
+    renderPreview()
+  }
 }
 
 // 頁面計算已由 BlockEditor 的自動換頁功能處理
@@ -1721,6 +2338,19 @@ onUnmounted(() => {
     margin: 0 !important;
   }
   
+  /* 多紙張容器列印樣式 */
+  .paper-container {
+    page-break-after: always;
+    break-after: page;
+    margin-bottom: 0 !important;
+    box-shadow: none !important;
+  }
+  
+  .paper-container:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+  
   .break-after-page {
     page-break-after: always;
     break-after: page;
@@ -1764,6 +2394,74 @@ onUnmounted(() => {
   :deep(.cm-line) {
     color: black !important;
   }
+}
+
+/* 講義模式：多紙張容器樣式 */
+.paper-container {
+  position: relative;
+  box-sizing: border-box;
+}
+
+.page-number-display {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 0.375rem 0.875rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* 列印時的頁碼樣式 */
+@media print {
+  .page-number-display {
+    background: transparent;
+    box-shadow: none;
+    border: none;
+    color: #9ca3af;
+    font-size: 10pt;
+  }
+}
+
+/* 預覽容器 */
+.preview-container {
+  width: 100%;
+  height: 100%;
+  background: #525659;
+  padding: 20px;
+  overflow: auto;
+}
+
+/* 預覽 iframe */
+.preview-iframe {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  display: block;
+  background: white;
+  border: none;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 
+              0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* 預覽模式下的縮放控制 */
+.zoom-controls {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: white;
+  padding: 8px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  display: flex;
+  gap: 8px;
+  z-index: 100;
 }
 </style>
 
@@ -1895,6 +2593,28 @@ onUnmounted(() => {
     margin-bottom: 0.05em !important;
   }
   
+  /* 根號修復 - 防止根號線異常延長 */
+  .katex .sqrt > .vlist-t {
+    border-left-width: 0.04em !important;
+  }
+  .katex .sqrt .vlist-t .vlist-r .vlist .pstrut,
+  .katex .sqrt .vlist-t .vlist-s {
+    min-width: 0 !important;
+  }
+  .katex .sqrt .sqrt-sign {
+    position: relative !important;
+  }
+  /* 確保根號內容不會影響根號線高度 */
+  .katex .sqrt .vlist-t {
+    display: inline-table !important;
+    table-layout: auto !important;
+  }
+  /* 修復根號線過長問題 */
+  .katex .sqrt > .root {
+    margin-left: 0.27777778em !important;
+    margin-right: -0.55555556em !important;
+  }
+
   /* 確保 MathML 隱藏（使用 HTML 渲染） */
   .katex-mathml {
     display: none !important;

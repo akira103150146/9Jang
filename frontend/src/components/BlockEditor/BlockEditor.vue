@@ -6,8 +6,8 @@
       <span class="indicator-text">{{ getNodeLabel(currentNodeType) }}</span>
     </div>
     
-    <!-- 頁碼覆蓋層 -->
-    <div class="page-numbers-overlay" v-if="pageCount > 0">
+    <!-- 頁碼覆蓋層（僅在非 readonly 且 showPageNumbers 為 true 時顯示） -->
+    <div class="page-numbers-overlay" v-if="!readonly && showPageNumbers && pageCount > 0">
       <div 
         v-for="pageNum in pageCount" 
         :key="pageNum"
@@ -73,6 +73,18 @@ const props = defineProps({
   imageMappings: {
     type: Map,
     default: () => new Map()
+  },
+  readonly: {
+    type: Boolean,
+    default: false
+  },
+  showPageNumbers: {
+    type: Boolean,
+    default: true
+  },
+  ignoreExternalUpdates: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -150,7 +162,7 @@ const editor = useEditor({
     }),
   ],
   content: convertToTiptapFormat(props.modelValue),
-  editable: true,
+  editable: !props.readonly,
   editorProps: {
     attributes: {
       class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl focus:outline-none',
@@ -214,6 +226,12 @@ const editor = useEditor({
     const node = $from.parent
     currentNodeType.value = node ? node.type.name : null
   },
+  onCreate: ({ editor }) => {
+    // #region agent log
+    const initialContent = editor.getJSON()
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BlockEditor.vue:onCreate',message:'編輯器已創建',data:{hasEditor:!!editor,contentLength:initialContent?.content?.length || 0,hasView:!!editor.view,hasDom:!!editor.view?.dom},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+  },
 })
 
 // 更新頁數計算
@@ -274,11 +292,6 @@ function updatePageCount() {
     const remainder = heightForCalculation % pageHeightPx.value
     const isOnBoundary = remainder < 20 || remainder > pageHeightPx.value - 20
     const calculatedPages = isOnBoundary ? visibleSeparators : visibleSeparators + 1
-    
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BlockEditor.vue:updatePageCount:calculation',message:'頁數計算結果',data:{visibleSeparators,remainder,isOnBoundary,calculatedPages,finalPageCount:Math.max(1,calculatedPages)},timestamp:Date.now(),sessionId:'debug-session',runId:'page-calc',hypothesisId:'A,C,D'})}).catch(()=>{});
-    // #endregion
-    
     pageCount.value = Math.max(1, calculatedPages)
     
     // 計算每個頁碼的實際位置（考慮游標提示方塊的偏移）
@@ -430,7 +443,19 @@ function convertToTiptapFormat(structure) {
 let isUpdatingFromEditor = false
 
 watch(() => props.modelValue, (newValue) => {
-  if (!editor.value || isUpdatingFromEditor) return
+  // #region agent log
+  const currentContentLength = editor.value ? editor.value.getJSON()?.content?.length || 0 : 0
+  const newContentLength = newValue?.content?.length || 0
+  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BlockEditor.vue:watch:modelValue',message:'modelValue 變化',data:{currentContentLength,newContentLength,isUpdatingFromEditor,hasEditor:!!editor.value,ignoreExternalUpdates:props.ignoreExternalUpdates},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'H'})}).catch(()=>{});
+  // #endregion
+  
+  // 如果正在從頁面編輯器更新，忽略外部變化（避免覆蓋編輯器內容）
+  if (!editor.value || isUpdatingFromEditor || props.ignoreExternalUpdates) {
+    // #region agent log
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BlockEditor.vue:watch:ignored',message:'忽略外部更新',data:{reason:!editor.value ? 'no-editor' : isUpdatingFromEditor ? 'updating-from-editor' : 'ignore-external-updates'},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'H'})}).catch(()=>{});
+    // #endregion
+    return
+  }
 
   const currentContent = editor.value.getJSON()
   const newContent = convertToTiptapFormat(newValue)
@@ -440,6 +465,13 @@ watch(() => props.modelValue, (newValue) => {
     editor.value.commands.setContent(newContent, false)
     // 內容更新後重新計算頁數
     updatePageCount()
+    // #region agent log
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BlockEditor.vue:watch:updated',message:'內容已更新',data:{newContentLength:newContent?.content?.length || 0},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'H'})}).catch(()=>{});
+    // #endregion
+  } else {
+    // #region agent log
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BlockEditor.vue:watch:skipped',message:'內容相同，跳過',data:{currentContentLength:currentContent?.content?.length || 0,newContentLength:newContent?.content?.length || 0},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'H'})}).catch(()=>{});
+    // #endregion
   }
 }, { deep: true })
 
@@ -521,28 +553,35 @@ onBeforeUnmount(() => {
   }
 }
 
-/* 頁面分隔線 - A4 紙張 (971px = 257mm * 3.7795) */
+/* 頁面分隔線 - A4 紙張 (使用 mm 單位確保精確度) */
 .paper-size-a4 :deep(.ProseMirror) {
   position: relative;
+  /* 使用 mm 單位,並考慮 padding */
+  /* 257mm (內容) = 297mm (A4) - 40mm (上下 padding) */
   background-image: repeating-linear-gradient(
     transparent,
-    transparent 971px,
-    #e5e7eb 971px,      /* 灰色分隔線 */
-    #e5e7eb 973px       /* 2px 寬 */
+    transparent calc(257mm),
+    rgba(229, 231, 235, 0.5) calc(257mm),
+    rgba(229, 231, 235, 0.5) calc(257mm + 2px)
   );
   background-position: 0 0;
+  /* 重要:確保 box-sizing 一致 */
+  box-sizing: border-box;
 }
 
-/* 頁面分隔線 - B4 紙張 (1183px = 313mm * 3.7795) */
+/* 頁面分隔線 - B4 紙張 (使用 mm 單位確保精確度) */
 .paper-size-b4 :deep(.ProseMirror) {
   position: relative;
+  /* 313mm (內容) = 353mm (B4) - 40mm (上下 padding) */
   background-image: repeating-linear-gradient(
     transparent,
-    transparent 1183px,
-    #e5e7eb 1183px,     /* 灰色分隔線 */
-    #e5e7eb 1185px      /* 2px 寬 */
+    transparent calc(313mm),
+    rgba(229, 231, 235, 0.5) calc(313mm),
+    rgba(229, 231, 235, 0.5) calc(313mm + 2px)
   );
   background-position: 0 0;
+  /* 重要:確保 box-sizing 一致 */
+  box-sizing: border-box;
 }
 
 /* 頁碼覆蓋層 */

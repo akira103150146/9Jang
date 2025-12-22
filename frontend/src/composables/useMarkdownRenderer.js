@@ -129,7 +129,7 @@ export function useMarkdownRenderer() {
       if (!s) return s
       return String(s)
         .replace(/[＄﹩]/g, '$')
-        .replace(/[“”]/g, '"')
+        .replace(/[""]/g, '"')
     }
 
     text = normalizeText(text)
