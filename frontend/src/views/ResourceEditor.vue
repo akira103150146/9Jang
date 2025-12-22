@@ -1993,127 +1993,36 @@ const handleImageFolderUpload = async (event) => {
 
 // 替換所有圖片
 const replaceAllImages = async () => {
-  if (!blockEditorRef.value || !blockEditorRef.value.editor) {
-    return
-  }
-  
   replacingImages.value = true
   
   try {
-    const editor = blockEditorRef.value.editor
-    const { state } = editor
-    let replacedCount = 0
-    const positions = []
+    let totalReplacedCount = 0
     
-    // 遍歷文檔找到所有需要替換的節點及其位置
-    state.doc.descendants((node, pos) => {
-      // 處理 image 節點
-      if (node.type.name === 'image') {
-        const title = node.attrs?.title || ''
-        const alt = node.attrs?.alt || ''
-        const src = node.attrs?.src || ''
-        
-        // 優先從 title 提取檔名（貼上時設置的）
-        let filename = null
-        if (title) {
-          filename = title.split('/').pop().split('\\').pop()
-        } else if (alt && !alt.startsWith('http') && !alt.includes('://')) {
-          filename = alt.split('/').pop().split('\\').pop()
-        } else if (src && !src.startsWith('http')) {
-          filename = src.split('/').pop().split('\\').pop()
-        } else if (src) {
-          const urlParts = src.split('/')
-          const lastPart = urlParts[urlParts.length - 1]
-          if (lastPart.includes('.')) {
-            filename = lastPart.split('?')[0].split('#')[0]
-          }
+    // 判斷是分頁模式還是單一編輯器模式
+    if (resource.mode === 'HANDOUT') {
+      // 分頁模式：遍歷所有頁面編輯器
+      for (let pageIndex = 0; pageIndex < pageEditorRefs.value.length; pageIndex++) {
+        const editorRef = pageEditorRefs.value[pageIndex]
+        if (!editorRef || !editorRef.editor) {
+          continue
         }
         
-        if (filename) {
-          let newUrl = null
-          if (imageMappings.value.has(filename)) {
-            newUrl = imageMappings.value.get(filename)
-          } else {
-            // 嘗試不區分大小寫匹配
-            for (const [key, url] of imageMappings.value.entries()) {
-              if (key.toLowerCase() === filename.toLowerCase()) {
-                newUrl = url
-                filename = key // 使用正確的檔名
-                break
-              }
-            }
-          }
-          
-          if (newUrl) {
-            positions.push({
-              type: 'image',
-              pos: pos,
-              newUrl: newUrl,
-              filename: filename,
-              alt: node.attrs?.alt || filename
-            })
-          }
-        }
+        const replacedCount = await replaceImagesInEditor(editorRef.editor, pageIndex)
+        totalReplacedCount += replacedCount
+      }
+    } else {
+      // 單一編輯器模式
+      if (!blockEditorRef.value || !blockEditorRef.value.editor) {
+        replacingImages.value = false
+        alert('編輯器未就緒，請稍後再試')
+        return
       }
       
-      // 處理 imagePlaceholder 節點
-      if (node.type.name === 'imagePlaceholder') {
-        const filename = node.attrs?.filename || ''
-        if (filename && imageMappings.value.has(filename)) {
-          const newUrl = imageMappings.value.get(filename)
-          positions.push({
-            type: 'placeholder',
-            pos: pos,
-            newUrl: newUrl,
-            filename: filename,
-            alt: node.attrs?.alt || filename
-          })
-        }
-      }
-    })
-    
-    // 從後往前替換（避免位置偏移）
-    positions.sort((a, b) => b.pos - a.pos)
-    
-    // 使用單一 transaction 來批量替換，確保所有操作原子性
-    const tr = editor.state.tr
-    
-    for (const item of positions) {
-      if (item.type === 'placeholder') {
-        // 對於 imagePlaceholder 節點，需要獲取節點大小並使用 replaceWith
-        const node = editor.state.doc.nodeAt(item.pos)
-        if (node && node.type.name === 'imagePlaceholder') {
-          const nodeSize = node.nodeSize
-          const imageNode = editor.schema.nodes.image.create({
-            src: item.newUrl,
-            alt: item.alt,
-            title: item.filename
-          })
-          tr.replaceWith(item.pos, item.pos + nodeSize, imageNode)
-          replacedCount++
-        }
-      } else {
-        // 對於已存在的 image 節點，只需要更新屬性
-        const node = editor.state.doc.nodeAt(item.pos)
-        if (node && node.type.name === 'image') {
-          tr.setNodeMarkup(item.pos, null, {
-            ...node.attrs,
-            src: item.newUrl,
-            alt: item.alt,
-            title: item.filename
-          })
-          replacedCount++
-        }
-      }
+      totalReplacedCount = await replaceImagesInEditor(blockEditorRef.value.editor, null)
     }
     
-    // 一次性執行所有替換
-    if (replacedCount > 0) {
-      editor.view.dispatch(tr)
-    }
-    
-    if (replacedCount > 0) {
-      alert(`成功替換 ${replacedCount} 張圖片`)
+    if (totalReplacedCount > 0) {
+      alert(`成功替換 ${totalReplacedCount} 張圖片`)
     } else {
       alert('沒有找到需要替換的圖片')
     }
@@ -2124,6 +2033,123 @@ const replaceAllImages = async () => {
   } finally {
     replacingImages.value = false
   }
+}
+
+// 在單個編輯器中替換圖片的輔助函數
+const replaceImagesInEditor = async (editor, pageIndex = null) => {
+  const { state } = editor
+  let replacedCount = 0
+  const positions = []
+  
+  // 遍歷文檔找到所有需要替換的節點及其位置
+  state.doc.descendants((node, pos) => {
+    // 處理 image 節點
+    if (node.type.name === 'image') {
+      const title = node.attrs?.title || ''
+      const alt = node.attrs?.alt || ''
+      const src = node.attrs?.src || ''
+      
+      // 優先從 title 提取檔名（貼上時設置的）
+      let filename = null
+      if (title) {
+        filename = title.split('/').pop().split('\\').pop()
+      } else if (alt && !alt.startsWith('http') && !alt.includes('://')) {
+        filename = alt.split('/').pop().split('\\').pop()
+      } else if (src && !src.startsWith('http')) {
+        filename = src.split('/').pop().split('\\').pop()
+      } else if (src) {
+        const urlParts = src.split('/')
+        const lastPart = urlParts[urlParts.length - 1]
+        if (lastPart.includes('.')) {
+          filename = lastPart.split('?')[0].split('#')[0]
+        }
+      }
+      
+      if (filename) {
+        let newUrl = null
+        if (imageMappings.value.has(filename)) {
+          newUrl = imageMappings.value.get(filename)
+        } else {
+          // 嘗試不區分大小寫匹配
+          for (const [key, url] of imageMappings.value.entries()) {
+            if (key.toLowerCase() === filename.toLowerCase()) {
+              newUrl = url
+              filename = key // 使用正確的檔名
+              break
+            }
+          }
+        }
+        
+        if (newUrl) {
+          positions.push({
+            type: 'image',
+            pos: pos,
+            newUrl: newUrl,
+            filename: filename,
+            alt: node.attrs?.alt || filename
+          })
+        }
+      }
+    }
+    
+    // 處理 imagePlaceholder 節點
+    if (node.type.name === 'imagePlaceholder') {
+      const filename = node.attrs?.filename || ''
+      
+      if (filename && imageMappings.value.has(filename)) {
+        const newUrl = imageMappings.value.get(filename)
+        positions.push({
+          type: 'placeholder',
+          pos: pos,
+          newUrl: newUrl,
+          filename: filename,
+          alt: node.attrs?.alt || filename
+        })
+      }
+    }
+  })
+    
+  // 從後往前替換（避免位置偏移）
+  positions.sort((a, b) => b.pos - a.pos)
+  
+  // 使用單一 transaction 來批量替換，確保所有操作原子性
+  const tr = editor.state.tr
+  
+  for (const item of positions) {
+    if (item.type === 'placeholder') {
+      // 對於 imagePlaceholder 節點，需要獲取節點大小並使用 replaceWith
+      const node = editor.state.doc.nodeAt(item.pos)
+      if (node && node.type.name === 'imagePlaceholder') {
+        const nodeSize = node.nodeSize
+        const imageNode = editor.schema.nodes.image.create({
+          src: item.newUrl,
+          alt: item.alt,
+          title: item.filename
+        })
+        tr.replaceWith(item.pos, item.pos + nodeSize, imageNode)
+        replacedCount++
+      }
+    } else {
+      // 對於已存在的 image 節點，只需要更新屬性
+      const node = editor.state.doc.nodeAt(item.pos)
+      if (node && node.type.name === 'image') {
+        tr.setNodeMarkup(item.pos, null, {
+          ...node.attrs,
+          src: item.newUrl,
+          alt: item.alt,
+          title: item.filename
+        })
+        replacedCount++
+      }
+    }
+  }
+  
+  // 一次性執行所有替換
+  if (replacedCount > 0) {
+    editor.view.dispatch(tr)
+  }
+  
+  return replacedCount
 }
 
 onMounted(() => {
