@@ -1456,8 +1456,6 @@ const generatePrintPreview = async (iframeDoc, iframeWindow, triggerPrint = fals
   const paperWidth = paperSize === 'A4' ? '210mm' : '250mm'
   const paperHeight = paperSize === 'A4' ? '297mm' : '353mm'
   
-  // 檢查原始頁面中的 KaTeX 元素
-  
   // 獲取所有有內容的頁面 - 支持 .print-paper 和 .paper-container
   const printPaperElements = document.querySelectorAll('.print-paper')
   const paperContainerElements = document.querySelectorAll('.paper-container')
@@ -1559,26 +1557,9 @@ const generatePrintPreview = async (iframeDoc, iframeWindow, triggerPrint = fals
       page-break-after: auto;
       break-after: auto;
     }
-    /* KaTeX 根號修復 - 防止根號線異常延長 */
+    /* 修復根號線拉長問題：限制 vlist-t 的高度以裁剪溢出內容 */
     .katex .sqrt > .vlist-t {
-      border-left-width: 0.04em !important;
-    }
-    .katex .sqrt .vlist-t .vlist-r .vlist .pstrut,
-    .katex .sqrt .vlist-t .vlist-s {
-      min-width: 0 !important;
-    }
-    .katex .sqrt .sqrt-sign {
-      position: relative !important;
-    }
-    /* 確保根號內容不會影響根號線高度 */
-    .katex .sqrt .vlist-t {
-      display: inline-table !important;
-      table-layout: auto !important;
-    }
-    /* 修復根號線過長問題 */
-    .katex .sqrt > .root {
-      margin-left: 0.27777778em !important;
-      margin-right: -0.55555556em !important;
+      overflow: hidden !important;
     }
   `
   iframeDoc.head.appendChild(styleEl)
@@ -1589,7 +1570,6 @@ const generatePrintPreview = async (iframeDoc, iframeWindow, triggerPrint = fals
   
   pagesWithContent.forEach((page, index) => {
     const clone = page.cloneNode(true)
-    
     
     // 確保所有樣式都被複製
     const computedStyle = window.getComputedStyle(page)
@@ -1604,46 +1584,6 @@ const generatePrintPreview = async (iframeDoc, iframeWindow, triggerPrint = fals
   
   // 等待 KaTeX CSS 載入完成(增加等待時間以確保樣式完全套用)
   await new Promise(resolve => setTimeout(resolve, 500))
-  
-  // 手動修復所有根號元素的高度問題
-  const allSqrts = iframeDoc.querySelectorAll('.katex .sqrt')
-  let sqrtFixed = 0
-  allSqrts.forEach(sqrt => {
-    // 找到根號內的 vlist-t 元素(這是控制根號線高度的元素)
-    const vlistT = sqrt.querySelector('.vlist-t')
-    if (vlistT) {
-      // 強制設置合理的高度,防止異常延長
-      const vlistR = vlistT.querySelector('.vlist-r')
-      if (vlistR) {
-        const vlist = vlistR.querySelector('.vlist')
-        if (vlist) {
-          // 計算實際需要的高度
-          const children = Array.from(vlist.children)
-          let maxHeight = 0
-          children.forEach(child => {
-            if (child.classList && !child.classList.contains('pstrut')) {
-              const height = child.offsetHeight || parseFloat(child.style.height) || 0
-              maxHeight = Math.max(maxHeight, height)
-            }
-          })
-          
-          // 設置合理的高度限制
-          if (maxHeight > 0) {
-            vlist.style.height = `${maxHeight * 1.2}px`
-            vlist.style.maxHeight = `${maxHeight * 1.2}px`
-          }
-          sqrtFixed++
-        }
-      }
-      // 同時限制邊框線的高度
-      vlistT.style.maxHeight = '2em'
-    }
-  })
-  
-  
-  // 再等待一段時間確保 DOM 更新
-  await new Promise(resolve => setTimeout(resolve, 500))
-  
   
   // 根據參數決定是否觸發列印
   if (triggerPrint) {
