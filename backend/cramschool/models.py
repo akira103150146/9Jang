@@ -1308,6 +1308,7 @@ class ContentTemplate(models.Model):
     template_id = models.AutoField(primary_key=True, verbose_name='模板ID')
     title = models.CharField(max_length=200, verbose_name='標題')
     structure = models.JSONField(default=list, verbose_name='結構內容')
+    tiptap_structure = models.JSONField(default=dict, verbose_name='Tiptap JSON 結構', blank=True, null=True)
     created_by = models.ForeignKey(
         CustomUser,
         on_delete=models.SET_NULL,

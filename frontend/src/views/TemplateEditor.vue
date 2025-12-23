@@ -134,52 +134,14 @@ const hashtags = ref([])
 
 const formData = ref({
   title: '',
-  content: '',
   tag_ids: [],
   is_public: false
 })
 
-// Tiptap 格式的 structure
-const tiptapStructure = computed({
-  get() {
-    // 從 formData.content 或 structure 轉換
-    if (formData.value.content) {
-      // 如果有舊的文字內容，轉換為 Tiptap 格式
-      return {
-        type: 'doc',
-        content: [
-          {
-            type: 'paragraph',
-            content: formData.value.content ? [{ type: 'text', text: formData.value.content }] : []
-          }
-        ]
-      }
-    }
-    return {
-      type: 'doc',
-      content: [{ type: 'paragraph', content: [] }]
-    }
-  },
-  set(value) {
-    // 當 BlockEditor 更新時，提取文字內容
-    if (value && value.type === 'doc' && value.content) {
-      const textBlocks = value.content
-        .filter(node => node.type === 'paragraph')
-        .map(node => {
-          if (node.content && Array.isArray(node.content)) {
-            return node.content
-              .filter(item => item.type === 'text')
-              .map(item => item.text || '')
-              .join('')
-          }
-          return ''
-        })
-        .filter(text => text.trim())
-        .join('\n\n')
-      
-      formData.value.content = textBlocks
-    }
-  }
+// Tiptap 格式的 structure（直接存儲，不轉換）
+const tiptapStructure = ref({
+  type: 'doc',
+  content: [{ type: 'paragraph', content: [] }]
 })
 
 // 處理 BlockEditor 更新
@@ -208,16 +170,18 @@ const fetchTemplate = async () => {
     formData.value.is_public = template.is_public || false
     formData.value.tag_ids = template.tag_ids || []
     
-    // 從 structure 中載入內容
-    if (template.structure && Array.isArray(template.structure) && template.structure.length > 0) {
-      // 轉換為 Tiptap 格式
+    // 優先使用 tiptap_structure，如果沒有則從舊的 structure 轉換
+    if (template.tiptap_structure && Object.keys(template.tiptap_structure).length > 0) {
+      tiptapStructure.value = template.tiptap_structure
+    } else if (template.structure && Array.isArray(template.structure) && template.structure.length > 0) {
+      // 向後相容：從舊格式轉換
       tiptapStructure.value = legacyToTiptapStructure(template.structure)
-      
-      // 同時保留舊格式的內容（向後相容）
-      formData.value.content = template.structure
-        .filter(block => block.type === 'text' && block.content)
-        .map(block => block.content)
-        .join('\n\n')
+    } else {
+      // 預設空內容
+      tiptapStructure.value = {
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [] }]
+      }
     }
   } catch (error) {
     console.error('獲取模板失敗：', error)
@@ -242,25 +206,28 @@ const handleSave = async () => {
     return
   }
   
-  if (!formData.value.content.trim()) {
+  // 檢查是否有內容
+  const hasContent = tiptapStructure.value && 
+                     tiptapStructure.value.content && 
+                     tiptapStructure.value.content.length > 0 &&
+                     tiptapStructure.value.content.some(node => {
+                       return node.content && node.content.length > 0
+                     })
+  
+  if (!hasContent) {
     alert('請輸入模板內容')
     return
   }
 
   saving.value = true
   try {
-    // 將內容轉換為 structure 格式
-    const structure = [
-      {
-        id: Date.now(),
-        type: 'text',
-        content: formData.value.content
-      }
-    ]
+    // 將 Tiptap 結構轉換為舊格式（向後相容）
+    const legacyStructure = tiptapToLegacyStructure(tiptapStructure.value)
     
     const payload = {
       title: formData.value.title.trim(),
-      structure: structure,
+      structure: legacyStructure,  // 舊格式，向後相容
+      tiptap_structure: tiptapStructure.value,  // 新格式
       tag_ids_input: formData.value.tag_ids,
       is_public: formData.value.is_public
     }

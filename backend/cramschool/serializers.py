@@ -1052,7 +1052,7 @@ class ContentTemplateSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContentTemplate
         fields = [
-            'template_id', 'title', 'structure', 'created_by', 'created_by_name',
+            'template_id', 'title', 'structure', 'tiptap_structure', 'created_by', 'created_by_name',
             'is_public', 'tags', 'tag_ids', 'tag_ids_input',
             'created_at', 'updated_at'
         ]

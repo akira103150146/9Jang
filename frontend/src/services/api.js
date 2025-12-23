@@ -493,6 +493,16 @@ export const questionBankAPI = {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
 
+  // 從 Markdown 預覽題目
+  previewFromMarkdown: (formData) => api.post('/cramschool/questions/preview_from_markdown/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+
+  // 從 Markdown 匯入題目
+  importFromMarkdown: (formData) => api.post('/cramschool/questions/import_from_markdown/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+
   // 導出為 LaTeX
   exportToLatex: (id) => api.get(`/cramschool/questions/${id}/export_to_latex/`),
 

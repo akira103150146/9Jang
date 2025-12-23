@@ -1654,6 +1654,323 @@ class QuestionBankViewSet(viewsets.ModelViewSet):
             'errors': errors[:20]  # 只返回前 20 個錯誤
         }, status=status.HTTP_200_OK)
     
+    @action(detail=False, methods=['post'], url_path='preview_from_markdown')
+    def preview_from_markdown(self, request):
+        """
+        預覽 Markdown 檔案中的題目（不匯入）
+        接收 multipart/form-data：
+        - markdown_file: Markdown 檔案（.md）
+        - images: 圖片檔案（多個）
+        - subject_id: 科目ID（必填）
+        - level: 年級（必填，JHS/SHS/VCS）
+        - chapter: 章節（必填）
+        """
+        from .markdown_importer import MarkdownQuestionImporter
+        
+        # 驗證檔案
+        if 'markdown_file' not in request.FILES:
+            return Response(
+                {'error': '請選擇 Markdown 檔案'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        markdown_file = request.FILES['markdown_file']
+        filename = markdown_file.name
+        
+        # 驗證檔案格式
+        if not (filename.endswith('.md') or filename.endswith('.markdown')):
+            return Response(
+                {'error': '不支援的檔案格式，請上傳 .md 或 .markdown 檔案'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 獲取必填參數
+        subject_id = request.data.get('subject_id')
+        level = request.data.get('level')
+        chapter = request.data.get('chapter')
+        
+        if not subject_id:
+            return Response(
+                {'error': '請選擇科目'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not level:
+            return Response(
+                {'error': '請選擇年級'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not chapter:
+            return Response(
+                {'error': '請輸入章節'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 驗證科目是否存在
+        try:
+            subject = Subject.objects.get(subject_id=subject_id)
+        except Subject.DoesNotExist:
+            return Response(
+                {'error': '科目不存在'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 讀取 Markdown 檔案
+        try:
+            markdown_content = markdown_file.read().decode('utf-8')
+        except Exception as e:
+            return Response(
+                {'error': f'讀取 Markdown 檔案失敗：{str(e)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 獲取圖片檔案
+        images_dict = {}
+        if 'images' in request.FILES:
+            image_files = request.FILES.getlist('images')
+            for img_file in image_files:
+                try:
+                    images_dict[img_file.name] = img_file.read()
+                except Exception as e:
+                    return Response(
+                        {'error': f'讀取圖片檔案 {img_file.name} 失敗：{str(e)}'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+        
+        # #region agent log
+        import json
+        with open('/home/akira/github/9Jang/.cursor/debug.log', 'a', encoding='utf-8') as f:
+            f.write(json.dumps({"sessionId":"debug-session","runId":"image-fix","hypothesisId":"H6,H7","location":"api_views.py:preview:images","message":"圖片檔案資訊","data":{"images_count":len(images_dict),"image_names":list(images_dict.keys())[:10]},"timestamp":__import__('time').time()*1000}) + '\n')
+        # #endregion
+        
+        # 定義臨時圖片保存函數（預覽模式）
+        def preview_save_image_func(image_bytes: bytes, filename: str) -> str:
+            """預覽模式：保存圖片並返回 URL"""
+            from django.core.files.storage import default_storage
+            from django.core.files.base import ContentFile
+            from datetime import datetime
+            
+            now = datetime.now()
+            date_folder = now.strftime('%Y/%m/%d')
+            relative_path = f'question_images/preview/{date_folder}/{filename}'
+            
+            # 保存圖片
+            saved_path = default_storage.save(relative_path, ContentFile(image_bytes))
+            
+            # 獲取圖片 URL
+            image_url = default_storage.url(saved_path)
+            if not image_url.startswith('http'):
+                image_url = request.build_absolute_uri(image_url)
+            
+            # #region agent log
+            with open('/home/akira/github/9Jang/.cursor/debug.log', 'a', encoding='utf-8') as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"image-fix","hypothesisId":"H8","location":"api_views.py:preview:save_image","message":"圖片已保存","data":{"filename":filename,"url":image_url[:100]},"timestamp":__import__('time').time()*1000}) + '\n')
+            # #endregion
+            
+            return image_url
+        
+        # 解析題目（預覽模式也處理圖片）
+        importer = MarkdownQuestionImporter()
+        try:
+            questions, errors = importer.import_questions_with_images(
+                markdown_content=markdown_content,
+                images_dict=images_dict,
+                default_subject_id=int(subject_id),
+                default_level=level,
+                default_chapter=chapter,
+                save_images_func=preview_save_image_func if images_dict else None
+            )
+            # #region agent log
+            with open('/home/akira/github/9Jang/.cursor/debug.log', 'a', encoding='utf-8') as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"image-fix","hypothesisId":"H6","location":"api_views.py:preview:result","message":"解析結果（含圖片）","data":{"count":len(questions),"errors_count":len(errors)},"timestamp":__import__('time').time()*1000}) + '\n')
+            # #endregion
+        except Exception as e:
+            # #region agent log
+            import traceback,json
+            with open('/home/akira/github/9Jang/.cursor/debug.log', 'a', encoding='utf-8') as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"initial","hypothesisId":"H5","location":"api_views.py:preview:error","message":"異常","data":{"error":str(e),"trace":traceback.format_exc()},"timestamp":__import__('time').time()*1000}) + '\n')
+            # #endregion
+            return Response(
+                {'error': f'解析 Markdown 失敗：{str(e)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not questions:
+            return Response(
+                {
+                    'error': '未能從 Markdown 中解析出任何題目',
+                    'errors': errors
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        return Response({
+            'success': True,
+            'questions': questions,
+            'total_count': len(questions),
+            'image_count': len(images_dict),
+            'errors': errors
+        }, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=['post'], url_path='import_from_markdown')
+    def import_from_markdown(self, request):
+        """
+        從 Markdown 檔案匯入題目
+        接收 multipart/form-data：
+        - markdown_file: Markdown 檔案（.md）
+        - images: 圖片檔案（多個）
+        - subject_id: 科目ID（必填）
+        - level: 年級（必填，JHS/SHS/VCS）
+        - chapter: 章節（必填）
+        """
+        from .markdown_importer import MarkdownQuestionImporter
+        from django.db import transaction
+        
+        # 驗證檔案
+        if 'markdown_file' not in request.FILES:
+            return Response(
+                {'error': '請選擇 Markdown 檔案'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        markdown_file = request.FILES['markdown_file']
+        filename = markdown_file.name
+        
+        # 驗證檔案格式
+        if not (filename.endswith('.md') or filename.endswith('.markdown')):
+            return Response(
+                {'error': '不支援的檔案格式，請上傳 .md 或 .markdown 檔案'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 獲取必填參數
+        subject_id = request.data.get('subject_id')
+        level = request.data.get('level')
+        chapter = request.data.get('chapter')
+        
+        if not subject_id:
+            return Response(
+                {'error': '請選擇科目'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not level:
+            return Response(
+                {'error': '請選擇年級'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not chapter:
+            return Response(
+                {'error': '請輸入章節'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 驗證科目是否存在
+        try:
+            subject = Subject.objects.get(subject_id=subject_id)
+        except Subject.DoesNotExist:
+            return Response(
+                {'error': '科目不存在'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 讀取 Markdown 檔案
+        try:
+            markdown_content = markdown_file.read().decode('utf-8')
+        except Exception as e:
+            return Response(
+                {'error': f'讀取 Markdown 檔案失敗：{str(e)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 獲取圖片檔案
+        images_dict = {}
+        if 'images' in request.FILES:
+            image_files = request.FILES.getlist('images')
+            for img_file in image_files:
+                try:
+                    images_dict[img_file.name] = img_file.read()
+                except Exception as e:
+                    return Response(
+                        {'error': f'讀取圖片檔案 {img_file.name} 失敗：{str(e)}'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+        
+        # 定義保存圖片的函數
+        def save_image_func(image_bytes: bytes, filename: str) -> str:
+            """保存圖片並返回 URL"""
+            from django.core.files.storage import default_storage
+            from django.core.files.base import ContentFile
+            
+            now = datetime.now()
+            date_folder = now.strftime('%Y/%m/%d')
+            relative_path = f'question_images/{date_folder}/{filename}'
+            
+            # 保存圖片
+            saved_path = default_storage.save(relative_path, ContentFile(image_bytes))
+            
+            # 獲取圖片 URL
+            image_url = default_storage.url(saved_path)
+            if not image_url.startswith('http'):
+                image_url = request.build_absolute_uri(image_url)
+            
+            return image_url
+        
+        # 解析題目並上傳圖片
+        importer = MarkdownQuestionImporter()
+        try:
+            questions, errors = importer.import_questions_with_images(
+                markdown_content=markdown_content,
+                images_dict=images_dict,
+                default_subject_id=int(subject_id),
+                default_level=level,
+                default_chapter=chapter,
+                save_images_func=save_image_func
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'解析 Markdown 失敗：{str(e)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not questions:
+            return Response(
+                {
+                    'error': '未能從 Markdown 中解析出任何題目',
+                    'errors': errors
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 批量創建題目
+        created_count = 0
+        failed_count = 0
+        created_by = request.user if request.user.is_authenticated else None
+        
+        with transaction.atomic():
+            for question_data in questions:
+                try:
+                    # 設置建立者
+                    question_data['created_by'] = created_by
+                    
+                    # 創建題目
+                    question = QuestionBank.objects.create(**question_data)
+                    created_count += 1
+                except Exception as e:
+                    failed_count += 1
+                    errors.append(f"創建題目失敗（題號：{question_data.get('question_number', '未知')}）：{str(e)}")
+        
+        return Response({
+            'success': True,
+            'created_count': created_count,
+            'failed_count': failed_count,
+            'total_parsed': len(questions),
+            'image_count': len(images_dict),
+            'errors': errors[:20]  # 只返回前 20 個錯誤
+        }, status=status.HTTP_200_OK)
+    
     @action(detail=True, methods=['get'])
     def export_to_latex(self, request, pk=None):
         """

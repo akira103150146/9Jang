@@ -13,65 +13,131 @@
             <h1 class="text-lg font-bold text-slate-800 leading-tight">
               匯入題目
             </h1>
-            <p class="text-sm text-slate-500 mt-1">從 Word 檔案（.docx 或 .doc）匯入題目到題庫</p>
+            <p class="text-sm text-slate-500 mt-1">從 Markdown 檔案（.md）匯入題目到題庫，支援自動上傳圖片</p>
           </div>
         </div>
       </header>
 
       <!-- 表單內容 -->
       <div class="bg-white rounded-lg border border-slate-200 shadow-sm p-6 space-y-6">
-        <!-- 檔案上傳區域 -->
+        <!-- Markdown 檔案上傳 -->
         <div>
           <label class="block text-sm font-semibold text-slate-700 mb-2">
-            選擇 Word 檔案 <span class="text-red-500">*</span>
+            選擇 Markdown 檔案 <span class="text-red-500">*</span>
           </label>
           <div
-            @drop.prevent="handleDrop"
-            @dragover.prevent="dragover = true"
-            @dragleave.prevent="dragover = false"
+            @drop.prevent="handleMarkdownDrop"
+            @dragover.prevent="dragoverMarkdown = true"
+            @dragleave.prevent="dragoverMarkdown = false"
             :class="[
-              'border-2 border-dashed rounded-lg p-8 text-center transition-colors',
-              dragover ? 'border-indigo-500 bg-indigo-50' : 'border-slate-300',
-              selectedFile ? 'bg-slate-50' : 'bg-white'
+              'border-2 border-dashed rounded-lg p-6 text-center transition-colors',
+              dragoverMarkdown ? 'border-indigo-500 bg-indigo-50' : 'border-slate-300',
+              selectedMarkdown ? 'bg-slate-50' : 'bg-white'
             ]"
           >
             <input
-              ref="fileInput"
+              ref="markdownInput"
               type="file"
-              accept=".docx,.doc"
-              @change="handleFileSelect"
+              accept=".md,.markdown"
+              @change="handleMarkdownSelect"
               class="hidden"
             />
-            <div v-if="!selectedFile" class="space-y-4">
-              <svg class="mx-auto h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            <div v-if="!selectedMarkdown" class="space-y-3">
+              <svg class="mx-auto h-10 w-10 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               <div>
                 <button
-                  @click="$refs.fileInput.click()"
-                  class="text-indigo-600 hover:text-indigo-700 font-medium"
+                  @click="$refs.markdownInput.click()"
+                  class="text-indigo-600 hover:text-indigo-700 font-medium text-sm"
                 >
-                  點擊選擇檔案
+                  選擇 Markdown 檔案
                 </button>
-                <span class="text-slate-500"> 或拖放檔案到此處</span>
               </div>
-              <p class="text-xs text-slate-400">支援 .docx 和 .doc 格式</p>
+              <p class="text-xs text-slate-400">支援 .md 格式</p>
             </div>
             <div v-else class="space-y-2">
               <div class="flex items-center justify-center gap-2">
-                <svg class="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg class="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <div class="text-left">
-                  <p class="font-medium text-slate-900">{{ selectedFile.name }}</p>
-                  <p class="text-xs text-slate-500">{{ formatFileSize(selectedFile.size) }}</p>
+                  <p class="font-medium text-slate-900 text-sm">{{ selectedMarkdown.name }}</p>
+                  <p class="text-xs text-slate-500">{{ formatFileSize(selectedMarkdown.size) }}</p>
                 </div>
               </div>
               <button
-                @click="removeFile"
-                class="text-sm text-red-600 hover:text-red-700"
+                @click="removeMarkdown"
+                class="text-xs text-red-600 hover:text-red-700"
               >
                 移除檔案
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 圖片資料夾上傳 -->
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-2">
+            選擇圖片資料夾 <span class="text-slate-400 text-xs">(選填，若題目包含圖片)</span>
+          </label>
+          <div
+            @drop.prevent="handleImageDrop"
+            @dragover.prevent="dragoverImages = true"
+            @dragleave.prevent="dragoverImages = false"
+            :class="[
+              'border-2 border-dashed rounded-lg p-6 text-center transition-colors',
+              dragoverImages ? 'border-indigo-500 bg-indigo-50' : 'border-slate-300',
+              selectedImages.length > 0 ? 'bg-slate-50' : 'bg-white'
+            ]"
+          >
+            <input
+              ref="imageInput"
+              type="file"
+              multiple
+              accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+              @change="handleImageSelect"
+              webkitdirectory
+              directory
+              class="hidden"
+            />
+            <div v-if="selectedImages.length === 0" class="space-y-3">
+              <svg class="mx-auto h-10 w-10 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <div>
+                <button
+                  @click="$refs.imageInput.click()"
+                  class="text-indigo-600 hover:text-indigo-700 font-medium text-sm"
+                >
+                  選擇圖片資料夾
+                </button>
+                <span class="text-slate-500 text-sm"> 或拖放資料夾到此處</span>
+              </div>
+              <p class="text-xs text-slate-400">支援 PNG, JPG, GIF, WebP（自動過濾圖片檔案）</p>
+            </div>
+            <div v-else class="space-y-2">
+              <div class="flex items-center justify-center gap-2">
+                <svg class="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <span class="text-sm font-medium text-slate-900">已選擇 {{ selectedImages.length }} 張圖片</span>
+              </div>
+              <div class="max-h-32 overflow-y-auto">
+                <div class="flex flex-wrap gap-1 justify-center">
+                  <span v-for="(img, idx) in selectedImages.slice(0, 10)" :key="idx" class="text-xs bg-slate-100 px-2 py-1 rounded">
+                    {{ img.name }}
+                  </span>
+                  <span v-if="selectedImages.length > 10" class="text-xs text-slate-500 px-2 py-1">
+                    ...還有 {{ selectedImages.length - 10 }} 張
+                  </span>
+                </div>
+              </div>
+              <button
+                @click="removeImages"
+                class="text-xs text-red-600 hover:text-red-700"
+              >
+                移除所有圖片
               </button>
             </div>
           </div>
@@ -302,21 +368,25 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { questionBankAPI, subjectAPI } from '../services/api'
 import { useMarkdownRenderer } from '../composables/useMarkdownRenderer'
 
 const router = useRouter()
+const route = useRoute()
 const { renderMarkdownWithLatex } = useMarkdownRenderer()
 
-const selectedFile = ref(null)
-const dragover = ref(false)
+const selectedMarkdown = ref(null)
+const selectedImages = ref([])
+const dragoverMarkdown = ref(false)
+const dragoverImages = ref(false)
 const previewing = ref(false)
 const importing = ref(false)
 const showPreview = ref(false)
 const previewData = ref(null)
 const importResult = ref(null)
 const subjects = ref([])
+const uploadingImages = ref(false)
 
 const importParams = ref({
   subject_id: '',
@@ -325,7 +395,7 @@ const importParams = ref({
 })
 
 const canImport = computed(() => {
-  return selectedFile.value &&
+  return selectedMarkdown.value &&
     importParams.value.subject_id &&
     importParams.value.level &&
     importParams.value.chapter
@@ -346,46 +416,144 @@ const goBack = () => {
   router.push({ path: '/questions', query: { tab: returnTab } })
 }
 
-// 處理檔案選擇
-const handleFileSelect = (event) => {
+// 處理 Markdown 檔案選擇
+const handleMarkdownSelect = (event) => {
   const file = event.target.files[0]
   if (file) {
-    validateAndSetFile(file)
+    validateAndSetMarkdown(file)
   }
 }
 
-// 處理拖放
-const handleDrop = (event) => {
-  dragover.value = false
+// 處理 Markdown 拖放
+const handleMarkdownDrop = (event) => {
+  dragoverMarkdown.value = false
   const file = event.dataTransfer.files[0]
   if (file) {
-    validateAndSetFile(file)
+    validateAndSetMarkdown(file)
   }
 }
 
-// 驗證並設置檔案
-const validateAndSetFile = (file) => {
-  // 驗證檔案類型
-  if (!file.name.endsWith('.docx') && !file.name.endsWith('.doc')) {
-    alert('請選擇 .docx 或 .doc 格式的檔案')
+// 驗證並設置 Markdown 檔案
+const validateAndSetMarkdown = (file) => {
+  if (!file.name.endsWith('.md') && !file.name.endsWith('.markdown')) {
+    alert('請選擇 .md 或 .markdown 格式的檔案')
     return
   }
 
-  selectedFile.value = file
+  selectedMarkdown.value = file
   importResult.value = null
   showPreview.value = false
   previewData.value = null
 }
 
-// 移除檔案
-const removeFile = () => {
-  selectedFile.value = null
+// 移除 Markdown 檔案
+const removeMarkdown = () => {
+  selectedMarkdown.value = null
   importResult.value = null
   showPreview.value = false
   previewData.value = null
-  if (document.querySelector('input[type="file"]')) {
-    document.querySelector('input[type="file"]').value = ''
+}
+
+// 處理圖片選擇（點擊上傳）
+const handleImageSelect = (event) => {
+  const files = Array.from(event.target.files)
+  if (files.length > 0) {
+    selectedImages.value = files.filter(file => 
+      file.type.startsWith('image/')
+    )
+    console.log(`已選擇 ${selectedImages.value.length} 張圖片`)
   }
+}
+
+// 處理圖片拖放
+const handleImageDrop = async (event) => {
+  dragoverImages.value = false
+  
+  const items = event.dataTransfer.items
+  if (!items) {
+    alert('您的瀏覽器不支援拖放資料夾，請使用「選擇圖片資料夾」按鈕')
+    return
+  }
+  
+  // 顯示載入中
+  uploadingImages.value = true
+  
+  try {
+    const files = []
+    
+    // 遍歷所有拖放的項目
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i]
+      
+      if (item.kind === 'file') {
+        const entry = item.webkitGetAsEntry()
+        
+        if (entry) {
+          // 遞迴讀取檔案
+          await readEntry(entry, files)
+        }
+      }
+    }
+    
+    if (files.length > 0) {
+      selectedImages.value = files
+      console.log(`已拖放 ${files.length} 張圖片：`, files.map(f => f.name))
+    } else {
+      alert('未在資料夾中檢測到圖片檔案（支援 PNG, JPG, GIF, WebP）')
+    }
+  } catch (error) {
+    console.error('讀取資料夾錯誤：', error)
+    alert('讀取資料夾失敗，請嘗試使用「選擇圖片資料夾」按鈕')
+  } finally {
+    uploadingImages.value = false
+  }
+}
+
+// 遞迴讀取資料夾內容
+const readEntry = async (entry, files) => {
+  if (entry.isFile) {
+    // 如果是檔案，檢查是否為圖片
+    const file = await new Promise((resolve, reject) => {
+      entry.file(resolve, reject)
+    })
+    
+    // 檢查檔案類型
+    if (file.type.startsWith('image/')) {
+      files.push(file)
+    } else {
+      // 如果沒有 type，用副檔名判斷
+      const ext = file.name.split('.').pop().toLowerCase()
+      if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) {
+        files.push(file)
+      }
+    }
+  } else if (entry.isDirectory) {
+    // 如果是資料夾，遞迴讀取
+    const reader = entry.createReader()
+    
+    // 讀取資料夾內容（可能需要多次讀取）
+    const readEntries = async () => {
+      const entries = await new Promise((resolve, reject) => {
+        reader.readEntries(resolve, reject)
+      })
+      
+      if (entries.length > 0) {
+        // 遞迴處理每個項目
+        for (const childEntry of entries) {
+          await readEntry(childEntry, files)
+        }
+        // 繼續讀取（某些瀏覽器一次只返回部分項目）
+        await readEntries()
+      }
+    }
+    
+    await readEntries()
+  }
+}
+
+// 移除圖片
+const removeImages = () => {
+  selectedImages.value = []
 }
 
 // 格式化檔案大小
@@ -400,7 +568,7 @@ const formatFileSize = (bytes) => {
 // 預覽題目
 const previewQuestions = async () => {
   if (!canImport.value) {
-    alert('請填寫所有必填欄位並選擇檔案')
+    alert('請填寫所有必填欄位並選擇 Markdown 檔案')
     return
   }
 
@@ -411,13 +579,20 @@ const previewQuestions = async () => {
   try {
     // 創建 FormData
     const formData = new FormData()
-    formData.append('file', selectedFile.value)
+    formData.append('markdown_file', selectedMarkdown.value)
     formData.append('subject_id', importParams.value.subject_id)
     formData.append('level', importParams.value.level)
     formData.append('chapter', importParams.value.chapter)
+    
+    // 添加圖片
+    if (selectedImages.value.length > 0) {
+      selectedImages.value.forEach((image, index) => {
+        formData.append('images', image)
+      })
+    }
 
     // 發送預覽請求
-    const response = await questionBankAPI.previewFromWord(formData)
+    const response = await questionBankAPI.previewFromMarkdown(formData)
     
     if (response.data.success) {
       previewData.value = response.data
@@ -451,13 +626,20 @@ const confirmImport = async () => {
   try {
     // 創建 FormData
     const formData = new FormData()
-    formData.append('file', selectedFile.value)
+    formData.append('markdown_file', selectedMarkdown.value)
     formData.append('subject_id', importParams.value.subject_id)
     formData.append('level', importParams.value.level)
     formData.append('chapter', importParams.value.chapter)
+    
+    // 添加圖片
+    if (selectedImages.value.length > 0) {
+      selectedImages.value.forEach((image, index) => {
+        formData.append('images', image)
+      })
+    }
 
     // 發送匯入請求
-    const response = await questionBankAPI.importFromWord(formData)
+    const response = await questionBankAPI.importFromMarkdown(formData)
 
     importResult.value = {
       success: true,
