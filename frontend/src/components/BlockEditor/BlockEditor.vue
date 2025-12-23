@@ -485,6 +485,8 @@ onBeforeUnmount(() => {
   width: 100%;
   padding: 0;
   min-height: 297mm;
+  overflow-y: auto; /* 允許垂直滾動 */
+  max-height: calc(100vh - 200px); /* 限制最大高度，留出空間給頂部導航欄 */
 }
 
 /* 列印時的樣式調整 */
@@ -698,6 +700,7 @@ onBeforeUnmount(() => {
 .editor-content {
   width: 100%;
   min-height: 400px;
+  /* 不設置 overflow，讓父容器 .paper-sheet 處理滾動 */
 }
 
 /* Tiptap 編輯器樣式 */

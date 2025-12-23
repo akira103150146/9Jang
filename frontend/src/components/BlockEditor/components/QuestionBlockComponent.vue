@@ -29,7 +29,7 @@
 </template>
 
 <script setup>
-import { ref, inject } from 'vue'
+import { ref, inject, onMounted } from 'vue'
 import { NodeViewWrapper, NodeViewContent, nodeViewProps } from '@tiptap/vue-3'
 import QuestionBlock from '../../QuestionBlock.vue'
 import QuestionSelectorModal from './QuestionSelectorModal.vue'
@@ -39,6 +39,7 @@ const props = defineProps(nodeViewProps)
 // 從父組件注入可用的題目列表
 const availableQuestions = inject('questions', [])
 
+
 const showSelector = ref(false)
 
 const handleSelectQuestion = () => {
@@ -46,7 +47,7 @@ const handleSelectQuestion = () => {
   showSelector.value = true
 }
 
-const onQuestionSelected = (questionIds) => {
+const onQuestionSelected = async (questionIds) => {
   // 如果是陣列(多選),處理批次插入
   if (Array.isArray(questionIds)) {
     // 取得編輯器實例
@@ -59,40 +60,156 @@ const onQuestionSelected = (questionIds) => {
         questionId: questionIds[0]
       })
       
-      // 插入剩餘的題目
+      // 插入剩餘的題目 - 在當前節點後面插入
       if (questionIds.length > 1) {
-        const pos = props.getPos() + props.node.nodeSize
+        // 重要：使用當前編輯器的選區位置，而不是節點的文檔位置
+        const currentNodePos = props.getPos()
+        const pos = currentNodePos + props.node.nodeSize
         
-        // 批次插入其他題目 - 使用 insertContent 結構而非直接創建節點
-        const content = questionIds.slice(1).map(qId => ({
-          type: 'questionBlock',
-          attrs: {
-            id: `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            questionId: qId
+        // 批次插入其他題目 - 逐個插入以確保所有題目都被添加，並檢查是否需要分頁
+        // 使用 for...of 循環以支持異步操作
+        for (let index = 0; index < questionIds.slice(1).length; index++) {
+          const qId = questionIds.slice(1)[index]
+          
+          // 在每次插入前，從編輯器狀態中獲取最新的位置
+          // 這樣可以確保即使之前插入了分頁符號，位置也是正確的
+          const currentPos = editor.state.doc.content.size
+          
+          const questionBlock = {
+            type: 'questionBlock',
+            attrs: {
+              id: `block-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
+              questionId: qId
+            }
           }
-        }))
+          
+          const result = editor.chain()
+            .focus()
+            .insertContentAt(currentPos, questionBlock)
+            .run()
+          
+          // 等待編輯器狀態穩定（確保插入操作完成）
+          await new Promise(resolve => setTimeout(resolve, 10))
+          
+          // 檢查是否需要插入分頁符號（模擬 AutoPageBreak 邏輯）
+          if (result) {
+            const insertedPos = currentPos
+            
+            // 等待 DOM 更新後再檢查
+            const pageBreakInserted = await new Promise((resolve) => {
+              setTimeout(() => {
+                try {
+                  // 獲取剛插入的題目節點的 DOM 元素
+                  const questionWrappers = document.querySelectorAll('.question-block-wrapper')
+                  const insertedWrapper = Array.from(questionWrappers).find(wrapper => {
+                    const questionIdAttr = wrapper.querySelector('.question-block')?.getAttribute('data-question-id')
+                    return questionIdAttr === String(qId)
+                  })
+                  
+                  if (insertedWrapper) {
+                    const editorDOM = editor.view.dom
+                    const editorRect = editorDOM.getBoundingClientRect()
+                    const nodeRect = insertedWrapper.getBoundingClientRect()
+                    
+                    // 取得游標提示方塊的高度
+                    const cursorIndicator = document.querySelector('.cursor-indicator')
+                    let cursorIndicatorHeight = 0
+                    if (cursorIndicator) {
+                      cursorIndicatorHeight = cursorIndicator.offsetHeight
+                      const marginBottom = parseFloat(window.getComputedStyle(cursorIndicator).marginBottom) || 0
+                      cursorIndicatorHeight += marginBottom
+                    }
+                    
+                    // 當前節點的底部位置（相對於編輯器頂部）
+                    const nodeBottomRelative = nodeRect.bottom - editorRect.top
+                    const adjustedBottom = nodeBottomRelative - cursorIndicatorHeight
+                    
+                    // 獲取頁面高度（A4: 971px, B4: 1183px）
+                    const paperSize = document.querySelector('.block-editor-container')?.classList.contains('paper-size-a4') ? 'A4' : 'B4'
+                    const pageHeightPx = paperSize === 'A4' ? 971 : 1183
+                    
+                    // 計算當前在第幾頁
+                    const currentPage = Math.floor(adjustedBottom / pageHeightPx)
+                    const nextPageBoundary = (currentPage + 1) * pageHeightPx
+                    const remainingSpace = nextPageBoundary - adjustedBottom
+                    
+                    // 如果剩餘空間小於 300px（一個題目區塊的平均高度），插入分頁符號
+                    if (remainingSpace < 300) {
+                      // 從編輯器狀態中獲取當前文檔大小，確保位置準確
+                      const currentDocSize = editor.state.doc.content.size
+                      const pageBreakPos = insertedPos + 2
+                      
+                      // 驗證位置是否有效
+                      if (pageBreakPos <= currentDocSize) {
+                        editor.chain()
+                          .focus()
+                          .insertContentAt(pageBreakPos, { type: 'pageBreak' })
+                          .run()
+                        
+                        resolve(true) // 返回 true 表示插入了分頁符號
+                        return
+                      }
+                    }
+                  }
+                } catch (error) {
+                  console.error('檢查分頁失敗:', error)
+                }
+                resolve(false) // 返回 false 表示沒有插入分頁符號
+              }, 50)
+            })
+            
+            // 等待編輯器狀態更新（無論是否插入分頁符號）
+            await new Promise(resolve => setTimeout(resolve, 10))
+          }
+        }
         
-        editor.chain()
-          .focus()
-          .insertContentAt(pos, content)
-          .run()
+        // 滾動到第一個新插入的題目
+        setTimeout(() => {
+          const questionBlockWrappers = document.querySelectorAll('.question-block-wrapper')
+          const paperSheet = document.querySelector('.paper-sheet')
+          
+          if (questionBlockWrappers.length > 0 && paperSheet) {
+            const firstBlock = questionBlockWrappers[0]
+            setTimeout(() => {
+              const firstBlockRect = firstBlock.getBoundingClientRect()
+              const paperRect = paperSheet.getBoundingClientRect()
+              const firstBlockTop = firstBlockRect.top
+              const paperTop = paperRect.top
+              
+              // 如果第一個題目在視窗外，滾動到它
+              if (firstBlockTop < paperTop || firstBlockTop > paperTop + paperSheet.clientHeight) {
+                const offsetTop = firstBlock.offsetTop
+                paperSheet.scrollTo({ top: Math.max(0, offsetTop - 20), behavior: 'smooth' })
+              }
+            }, 150)
+          }
+        }, 150)
       }
     } else {
       // 如果當前節點已有題目,在後面插入所有選中的題目
       const pos = props.getPos() + props.node.nodeSize
       
-      const content = questionIds.map(qId => ({
+      // 逐個插入所有題目
+      let currentPos = pos
+      questionIds.forEach((qId, index) => {
+        const questionBlock = {
         type: 'questionBlock',
         attrs: {
-          id: `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            id: `block-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
           questionId: qId
+          }
         }
-      }))
       
-      editor.chain()
+        const result = editor.chain()
         .focus()
-        .insertContentAt(pos, content)
+          .insertContentAt(currentPos, questionBlock)
         .run()
+        
+        // 更新下一個插入位置
+        if (result) {
+          currentPos += 2
+        }
+      })
     }
   } else {
     // 單選模式(向後兼容)
