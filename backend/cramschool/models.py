@@ -1369,6 +1369,7 @@ class LearningResource(models.Model):
         verbose_name='可見學生群組'
     )
     structure = models.JSONField(default=list, verbose_name='內容結構')
+    tiptap_structure = models.JSONField(default=dict, null=True, blank=True, verbose_name='Tiptap JSON 結構')
     settings = models.JSONField(default=dict, verbose_name='設定 (版面/紙張)')
     tags = models.ManyToManyField(
         'Hashtag',

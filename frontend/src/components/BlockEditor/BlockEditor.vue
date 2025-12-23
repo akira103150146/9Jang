@@ -227,10 +227,7 @@ const editor = useEditor({
     currentNodeType.value = node ? node.type.name : null
   },
   onCreate: ({ editor }) => {
-    // #region agent log
-    const initialContent = editor.getJSON()
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BlockEditor.vue:onCreate',message:'編輯器已創建',data:{hasEditor:!!editor,contentLength:initialContent?.content?.length || 0,hasView:!!editor.view,hasDom:!!editor.view?.dom},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
+    // Editor created
   },
 })
 
@@ -443,17 +440,8 @@ function convertToTiptapFormat(structure) {
 let isUpdatingFromEditor = false
 
 watch(() => props.modelValue, (newValue) => {
-  // #region agent log
-  const currentContentLength = editor.value ? editor.value.getJSON()?.content?.length || 0 : 0
-  const newContentLength = newValue?.content?.length || 0
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BlockEditor.vue:watch:modelValue',message:'modelValue 變化',data:{currentContentLength,newContentLength,isUpdatingFromEditor,hasEditor:!!editor.value,ignoreExternalUpdates:props.ignoreExternalUpdates},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'H'})}).catch(()=>{});
-  // #endregion
-  
   // 如果正在從頁面編輯器更新，忽略外部變化（避免覆蓋編輯器內容）
   if (!editor.value || isUpdatingFromEditor || props.ignoreExternalUpdates) {
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BlockEditor.vue:watch:ignored',message:'忽略外部更新',data:{reason:!editor.value ? 'no-editor' : isUpdatingFromEditor ? 'updating-from-editor' : 'ignore-external-updates'},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'H'})}).catch(()=>{});
-    // #endregion
     return
   }
 
@@ -465,13 +453,6 @@ watch(() => props.modelValue, (newValue) => {
     editor.value.commands.setContent(newContent, false)
     // 內容更新後重新計算頁數
     updatePageCount()
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BlockEditor.vue:watch:updated',message:'內容已更新',data:{newContentLength:newContent?.content?.length || 0},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'H'})}).catch(()=>{});
-    // #endregion
-  } else {
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BlockEditor.vue:watch:skipped',message:'內容相同，跳過',data:{currentContentLength:currentContent?.content?.length || 0,newContentLength:newContent?.content?.length || 0},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'H'})}).catch(()=>{});
-    // #endregion
   }
 }, { deep: true })
 

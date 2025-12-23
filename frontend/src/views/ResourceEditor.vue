@@ -610,9 +610,6 @@ const tiptapStructure = computed({
   get() {
     // 講義模式：直接使用 Tiptap JSON
     if (resource.mode === 'HANDOUT') {
-      // #region agent log
-      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:tiptapStructure:get',message:'取得 tiptapStructure',data:{mode:resource.mode,contentLength:tiptapStructureRef.value?.content?.length || 0,hasDoc:tiptapStructureRef.value?.type === 'doc'},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'E'})}).catch(()=>{});
-      // #endregion
       return tiptapStructureRef.value
     }
     // 其他模式：從舊格式轉換
@@ -741,9 +738,6 @@ const handoutPages = computed(() => {
     pages.push([])
   }
   
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:handoutPages:result',message:'頁面分割結果',data:{totalPages:pages.length,contentLength:content.length,firstPageNodes:pages[0]?.length || 0,secondPageNodes:pages[1]?.length || 0},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'G'})}).catch(()=>{});
-  // #endregion
   
   return pages
 })
@@ -812,9 +806,6 @@ const checkAndSplitPage = async (pageIndex, pageContent) => {
 
 // 處理單頁編輯器更新（跨頁編輯同步）
 const handlePageEditorUpdate = async (pageIndex, pageContent) => {
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:handlePageEditorUpdate:entry',message:'函數入口',data:{pageIndex,pageContentLength:pageContent?.length || 0,pageContentTypes:pageContent?.map(n => n.type).slice(0,5) || []},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
   
   // 防止循環更新
   if (isUpdatingFromPageEditor.value) {
@@ -827,9 +818,6 @@ const handlePageEditorUpdate = async (pageIndex, pageContent) => {
     // 從所有頁面的編輯器實例獲取內容並合併成連續流（不插入任何 pageBreak）
     const newContent = []
     
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:handlePageEditorUpdate:beforeMerge',message:'合併前',data:{pageEditorRefsLength:pageEditorRefs.value.length,validRefs:pageEditorRefs.value.filter(r => r && r.editor).length},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
     
     // 只從編輯器實例獲取內容，不使用 currentPages（避免使用舊的分頁結果）
     for (let idx = 0; idx < pageEditorRefs.value.length; idx++) {
@@ -839,18 +827,12 @@ const handlePageEditorUpdate = async (pageIndex, pageContent) => {
         // 使用更新後的頁面內容
         if (pageContent && pageContent.length > 0) {
           newContent.push(...pageContent)
-          // #region agent log
-          fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:handlePageEditorUpdate:addCurrent',message:'添加當前頁',data:{idx,length:pageContent.length,total:newContent.length},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'C'})}).catch(()=>{});
-          // #endregion
         }
       } else if (editorRef && editorRef.editor) {
         // 從其他頁面的編輯器實例獲取當前內容
         const pageJson = editorRef.editor.getJSON()
         if (pageJson?.content && pageJson.content.length > 0) {
           newContent.push(...pageJson.content)
-          // #region agent log
-          fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:handlePageEditorUpdate:addOther',message:'添加其他頁',data:{idx,length:pageJson.content.length,total:newContent.length},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'C'})}).catch(()=>{});
-          // #endregion
         }
       }
       // 如果編輯器實例不存在，跳過（不添加任何內容）
@@ -858,9 +840,6 @@ const handlePageEditorUpdate = async (pageIndex, pageContent) => {
       // 注意：完全不插入 pageBreak，讓 handoutPages computed 自動根據內容高度計算分頁
     }
     
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:handlePageEditorUpdate:afterMerge',message:'合併後',data:{newContentLength:newContent.length,newContentTypes:newContent.map(n => n.type).slice(0,10)},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
     
     // 過濾無效節點（空的 paragraph 節點會被 Tiptap 過濾掉，所以我們先過濾掉）
     const validContent = newContent.filter(n => {
@@ -870,9 +849,6 @@ const handlePageEditorUpdate = async (pageIndex, pageContent) => {
       return true
     })
     
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:handlePageEditorUpdate:beforeUpdate',message:'更新前',data:{validContentLength:validContent.length,pagesBefore:handoutPages.value.length},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'E'})}).catch(()=>{});
-    // #endregion
     
     // 更新主 tiptapStructure（講義模式下直接更新 tiptapStructureRef，避免轉換丟失）
     if (resource.mode === 'HANDOUT') {
@@ -888,9 +864,6 @@ const handlePageEditorUpdate = async (pageIndex, pageContent) => {
       // 再次等待，確保所有 computed 屬性都重新計算完成
       await nextTick()
       
-      // #region agent log
-      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:handlePageEditorUpdate:afterUpdate',message:'更新後',data:{pagesAfter:handoutPages.value.length,contentLength:tiptapStructureRef.value?.content?.length || 0},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'F'})}).catch(()=>{});
-      // #endregion
     } else {
       tiptapStructure.value = {
         type: 'doc',
@@ -1324,13 +1297,13 @@ const fetchInitialData = async () => {
       } : defaultSettings
       structure.value = data.structure || []
       
-      // #region agent log
-      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:fetchInitialData:afterLoad',message:'資料載入後',data:{mode:resource.mode,structureLength:structure.value.length,hasStructure:!!data.structure},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
-      
       // 講義模式：初始化 tiptapStructureRef
       if (resource.mode === 'HANDOUT') {
-        if (Array.isArray(structure.value) && structure.value.length > 0) {
+        // 優先使用 Tiptap JSON (如果存在於 data 中)
+        if (data.tiptap_structure && data.tiptap_structure.type === 'doc') {
+          tiptapStructureRef.value = data.tiptap_structure
+        } else if (Array.isArray(structure.value) && structure.value.length > 0) {
+          // 降級處理：從舊格式轉換（但會丟失格式）
           tiptapStructureRef.value = legacyToTiptapStructure(structure.value)
         } else {
           tiptapStructureRef.value = {
@@ -1338,10 +1311,6 @@ const fetchInitialData = async () => {
             content: [{ type: 'paragraph', content: [] }]
           }
         }
-        
-        // #region agent log
-        fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:fetchInitialData:tiptapInit',message:'tiptapStructureRef 初始化',data:{contentLength:tiptapStructureRef.value?.content?.length || 0,hasDoc:tiptapStructureRef.value?.type === 'doc'},timestamp:Date.now(),sessionId:'debug-session',runId:'fix-debug',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
       }
       
       // 載入該資源的圖片映射表
@@ -1391,6 +1360,11 @@ const saveResource = async (manual = false) => {
     structure: structure.value,
     tag_ids_input: resource.tag_ids,
     student_group_ids: resource.student_group_ids
+  }
+  
+  // 對於 HANDOUT 模式，同時保存 Tiptap JSON 格式
+  if (resource.mode === 'HANDOUT' && tiptapStructureRef.value) {
+    payload.tiptap_structure = tiptapStructureRef.value
   }
   
   try {
@@ -1483,24 +1457,12 @@ const generatePrintPreview = async (iframeDoc, iframeWindow, triggerPrint = fals
   const paperHeight = paperSize === 'A4' ? '297mm' : '353mm'
   
   // 檢查原始頁面中的 KaTeX 元素
-  // #region agent log
-  const allKatexInPage = document.querySelectorAll('.katex')
-  const katexSample = allKatexInPage[0] ? {
-    innerHTML: allKatexInPage[0].innerHTML.substring(0, 100),
-    className: allKatexInPage[0].className,
-    computedFont: window.getComputedStyle(allKatexInPage[0]).fontFamily
-  } : null
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:originalPageKatex',message:'原始頁面 KaTeX',data:{totalKatex:allKatexInPage.length,sample:katexSample},timestamp:Date.now(),sessionId:'debug-session',runId:'latex-debug',hypothesisId:'L'})}).catch(()=>{});
-  // #endregion
   
   // 獲取所有有內容的頁面 - 支持 .print-paper 和 .paper-container
   const printPaperElements = document.querySelectorAll('.print-paper')
   const paperContainerElements = document.querySelectorAll('.paper-container')
   const allPaperElements = [...printPaperElements, ...paperContainerElements]
   
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:paperElements',message:'紙張元素數量',data:{printPaper:printPaperElements.length,paperContainer:paperContainerElements.length,total:allPaperElements.length},timestamp:Date.now(),sessionId:'debug-session',runId:'latex-debug',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
   
   const pagesWithContent = Array.from(allPaperElements).filter(page => {
     // 檢查頁面是否有實際內容（排除空白頁）
@@ -1508,16 +1470,10 @@ const generatePrintPreview = async (iframeDoc, iframeWindow, triggerPrint = fals
     const hasText = page.textContent.trim().length > 0
     const hasProseMirror = page.querySelector('.ProseMirror')
     
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:filterPage',message:'頁面過濾',data:{hasBlocks:!!hasBlocks,hasText,textLength:page.textContent.trim().length,hasProseMirror:!!hasProseMirror},timestamp:Date.now(),sessionId:'debug-session',runId:'latex-debug',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
     
     return hasBlocks || hasText || hasProseMirror
   })
   
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:afterFilter',message:'過濾後',data:{pagesWithContent:pagesWithContent.length},timestamp:Date.now(),sessionId:'debug-session',runId:'latex-debug',hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
   
   if (pagesWithContent.length === 0) {
     if (triggerPrint) {
@@ -1535,9 +1491,6 @@ const generatePrintPreview = async (iframeDoc, iframeWindow, triggerPrint = fals
     return container
   }
   
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:generatePrintPreview:iframeCreated',message:'iframe 已創建',data:{hasIframeDoc:!!iframeDoc,triggerPrint},timestamp:Date.now(),sessionId:'debug-session',runId:'preview-debug',hypothesisId:'I'})}).catch(()=>{});
-  // #endregion
   
   // 複製必要的樣式表
   const stylesheets = Array.from(document.styleSheets)
@@ -1558,9 +1511,6 @@ const generatePrintPreview = async (iframeDoc, iframeWindow, triggerPrint = fals
         // 檢查是否為 KaTeX 樣式表
         if (sheet.href.includes('katex')) {
           katexStylesheetFound = true
-          // #region agent log
-          fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:katexStylesheet',message:'找到 KaTeX 樣式表',data:{href:sheet.href},timestamp:Date.now(),sessionId:'debug-session',runId:'latex-debug',hypothesisId:'I'})}).catch(()=>{});
-          // #endregion
         }
         // 外部樣式表
         const link = iframeDoc.createElement('link')
@@ -1581,9 +1531,6 @@ const generatePrintPreview = async (iframeDoc, iframeWindow, triggerPrint = fals
     }
   }
   
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:stylesheetsProcessed',message:'樣式表處理完成',data:{katexStylesheetFound,externalStylesheetsCount,inlineStyleLength:styleContent.length,addedKatexCDN:true,addedSqrtFix:true},timestamp:Date.now(),sessionId:'debug-session',runId:'latex-sqrt-fix',hypothesisId:'I'})}).catch(()=>{});
-  // #endregion
   
   // 添加內聯樣式
   const styleEl = iframeDoc.createElement('style')
@@ -1643,16 +1590,6 @@ const generatePrintPreview = async (iframeDoc, iframeWindow, triggerPrint = fals
   pagesWithContent.forEach((page, index) => {
     const clone = page.cloneNode(true)
     
-    // #region agent log
-    const katexElementsInPage = page.querySelectorAll('.katex')
-    const katexElementsInClone = clone.querySelectorAll('.katex')
-    const sqrtInClone = clone.querySelectorAll('.katex .sqrt')
-    const sqrtSample = sqrtInClone[0] ? {
-      outerHTML: sqrtInClone[0].outerHTML.substring(0, 300),
-      computedBorderWidth: sqrtInClone[0].querySelector('.vlist-t') ? window.getComputedStyle(sqrtInClone[0].querySelector('.vlist-t')).borderLeftWidth : 'none'
-    } : null
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:clonePage',message:'複製頁面',data:{pageIndex:index,katexInOriginal:katexElementsInPage.length,katexInClone:katexElementsInClone.length,sqrtInClone:sqrtInClone.length,sqrtSample},timestamp:Date.now(),sessionId:'debug-session',runId:'latex-sqrt-debug',hypothesisId:'K'})}).catch(()=>{});
-    // #endregion
     
     // 確保所有樣式都被複製
     const computedStyle = window.getComputedStyle(page)
@@ -1664,10 +1601,6 @@ const generatePrintPreview = async (iframeDoc, iframeWindow, triggerPrint = fals
   
   iframeDoc.body.appendChild(container)
   
-  // #region agent log
-  const allKatexInIframe = iframeDoc.querySelectorAll('.katex')
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:afterAppend',message:'內容添加到 iframe 後',data:{totalKatexElements:allKatexInIframe.length,sampleKatexStyles:allKatexInIframe[0] ? window.getComputedStyle(allKatexInIframe[0]).fontFamily : 'none'},timestamp:Date.now(),sessionId:'debug-session',runId:'latex-debug',hypothesisId:'K'})}).catch(()=>{});
-  // #endregion
   
   // 等待 KaTeX CSS 載入完成(增加等待時間以確保樣式完全套用)
   await new Promise(resolve => setTimeout(resolve, 500))
@@ -1707,24 +1640,10 @@ const generatePrintPreview = async (iframeDoc, iframeWindow, triggerPrint = fals
     }
   })
   
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:sqrtManualFix',message:'手動修復根號',data:{totalSqrts:allSqrts.length,sqrtFixed},timestamp:Date.now(),sessionId:'debug-session',runId:'latex-sqrt-manualfix',hypothesisId:'M'})}).catch(()=>{});
-  // #endregion
   
   // 再等待一段時間確保 DOM 更新
   await new Promise(resolve => setTimeout(resolve, 500))
   
-  // #region agent log
-  const finalKatexCheck = iframeDoc.querySelectorAll('.katex')
-  const sqrtElements = iframeDoc.querySelectorAll('.katex .sqrt')
-  const katexFontCheck = finalKatexCheck[0] ? {
-    fontFamily: window.getComputedStyle(finalKatexCheck[0]).fontFamily,
-    fontSize: window.getComputedStyle(finalKatexCheck[0]).fontSize,
-    display: window.getComputedStyle(finalKatexCheck[0]).display,
-    visibility: window.getComputedStyle(finalKatexCheck[0]).visibility
-  } : null
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:beforeTrigger',message:'觸發列印前最終檢查',data:{katexCount:finalKatexCheck.length,sqrtCount:sqrtElements.length,katexStyles:katexFontCheck},timestamp:Date.now(),sessionId:'debug-session',runId:'latex-sqrt-manualfix',hypothesisId:'J'})}).catch(()=>{});
-  // #endregion
   
   // 根據參數決定是否觸發列印
   if (triggerPrint) {
@@ -1738,9 +1657,6 @@ const generatePrintPreview = async (iframeDoc, iframeWindow, triggerPrint = fals
 
 // 簡化後的 print() 函數
 const print = async () => {
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:entry',message:'函數入口',data:{mode:resource.mode,hasHandoutPages:handoutPages.value?.length || 0},timestamp:Date.now(),sessionId:'debug-session',runId:'latex-debug',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
   
   // 創建臨時 iframe 用於列印
   const printFrame = document.createElement('iframe')

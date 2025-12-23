@@ -681,14 +681,8 @@ const saveQuestion = async () => {
     if (isEdit.value) {
       await questionBankAPI.update(route.params.id, data)
     } else {
-      // #region agent log
-      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionForm.vue:630',message:'Creating question',data:{subject:data.subject,level:data.level,chapter:data.chapter},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
-      // #endregion
       const createResponse = await questionBankAPI.create(data)
       createdQuestion = createResponse.data
-      // #region agent log
-      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionForm.vue:634',message:'Question created successfully',data:{questionId:createdQuestion?.question_id||createdQuestion?.id||null,responseData:Object.keys(createResponse.data||{})},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
-      // #endregion
     }
     
     alert('儲存成功！')

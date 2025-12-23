@@ -1125,7 +1125,7 @@ class LearningResourceSerializer(serializers.ModelSerializer):
         fields = [
             'resource_id', 'title', 'mode', 'courses', 'course_ids', 'course_names',
             'student_groups', 'student_group_ids', 'student_group_names',
-            'structure', 'settings', 'tags', 'tag_ids', 'tag_ids_input',
+            'structure', 'tiptap_structure', 'settings', 'tags', 'tag_ids', 'tag_ids_input',
             'created_by', 'created_by_name', 'is_individualized',
             'available_from', 'available_until', 'created_at', 'updated_at'
         ]
