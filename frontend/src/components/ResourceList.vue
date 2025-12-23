@@ -250,7 +250,7 @@ const fetchResources = async () => {
 }
 
 const createResource = () => {
-  router.push('/resources/new')
+  router.push({ path: '/resources/new', query: { returnTab: 'resources' } })
 }
 
 const createQuestion = () => {
@@ -262,7 +262,7 @@ const importQuestions = () => {
 }
 
 const editResource = (id) => {
-  router.push(`/resources/edit/${id}`)
+  router.push({ path: `/resources/edit/${id}`, query: { returnTab: 'resources' } })
 }
 
 const deleteResource = async (id) => {

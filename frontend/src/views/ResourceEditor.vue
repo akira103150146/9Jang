@@ -501,12 +501,11 @@ const { renderMarkdownWithLatex } = useMarkdownRenderer()
 
 // 返回上一頁
 const goBack = () => {
-  // 如果有上一頁歷史，則返回；否則跳轉到題庫頁面
-  if (window.history.length > 1) {
-    router.back()
-  } else {
-    router.push('/questions')
-  }
+  // 檢查是否有 returnTab 查詢參數來決定返回哪個 tab
+  const returnTab = route.query.returnTab || 'questions'
+  
+  // 總是跳轉到題庫頁面並帶上 tab 參數，確保正確切換到對應的 tab
+  router.push({ path: '/questions', query: { tab: returnTab } })
 }
 
 // State

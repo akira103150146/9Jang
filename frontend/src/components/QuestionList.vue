@@ -694,15 +694,15 @@ const getQuestionSolution = (question) => {
 }
 
 const createQuestion = () => {
-  router.push('/questions/new')
+  router.push({ path: '/questions/new', query: { returnTab: 'questions' } })
 }
 
 const importQuestions = () => {
-  router.push('/questions/import')
+  router.push({ path: '/questions/import', query: { returnTab: 'questions' } })
 }
 
 const editQuestion = (id) => {
-  router.push(`/questions/edit/${id}`)
+  router.push({ path: `/questions/edit/${id}`, query: { returnTab: 'questions' } })
 }
 
 const deleteQuestion = async (id) => {

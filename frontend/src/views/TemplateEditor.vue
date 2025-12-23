@@ -1,25 +1,33 @@
 <template>
   <div class="min-h-screen bg-slate-50 p-6">
     <div class="max-w-6xl mx-auto">
-      <!-- 標題列 -->
-      <header class="mb-6 flex items-center justify-between">
-        <div>
-          <h1 class="text-2xl font-bold text-slate-900">
-            {{ isEdit ? '編輯模板' : '新增模板' }}
-          </h1>
-          <p class="mt-1 text-sm text-slate-500">創建可重複使用的 Markdown + LaTeX 內容區塊</p>
+      <!-- 頂部工具列 -->
+      <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm mb-6 rounded-lg">
+        <div class="flex items-center gap-4">
+          <button @click="handleCancel" class="text-slate-500 hover:text-indigo-600 transition-colors" title="返回">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+          </button>
+          <div class="flex flex-col">
+            <h1 class="text-lg font-bold text-slate-800 leading-tight">
+              {{ isEdit ? '編輯模板' : '新增模板' }}
+            </h1>
+            <p class="text-sm text-slate-500 mt-1">創建可重複使用的 Markdown + LaTeX 內容區塊</p>
+          </div>
         </div>
-        <div class="flex gap-3">
+
+        <div class="flex items-center gap-3">
           <button
             @click="handleCancel"
-            class="rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50"
           >
             取消
           </button>
           <button
             @click="handleSave"
             :disabled="saving || !formData.title.trim()"
-            class="rounded-full bg-indigo-500 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
           >
             {{ saving ? '儲存中...' : '儲存' }}
           </button>
@@ -214,7 +222,8 @@ const fetchTemplate = async () => {
   } catch (error) {
     console.error('獲取模板失敗：', error)
     alert('載入模板失敗，請稍後再試')
-    router.push('/questions')
+    const returnTab = route.query.returnTab || 'questions'
+    router.push({ path: '/questions', query: { tab: returnTab } })
   }
 }
 
@@ -264,7 +273,8 @@ const handleSave = async () => {
     }
     
     alert('儲存成功！')
-    router.push('/questions')
+    const returnTab = route.query.returnTab || 'questions'
+    router.push({ path: '/questions', query: { tab: returnTab } })
   } catch (error) {
     console.error('儲存失敗：', error)
     if (error.response?.data) {
@@ -282,7 +292,8 @@ const handleSave = async () => {
 
 const handleCancel = () => {
   if (confirm('確定要取消嗎？未儲存的變更將會遺失。')) {
-    router.push('/questions')
+    const returnTab = route.query.returnTab || 'questions'
+    router.push({ path: '/questions', query: { tab: returnTab } })
   }
 }
 

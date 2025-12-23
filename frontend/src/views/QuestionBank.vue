@@ -45,10 +45,13 @@
 
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import ResourceList from '../components/ResourceList.vue'
 import TemplateList from '../components/TemplateList.vue'
 import QuestionList from '../components/QuestionList.vue'
+
+const route = useRoute()
 
 // Tabs Configuration
 const currentTab = ref('questions')
@@ -57,6 +60,20 @@ const tabs = [
   { id: 'resources', name: '文件庫' },
   { id: 'templates', name: '模板庫' }
 ]
+
+// 從 URL 查詢參數讀取 tab，如果有的話
+onMounted(() => {
+  if (route.query.tab && ['questions', 'resources', 'templates'].includes(route.query.tab)) {
+    currentTab.value = route.query.tab
+  }
+})
+
+// 監聽路由查詢參數變化，動態切換 tab
+watch(() => route.query.tab, (newTab) => {
+  if (newTab && ['questions', 'resources', 'templates'].includes(newTab)) {
+    currentTab.value = newTab
+  }
+})
 
 const headerTitle = computed(() => {
   const map = {

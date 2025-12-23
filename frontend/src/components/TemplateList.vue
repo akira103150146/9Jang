@@ -114,11 +114,11 @@ const deleteTemplate = async (id) => {
 }
 
 const createTemplate = () => {
-  router.push('/templates/new')
+  router.push({ path: '/templates/new', query: { returnTab: 'templates' } })
 }
 
 const editTemplate = (id) => {
-  router.push(`/templates/edit/${id}`)
+  router.push({ path: `/templates/edit/${id}`, query: { returnTab: 'templates' } })
 }
 
 const useTemplate = (template) => {
