@@ -1557,9 +1557,18 @@ const generatePrintPreview = async (iframeDoc, iframeWindow, triggerPrint = fals
       page-break-after: auto;
       break-after: auto;
     }
-    /* 修復根號線拉長問題：限制 vlist-t 的高度以裁剪溢出內容 */
-    .katex .sqrt > .vlist-t {
+    /* 修復根號線拉長問題：限制根號內部元素的最大高度 */
+    .katex .sqrt .vlist-t {
+      max-height: 1.2em !important;
       overflow: hidden !important;
+    }
+    /* 確保 SVG 根號線不會被裁剪 */
+    .katex .sqrt .svg-align {
+      overflow: visible !important;
+    }
+    /* 隱藏可能產生垂直線的 vlist-t2 邊框 */
+    .katex .sqrt .vlist-t2 {
+      border-left: none !important;
     }
   `
   iframeDoc.head.appendChild(styleEl)
