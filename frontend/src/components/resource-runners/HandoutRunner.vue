@@ -21,19 +21,24 @@
       </button>
     </div>
 
-    <!-- 紙張預覽 -->
-    <PaperPreview
-      :paper-size="props.settings?.handout?.paperSize || 'A4'"
-      :orientation="props.settings?.handout?.orientation || 'portrait'"
-      :structure="structure"
-      :format="selectedFormat"
-    />
+    <!-- 使用 BlockEditor 唯讀模式顯示預覽 -->
+    <div class="border border-slate-200 rounded-lg overflow-hidden bg-white">
+      <BlockEditor
+        :model-value="filteredTiptapStructure"
+        :templates="[]"
+        :questions="[]"
+        :auto-page-break="false"
+        :paper-size="props.settings?.handout?.paperSize || 'A4'"
+        :readonly="true"
+        :show-page-numbers="true"
+      />
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import PaperPreview from '../PaperPreview.vue'
+import { ref, computed } from 'vue'
+import BlockEditor from '../BlockEditor/BlockEditor.vue'
 import { learningResourceAPI } from '../../services/api'
 
 const props = defineProps({
@@ -41,9 +46,12 @@ const props = defineProps({
     type: Object,
     required: true
   },
-  structure: {
-    type: Array,
-    default: () => []
+  tiptap_structure: {
+    type: Object,
+    default: () => ({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [] }]
+    })
   },
   settings: {
     type: Object,
@@ -59,6 +67,17 @@ const outputFormats = [
   { value: 'solution_only', label: '詳解卷' },
   { value: 'answer_only', label: '答案卷' }
 ]
+
+// 根據選中的格式過濾內容（未來實現）
+// 目前先顯示完整內容
+const filteredTiptapStructure = computed(() => {
+  // TODO: 根據 selectedFormat 過濾 tiptap_structure 內容
+  // 例如：question_only 只顯示題目，隱藏答案和解析
+  return props.tiptap_structure || {
+    type: 'doc',
+    content: [{ type: 'paragraph', content: [] }]
+  }
+})
 
 const exportPDF = async () => {
   try {

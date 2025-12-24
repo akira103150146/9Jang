@@ -25,6 +25,9 @@ export const AutoPageBreak = Extension.create({
         // 取得當前節點的 DOM 元素
         try {
           const pos = $from.pos
+          // #region agent log
+          fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AutoPageBreak.js:Enter',message:'Enter 鍵按下',data:{pos,pageHeightPx:this.options.pageHeightPx},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
           const domAtPos = editor.view.domAtPos(pos)
           let currentNode = domAtPos.node
 
@@ -42,6 +45,9 @@ export const AutoPageBreak = Extension.create({
           }
 
           if (!currentNode) {
+            // #region agent log
+            fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AutoPageBreak.js:Enter',message:'找不到當前節點',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+            // #endregion
             return false
           }
 
@@ -72,8 +78,15 @@ export const AutoPageBreak = Extension.create({
           const nextPageBoundary = (currentPage + 1) * this.options.pageHeightPx
           const remainingSpace = nextPageBoundary - adjustedBottom
 
+          // #region agent log
+          fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AutoPageBreak.js:Enter',message:'分頁計算',data:{nodeBottomRelative,adjustedBottom,currentPage,nextPageBoundary,remainingSpace,pageHeightPx:this.options.pageHeightPx},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
+
           // 如果剩餘空間小於 100px（一個段落的平均高度），插入分頁符號
           if (remainingSpace < 100) {
+            // #region agent log
+            fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AutoPageBreak.js:Enter',message:'需要插入分頁符號',data:{remainingSpace},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+            // #endregion
             // 先執行預設的 Enter 行為（創建新段落）
             editor.commands.first(({ commands }) => [
               () => commands.newlineInCode(),

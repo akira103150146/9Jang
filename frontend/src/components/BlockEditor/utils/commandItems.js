@@ -72,14 +72,60 @@ export const commandItems = [
   {
     title: '模板',
     icon: '📄',
-    description: '插入模板區塊',
+    description: '插入模板內容',
     command: ({ editor, range }) => {
+      // 刪除 /template 文字
       editor
         .chain()
         .focus()
         .deleteRange(range)
-        .insertTemplateBlock()
         .run()
+      
+      // 觸發打開模板選擇器事件
+      const event = new CustomEvent('openTemplateSelector', {
+        detail: {
+          onSelect: async (templateId) => {
+            // 載入模板並插入內容
+            try {
+              // #region agent log
+              fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'commandItems.js:template',message:'開始載入模板內容',data:{templateId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+              // #endregion
+              const { contentTemplateAPI } = await import('../../../services/api')
+              const response = await contentTemplateAPI.getById(templateId)
+              const template = response.data
+              
+              // #region agent log
+              fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'commandItems.js:template',message:'模板載入完成，準備插入內容',data:{templateId,hasTiptapStructure:!!template.tiptap_structure,contentLength:template.tiptap_structure?.content?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+              // #endregion
+              
+              if (template.tiptap_structure && template.tiptap_structure.type === 'doc' && template.tiptap_structure.content) {
+                // 將模板的 content 插入到編輯器中
+                editor.chain().focus().insertContent(template.tiptap_structure.content).run()
+                
+                // 等待 DOM 更新完成，確保 AutoPageBreak 能正確計算位置
+                await new Promise(resolve => setTimeout(resolve, 100))
+                
+                // 將游標移到插入內容的末尾
+                const { state } = editor
+                const docSize = state.doc.content.size
+                editor.chain().focus().setTextSelection(docSize).run()
+                
+                // #region agent log
+                fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'commandItems.js:template',message:'模板內容已插入，游標已移動',data:{contentLength:template.tiptap_structure.content.length,docSize},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                // #endregion
+              } else {
+                console.warn('模板沒有有效的 tiptap_structure 內容')
+              }
+            } catch (error) {
+              console.error('載入模板失敗:', error)
+              // #region agent log
+              fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'commandItems.js:template',message:'模板載入失敗',data:{error:error.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+              // #endregion
+            }
+          }
+        }
+      })
+      window.dispatchEvent(event)
     },
     keywords: ['template', '模板']
   },
@@ -194,6 +240,40 @@ export const commandItems = [
         .run()
     },
     keywords: ['question', '題目', 'q']
+  },
+  {
+    title: '圖片',
+    icon: '🖼️',
+    description: '插入圖片',
+    command: ({ editor, range }) => {
+      // 刪除 /image 文字
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .run()
+      
+      // 觸發打開圖片選擇器事件
+      const event = new CustomEvent('openImageSelector', {
+        detail: {
+          placeholderNode: null,
+          onSelect: (selectedUrl) => {
+            // 在當前游標位置插入圖片
+            const imageNode = {
+              type: 'image',
+              attrs: {
+                src: selectedUrl,
+                alt: '',
+                title: ''
+              }
+            }
+            editor.chain().focus().insertContent(imageNode).run()
+          }
+        }
+      })
+      window.dispatchEvent(event)
+    },
+    keywords: ['image', 'img', '圖片', 'photo', 'picture']
   },
   {
     title: '分頁',

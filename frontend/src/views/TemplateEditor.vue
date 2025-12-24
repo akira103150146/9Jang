@@ -124,7 +124,6 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { contentTemplateAPI, hashtagAPI } from '../services/api'
 import BlockEditor from '../components/BlockEditor/BlockEditor.vue'
-import { legacyToTiptapStructure, tiptapToLegacyStructure } from '../components/BlockEditor/utils/structureConverter'
 
 const route = useRoute()
 const router = useRouter()
@@ -170,14 +169,11 @@ const fetchTemplate = async () => {
     formData.value.is_public = template.is_public || false
     formData.value.tag_ids = template.tag_ids || []
     
-    // 優先使用 tiptap_structure，如果沒有則從舊的 structure 轉換
-    if (template.tiptap_structure && Object.keys(template.tiptap_structure).length > 0) {
+    // 統一使用 tiptap_structure
+    if (template.tiptap_structure && template.tiptap_structure.type === 'doc') {
       tiptapStructure.value = template.tiptap_structure
-    } else if (template.structure && Array.isArray(template.structure) && template.structure.length > 0) {
-      // 向後相容：從舊格式轉換
-      tiptapStructure.value = legacyToTiptapStructure(template.structure)
     } else {
-      // 預設空內容
+      // 如果沒有 tiptap_structure，使用空結構
       tiptapStructure.value = {
         type: 'doc',
         content: [{ type: 'paragraph', content: [] }]
@@ -211,7 +207,11 @@ const handleSave = async () => {
                      tiptapStructure.value.content && 
                      tiptapStructure.value.content.length > 0 &&
                      tiptapStructure.value.content.some(node => {
-                       return node.content && node.content.length > 0
+                       // 原子節點（如 image, imagePlaceholder, questionBlock 等）沒有 content，但本身就有意義
+                       const isAtomNode = ['image', 'imagePlaceholder', 'questionBlock', 'templateBlock', 'latexBlock', 'diagram2DBlock', 'diagram3DBlock', 'circuitBlock', 'pageBreak'].includes(node.type)
+                       // 有內容的節點（如 paragraph, heading 等）
+                       const hasNodeContent = node.content && node.content.length > 0
+                       return isAtomNode || hasNodeContent
                      })
   
   if (!hasContent) {
@@ -221,13 +221,9 @@ const handleSave = async () => {
 
   saving.value = true
   try {
-    // 將 Tiptap 結構轉換為舊格式（向後相容）
-    const legacyStructure = tiptapToLegacyStructure(tiptapStructure.value)
-    
     const payload = {
       title: formData.value.title.trim(),
-      structure: legacyStructure,  // 舊格式，向後相容
-      tiptap_structure: tiptapStructure.value,  // 新格式
+      tiptap_structure: tiptapStructure.value,
       tag_ids_input: formData.value.tag_ids,
       is_public: formData.value.is_public
     }

@@ -197,12 +197,17 @@ class MarkdownQuestionImporter:
             # 移除《解析》標籤和反斜線
             solution_text = re.sub(r'《解析》\s*\\?', '', solution_text).strip()
             
-            # === 合併答案和解析（存入 correct_answer 欄位）===
-            # 格式：答案標題 + 答案值 + 解析內容
+            # === 分開儲存答案和解析 ===
+            # correct_answer 只存答案（Markdown 格式）
+            correct_answer_content = f"**《答案》{answer_value}**"
+            
+            # solution_content 存解析（Markdown 格式，使用字典格式）
+            solution_content_dict = None
             if solution_text:
-                full_answer_content = f"**《答案》{answer_value}**\n\n**《解析》**\n\n{solution_text}"
-            else:
-                full_answer_content = f"**《答案》{answer_value}**"
+                solution_content_dict = {
+                    'format': 'markdown',
+                    'text': solution_text
+                }
             
             # 判斷題型
             question_type = 'SINGLE_CHOICE'  # 預設單選題
@@ -236,7 +241,8 @@ class MarkdownQuestionImporter:
                 'level': level,
                 'chapter': chapter,
                 'content': question_content,  # 第一部分：題目內容
-                'correct_answer': full_answer_content,  # 第二+三部分：答案+解析
+                'correct_answer': correct_answer_content,  # 第二部分：答案
+                'solution_content': solution_content_dict,  # 第三部分：解析（分開儲存）
                 'difficulty': difficulty,
                 'question_type': question_type,
                 'options': options,
@@ -305,7 +311,7 @@ class MarkdownQuestionImporter:
                 except Exception as e:
                     errors.append(f"上傳圖片 {filename} 失敗：{str(e)}")
             
-            # 替換題目和答案中的圖片路徑
+            # 替換題目、答案和解析中的圖片路徑
             for question in questions:
                 # 替換題目內容中的圖片
                 question['content'] = self._replace_image_paths(
@@ -317,6 +323,13 @@ class MarkdownQuestionImporter:
                     question['correct_answer'],
                     image_mapping
                 )
+                # 替換解析中的圖片（如果存在）
+                if question.get('solution_content') and isinstance(question['solution_content'], dict):
+                    if question['solution_content'].get('text'):
+                        question['solution_content']['text'] = self._replace_image_paths(
+                            question['solution_content']['text'],
+                            image_mapping
+                        )
         
         return questions, errors
     

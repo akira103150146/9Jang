@@ -1056,7 +1056,7 @@ class ContentTemplateSerializer(serializers.ModelSerializer):
             'is_public', 'tags', 'tag_ids', 'tag_ids_input',
             'created_at', 'updated_at'
         ]
-        read_only_fields = ['template_id', 'created_by', 'created_by_name', 'tags', 'tag_ids', 'created_at', 'updated_at']
+        read_only_fields = ['template_id', 'structure', 'created_by', 'created_by_name', 'tags', 'tag_ids', 'created_at', 'updated_at']
 
     def get_created_by_name(self, obj):
         return obj.created_by.username if obj.created_by else None
@@ -1131,7 +1131,7 @@ class LearningResourceSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             'resource_id', 'courses', 'course_names', 'student_groups', 'student_group_names',
-            'tags', 'tag_ids', 'created_by', 'created_by_name',
+            'structure', 'tags', 'tag_ids', 'created_by', 'created_by_name',
             'created_at', 'updated_at'
         ]
 

@@ -320,7 +320,10 @@ const createResource = async () => {
       title: newResource.value.title,
       mode: newResource.value.mode,
       course_ids: [courseId],
-      structure: [],
+      tiptap_structure: {
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [] }]
+      },
       settings: {}
     })
     

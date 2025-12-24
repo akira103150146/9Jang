@@ -61,10 +61,6 @@ const props = defineProps({
   settings: {
     type: Object,
     required: true
-  },
-  structure: {
-    type: Array,
-    default: () => []
   }
 })
 

@@ -39,7 +39,6 @@
             :is="modeEditorComponent"
             v-if="modeEditorComponent"
             :settings="resource.settings"
-            :structure="structure"
             @update:settings="updateSettings"
           />
 
@@ -164,12 +163,8 @@
             </div>
             <div v-show="showJson" class="space-y-3">
               <div>
-                <span class="text-xs font-semibold text-slate-600 block mb-1">Tiptap Format:</span>
-                <pre class="bg-slate-50 p-2 rounded text-[10px] overflow-auto max-h-40 border border-slate-200">{{ JSON.stringify(tiptapStructure, null, 2) }}</pre>
-              </div>
-              <div>
-                <span class="text-xs font-semibold text-slate-600 block mb-1">Legacy Format:</span>
-                <pre class="bg-slate-50 p-2 rounded text-[10px] overflow-auto max-h-40 border border-slate-200">{{ JSON.stringify(structure, null, 2) }}</pre>
+                <span class="text-xs font-semibold text-slate-600 block mb-1">Tiptap Structure:</span>
+                <pre class="bg-slate-50 p-2 rounded text-[10px] overflow-auto max-h-40 border border-slate-200">{{ JSON.stringify(tiptapStructureRef, null, 2) }}</pre>
               </div>
             </div>
           </div>
@@ -282,6 +277,7 @@
               :readonly="false"
               :show-page-numbers="false"
               :ignore-external-updates="isUpdatingFromPageEditor"
+              :is-handout-mode="true"
               @request-upload="openImageFolderUpload"
             />
           </div>
@@ -303,7 +299,7 @@
             @update:model-value="handleBlockEditorUpdate"
             :templates="templates"
             :questions="questions"
-            :auto-page-break="resource.mode === 'HANDOUT'"
+            :auto-page-break="false"
             :paper-size="resource.settings?.handout?.paperSize || resource.settings?.paperSize || 'A4'"
             :image-mappings="imageMappings"
             @request-upload="openImageFolderUpload"
@@ -322,7 +318,6 @@ import { learningResourceAPI, courseAPI, studentGroupAPI, hashtagAPI, contentTem
 import BlockEditor from '../components/BlockEditor/BlockEditor.vue'
 import { useMarkdownRenderer } from '../composables/useMarkdownRenderer'
 import { getModeConfig } from '../config/resourceModes'
-import { legacyToTiptapStructure, tiptapToLegacyStructure } from '../components/BlockEditor/utils/structureConverter'
 
 const props = defineProps({
   id: {
@@ -387,10 +382,9 @@ const resource = reactive({
   }
 })
 
-const structure = ref([])
 const showJson = ref(false) // 預設隱藏 JSON
 
-// 講義模式下直接使用 Tiptap JSON（避免轉換丟失）
+// 統一使用 Tiptap JSON 格式
 const tiptapStructureRef = ref({
   type: 'doc',
   content: [{ type: 'paragraph', content: [] }]
@@ -453,36 +447,13 @@ const clearImageMappings = () => {
 }
 
 // Tiptap 格式的 structure（用於 BlockEditor）
-// 在講義模式下，直接使用 tiptapStructureRef，避免轉換丟失
+// 統一使用 Tiptap JSON 格式，無需轉換
 const tiptapStructure = computed({
   get() {
-    // 講義模式：直接使用 Tiptap JSON
-    if (resource.mode === 'HANDOUT') {
-      return tiptapStructureRef.value
-    }
-    // 其他模式：從舊格式轉換
-    if (Array.isArray(structure.value) && structure.value.length > 0) {
-      return legacyToTiptapStructure(structure.value)
-    }
-    return {
-      type: 'doc',
-      content: [{ type: 'paragraph', content: [] }]
-    }
+    return tiptapStructureRef.value
   },
   set(value) {
-    // 講義模式：直接更新 Tiptap JSON
-    if (resource.mode === 'HANDOUT') {
-      tiptapStructureRef.value = value
-      // 同時更新 structure.value 以便保存（轉換為舊格式）
-      if (value && value.type === 'doc') {
-        structure.value = tiptapToLegacyStructure(value)
-      }
-      return
-    }
-    // 其他模式：轉換回舊格式
-    if (value && value.type === 'doc') {
-      structure.value = tiptapToLegacyStructure(value)
-    }
+    tiptapStructureRef.value = value
   }
 })
 
@@ -536,6 +507,8 @@ const handoutContainerRef = ref(null)
 const canvasContainerRef = ref(null)
 
 // 計算講義模式的頁面分割
+// 講義模式只依賴紙張大小自動分頁，完全忽略分頁符號
+// 設計原則：講義模式 = 固定紙張大小 + 自動分頁，不支援手動分頁符號
 const handoutPages = computed(() => {
   if (resource.mode !== 'HANDOUT') return []
   
@@ -546,18 +519,13 @@ const handoutPages = computed(() => {
   let currentHeight = 0
   
   // 取得 Tiptap 結構的內容
-  const content = tiptapStructure.value?.content || []
+  const content = tiptapStructureRef.value?.content || []
   
-  // 遍歷所有頂層節點
+  // 遍歷所有頂層節點，只依賴紙張大小計算分頁
   content.forEach((node) => {
-    // 如果是分頁符號，強制開始新頁
+    // 講義模式完全忽略分頁符號，只依賴紙張大小自動分頁
     if (node.type === 'pageBreak') {
-      if (currentPage.length > 0) {
-        pages.push([...currentPage])
-        currentPage = []
-        currentHeight = 0
-      }
-      return // 分頁符號本身不加入任何頁面
+      return // 跳過分頁符號節點（講義模式不支援手動分頁符號）
     }
     
     // 估算節點高度
@@ -585,7 +553,6 @@ const handoutPages = computed(() => {
   if (pages.length === 0) {
     pages.push([])
   }
-  
   
   return pages
 })
@@ -663,7 +630,8 @@ const handlePageEditorUpdate = async (pageIndex, pageContent) => {
   isUpdatingFromPageEditor.value = true
   
   try {
-    // 從所有頁面的編輯器實例獲取內容並合併成連續流（不插入任何 pageBreak）
+    // 從所有頁面的編輯器實例獲取內容並合併成連續流
+    // 講義模式不插入分頁符號，完全依賴 handoutPages computed 根據紙張大小自動分頁
     const newContent = []
     
     
@@ -685,7 +653,7 @@ const handlePageEditorUpdate = async (pageIndex, pageContent) => {
       }
       // 如果編輯器實例不存在，跳過（不添加任何內容）
       // 這樣可以避免使用舊的 currentPages 導致內容重複
-      // 注意：完全不插入 pageBreak，讓 handoutPages computed 自動根據內容高度計算分頁
+      // 注意：講義模式不插入 pageBreak，完全由 handoutPages 根據紙張大小自動計算分頁
     }
     
     
@@ -698,26 +666,16 @@ const handlePageEditorUpdate = async (pageIndex, pageContent) => {
     })
     
     
-    // 更新主 tiptapStructure（講義模式下直接更新 tiptapStructureRef，避免轉換丟失）
-    if (resource.mode === 'HANDOUT') {
-      tiptapStructureRef.value = {
-        type: 'doc',
-        content: validContent
-      }
-      // 同時更新 structure.value 以便保存（轉換為舊格式）
-      structure.value = tiptapToLegacyStructure(tiptapStructureRef.value)
-      
-      // 等待響應式更新完成，確保 handoutPages 能正確重新計算
-      await nextTick()
-      // 再次等待，確保所有 computed 屬性都重新計算完成
-      await nextTick()
-      
-    } else {
-      tiptapStructure.value = {
-        type: 'doc',
-        content: validContent
-      }
+    // 更新主 tiptapStructure
+    tiptapStructureRef.value = {
+      type: 'doc',
+      content: validContent
     }
+    
+    // 等待響應式更新完成，確保 handoutPages 能正確重新計算
+    await nextTick()
+    // 再次等待，確保所有 computed 屬性都重新計算完成
+    await nextTick()
   } finally {
     // 延遲重置標誌，確保所有響應式更新完成
     setTimeout(() => {
@@ -835,30 +793,7 @@ const renderMarkdownPreview = (content) => {
   return renderMarkdownWithLatex(content.substring(0, 100) + (content.length > 100 ? '...' : ''))
 }
 
-// Block Operations
-const addBlock = async (type, content = '') => {
-  const newBlock = {
-    id: Date.now() + Math.random(),
-    type,
-    content: type === 'text' ? content : null,
-    question_id: null
-  }
-  structure.value.push(newBlock)
-  return newBlock
-}
-
-// 移除拖拽相關函數：addQuestionBlock、addTemplateBlock、handleTemplateDragStart
-
-const removeBlock = (index) => {
-  structure.value.splice(index, 1)
-}
-
-const moveBlock = (index, direction) => {
-  if (index + direction < 0 || index + direction >= structure.value.length) return
-  const temp = structure.value[index]
-  structure.value[index] = structure.value[index + direction]
-  structure.value[index + direction] = temp
-}
+// Block Operations - 已移除，現在直接通過 BlockEditor 操作 Tiptap JSON
 
 // 舊的頁面計算函數已移除，現在由 BlockEditor 的自動換頁功能處理
 
@@ -916,18 +851,7 @@ const handlePageDrop = (event, pageIndex) => {
     return
   }
   
-  // 移動區塊到新位置
-  const originalIndex = draggingBlock.value.originalIndex
-  const targetIndex = dragOverIndex.value !== null ? dragOverIndex.value : structure.value.length
-  
-  if (originalIndex !== targetIndex && originalIndex !== targetIndex - 1) {
-    // 移除原位置
-    const block = structure.value.splice(originalIndex, 1)[0]
-    
-    // 插入新位置
-    const insertIndex = originalIndex < targetIndex ? targetIndex - 1 : targetIndex
-    structure.value.splice(insertIndex, 0, block)
-  }
+  // 拖拽功能已由 BlockEditor 內部處理，這裡不再需要
   
   // 重置狀態
   draggingBlock.value = null
@@ -1041,21 +965,14 @@ const fetchInitialData = async () => {
           ...(data.settings.handout || {})
         }
       } : defaultSettings
-      structure.value = data.structure || []
-      
-      // 講義模式：初始化 tiptapStructureRef
-      if (resource.mode === 'HANDOUT') {
-        // 優先使用 Tiptap JSON (如果存在於 data 中)
-        if (data.tiptap_structure && data.tiptap_structure.type === 'doc') {
-          tiptapStructureRef.value = data.tiptap_structure
-        } else if (Array.isArray(structure.value) && structure.value.length > 0) {
-          // 降級處理：從舊格式轉換（但會丟失格式）
-          tiptapStructureRef.value = legacyToTiptapStructure(structure.value)
-        } else {
-          tiptapStructureRef.value = {
-            type: 'doc',
-            content: [{ type: 'paragraph', content: [] }]
-          }
+      // 統一使用 tiptap_structure
+      if (data.tiptap_structure && data.tiptap_structure.type === 'doc') {
+        tiptapStructureRef.value = data.tiptap_structure
+      } else {
+        // 如果沒有 tiptap_structure，使用空結構
+        tiptapStructureRef.value = {
+          type: 'doc',
+          content: [{ type: 'paragraph', content: [] }]
         }
       }
       
@@ -1066,14 +983,9 @@ const fetchInitialData = async () => {
       try {
         const templateRes = await contentTemplateAPI.getById(route.query.template_id)
         const template = templateRes.data
-        if (template.structure && template.structure.length > 0) {
-          // 將 template 的 structure 插入到文件開頭
-          structure.value = [...template.structure]
-          
-          // 講義模式：初始化 tiptapStructureRef
-          if (resource.mode === 'HANDOUT') {
-            tiptapStructureRef.value = legacyToTiptapStructure(structure.value)
-          }
+        if (template.tiptap_structure && template.tiptap_structure.type === 'doc') {
+          // 將 template 的 tiptap_structure 插入到文件開頭
+          tiptapStructureRef.value = template.tiptap_structure
         }
       } catch (error) {
         console.error('載入模板失敗：', error)
@@ -1103,14 +1015,9 @@ const saveResource = async (manual = false) => {
   
   const payload = {
     ...resource,
-    structure: structure.value,
+    tiptap_structure: tiptapStructureRef.value,
     tag_ids_input: resource.tag_ids,
     student_group_ids: resource.student_group_ids
-  }
-  
-  // 對於 HANDOUT 模式，同時保存 Tiptap JSON 格式
-  if (resource.mode === 'HANDOUT' && tiptapStructureRef.value) {
-    payload.tiptap_structure = tiptapStructureRef.value
   }
   
   try {
@@ -1161,7 +1068,7 @@ if (!props.viewMode) {
       () => resource.student_group_ids,
       () => resource.tag_ids,
       () => resource.settings,
-      structure
+      () => tiptapStructureRef.value
     ],
     () => {
       // 初始化期間不觸發自動保存
@@ -1763,17 +1670,28 @@ const replaceImagesInEditor = async (editor, pageIndex = null) => {
   return replacedCount
 }
 
+// 監聽圖片映射表更新事件，自動保存
+const handleImageMappingUpdated = () => {
+  saveImageMappings()
+}
+
 onMounted(() => {
   fetchInitialData()
   
   // 添加全局鍵盤事件監聽器
   window.addEventListener('keydown', handleKeyboardShortcuts)
+  
+  // 監聽圖片映射表更新事件，自動保存
+  window.addEventListener('imageMappingUpdated', handleImageMappingUpdated)
 })
 
 // 清理事件監聽器
 onUnmounted(() => {
   // 移除鍵盤事件監聽器
   window.removeEventListener('keydown', handleKeyboardShortcuts)
+  
+  // 移除圖片映射表更新事件監聽器
+  window.removeEventListener('imageMappingUpdated', handleImageMappingUpdated)
   
   if (resizeObserver) {
     resizeObserver.disconnect()

@@ -16,39 +16,46 @@
     <!-- 題目列表 -->
     <div class="space-y-6">
       <div
-        v-for="(block, index) in structure"
-        :key="block.id || index"
+        v-for="(questionId, index) in questionIds"
+        :key="questionId"
         class="rounded-lg border border-slate-200 bg-white p-6"
       >
-        <div v-if="block.type === 'question'" class="space-y-4">
+        <div class="space-y-4">
           <div class="flex items-center justify-between">
             <h3 class="text-base font-semibold text-slate-900">第 {{ index + 1 }} 題</h3>
             <span
               class="text-xs px-2 py-1 rounded"
-              :class="getQuestionTypeClass(getQuestionType(block.question_id))"
+              :class="getQuestionTypeClass(getQuestionType(questionId))"
             >
-              {{ getQuestionTypeName(getQuestionType(block.question_id)) }}
+              {{ getQuestionTypeName(getQuestionType(questionId)) }}
             </span>
           </div>
 
-          <!-- 題目內容 -->
-          <div class="prose max-w-none">
-            <RichTextPreview :content="getQuestionContent(block.question_id)" />
+          <!-- 題目內容 - 使用 BlockEditor 唯讀模式顯示 -->
+          <div class="border border-slate-100 rounded-lg p-4 bg-slate-50">
+            <BlockEditor
+              :model-value="getQuestionTiptapStructure(questionId)"
+              :templates="[]"
+              :questions="[]"
+              :auto-page-break="false"
+              :readonly="true"
+              :show-page-numbers="false"
+            />
           </div>
 
           <!-- 作答區域 -->
-          <div v-if="getQuestionType(block.question_id) === 'SINGLE_CHOICE'" class="space-y-2">
+          <div v-if="getQuestionType(questionId) === 'SINGLE_CHOICE'" class="space-y-2">
             <label
-              v-for="(option, optIndex) in getQuestionOptions(block.question_id)"
+              v-for="(option, optIndex) in getQuestionOptions(questionId)"
               :key="optIndex"
               class="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:border-indigo-300 cursor-pointer"
-              :class="submission[block.question_id] === String.fromCharCode(65 + optIndex) ? 'bg-indigo-50 border-indigo-500' : ''"
+              :class="submission[questionId] === String.fromCharCode(65 + optIndex) ? 'bg-indigo-50 border-indigo-500' : ''"
             >
               <input
                 type="radio"
-                :name="`question-${block.question_id}`"
+                :name="`question-${questionId}`"
                 :value="String.fromCharCode(65 + optIndex)"
-                v-model="submission[block.question_id]"
+                v-model="submission[questionId]"
                 class="text-indigo-600 focus:ring-indigo-500"
               />
               <span class="font-medium">{{ String.fromCharCode(65 + optIndex) }}.</span>
@@ -56,17 +63,17 @@
             </label>
           </div>
 
-          <div v-else-if="getQuestionType(block.question_id) === 'MULTIPLE_CHOICE'" class="space-y-2">
+          <div v-else-if="getQuestionType(questionId) === 'MULTIPLE_CHOICE'" class="space-y-2">
             <label
-              v-for="(option, optIndex) in getQuestionOptions(block.question_id)"
+              v-for="(option, optIndex) in getQuestionOptions(questionId)"
               :key="optIndex"
               class="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:border-indigo-300 cursor-pointer"
-              :class="(submission[block.question_id] || []).includes(String.fromCharCode(65 + optIndex)) ? 'bg-indigo-50 border-indigo-500' : ''"
+              :class="(submission[questionId] || []).includes(String.fromCharCode(65 + optIndex)) ? 'bg-indigo-50 border-indigo-500' : ''"
             >
               <input
                 type="checkbox"
                 :value="String.fromCharCode(65 + optIndex)"
-                v-model="submission[block.question_id]"
+                v-model="submission[questionId]"
                 class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
               />
               <span class="font-medium">{{ String.fromCharCode(65 + optIndex) }}.</span>
@@ -74,9 +81,9 @@
             </label>
           </div>
 
-          <div v-else-if="getQuestionType(block.question_id) === 'FILL_IN_BLANK'" class="space-y-2">
+          <div v-else-if="getQuestionType(questionId) === 'FILL_IN_BLANK'" class="space-y-2">
             <textarea
-              v-model="submission[block.question_id]"
+              v-model="submission[questionId]"
               rows="3"
               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
               placeholder="請輸入答案..."
@@ -151,7 +158,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import RichTextPreview from '../RichTextPreview.vue'
+import BlockEditor from '../BlockEditor/BlockEditor.vue'
 import { learningResourceAPI, questionBankAPI } from '../../services/api'
 
 const props = defineProps({
@@ -159,9 +166,12 @@ const props = defineProps({
     type: Object,
     required: true
   },
-  structure: {
-    type: Array,
-    default: () => []
+  tiptap_structure: {
+    type: Object,
+    default: () => ({
+      type: 'doc',
+      content: []
+    })
   },
   settings: {
     type: Object,
@@ -178,22 +188,74 @@ const questionsData = ref({})
 
 let timer = null
 
+// 從 Tiptap JSON 結構中提取所有 questionBlock 節點的 questionId
+const questionIds = computed(() => {
+  const ids = []
+  if (!props.tiptap_structure || !props.tiptap_structure.content) {
+    return ids
+  }
+  
+  function traverseNodes(nodes) {
+    if (!Array.isArray(nodes)) return
+    
+    nodes.forEach(node => {
+      if (node.type === 'questionBlock' && node.attrs?.questionId) {
+        ids.push(node.attrs.questionId)
+      }
+      // 遞迴處理子節點
+      if (node.content && Array.isArray(node.content)) {
+        traverseNodes(node.content)
+      }
+    })
+  }
+  
+  traverseNodes(props.tiptap_structure.content)
+  return ids
+})
+
 // 載入題目資料
 const loadQuestions = async () => {
-  for (const block of props.structure) {
-    if (block.type === 'question') {
-      try {
-        const response = await questionBankAPI.getById(block.question_id)
-        const question = response.data
-        questionsData.value[block.question_id] = {
-          ...question,
-          question_type: question.question_type || 'SINGLE_CHOICE',
-          options: question.options || []
-        }
-      } catch (error) {
-        console.error(`載入題目 ${block.question_id} 失敗：`, error)
+  for (const questionId of questionIds.value) {
+    try {
+      const response = await questionBankAPI.getById(questionId)
+      const question = response.data
+      questionsData.value[questionId] = {
+        ...question,
+        question_type: question.question_type || 'SINGLE_CHOICE',
+        options: question.options || []
       }
+    } catch (error) {
+      console.error(`載入題目 ${questionId} 失敗：`, error)
     }
+  }
+}
+
+// 為每個題目創建 Tiptap 結構（僅包含題目內容）
+const getQuestionTiptapStructure = (questionId) => {
+  const question = questionsData.value[questionId]
+  if (!question) {
+    return {
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [] }]
+    }
+  }
+  
+  // 如果題目有 tiptap_structure，直接使用
+  // 否則從 content 創建簡單的結構
+  if (question.content && typeof question.content === 'object' && question.content.type === 'doc') {
+    return question.content
+  }
+  
+  // 從 Markdown 內容創建簡單結構
+  const content = typeof question.content === 'string' ? question.content : ''
+  return {
+    type: 'doc',
+    content: content ? [
+      {
+        type: 'paragraph',
+        content: [{ type: 'text', text: content }]
+      }
+    ] : [{ type: 'paragraph', content: [] }]
   }
 }
 

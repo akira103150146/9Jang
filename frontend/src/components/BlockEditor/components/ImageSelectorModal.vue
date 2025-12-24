@@ -33,24 +33,34 @@
       </div>
       
       <div class="modal-footer">
-        <button @click="close" class="btn-cancel">取消</button>
-        <button @click="uploadNew" class="btn-upload">上傳新圖片</button>
+        <div class="paste-hint" v-if="isOpen && !uploading">
+          <span class="hint-text">💡 提示：按 Ctrl+V 可直接貼上圖片</span>
+        </div>
+        <div v-if="uploading" class="uploading-indicator">
+          <span class="uploading-text">📤 正在上傳圖片...</span>
+        </div>
+        <div class="footer-buttons">
+          <button @click="close" class="btn-cancel" :disabled="uploading">取消</button>
+          <button @click="uploadNew" class="btn-upload" :disabled="uploading">選擇檔案上傳</button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, inject } from 'vue'
+import { ref, computed, inject, watch, onMounted, onBeforeUnmount } from 'vue'
+import { uploadImageAPI } from '../../../services/api'
 
 const props = defineProps({
   isOpen: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['close', 'select', 'upload-new'])
+const emit = defineEmits(['close', 'select', 'upload-new', 'image-uploaded'])
 
-const imageMappings = inject('imageMappings', new Map())
+const imageMappings = inject('imageMappings', computed(() => new Map()))
 const searchQuery = ref('')
+const uploading = ref(false)
 
 const filteredImages = computed(() => {
   if (!searchQuery.value) {
@@ -76,6 +86,68 @@ const uploadNew = () => {
   emit('upload-new')
   close()
 }
+
+// 處理圖片貼上
+const handlePaste = async (event) => {
+  if (!props.isOpen) return
+  
+  const clipboardData = event.clipboardData
+  if (!clipboardData) return
+  
+  // 檢查是否有圖片
+  const items = Array.from(clipboardData.items)
+  const imageItem = items.find(item => item.type.startsWith('image/'))
+  
+  if (imageItem) {
+    event.preventDefault()
+    event.stopPropagation()
+    
+    const file = imageItem.getAsFile()
+    if (!file) return
+    
+    uploading.value = true
+    
+    try {
+      // 上傳圖片
+      const response = await uploadImageAPI.upload(file)
+      const imageUrl = response.data.url || response.data.image_url || response.data.url
+      
+      if (imageUrl) {
+        // 將圖片添加到映射表（imageMappings 是 computed，需要通過 .value 訪問實際的 Map）
+        const mappings = imageMappings.value
+        if (mappings && typeof mappings.set === 'function') {
+          mappings.set(file.name, imageUrl)
+          // 通知父組件圖片已上傳，需要保存映射表
+          emit('image-uploaded', { filename: file.name, url: imageUrl })
+        }
+        
+        // 自動選擇並插入圖片
+        selectImage(imageUrl)
+      }
+    } catch (error) {
+      console.error('圖片上傳失敗:', error)
+      alert('圖片上傳失敗，請稍後再試')
+    } finally {
+      uploading.value = false
+    }
+  }
+}
+
+// 監聽 Modal 打開/關閉狀態，添加/移除 paste 事件監聽器
+watch(() => props.isOpen, (isOpen) => {
+  if (isOpen) {
+    // Modal 打開時，添加 paste 事件監聽器
+    document.addEventListener('paste', handlePaste, true)
+  } else {
+    // Modal 關閉時，移除 paste 事件監聽器
+    document.removeEventListener('paste', handlePaste, true)
+  }
+})
+
+// 組件卸載時清理
+onBeforeUnmount(() => {
+  document.removeEventListener('paste', handlePaste, true)
+})
 </script>
 
 <style scoped>
@@ -179,6 +251,26 @@ const uploadNew = () => {
   padding: 1rem 1.5rem;
   border-top: 1px solid #e2e8f0;
   display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.paste-hint {
+  text-align: center;
+  padding: 0.5rem;
+  background: #ebf8ff;
+  border-radius: 4px;
+  border: 1px solid #bee3f8;
+}
+
+.hint-text {
+  font-size: 0.875rem;
+  color: #2c5282;
+  font-weight: 500;
+}
+
+.footer-buttons {
+  display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
 }
@@ -199,5 +291,25 @@ const uploadNew = () => {
 .btn-upload {
   background: #4299e1;
   color: white;
+}
+
+.btn-cancel:disabled,
+.btn-upload:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.uploading-indicator {
+  text-align: center;
+  padding: 0.5rem;
+  background: #fef3c7;
+  border-radius: 4px;
+  border: 1px solid #fde68a;
+}
+
+.uploading-text {
+  font-size: 0.875rem;
+  color: #92400e;
+  font-weight: 500;
 }
 </style>

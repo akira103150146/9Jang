@@ -29,6 +29,14 @@
       @close="imageSelectorOpen = false"
       @select="handleImageSelect"
       @upload-new="handleUploadNewImage"
+      @image-uploaded="handleImageUploaded"
+    />
+    
+    <!-- 模板選擇器 Modal -->
+    <TemplateSelectorModal
+      v-model="templateSelectorOpen"
+      :templates="templates"
+      @select="handleTemplateSelect"
     />
   </div>
 </template>
@@ -40,6 +48,7 @@ import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
 import { LaTeXBlock, InlineLatex, ImagePlaceholder, TemplateBlock, Diagram2DBlock, Diagram3DBlock, CircuitBlock, QuestionBlock, PageBreakBlock } from './extensions'
 import ImageSelectorModal from './components/ImageSelectorModal.vue'
+import TemplateSelectorModal from './components/TemplateSelectorModal.vue'
 import { SlashCommands } from './extensions/SlashCommands'
 import { KeyboardShortcuts } from './extensions/KeyboardShortcuts'
 import { DragHandle } from './extensions/DragHandle'
@@ -47,6 +56,7 @@ import { Nesting } from './extensions/Nesting'
 import { AutoPageBreak } from './extensions/AutoPageBreak'
 import { parseSmartPaste } from './utils/smartPasteParser'
 import { createNodesFromTokens } from './utils/nodeConverter'
+import { uploadImageAPI } from '../../services/api'
 
 const props = defineProps({
   modelValue: {
@@ -85,6 +95,11 @@ const props = defineProps({
   ignoreExternalUpdates: {
     type: Boolean,
     default: false
+  },
+  // 是否為講義模式（用於過濾命令，例如隱藏分頁符號命令）
+  isHandoutMode: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -95,6 +110,8 @@ provide('templates', computed(() => props.templates))
 provide('questions', computed(() => props.questions))
 // 提供圖片映射表給子組件
 provide('imageMappings', computed(() => props.imageMappings))
+// 提供模式資訊給子組件（用於過濾命令）
+provide('isHandoutMode', computed(() => props.isHandoutMode))
 
 // 追蹤當前游標所在的節點類型
 const currentNodeType = ref(null)
@@ -111,6 +128,8 @@ const pageHeightPx = computed(() => {
 const imageSelectorOpen = ref(false)
 const currentPlaceholderNode = ref(null)
 const currentOnSelect = ref(null)
+const templateSelectorOpen = ref(false)
+const currentTemplateOnSelect = ref(null)
 
 
 // 監聽圖片選擇器打開事件
@@ -121,12 +140,27 @@ onMounted(() => {
     imageSelectorOpen.value = true
   }
   
+  const handleOpenTemplateSelector = (event) => {
+    currentTemplateOnSelect.value = event.detail.onSelect
+    templateSelectorOpen.value = true
+  }
+  
   window.addEventListener('openImageSelector', handleOpenImageSelector)
+  window.addEventListener('openTemplateSelector', handleOpenTemplateSelector)
   
   onBeforeUnmount(() => {
     window.removeEventListener('openImageSelector', handleOpenImageSelector)
+    window.removeEventListener('openTemplateSelector', handleOpenTemplateSelector)
   })
 })
+
+// 處理模板選擇
+const handleTemplateSelect = (templateId) => {
+  if (currentTemplateOnSelect.value) {
+    currentTemplateOnSelect.value(templateId)
+    currentTemplateOnSelect.value = null
+  }
+}
 
 // 初始化編輯器
 const editor = useEditor({
@@ -152,7 +186,9 @@ const editor = useEditor({
     CircuitBlock,
     QuestionBlock,
     PageBreakBlock,
-    SlashCommands,
+    SlashCommands.configure({
+      isHandoutMode: props.isHandoutMode,
+    }),
     KeyboardShortcuts,
     DragHandle,
     Nesting,
@@ -167,10 +203,55 @@ const editor = useEditor({
     attributes: {
       class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl focus:outline-none',
     },
-    handlePaste: (view, event, slice) => {
-      // 取得貼上的純文字內容
-      const text = event.clipboardData?.getData('text/plain')
+    handlePaste: async (view, event, slice) => {
+      const clipboardData = event.clipboardData
+      if (!clipboardData) return false
       
+      // 檢查是否有圖片
+      const items = Array.from(clipboardData.items)
+      const imageItem = items.find(item => item.type.startsWith('image/'))
+      
+      if (imageItem) {
+        // 處理圖片貼上
+        event.preventDefault()
+        
+        const file = imageItem.getAsFile()
+        if (!file) return true
+        
+        if (!editor.value) return true
+        
+        try {
+          // 先插入一個臨時的圖片佔位符（可選，提供視覺反饋）
+          // 或者直接上傳並插入
+          
+          // 上傳圖片
+          const response = await uploadImageAPI.upload(file)
+          const imageUrl = response.data.url || response.data.image_url || response.data.url
+          
+          if (imageUrl && editor.value) {
+            // 使用 insertContent 插入圖片節點，這比 setImage 更可靠
+            const imageNode = {
+              type: 'image',
+              attrs: {
+                src: imageUrl,
+                alt: file.name,
+                title: file.name
+              }
+            }
+            
+            editor.value.chain().focus().insertContent(imageNode).run()
+          }
+          
+          return true
+        } catch (error) {
+          console.error('圖片上傳失敗:', error)
+          alert('圖片上傳失敗，請稍後再試')
+          return true
+        }
+      }
+      
+      // 處理文字貼上
+      const text = clipboardData.getData('text/plain')
       if (!text) return false
       
       try {
@@ -353,6 +434,12 @@ const handleImageSelect = (url) => {
 
 const handleUploadNewImage = () => {
   emit('request-upload')
+}
+
+const handleImageUploaded = (data) => {
+  // 通知父組件圖片已上傳，需要保存映射表
+  // 通過 window 事件通知 ResourceEditor 保存映射表
+  window.dispatchEvent(new CustomEvent('imageMappingUpdated', { detail: data }))
 }
 
 

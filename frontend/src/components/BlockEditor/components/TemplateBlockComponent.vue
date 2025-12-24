@@ -19,16 +19,17 @@
         
         <div v-if="templateData" class="template-content">
           <h4 class="template-title">{{ templateData.title }}</h4>
-          <div 
-            v-if="templateData.structure && templateData.structure.length > 0"
-            class="template-structure"
-          >
-            <div
-              v-for="(block, index) in templateData.structure"
-              :key="index"
-              class="template-block-item"
-              v-html="renderTemplateBlock(block)"
-            ></div>
+          <!-- 使用 BlockEditor 唯讀模式顯示模板內容 -->
+          <div v-if="templateData.tiptap_structure && templateData.tiptap_structure.type === 'doc'" class="template-tiptap-content" ref="templateContentRef">
+            <BlockEditor
+              :model-value="templateData.tiptap_structure"
+              :templates="[]"
+              :questions="[]"
+              :auto-page-break="false"
+              :readonly="true"
+              :show-page-numbers="false"
+              :image-mappings="imageMappings"
+            />
           </div>
           <div v-else class="empty-template">
             模板內容為空
@@ -58,22 +59,22 @@
 </template>
 
 <script setup>
-import { ref, watch, computed, inject } from 'vue'
+import { ref, watch, computed, inject, nextTick } from 'vue'
 import { NodeViewWrapper, NodeViewContent, nodeViewProps } from '@tiptap/vue-3'
 import { contentTemplateAPI } from '../../../services/api'
-import { useMarkdownRenderer } from '../../../composables/useMarkdownRenderer'
 import TemplateSelectorModal from './TemplateSelectorModal.vue'
+import BlockEditor from '../BlockEditor.vue'
 
 const props = defineProps(nodeViewProps)
 
-const { renderMarkdownWithLatex } = useMarkdownRenderer()
-
-// 從父組件注入可用的模板列表
+// 從父組件注入可用的模板列表和圖片映射表
 const availableTemplates = inject('templates', ref([]))
+const imageMappings = inject('imageMappings', ref(new Map()))
 
 const templateData = ref(null)
 const loading = ref(false)
 const showSelector = ref(false)
+const templateContentRef = ref(null)
 
 // 載入模板數據
 const loadTemplate = async (templateId) => {
@@ -81,10 +82,19 @@ const loadTemplate = async (templateId) => {
   
   loading.value = true
   try {
+    // #region agent log
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TemplateBlockComponent.vue:79',message:'開始載入模板',data:{templateId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
     const response = await contentTemplateAPI.getById(templateId)
     templateData.value = response.data
+    // #region agent log
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TemplateBlockComponent.vue:87',message:'模板載入完成',data:{templateData:templateData.value,hasTiptapStructure:!!templateData.value?.tiptap_structure,hasStructure:!!templateData.value?.structure,tiptapStructureType:templateData.value?.tiptap_structure?.type},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
   } catch (error) {
     console.error('Failed to load template:', error)
+    // #region agent log
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TemplateBlockComponent.vue:90',message:'模板載入失敗',data:{error:error.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
     templateData.value = null
   } finally {
     loading.value = false
@@ -100,6 +110,20 @@ watch(() => props.node.attrs.templateId, (newId) => {
   }
 }, { immediate: true })
 
+// 監聽模板內容載入完成後，檢查高度
+watch(() => templateData.value?.tiptap_structure, async (newStructure) => {
+  if (newStructure && templateContentRef.value) {
+    await nextTick()
+    // #region agent log
+    const container = templateContentRef.value
+    const blockEditor = container?.querySelector('.block-editor-container')
+    const paperSheet = container?.querySelector('.paper-sheet')
+    const proseMirror = container?.querySelector('.ProseMirror')
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TemplateBlockComponent.vue:watch',message:'模板內容高度檢查',data:{containerHeight:container?.offsetHeight,blockEditorHeight:blockEditor?.offsetHeight,blockEditorMinHeight:window.getComputedStyle(blockEditor).minHeight,paperSheetHeight:paperSheet?.offsetHeight,paperSheetMinHeight:window.getComputedStyle(paperSheet).minHeight,proseMirrorHeight:proseMirror?.offsetHeight,proseMirrorMinHeight:window.getComputedStyle(proseMirror).minHeight},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+  }
+}, { immediate: true })
+
 const onTemplateSelected = (templateId) => {
   props.updateAttributes({
     templateId
@@ -111,10 +135,6 @@ const handleChangeTemplate = () => {
   showSelector.value = true
 }
 
-const renderTemplateBlock = (block) => {
-  if (!block || !block.content) return ''
-  return renderMarkdownWithLatex(block.content)
-}
 </script>
 
 <style scoped>
@@ -213,22 +233,46 @@ const renderTemplateBlock = (block) => {
   margin-bottom: 0.75rem;
 }
 
-.template-structure {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+.template-tiptap-content {
+  margin-top: 0.75rem;
+  /* 讓內容自然決定高度，不設置最大高度或滾動 */
+  height: auto;
+  overflow: visible;
 }
 
-.template-block-item {
-  padding: 0.75rem;
-  background: rgb(249, 250, 251);
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  line-height: 1.6;
+.template-tiptap-content :deep(.block-editor-container) {
+  border: none;
+  background: transparent;
+  padding: 0;
+  /* 移除所有固定高度，讓內容決定高度 */
+  min-height: auto !important;
+  max-height: none !important;
+  height: auto !important;
+  overflow: visible !important;
 }
 
-.template-block-item :deep(.katex) {
-  font-size: 1em;
+.template-tiptap-content :deep(.paper-sheet) {
+  /* 移除紙張區域的固定最小高度 */
+  min-height: auto !important;
+  max-height: none !important;
+  height: auto !important;
+  /* 移除滾動，讓內容自然顯示 */
+  overflow: visible !important;
+}
+
+.template-tiptap-content :deep(.editor-content) {
+  padding: 0;
+  min-height: auto !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+.template-tiptap-content :deep(.ProseMirror) {
+  padding: 0;
+  min-height: auto !important;
+  /* 讓內容自然決定高度 */
+  height: auto !important;
+  overflow: visible !important;
 }
 
 .empty-template,

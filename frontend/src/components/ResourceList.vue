@@ -129,38 +129,17 @@
           <div v-else-if="previewError" class="text-center py-12 text-rose-500">
             載入失敗，請稍後再試
           </div>
-          <div v-else-if="previewResource.structure && previewResource.structure.length > 0">
-            <!-- 模擬紙張效果 -->
+          <div v-else-if="previewResource.tiptap_structure && previewResource.tiptap_structure.type === 'doc'">
+            <!-- 使用 BlockEditor 唯讀模式顯示預覽 -->
             <div class="bg-white shadow-lg rounded-lg p-8 mx-auto max-w-4xl">
-              <div class="space-y-6">
-                <div
-                  v-for="(block, index) in previewResource.structure"
-                  :key="block.id || index"
-                  class="break-inside-avoid"
-                >
-                  <!-- 文字區塊 -->
-                  <div v-if="block.type === 'text'" class="prose max-w-none">
-                    <RichTextPreview :content="block.content" />
-                  </div>
-
-                  <!-- 題目區塊 -->
-                  <div v-else-if="block.type === 'question'">
-                    <QuestionBlock :question-id="block.question_id" />
-                  </div>
-
-                  <!-- 模板區塊 -->
-                  <div v-else-if="block.type === 'template'">
-                    <TemplateBlock :template-id="block.template_id" />
-                  </div>
-
-                  <!-- 分頁標記（預覽時顯示為分隔線） -->
-                  <div v-else-if="block.type === 'page_break'" class="flex items-center gap-4 py-4">
-                    <div class="h-px bg-slate-200 flex-1"></div>
-                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">分頁</span>
-                    <div class="h-px bg-slate-200 flex-1"></div>
-                  </div>
-                </div>
-              </div>
+              <BlockEditor
+                :model-value="previewResource.tiptap_structure"
+                :templates="[]"
+                :questions="[]"
+                :auto-page-break="false"
+                :readonly="true"
+                :show-page-numbers="true"
+              />
             </div>
           </div>
           <div v-else class="text-center py-12 text-slate-400">
@@ -193,9 +172,7 @@
 import { ref, reactive, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { learningResourceAPI } from '../services/api'
-import RichTextPreview from './RichTextPreview.vue'
-import QuestionBlock from './QuestionBlock.vue'
-import TemplateBlock from './TemplateBlock.vue'
+import BlockEditor from './BlockEditor/BlockEditor.vue'
 
 const router = useRouter()
 
@@ -277,8 +254,8 @@ const deleteResource = async (id) => {
 }
 
 const showResourcePreview = async (resource) => {
-  // 如果只有基本信息，需要獲取完整的資源詳情（包含 structure）
-  if (!resource.structure) {
+  // 如果只有基本信息，需要獲取完整的資源詳情（包含 tiptap_structure）
+  if (!resource.tiptap_structure) {
     loadingPreview.value = true
     previewError.value = false
     try {

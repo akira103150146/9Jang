@@ -10,11 +10,20 @@ export const SlashCommands = Extension.create({
 
   addOptions() {
     return {
+      isHandoutMode: false,
       suggestion: {
         char: '/',
         startOfLine: false,
         items: ({ query }) => {
+          // 獲取是否為講義模式
+          const isHandoutMode = this.options.isHandoutMode || false
+          
           return commandItems.filter(item => {
+            // 講義模式下隱藏分頁符號命令（講義模式只依賴紙張大小自動分頁）
+            if (isHandoutMode && item.title === '分頁') {
+              return false
+            }
+            
             const searchQuery = query.toLowerCase()
             return (
               item.title.toLowerCase().includes(searchQuery) ||
