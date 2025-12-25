@@ -10,8 +10,14 @@
           <label class="block text-sm font-medium text-gray-700 mb-2">學生 <span class="text-red-500">*</span></label>
           <select 
             v-model="form.student"
-            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150"
-            required
+            :disabled="isEdit"
+            :class="[
+              'border-0 rounded-md p-3 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150',
+              isEdit 
+                ? 'bg-gray-200 text-gray-600 cursor-not-allowed' 
+                : 'bg-gray-100 text-gray-900 focus:bg-gray-200'
+            ]"
+            :required="!isEdit"
           >
             <option value="">選擇學生</option>
             <option v-for="student in students" :key="student.student_id || student.id" :value="student.student_id || student.id">
@@ -141,11 +147,15 @@ const handleSubmit = async () => {
   loading.value = true
   try {
     const submitData = {
-      student: parseInt(form.value.student),
       item: form.value.item,
       amount: parseFloat(form.value.amount),
       fee_date: form.value.fee_date,
       payment_status: form.value.payment_status
+    }
+    
+    // 只有在新增時才包含 student 欄位
+    if (!isEdit.value) {
+      submitData.student = parseInt(form.value.student)
     }
     
     if (isEdit.value) {
