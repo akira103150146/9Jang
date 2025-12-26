@@ -53,6 +53,14 @@
         <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">需要生成學費</p>
         <p class="mt-2 text-3xl font-bold text-red-600">{{ studentsWithTuitionNeeded.length }}</p>
         <p class="text-sm text-slate-500">學生人數</p>
+        <button
+          v-if="studentsWithTuitionNeeded.length > 0"
+          @click="handleBatchGenerateTuitions"
+          :disabled="batchGeneratingTuitions"
+          class="mt-3 w-full rounded-full bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
+        >
+          {{ batchGeneratingTuitions ? '生成中...' : '批次生成所有學費' }}
+        </button>
       </div>
     </section>
 
@@ -151,9 +159,9 @@
               </td>
               <td v-if="canSeeAccountingFeatures" class="px-4 py-4 text-sm">
                 <div>
-                  <p class="text-slate-900 font-semibold">總：${{ (student.total_fees || 0).toLocaleString() }}</p>
+                  <p class="text-slate-900 font-semibold">總：$<span class="font-mono">{{ formatAmount(student.total_fees || 0) }}</span></p>
                   <p class="text-amber-600" :class="{'font-semibold': student.unpaid_fees > 0}">
-                    待繳：${{ (student.unpaid_fees || 0).toLocaleString() }}
+                    待繳：$<span class="font-mono">{{ formatAmount(student.unpaid_fees || 0) }}</span>
                   </p>
                   <div v-if="student.enrollments_count > 0" class="mt-1">
                     <button
@@ -533,9 +541,9 @@
                   <p class="text-sm text-slate-600">{{ item.year }}年{{ item.month }}月</p>
                 </div>
                 <div class="text-right">
-                  <p class="text-sm text-slate-600">每週費用：${{ item.weekly_fee.toLocaleString() }}</p>
+                  <p class="text-sm text-slate-600">每週費用：$<span class="font-mono">{{ formatAmount(item.weekly_fee) }}</span></p>
                   <p v-if="item.has_fee" class="text-sm text-green-600 font-semibold">
-                    已生成：${{ item.current_fee.toLocaleString() }}
+                    已生成：$<span class="font-mono">{{ formatAmount(item.current_fee) }}</span>
                   </p>
                 </div>
               </div>
@@ -553,7 +561,7 @@
                 <div>
                   <label class="block text-xs font-semibold text-slate-600 mb-1">總費用</label>
                   <p class="text-lg font-bold text-slate-900">
-                    ${{ (item.weekly_fee * item.weeks).toLocaleString() }}
+                    $<span class="font-mono">{{ formatAmount(item.weekly_fee * item.weeks) }}</span>
                   </p>
                 </div>
                 <div class="flex items-center">
@@ -762,6 +770,7 @@ import { mockStudents } from '../data/mockData'
 const router = useRouter()
 
 const students = ref([])
+const batchGeneratingTuitions = ref(false)
 const loading = ref(false)
 const usingMock = ref(false)
 const showDeleted = ref(false)  // 是否顯示已刪除的學生
@@ -819,6 +828,7 @@ const normalizeStudent = (student) => ({
   total_fees: student.total_fees || 0,
   unpaid_fees: student.unpaid_fees || 0,
   enrollments_count: student.enrollments_count || 0,
+  has_tuition_needed: student.has_tuition_needed || false,
   username: student.username || '',
   password: student.password || '',
   is_account_active: student.is_account_active,
@@ -836,7 +846,8 @@ const unpaidFees = computed(() => {
 })
 
 const studentsWithTuitionNeeded = computed(() => {
-  return students.value.filter(s => s.enrollments_count > 0)
+  // 檢查學生是否有報名課程且需要生成學費
+  return students.value.filter(s => s.has_tuition_needed === true)
 })
 
 const fetchStudents = async () => {
@@ -990,6 +1001,51 @@ const isTeacher = computed(() => {
 const isAccountant = computed(() => {
   return currentUser.value && currentUser.value.role === 'ACCOUNTANT'
 })
+
+// 批次生成所有學生的學費
+const handleBatchGenerateTuitions = async () => {
+  const studentsNeedingTuition = studentsWithTuitionNeeded.value
+  
+  if (studentsNeedingTuition.length === 0) {
+    alert('目前沒有需要生成學費的學生')
+    return
+  }
+  
+  if (!confirm(`確定要批次生成 ${studentsNeedingTuition.length} 位學生的學費嗎？\n系統將為每位學生生成所有未生成的學費月份。`)) {
+    return
+  }
+  
+  batchGeneratingTuitions.value = true
+  
+  try {
+    // 獲取需要生成學費的學生ID列表
+    const studentIds = studentsNeedingTuition.map(s => s.id)
+    
+    const response = await studentAPI.batchGenerateTuitions(studentIds, 4) // 預設4週
+    const result = response.data
+    
+    let message = `批次生成完成！\n`
+    message += `處理學生數：${result.total_students}\n`
+    message += `成功：${result.success_count} 位\n`
+    message += `失敗：${result.fail_count} 位\n`
+    message += `總共生成：${result.total_fees_generated} 筆學費記錄`
+    
+    if (result.errors && result.errors.length > 0) {
+      console.error('批次生成學費錯誤：', result.errors)
+      message += `\n\n有 ${result.errors.length} 個錯誤，請查看控制台詳情`
+    }
+    
+    alert(message)
+    
+    // 刷新學生列表以更新「需要生成學費」的數量
+    await fetchStudents()
+  } catch (error) {
+    console.error('批次生成學費失敗：', error)
+    alert('批次生成學費時發生錯誤，請稍後再試')
+  } finally {
+    batchGeneratingTuitions.value = false
+  }
+}
 
 // 檢查是否為管理員或會計（可看到會計專屬功能）
 const canSeeAccountingFeatures = computed(() => {
@@ -1507,6 +1563,12 @@ const formatDate = (date) => {
     return date.replace(/-/g, '/')
   }
   return date
+}
+
+const formatAmount = (amount) => {
+  // 格式化為整數，並加上千分位分隔符
+  const intAmount = Math.round(parseFloat(amount || 0))
+  return intAmount.toLocaleString('zh-TW', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
 onMounted(() => {

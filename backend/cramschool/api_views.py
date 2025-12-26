@@ -23,6 +23,7 @@ from .models import (
     StudentGroup, AssessmentSubmission,
     ContentTemplate, LearningResource, StudentMistakeNote, StudentMistakeNoteImage, ErrorLogImage
 )
+# EnrollmentPeriod 已在上面導入，不需要重複導入
 
 CustomUser = get_user_model()
 from .serializers import (
@@ -169,7 +170,12 @@ class StudentViewSet(viewsets.ModelViewSet):
         # 在 annotate 之後進行 prefetch_related 以優化關聯查詢
         # 注意：Prefetch 中的過濾不會影響 annotate 的結果，但可以優化序列化器的查詢
         queryset = queryset.prefetch_related(
-            Prefetch('enrollments', queryset=StudentEnrollment.objects.filter(is_deleted=False).select_related('course')),
+            Prefetch(
+                'enrollments', 
+                queryset=StudentEnrollment.objects.filter(is_deleted=False).select_related('course').prefetch_related(
+                    Prefetch('periods', queryset=EnrollmentPeriod.objects.filter(is_active=True).order_by('start_date'))
+                )
+            ),
             Prefetch('extra_fees', queryset=ExtraFee.objects.filter(is_deleted=False))
         )
         
@@ -541,6 +547,133 @@ class StudentViewSet(viewsets.ModelViewSet):
         
         serializer = ExtraFeeSerializer(fee)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    @action(detail=False, methods=['post'], url_path='batch-generate-tuitions')
+    def batch_generate_tuitions(self, request):
+        """
+        批次生成所有需要生成學費的學生的學費記錄
+        可以選擇性地指定 student_ids，如果不指定則生成所有需要生成學費的學生
+        """
+        from datetime import date
+        
+        student_ids = request.data.get('student_ids', None)
+        weeks = int(request.data.get('weeks', 4))  # 預設4週
+        
+        # 獲取當前用戶的查詢集（確保權限檢查）
+        queryset = self.get_queryset()
+        
+        # 如果有指定 student_ids，則只處理這些學生
+        if student_ids:
+            queryset = queryset.filter(student_id__in=student_ids)
+        
+        # 獲取所有需要生成學費的學生（有報名課程且還有未生成的學費月份）
+        now = timezone.now().date()
+        results = {
+            'total_students': 0,
+            'success_count': 0,
+            'fail_count': 0,
+            'total_fees_generated': 0,
+            'errors': []
+        }
+        
+        for student in queryset:
+            enrollments = student.enrollments.filter(is_active=True, is_deleted=False).prefetch_related('periods', 'course')
+            if not enrollments.exists():
+                continue
+            
+            results['total_students'] += 1
+            student_success = 0
+            student_fail = 0
+            
+            try:
+                for enrollment in enrollments:
+                    enroll_date = enrollment.enroll_date
+                    course = enrollment.course
+                    periods = enrollment.periods.filter(is_active=True).order_by('start_date')
+                    
+                    # 計算開始日期
+                    if not periods.exists():
+                        start_date = enroll_date.replace(day=1)
+                    else:
+                        start_date = periods.first().start_date.replace(day=1)
+                    
+                    # 計算從最早開始月份到現在的每個月
+                    current = start_date
+                    
+                    while current <= now:
+                        # 檢查該月份是否在任何上課期間內
+                        is_in_active_period = False
+                        if periods.exists():
+                            for period in periods:
+                                period_start = period.start_date.replace(day=1)
+                                period_end = period.end_date.replace(day=1) if period.end_date else None
+                                
+                                if current >= period_start:
+                                    if period_end is None or current <= period_end:
+                                        is_in_active_period = True
+                                        break
+                        else:
+                            if current >= enroll_date.replace(day=1):
+                                is_in_active_period = True
+                        
+                        # 只有在上課期間內且還沒有學費記錄的月份才生成
+                        if is_in_active_period:
+                            existing_fee = ExtraFee.objects.filter(
+                                student=student,
+                                item='Tuition',
+                                fee_date__year=current.year,
+                                fee_date__month=current.month,
+                                notes__icontains=f"{course.course_name}",
+                                is_deleted=False
+                            ).first()
+                            
+                            # 如果還沒有學費記錄，則生成
+                            if not existing_fee:
+                                try:
+                                    weekly_fee = float(course.fee_per_session) / 4
+                                    total_fee = weekly_fee * weeks
+                                    fee_date = date(current.year, current.month, 1)
+                                    
+                                    ExtraFee.objects.create(
+                                        student=student,
+                                        item='Tuition',
+                                        amount=total_fee,
+                                        fee_date=fee_date,
+                                        payment_status='Unpaid',
+                                        notes=f"{course.course_name} - {current.year}年{current.month}月 ({weeks}週)"
+                                    )
+                                    student_success += 1
+                                    results['total_fees_generated'] += 1
+                                except Exception as e:
+                                    student_fail += 1
+                                    results['errors'].append({
+                                        'student_id': student.student_id,
+                                        'student_name': student.name,
+                                        'year': current.year,
+                                        'month': current.month,
+                                        'error': str(e)
+                                    })
+                        
+                        # 移到下一個月
+                        if current.month == 12:
+                            current = current.replace(year=current.year + 1, month=1)
+                        else:
+                            current = current.replace(month=current.month + 1)
+                
+                if student_fail == 0:
+                    results['success_count'] += 1
+                else:
+                    results['fail_count'] += 1
+                    
+            except Exception as e:
+                results['fail_count'] += 1
+                results['errors'].append({
+                    'student_id': student.student_id,
+                    'student_name': student.name,
+                    'error': str(e)
+                })
+        
+        return Response(results, status=status.HTTP_200_OK)
     
     @action(detail=True, methods=['get'])
     def attendance_and_leaves(self, request, pk=None):
@@ -1038,8 +1171,14 @@ class ExtraFeeViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # 批次更新
-        updated_count = fees_to_update.update(payment_status=payment_status)
+        # 批次更新（需要逐一更新以便觸發 save 方法記錄 paid_at）
+        from django.utils import timezone
+        updated_count = 0
+        for fee in fees_to_update:
+            old_status = fee.payment_status
+            fee.payment_status = payment_status
+            fee.save()  # 觸發 save 方法，自動處理 paid_at
+            updated_count += 1
         
         # 記錄操作日誌
         try:

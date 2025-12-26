@@ -26,18 +26,18 @@
           <table class="min-w-full divide-y divide-slate-100">
             <thead class="bg-slate-50">
               <tr>
-                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">日期</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">繳費日期</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">名目</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">金額</th>
+                <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">金額</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">狀態</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">備註</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
               <tr v-for="fee in fees" :key="fee.fee_id" class="transition hover:bg-slate-50/70">
-                <td class="px-4 py-4 text-sm text-slate-700">{{ formatDate(fee.fee_date) }}</td>
+                <td class="px-4 py-4 text-sm text-slate-700">{{ getPaymentDate(fee) }}</td>
                 <td class="px-4 py-4 text-sm text-slate-700">{{ getItemDisplayName(fee.item) }}</td>
-                <td class="px-4 py-4 text-sm font-semibold text-slate-900">${{ parseFloat(fee.amount).toLocaleString() }}</td>
+                <td class="px-4 py-4 text-sm font-semibold text-slate-900 font-mono text-right">${{ formatAmount(fee.amount) }}</td>
                 <td class="px-4 py-4 text-sm">
                   <span
                     class="rounded-full px-3 py-1 text-xs font-semibold"
@@ -91,11 +91,36 @@ const getItemDisplayName = (item) => {
 const formatDate = (dateString) => {
   if (!dateString) return '—'
   const date = new Date(dateString)
+  // 如果是 DateTime 格式（有時間），顯示日期和時間
+  if (dateString.includes('T') || dateString.includes(' ')) {
+    return date.toLocaleString('zh-TW', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
+  // 否則只顯示日期
   return date.toLocaleDateString('zh-TW', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
   })
+}
+
+const formatAmount = (amount) => {
+  // 格式化為整數，並加上千分位分隔符
+  const intAmount = Math.round(parseFloat(amount || 0))
+  return intAmount.toLocaleString('zh-TW', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+}
+
+const getPaymentDate = (fee) => {
+  // 如果狀態是已繳費且有繳費時間，顯示繳費時間；否則顯示費用日期
+  if (fee.payment_status === 'Paid' && fee.paid_at) {
+    return formatDate(fee.paid_at)
+  }
+  return formatDate(fee.fee_date)
 }
 
 const init = async () => {

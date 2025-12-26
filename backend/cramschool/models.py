@@ -352,6 +352,14 @@ class ExtraFee(models.Model):
         verbose_name='備註'
     )
     
+    # 繳費時間（當 payment_status 變為 'Paid' 時記錄）
+    paid_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name='繳費時間',
+        help_text='當繳費狀態變為已繳費時的記錄時間'
+    )
+    
     # Soft delete 欄位
     is_deleted = models.BooleanField(default=False, verbose_name='是否已刪除')
     deleted_at = models.DateTimeField(blank=True, null=True, verbose_name='刪除時間')
@@ -363,6 +371,37 @@ class ExtraFee(models.Model):
 
     def __str__(self):
         return f"{self.student.name} - {self.get_item_display()} - ${self.amount}"
+    
+    def save(self, *args, **kwargs):
+        """
+        保存時自動記錄繳費時間
+        當 payment_status 變為 'Paid' 時，記錄 paid_at
+        當 payment_status 變為 'Unpaid' 時，清除 paid_at
+        """
+        from django.utils import timezone
+        
+        # 如果是更新操作（pk 已存在）
+        if self.pk:
+            try:
+                old_instance = ExtraFee.objects.get(pk=self.pk)
+                old_status = old_instance.payment_status
+                
+                # 如果狀態從非 Paid 變為 Paid，記錄繳費時間
+                if old_status != 'Paid' and self.payment_status == 'Paid':
+                    self.paid_at = timezone.now()
+                # 如果狀態從 Paid 變為非 Paid，清除繳費時間
+                elif old_status == 'Paid' and self.payment_status != 'Paid':
+                    self.paid_at = None
+            except ExtraFee.DoesNotExist:
+                # 如果是新創建的記錄且狀態為 Paid，記錄繳費時間
+                if self.payment_status == 'Paid':
+                    self.paid_at = timezone.now()
+        else:
+            # 如果是新創建的記錄且狀態為 Paid，記錄繳費時間
+            if self.payment_status == 'Paid':
+                self.paid_at = timezone.now()
+        
+        super().save(*args, **kwargs)
     
     def soft_delete(self):
         """軟刪除收費記錄"""

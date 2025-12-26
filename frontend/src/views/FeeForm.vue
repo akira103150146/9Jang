@@ -32,6 +32,7 @@
             required
           >
             <option value="">選擇收費名目</option>
+            <option value="Tuition">學費</option>
             <option value="Transport">交通費</option>
             <option value="Meal">餐費</option>
             <option value="Book">書籍費</option>
@@ -42,10 +43,10 @@
           <input 
             v-model.number="form.amount"
             type="number" 
-            step="0.01"
+            step="1"
             min="0"
-            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150" 
-            placeholder="0.00"
+            class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150 font-mono text-right" 
+            placeholder="0"
             required
           >
 
@@ -132,7 +133,7 @@ const fetchFee = async () => {
     form.value = {
       student: fee.student || fee.student_id || '',
       item: fee.item,
-      amount: fee.amount,
+      amount: Math.round(parseFloat(fee.amount || 0)),
       fee_date: fee.fee_date || new Date().toISOString().split('T')[0],
       payment_status: paymentStatus
     }
@@ -148,7 +149,7 @@ const handleSubmit = async () => {
   try {
     const submitData = {
       item: form.value.item,
-      amount: parseFloat(form.value.amount),
+      amount: Math.round(parseFloat(form.value.amount || 0)),
       fee_date: form.value.fee_date,
       payment_status: form.value.payment_status
     }

@@ -101,7 +101,7 @@
           >
             <div>
               <p class="text-sm font-semibold text-slate-500">{{ fee.student_name }}</p>
-              <p class="text-base font-semibold text-slate-900">{{ getItemDisplay(fee.item) }} ・ ${{ fee.amount }}</p>
+              <p class="text-base font-semibold text-slate-900">{{ getItemDisplay(fee.item) }} ・ $<span class="font-mono">{{ formatAmount(fee.amount) }}</span></p>
             </div>
             <span
               class="rounded-full px-3 py-1 text-xs font-semibold"
@@ -348,6 +348,12 @@ const formatDate = (date) => {
 
 const getItemDisplay = (item) => {
   return itemMap[item] || item
+}
+
+const formatAmount = (amount) => {
+  // 格式化為整數，並加上千分位分隔符
+  const intAmount = Math.round(parseFloat(amount || 0))
+  return intAmount.toLocaleString('zh-TW', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
 const getLeaveStatusDisplay = (status) => {

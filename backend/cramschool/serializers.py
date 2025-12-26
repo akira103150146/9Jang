@@ -55,6 +55,7 @@ class StudentSerializer(serializers.ModelSerializer):
     total_fees = serializers.SerializerMethodField()
     unpaid_fees = serializers.SerializerMethodField()
     enrollments_count = serializers.SerializerMethodField()
+    has_tuition_needed = serializers.SerializerMethodField()  # 是否需要生成學費
     username = serializers.CharField(source='user.username', read_only=True)
     user_email = serializers.CharField(source='user.email', read_only=True)
     password = serializers.SerializerMethodField()  # 密碼欄位，僅管理員可見
@@ -67,10 +68,10 @@ class StudentSerializer(serializers.ModelSerializer):
             'student_id', 'name', 'school', 'grade', 'phone', 
             'emergency_contact_name', 'emergency_contact_phone', 'notes',
             'user', 'username', 'user_email', 'password', 'is_account_active', 'must_change_password',
-            'total_fees', 'unpaid_fees', 'enrollments_count',
+            'total_fees', 'unpaid_fees', 'enrollments_count', 'has_tuition_needed',
             'is_deleted', 'deleted_at'
         ]
-        read_only_fields = ['student_id', 'user', 'username', 'user_email', 'password', 'is_account_active', 'must_change_password', 'total_fees', 'unpaid_fees', 'enrollments_count', 'is_deleted', 'deleted_at']
+        read_only_fields = ['student_id', 'user', 'username', 'user_email', 'password', 'is_account_active', 'must_change_password', 'total_fees', 'unpaid_fees', 'enrollments_count', 'has_tuition_needed', 'is_deleted', 'deleted_at']
     
     def get_password(self, obj):
         """
@@ -139,6 +140,80 @@ class StudentSerializer(serializers.ModelSerializer):
             return obj._enrollments_count or 0
         # 後備方案：如果沒有 annotate，則執行查詢
         return obj.enrollments.filter(is_deleted=False).count()
+    
+    def get_has_tuition_needed(self, obj):
+        """
+        判斷學生是否需要生成學費
+        檢查學生是否有報名課程，以及是否有任何月份還沒有生成學費
+        """
+        from django.utils import timezone
+        from datetime import date
+        
+        # 如果沒有報名課程，則不需要生成學費
+        # 使用 all() 以利用 ViewSet 中的 prefetch_related 優化
+        all_enrollments = obj.enrollments.all()
+        enrollments = [e for e in all_enrollments if e.is_active and not e.is_deleted]
+        if not enrollments:
+            return False
+        
+        now = timezone.now().date()
+        
+        # 檢查每個報名的課程
+        for enrollment in enrollments:
+            enroll_date = enrollment.enroll_date
+            course = enrollment.course
+            # 獲取所有活躍的期間（已經 prefetch_related，所以在 Python 中過濾）
+            all_periods = list(enrollment.periods.all())
+            periods = [p for p in all_periods if p.is_active]
+            periods = sorted(periods, key=lambda p: p.start_date)
+            
+            # 如果沒有定義期間，則使用報名日期作為起始
+            if not periods:
+                start_date = enroll_date.replace(day=1)
+            else:
+                start_date = periods[0].start_date.replace(day=1)
+            
+            # 計算從最早開始月份到現在的每個月
+            current = start_date
+            
+            while current <= now:
+                # 檢查該月份是否在任何上課期間內
+                is_in_active_period = False
+                if periods:
+                    for period in periods:
+                        period_start = period.start_date.replace(day=1)
+                        period_end = period.end_date.replace(day=1) if period.end_date else None
+                        
+                        if current >= period_start:
+                            if period_end is None or current <= period_end:
+                                is_in_active_period = True
+                                break
+                else:
+                    if current >= enroll_date.replace(day=1):
+                        is_in_active_period = True
+                
+                # 如果在上課期間內，檢查是否已經有學費記錄
+                if is_in_active_period:
+                    existing_fee = obj.extra_fees.filter(
+                        item='Tuition',
+                        fee_date__year=current.year,
+                        fee_date__month=current.month,
+                        notes__icontains=f"{course.course_name}",
+                        is_deleted=False
+                    ).exists()
+                    
+                    # 如果沒有學費記錄，則需要生成學費
+                    if not existing_fee:
+                        return True
+                
+                # 移到下一個月
+                if current.month == 12:
+                    current = current.replace(year=current.year + 1, month=1)
+                else:
+                    current = current.replace(month=current.month + 1)
+        
+        # 所有月份都已經生成學費
+        return False
 
 
 class TeacherSerializer(serializers.ModelSerializer):
@@ -374,12 +449,42 @@ class ExtraFeeSerializer(serializers.ModelSerializer):
         model = ExtraFee
         fields = [
             'fee_id', 'student', 'student_name', 'item', 'amount', 'fee_date', 'payment_status', 'notes',
-            'is_deleted', 'deleted_at'
+            'paid_at', 'is_deleted', 'deleted_at'
         ]
-        read_only_fields = ['fee_id', 'student_name', 'is_deleted', 'deleted_at']
+        read_only_fields = ['fee_id', 'student_name', 'paid_at', 'is_deleted', 'deleted_at']
+        extra_kwargs = {
+            'student': {'required': False},  # 設為可選，在 validate 中根據情況驗證
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # 如果是更新操作（有 instance），student 欄位設為可選且只讀
+        if self.instance:
+            self.fields['student'].required = False
+            self.fields['student'].read_only = True
     
     def get_student_name(self, obj):
         return obj.student.name if obj.student else None
+    
+    def validate(self, data):
+        """
+        驗證邏輯：創建時 student 為必填，更新時為可選（實際上更新時會被設為只讀）
+        """
+        # 如果是創建操作（沒有 instance），student 必須提供
+        if not self.instance and 'student' not in data:
+            raise serializers.ValidationError({'student': '此為必需欄位。'})
+        return data
+    
+    def update(self, instance, validated_data):
+        """
+        更新費用記錄時，禁止修改學生欄位
+        paid_at 欄位會由模型的 save 方法自動處理
+        """
+        # 如果嘗試修改 student 欄位，移除該欄位（保持原值）
+        validated_data.pop('student', None)
+        # paid_at 是只讀的，由模型自動處理
+        validated_data.pop('paid_at', None)
+        return super().update(instance, validated_data)
 
 
 class SessionRecordSerializer(serializers.ModelSerializer):
