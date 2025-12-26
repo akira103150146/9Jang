@@ -4,7 +4,7 @@ from rest_framework import viewsets, status, serializers
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
-from django.db.models import Q, Count, Sum, Prefetch
+from django.db.models import Q, Count, Sum, Prefetch, Exists, OuterRef
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
@@ -167,6 +167,65 @@ class StudentViewSet(viewsets.ModelViewSet):
             # 預設過濾掉已刪除的記錄
             queryset = queryset.filter(is_deleted=False)
         
+        # 篩選條件
+        filters = Q()
+        
+        # 1. 學生姓名模糊搜尋
+        name = self.request.query_params.get('name', '').strip()
+        if name:
+            filters &= Q(name__icontains=name)
+        
+        # 2. 電話號碼搜尋（學生電話或緊急聯絡人電話）
+        phone = self.request.query_params.get('phone', '').strip()
+        if phone:
+            filters &= (Q(phone__icontains=phone) | Q(emergency_contact_phone__icontains=phone))
+        
+        # 3. 學校搜尋
+        school = self.request.query_params.get('school', '').strip()
+        if school:
+            filters &= Q(school__icontains=school)
+        
+        # 4. 標籤篩選（StudentGroup，只篩選類型為 'tag' 的）
+        tag_id = self.request.query_params.get('tag', '').strip()
+        if tag_id:
+            try:
+                tag_id = int(tag_id)
+                filters &= Q(student_groups__group_id=tag_id, student_groups__group_type='tag')
+            except ValueError:
+                pass
+        
+        # 5. 課程篩選
+        course_id = self.request.query_params.get('course', '').strip()
+        if course_id:
+            try:
+                course_id = int(course_id)
+                filters &= Q(enrollments__course_id=course_id, enrollments__is_deleted=False)
+            except ValueError:
+                pass
+        
+        # 6. 待繳學費篩選
+        has_unpaid = self.request.query_params.get('has_unpaid_fees', '').strip()
+        if has_unpaid == 'yes':
+            filters &= Q(_unpaid_fees__gt=0)
+        elif has_unpaid == 'no':
+            filters &= (Q(_unpaid_fees=0) | Q(_unpaid_fees__isnull=True))
+        
+        # 7. 請假記錄篩選
+        has_leave = self.request.query_params.get('has_leave', '').strip()
+        if has_leave == 'yes':
+            filters &= Q(leaves__isnull=False, leaves__is_deleted=False)
+        elif has_leave == 'no':
+            # 沒有請假記錄的學生（使用子查詢優化）
+            has_leave_subquery = Leave.objects.filter(
+                student=OuterRef('pk'),
+                is_deleted=False
+            )
+            filters &= ~Exists(has_leave_subquery)
+        
+        # 應用篩選（如果有）
+        if filters:
+            queryset = queryset.filter(filters).distinct()
+        
         # 在 annotate 之後進行 prefetch_related 以優化關聯查詢
         # 注意：Prefetch 中的過濾不會影響 annotate 的結果，但可以優化序列化器的查詢
         queryset = queryset.prefetch_related(
@@ -176,7 +235,8 @@ class StudentViewSet(viewsets.ModelViewSet):
                     Prefetch('periods', queryset=EnrollmentPeriod.objects.filter(is_active=True).order_by('start_date'))
                 )
             ),
-            Prefetch('extra_fees', queryset=ExtraFee.objects.filter(is_deleted=False))
+            Prefetch('extra_fees', queryset=ExtraFee.objects.filter(is_deleted=False)),
+            Prefetch('student_groups', queryset=StudentGroup.objects.filter(group_type='tag'))
         )
         
         return queryset
@@ -2506,6 +2566,10 @@ class StudentMistakeNoteViewSet(viewsets.ModelViewSet):
         if not user.is_authenticated:
             return StudentMistakeNote.objects.none()
 
+        # 會計不可用
+        if user.is_accountant():
+            return StudentMistakeNote.objects.none()
+
         # 老師/管理員可以查看指定學生的筆記
         if user.is_teacher() or user.is_admin():
             student_id = self.request.query_params.get('student_id')
@@ -2758,11 +2822,14 @@ class ErrorLogImageViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if not user.is_authenticated:
             return ErrorLogImage.objects.none()
+        # 會計不可用
+        if user.is_accountant():
+            return ErrorLogImage.objects.none()
         # 學生不可用
         if user.is_student():
             return ErrorLogImage.objects.none()
-        # 老師/會計/管理員可用
-        if user.is_admin() or user.is_teacher() or user.is_accountant():
+        # 老師/管理員可用
+        if user.is_admin() or user.is_teacher():
             return self.queryset
         return ErrorLogImage.objects.none()
 
@@ -3332,18 +3399,48 @@ class StudentGroupViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        學生群組：只有老師可用（老闆需模擬登入老師）
+        根據用戶角色過濾群組類型
         """
         user = self.request.user
         if not user.is_authenticated:
             return StudentGroup.objects.none()
-        if not user.is_teacher():
+        if not (user.is_teacher() or user.is_accountant() or user.is_admin()):
             return StudentGroup.objects.none()
+        
+        # 老師只能看到和創建教學群組
+        if user.is_teacher() and not (user.is_accountant() or user.is_admin()):
+            return super().get_queryset().filter(group_type='teaching')
+        
+        # 會計只能看到和創建標籤
+        if user.is_accountant() and not user.is_admin():
+            return super().get_queryset().filter(group_type='tag')
+        
+        # 管理員可以看到所有類型
         return super().get_queryset()
 
+    def perform_create(self, serializer):
+        """
+        根據用戶角色自動設置群組類型
+        """
+        user = self.request.user
+        if not user.is_authenticated:
+            return
+        
+        # 根據用戶角色設置類型
+        if user.is_accountant() and not user.is_admin():
+            # 會計創建標籤
+            serializer.save(created_by=user, group_type='tag')
+        elif user.is_teacher() and not (user.is_accountant() or user.is_admin()):
+            # 老師創建教學群組
+            serializer.save(created_by=user, group_type='teaching')
+        else:
+            # 管理員可以選擇類型，默認為教學群組
+            group_type = self.request.data.get('group_type', 'teaching')
+            serializer.save(created_by=user, group_type=group_type)
+
     def create(self, request, *args, **kwargs):
-        if not request.user.is_authenticated or not request.user.is_teacher():
-            return Response({'detail': '只有老師可以管理學生群組'}, status=status.HTTP_403_FORBIDDEN)
+        if not request.user.is_authenticated or not (request.user.is_teacher() or request.user.is_accountant() or request.user.is_admin()):
+            return Response({'detail': '只有老師、會計或管理員可以管理學生群組'}, status=status.HTTP_403_FORBIDDEN)
         return super().create(request, *args, **kwargs)
     
     def get_serializer_context(self):
@@ -3356,8 +3453,8 @@ class StudentGroupViewSet(viewsets.ModelViewSet):
         """
         新增學生到群組
         """
-        if not request.user.is_authenticated or not request.user.is_teacher():
-            return Response({'detail': '只有老師可以管理學生群組'}, status=status.HTTP_403_FORBIDDEN)
+        if not request.user.is_authenticated or not (request.user.is_teacher() or request.user.is_accountant() or request.user.is_admin()):
+            return Response({'detail': '只有老師、會計或管理員可以管理學生群組'}, status=status.HTTP_403_FORBIDDEN)
         group = self.get_object()
         student_ids = request.data.get('student_ids', [])
         
@@ -3378,8 +3475,8 @@ class StudentGroupViewSet(viewsets.ModelViewSet):
         """
         從群組移除學生
         """
-        if not request.user.is_authenticated or not request.user.is_teacher():
-            return Response({'detail': '只有老師可以管理學生群組'}, status=status.HTTP_403_FORBIDDEN)
+        if not request.user.is_authenticated or not (request.user.is_teacher() or request.user.is_accountant() or request.user.is_admin()):
+            return Response({'detail': '只有老師、會計或管理員可以管理學生群組'}, status=status.HTTP_403_FORBIDDEN)
         group = self.get_object()
         student_ids = request.data.get('student_ids', [])
         

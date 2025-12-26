@@ -55,6 +55,8 @@ class StudentSerializer(serializers.ModelSerializer):
     total_fees = serializers.SerializerMethodField()
     unpaid_fees = serializers.SerializerMethodField()
     enrollments_count = serializers.SerializerMethodField()
+    enrollments = serializers.SerializerMethodField()  # 報名課程列表（僅會計可見）
+    student_groups = serializers.SerializerMethodField()  # 標籤列表（僅會計可見）
     has_tuition_needed = serializers.SerializerMethodField()  # 是否需要生成學費
     username = serializers.CharField(source='user.username', read_only=True)
     user_email = serializers.CharField(source='user.email', read_only=True)
@@ -68,10 +70,10 @@ class StudentSerializer(serializers.ModelSerializer):
             'student_id', 'name', 'school', 'grade', 'phone', 
             'emergency_contact_name', 'emergency_contact_phone', 'notes',
             'user', 'username', 'user_email', 'password', 'is_account_active', 'must_change_password',
-            'total_fees', 'unpaid_fees', 'enrollments_count', 'has_tuition_needed',
+            'total_fees', 'unpaid_fees', 'enrollments_count', 'enrollments', 'student_groups', 'has_tuition_needed',
             'is_deleted', 'deleted_at'
         ]
-        read_only_fields = ['student_id', 'user', 'username', 'user_email', 'password', 'is_account_active', 'must_change_password', 'total_fees', 'unpaid_fees', 'enrollments_count', 'has_tuition_needed', 'is_deleted', 'deleted_at']
+        read_only_fields = ['student_id', 'user', 'username', 'user_email', 'password', 'is_account_active', 'must_change_password', 'total_fees', 'unpaid_fees', 'enrollments_count', 'enrollments', 'student_groups', 'has_tuition_needed', 'is_deleted', 'deleted_at']
     
     def get_password(self, obj):
         """
@@ -140,6 +142,55 @@ class StudentSerializer(serializers.ModelSerializer):
             return obj._enrollments_count or 0
         # 後備方案：如果沒有 annotate，則執行查詢
         return obj.enrollments.filter(is_deleted=False).count()
+    
+    def get_enrollments(self, obj):
+        """
+        獲取學生報名的課程列表（僅會計和管理員可見）
+        返回簡化的課程信息，包含課程名稱和報名日期
+        """
+        request = self.context.get('request')
+        # 只有會計和管理員可以看到報名課程列表
+        if not request or not request.user.is_authenticated:
+            return []
+        if not (request.user.is_accountant() or request.user.is_admin()):
+            return []
+        
+        # 獲取所有未刪除的報名記錄
+        enrollments = obj.enrollments.filter(is_deleted=False).select_related('course')
+        return [
+            {
+                'enrollment_id': enrollment.enrollment_id,
+                'course_id': enrollment.course.course_id if enrollment.course else None,
+                'course_name': enrollment.course.course_name if enrollment.course else '未知課程',
+                'enroll_date': enrollment.enroll_date.isoformat() if enrollment.enroll_date else None,
+                'is_active': enrollment.is_active,
+            }
+            for enrollment in enrollments
+        ]
+    
+    def get_student_groups(self, obj):
+        """
+        獲取學生的標籤列表（僅會計和管理員可見）
+        只返回類型為 'tag' 的群組
+        """
+        request = self.context.get('request')
+        # 只有會計和管理員可以看到標籤列表
+        if not request or not request.user.is_authenticated:
+            return []
+        if not (request.user.is_accountant() or request.user.is_admin()):
+            return []
+        
+        # 只獲取類型為 'tag' 的群組（已經 prefetch_related）
+        # 使用 all() 以利用 ViewSet 中的 prefetch_related 優化
+        groups = [g for g in obj.student_groups.all() if g.group_type == 'tag']
+        return [
+            {
+                'group_id': group.group_id,
+                'name': group.name,
+                'description': group.description or '',
+            }
+            for group in groups
+        ]
     
     def get_has_tuition_needed(self, obj):
         """
@@ -1091,7 +1142,7 @@ class StudentGroupSerializer(serializers.ModelSerializer):
     class Meta:
         model = StudentGroup
         fields = [
-            'group_id', 'name', 'description', 'students', 'student_ids',
+            'group_id', 'name', 'description', 'group_type', 'students', 'student_ids',
             'students_count', 'student_names', 'created_by', 'created_by_name',
             'created_at', 'updated_at'
         ]

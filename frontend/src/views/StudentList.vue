@@ -13,7 +13,7 @@
               <input
                 v-model="showDeleted"
                 type="checkbox"
-                @change="fetchStudents"
+                @change="handleShowDeletedChange"
                 class="rounded border-slate-300 text-sky-500 focus:ring-sky-500"
               />
               <span>顯示已刪除</span>
@@ -64,6 +64,142 @@
       </div>
     </section>
 
+    <!-- 篩選區域（僅會計可見） -->
+    <section v-if="canSeeAccountingFeatures" class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-slate-900">篩選條件</h3>
+        <button 
+          @click="showFilters = !showFilters" 
+          class="text-sm text-sky-600 hover:text-sky-800 font-semibold"
+        >
+          {{ showFilters ? '收起' : '展開' }}篩選
+        </button>
+      </div>
+      
+      <!-- 載入指示器 -->
+      <div v-if="isFiltering" class="mb-2 text-xs text-slate-500 flex items-center gap-2">
+        <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        搜尋中...
+      </div>
+      
+      <!-- 篩選面板 -->
+      <div v-show="showFilters" class="space-y-4">
+        <!-- 第一行：文字輸入（需要防抖） -->
+        <div class="grid gap-3 md:grid-cols-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">學生姓名</label>
+            <input
+              v-model="filters.name"
+              type="text"
+              placeholder="模糊搜尋學生姓名"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">電話號碼</label>
+            <input
+              v-model="filters.phone"
+              type="text"
+              placeholder="搜尋學生電話或緊急聯絡人電話"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">學校</label>
+            <input
+              v-model="filters.school"
+              type="text"
+              placeholder="搜尋學校名稱"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+            />
+          </div>
+        </div>
+        
+        <!-- 第二行：下拉選單（立即更新） -->
+        <div class="grid gap-3 md:grid-cols-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">標籤</label>
+            <select 
+              v-model="filters.tag" 
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+            >
+              <option value="">全部標籤</option>
+              <option v-for="tag in availableTags" :key="tag.group_id" :value="tag.group_id">
+                {{ tag.name }}
+              </option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">課程</label>
+            <select 
+              v-model="filters.course" 
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+            >
+              <option value="">全部課程</option>
+              <option v-for="course in courses" :key="course.course_id" :value="course.course_id">
+                {{ course.course_name }}
+              </option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">待繳學費</label>
+            <select 
+              v-model="filters.hasUnpaidFees" 
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+            >
+              <option value="">全部</option>
+              <option value="yes">有待繳學費</option>
+              <option value="no">無待繳學費</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">請假狀態</label>
+            <select 
+              v-model="filters.hasLeave" 
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+            >
+              <option value="">全部</option>
+              <option value="yes">有請假記錄</option>
+              <option value="no">無請假記錄</option>
+            </select>
+          </div>
+        </div>
+        
+        <!-- 操作按鈕 -->
+        <div class="flex gap-2 pt-2 border-t border-slate-200">
+          <button 
+            @click="clearFilters" 
+            class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            清除所有篩選
+          </button>
+          <div class="flex-1"></div>
+          <button 
+            @click="openTagManager" 
+            class="rounded-lg border border-indigo-300 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
+          >
+            管理標籤
+          </button>
+        </div>
+        
+        <!-- 已套用的篩選標籤 -->
+        <div v-if="hasActiveFilters" class="flex flex-wrap gap-2 pt-2 border-t border-slate-200">
+          <span class="text-xs text-slate-500">已套用：</span>
+          <span
+            v-for="(filter, key) in activeFilters"
+            :key="key"
+            class="inline-flex items-center gap-1 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700"
+          >
+            {{ filter.label }}
+            <button @click="removeFilter(key)" class="text-sky-600 hover:text-sky-800">×</button>
+          </span>
+        </div>
+      </div>
+    </section>
+
     <div class="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-slate-100">
@@ -73,6 +209,8 @@
               <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">學校 / 年級</th>
               <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">手機</th>
               <th v-if="isAdmin" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">帳號 / 密碼</th>
+              <th v-if="canSeeAccountingFeatures" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">報名課程</th>
+              <th v-if="canSeeAccountingFeatures" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">標籤</th>
               <th v-if="canSeeAccountingFeatures" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">總費用 / 待繳</th>
               <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">緊急聯絡人</th>
               <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">操作</th>
@@ -158,18 +296,73 @@
                 <p v-else class="text-xs text-slate-400">尚未創建帳號</p>
               </td>
               <td v-if="canSeeAccountingFeatures" class="px-4 py-4 text-sm">
+                <div v-if="student.enrollments && student.enrollments.length > 0" class="space-y-1">
+                  <div
+                    v-for="enrollment in student.enrollments"
+                    :key="enrollment.enrollment_id"
+                    class="flex items-center gap-2"
+                  >
+                    <span
+                      class="inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold"
+                      :class="enrollment.is_active ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-600'"
+                    >
+                      {{ enrollment.course_name }}
+                    </span>
+                    <span v-if="!enrollment.is_active" class="text-xs text-slate-400">(已暫停)</span>
+                  </div>
+                </div>
+                <p v-else class="text-xs text-slate-400">尚未報名課程</p>
+              </td>
+              <td v-if="canSeeAccountingFeatures" class="px-4 py-4 text-sm">
+                <div v-if="student.student_groups && student.student_groups.length > 0" class="flex flex-wrap gap-1">
+                  <span
+                    v-for="group in student.student_groups"
+                    :key="group.group_id"
+                    class="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700"
+                  >
+                    {{ group.name }}
+                    <button
+                      @click="removeStudentFromTag(student, group)"
+                      class="text-indigo-600 hover:text-indigo-800"
+                      title="移除標籤"
+                    >
+                      ×
+                    </button>
+                  </span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <p v-if="!student.student_groups || student.student_groups.length === 0" class="text-xs text-slate-400">無標籤</p>
+                  <button
+                    @click="openAddTagModal(student)"
+                    class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold underline"
+                  >
+                    {{ student.student_groups && student.student_groups.length > 0 ? '添加' : '添加標籤' }}
+                  </button>
+                </div>
+              </td>
+              <td v-if="canSeeAccountingFeatures" class="px-4 py-4 text-sm">
                 <div>
                   <p class="text-slate-900 font-semibold">總：$<span class="font-mono">{{ formatAmount(student.total_fees || 0) }}</span></p>
                   <p class="text-amber-600" :class="{'font-semibold': student.unpaid_fees > 0}">
                     待繳：$<span class="font-mono">{{ formatAmount(student.unpaid_fees || 0) }}</span>
                   </p>
-                  <div v-if="student.enrollments_count > 0" class="mt-1">
+                  <div v-if="student.enrollments_count > 0" class="mt-1 space-y-1">
+                    <!-- 如果有未生成的學費，顯示「生成學費」按鈕 -->
                     <button
+                      v-if="student.has_tuition_needed"
                       @click="openTuitionModal(student)"
-                      class="text-xs text-red-600 hover:text-red-800 font-semibold underline"
+                      class="block w-full text-xs text-red-600 hover:text-red-800 font-semibold underline text-left"
                     >
                       生成學費
                     </button>
+                    <!-- 如果有費用記錄，顯示「費用明細」按鈕 -->
+                    <router-link
+                      v-if="student.total_fees > 0"
+                      :to="`/fees?student=${student.id}`"
+                      class="block w-full text-xs text-blue-600 hover:text-blue-800 font-semibold underline text-left"
+                    >
+                      費用明細
+                    </router-link>
                   </div>
                 </div>
               </td>
@@ -187,13 +380,7 @@
                     報名課程
                   </button>
                   <router-link
-                    v-if="canSeeAccountingFeatures"
-                    :to="`/fees?student=${student.id}`"
-                    class="rounded-full bg-green-500 px-3 py-1 text-xs font-semibold text-white hover:bg-green-600"
-                  >
-                    費用
-                  </router-link>
-                  <router-link
+                    v-if="!isAccountant"
                     :to="`/students/${student.id}/errors`"
                     class="rounded-full bg-purple-500 px-3 py-1 text-xs font-semibold text-white hover:bg-purple-600"
                   >
@@ -232,10 +419,177 @@
               </td>
             </tr>
             <tr v-if="students.length === 0">
-              <td :colspan="isAdmin ? (canSeeAccountingFeatures ? 7 : 6) : (canSeeAccountingFeatures ? 6 : 5)" class="py-4 px-4 text-center text-slate-500">目前沒有學生資料。</td>
+              <td :colspan="isAdmin ? (canSeeAccountingFeatures ? 9 : 6) : (canSeeAccountingFeatures ? 8 : 5)" class="py-4 px-4 text-center text-slate-500">目前沒有學生資料。</td>
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- 標籤管理模態框 -->
+    <div
+      v-if="showTagManager"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+      @click.self="closeTagManager"
+    >
+      <div class="w-full max-w-3xl rounded-3xl border border-slate-200 bg-white p-6 shadow-xl max-h-[80vh] overflow-y-auto">
+        <div class="mb-6 flex items-center justify-between">
+          <h3 class="text-xl font-bold text-slate-900">
+            {{ editingTag ? '編輯標籤' : '標籤管理' }}
+          </h3>
+          <div class="flex gap-2">
+            <button
+              v-if="editingTag"
+              @click="closeTagManager"
+              class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              返回列表
+            </button>
+            <button
+              v-else
+              @click="editingTag = null; tagForm = { name: '', description: '' }"
+              class="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-600"
+            >
+              新增標籤
+            </button>
+            <button
+              @click="closeTagManager"
+              class="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            >
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- 編輯/新增表單 -->
+        <div v-if="editingTag || (!editingTag && tagForm.name)" class="mb-6 space-y-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1">標籤名稱 *</label>
+            <input
+              v-model="tagForm.name"
+              type="text"
+              placeholder="請輸入標籤名稱"
+              class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1">描述</label>
+            <textarea
+              v-model="tagForm.description"
+              rows="3"
+              placeholder="請輸入標籤描述（選填）"
+              class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+            ></textarea>
+          </div>
+          <div class="flex justify-end gap-3">
+            <button
+              v-if="editingTag"
+              @click="editingTag = null; tagForm = { name: '', description: '' }"
+              class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              取消
+            </button>
+            <button
+              @click="saveTag"
+              :disabled="savingTag"
+              class="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {{ savingTag ? '儲存中...' : (editingTag ? '更新' : '創建') }}
+            </button>
+          </div>
+        </div>
+
+        <!-- 標籤列表 -->
+        <div v-if="!editingTag && !tagForm.name">
+          <div v-if="availableTags.length === 0" class="text-center py-8 text-slate-500">
+            目前沒有標籤，點擊「新增標籤」開始創建
+          </div>
+          <div v-else class="space-y-2">
+            <div
+              v-for="tag in availableTags"
+              :key="tag.group_id"
+              class="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4 hover:bg-slate-50"
+            >
+              <div class="flex-1">
+                <h4 class="font-semibold text-slate-900">{{ tag.name }}</h4>
+                <p v-if="tag.description" class="mt-1 text-sm text-slate-500">{{ tag.description }}</p>
+                <p class="mt-1 text-xs text-slate-400">學生數：{{ tag.students_count || 0 }}</p>
+              </div>
+              <div class="flex gap-2">
+                <button
+                  @click="editTag(tag)"
+                  class="rounded-lg border border-sky-300 bg-sky-50 px-3 py-1 text-sm font-semibold text-sky-700 hover:bg-sky-100"
+                >
+                  編輯
+                </button>
+                <button
+                  @click="deleteTag(tag)"
+                  class="rounded-lg border border-rose-300 bg-rose-50 px-3 py-1 text-sm font-semibold text-rose-700 hover:bg-rose-100"
+                >
+                  刪除
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 為學生添加標籤模態框 -->
+    <div
+      v-if="showAddTagModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+      @click.self="closeAddTagModal"
+    >
+      <div class="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
+        <div class="mb-6 flex items-center justify-between">
+          <h3 class="text-xl font-bold text-slate-900">
+            為「{{ selectedStudentForTag?.name }}」添加標籤
+          </h3>
+          <button
+            @click="closeAddTagModal"
+            class="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          >
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div v-if="availableTags.length === 0" class="text-center py-8 text-slate-500">
+          目前沒有標籤，請先創建標籤
+        </div>
+        <div v-else class="space-y-2 max-h-96 overflow-y-auto">
+          <div
+            v-for="tag in availableTags"
+            :key="tag.group_id"
+            class="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4 hover:bg-slate-50"
+          >
+            <div class="flex-1">
+              <h4 class="font-semibold text-slate-900">{{ tag.name }}</h4>
+              <p v-if="tag.description" class="mt-1 text-sm text-slate-500">{{ tag.description }}</p>
+            </div>
+            <div>
+              <button
+                v-if="selectedStudentForTag && selectedStudentForTag.student_groups && selectedStudentForTag.student_groups.some(g => g.group_id === tag.group_id)"
+                disabled
+                class="rounded-lg border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-400 cursor-not-allowed"
+              >
+                已添加
+              </button>
+              <button
+                v-else
+                @click="addTagToStudent(tag)"
+                :disabled="addingTagToStudent"
+                class="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {{ addingTagToStudent ? '添加中...' : '添加' }}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -509,10 +863,11 @@
     >
       <div class="bg-white rounded-3xl shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div class="p-6 border-b border-slate-200">
-          <div class="flex items-center justify-between">
-            <h3 class="text-xl font-bold text-slate-900">
-              生成學費 - {{ selectedStudent?.name }}
-            </h3>
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-xl font-bold text-slate-900">
+                生成學費 - {{ selectedStudent?.name }}
+              </h3>
             <button
               @click="closeTuitionModal"
               class="text-slate-400 hover:text-slate-600"
@@ -521,19 +876,25 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
+            </div>
+            <p class="text-sm text-slate-500">只顯示未生成的學費月份，您可以在費用明細頁面查看和編輯已生成的學費</p>
           </div>
         </div>
         <div class="p-6">
           <div v-if="loadingTuition" class="text-center py-8 text-slate-500">載入中...</div>
           <div v-else-if="tuitionStatus.length === 0" class="text-center py-8 text-slate-500">
-            該學生尚未報名任何課程
+            <p>該學生沒有需要生成的學費</p>
+            <p class="text-sm mt-2">
+              <router-link :to="`/fees?student=${selectedStudent?.id}`" class="text-blue-600 hover:text-blue-800 underline">
+                前往費用明細頁面查看已生成的學費
+              </router-link>
+            </p>
           </div>
           <div v-else class="space-y-4">
             <div
               v-for="(item, index) in tuitionStatus"
               :key="index"
-              class="border border-slate-200 rounded-lg p-4"
-              :class="{'bg-amber-50': !item.has_fee, 'bg-green-50': item.has_fee}"
+              class="border border-slate-200 rounded-lg p-4 bg-amber-50"
             >
               <div class="flex items-center justify-between mb-3">
                 <div>
@@ -542,9 +903,6 @@
                 </div>
                 <div class="text-right">
                   <p class="text-sm text-slate-600">每週費用：$<span class="font-mono">{{ formatAmount(item.weekly_fee) }}</span></p>
-                  <p v-if="item.has_fee" class="text-sm text-green-600 font-semibold">
-                    已生成：$<span class="font-mono">{{ formatAmount(item.current_fee) }}</span>
-                  </p>
                 </div>
               </div>
               <div class="grid grid-cols-3 gap-4 items-end">
@@ -571,7 +929,7 @@
                       type="checkbox"
                       class="rounded border-slate-300 text-blue-500 focus:ring-blue-500"
                     />
-                    <span>{{ item.has_fee ? '更新' : '生成' }}</span>
+                    <span>生成</span>
                   </label>
                 </div>
               </div>
@@ -580,9 +938,9 @@
               <button
                 @click="generateAllTuitions"
                 :disabled="savingTuitions || !hasSelectedTuitions"
-                class="w-full rounded-full bg-blue-500 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                class="w-full rounded-full bg-red-500 px-5 py-3 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {{ savingTuitions ? '生成中...' : `一鍵生成 (${selectedCount} 項)` }}
+                {{ savingTuitions ? '生成中...' : `生成選中的學費 (${selectedCount} 項)` }}
               </button>
             </div>
           </div>
@@ -762,18 +1120,34 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { studentAPI, enrollmentAPI, enrollmentPeriodAPI, courseAPI, leaveAPI } from '../services/api'
+import { ref, onMounted, computed, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { studentAPI, enrollmentAPI, enrollmentPeriodAPI, courseAPI, leaveAPI, studentGroupAPI } from '../services/api'
 import { mockStudents } from '../data/mockData'
 
 const router = useRouter()
+const route = useRoute()
 
 const students = ref([])
 const batchGeneratingTuitions = ref(false)
 const loading = ref(false)
 const usingMock = ref(false)
 const showDeleted = ref(false)  // 是否顯示已刪除的學生
+const showFilters = ref(false)  // 是否顯示篩選面板
+const isFiltering = ref(false)  // 是否正在篩選
+
+// 篩選條件
+const filters = ref({
+  name: '',
+  phone: '',
+  school: '',
+  tag: '',
+  course: '',
+  hasUnpaidFees: '',
+  hasLeave: ''
+})
+
+const availableTags = ref([])  // 標籤列表
 const showTuitionModal = ref(false)
 const selectedStudent = ref(null)
 const tuitionStatus = ref([])
@@ -828,6 +1202,8 @@ const normalizeStudent = (student) => ({
   total_fees: student.total_fees || 0,
   unpaid_fees: student.unpaid_fees || 0,
   enrollments_count: student.enrollments_count || 0,
+  enrollments: student.enrollments || [], // 報名課程列表
+  student_groups: student.student_groups || [], // 標籤列表
   has_tuition_needed: student.has_tuition_needed || false,
   username: student.username || '',
   password: student.password || '',
@@ -850,10 +1226,10 @@ const studentsWithTuitionNeeded = computed(() => {
   return students.value.filter(s => s.has_tuition_needed === true)
 })
 
-const fetchStudents = async () => {
+const fetchStudents = async (queryParams = '') => {
   loading.value = true
   try {
-    const response = await studentAPI.getAll(showDeleted.value)
+    const response = await studentAPI.getAll(showDeleted.value, queryParams)
     const data = response.data.results || response.data
     students.value = data.map((item) => normalizeStudent(item))
     usingMock.value = false
@@ -912,12 +1288,20 @@ const openTuitionModal = async (student) => {
   try {
     const response = await studentAPI.getTuitionStatus(student.id)
     const months = response.data.tuition_months || []
-    // 初始化每個項目，添加 selected 和 weeks 屬性
-    tuitionStatus.value = months.map(item => ({
-      ...item,
-      selected: !item.has_fee, // 預設選中未生成的項目
-      weeks: item.weeks || 4, // 預設4週
-    }))
+    // 只顯示未生成的學費項目（has_fee = false），並初始化每個項目
+    tuitionStatus.value = months
+      .filter(item => !item.has_fee) // 只保留未生成的項目
+      .map(item => ({
+        ...item,
+        selected: true, // 預設選中所有未生成的項目
+        weeks: item.weeks || 4, // 預設4週
+      }))
+    
+    // 如果沒有未生成的項目，顯示提示並關閉模態框
+    if (tuitionStatus.value.length === 0) {
+      alert('該學生沒有需要生成的學費，請在費用明細頁面查看已生成的學費')
+      closeTuitionModal()
+    }
   } catch (error) {
     console.error('獲取學費狀態失敗：', error)
     alert('獲取學費狀態失敗')
@@ -947,7 +1331,7 @@ const generateAllTuitions = async () => {
     return
   }
 
-  if (!confirm(`確定要生成/更新 ${selectedCount.value} 項學費嗎？`)) {
+  if (!confirm(`確定要生成 ${selectedCount.value} 項學費嗎？`)) {
     return
   }
 
@@ -1571,10 +1955,324 @@ const formatAmount = (amount) => {
   return intAmount.toLocaleString('zh-TW', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
+// 防抖函數
+let debounceTimer = null
+const debounce = (fn, delay) => {
+  return (...args) => {
+    clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+      fn(...args)
+    }, delay)
+  }
+}
+
+// 構建查詢參數
+const buildQueryParams = () => {
+  const params = {}
+  if (filters.value.name) params.name = filters.value.name
+  if (filters.value.phone) params.phone = filters.value.phone
+  if (filters.value.school) params.school = filters.value.school
+  if (filters.value.tag) params.tag = filters.value.tag
+  if (filters.value.course) params.course = filters.value.course
+  if (filters.value.hasUnpaidFees) params.has_unpaid_fees = filters.value.hasUnpaidFees
+  if (filters.value.hasLeave) params.has_leave = filters.value.hasLeave
+  return params
+}
+
+// 應用篩選（更新 URL 並獲取數據）
+const applyFilters = async () => {
+  if (isFiltering.value) return // 防止重複請求
+  
+  isFiltering.value = true
+  try {
+    const query = buildQueryParams()
+    // 使用 replace 避免產生過多歷史記錄
+    await router.replace({ path: '/students', query })
+    
+    // 獲取學生列表
+    const queryString = new URLSearchParams(query).toString()
+    await fetchStudents(queryString)
+  } finally {
+    isFiltering.value = false
+  }
+}
+
+// 防抖版本的 applyFilters（用於文字輸入）
+const debouncedApplyFilters = debounce(applyFilters, 400)
+
+// 清除所有篩選
+const clearFilters = () => {
+  filters.value = {
+    name: '',
+    phone: '',
+    school: '',
+    tag: '',
+    course: '',
+    hasUnpaidFees: '',
+    hasLeave: ''
+  }
+  router.replace({ path: '/students', query: {} })
+  fetchStudents()
+}
+
+// 移除單個篩選
+const removeFilter = (key) => {
+  filters.value[key] = ''
+  applyFilters()
+}
+
+// 檢查是否有活躍的篩選
+const hasActiveFilters = computed(() => {
+  return Object.values(filters.value).some(value => value !== '')
+})
+
+// 獲取活躍篩選的顯示標籤
+const activeFilters = computed(() => {
+  const result = {}
+  if (filters.value.name) result.name = { label: `姓名：${filters.value.name}` }
+  if (filters.value.phone) result.phone = { label: `電話：${filters.value.phone}` }
+  if (filters.value.school) result.school = { label: `學校：${filters.value.school}` }
+  if (filters.value.tag) {
+    const tag = availableTags.value.find(t => t.group_id == filters.value.tag)
+    result.tag = { label: `標籤：${tag?.name || filters.value.tag}` }
+  }
+  if (filters.value.course) {
+    const course = courses.value.find(c => c.course_id == filters.value.course)
+    result.course = { label: `課程：${course?.course_name || filters.value.course}` }
+  }
+  if (filters.value.hasUnpaidFees) {
+    result.hasUnpaidFees = { label: filters.value.hasUnpaidFees === 'yes' ? '有待繳學費' : '無待繳學費' }
+  }
+  if (filters.value.hasLeave) {
+    result.hasLeave = { label: filters.value.hasLeave === 'yes' ? '有請假記錄' : '無請假記錄' }
+  }
+  return result
+})
+
+// 監聽需要防抖的篩選條件（文字輸入）
+watch(
+  () => [filters.value.name, filters.value.phone, filters.value.school],
+  () => {
+    debouncedApplyFilters()
+  }
+)
+
+// 監聽下拉選單（立即更新）
+watch(
+  () => [filters.value.tag, filters.value.course, filters.value.hasUnpaidFees, filters.value.hasLeave],
+  () => {
+    applyFilters() // 立即執行
+  }
+)
+
+// 從 URL 同步篩選條件（頁面載入或返回時）
+const syncFiltersFromRoute = () => {
+  filters.value = {
+    name: route.query.name || '',
+    phone: route.query.phone || route.query.parent_phone || '', // 兼容舊的 parent_phone 參數
+    school: route.query.school || '',
+    tag: route.query.tag || '',
+    course: route.query.course || '',
+    hasUnpaidFees: route.query.has_unpaid_fees || '',
+    hasLeave: route.query.has_leave || ''
+  }
+  // 如果有篩選條件，自動展開篩選面板
+  if (hasActiveFilters.value) {
+    showFilters.value = true
+  }
+}
+
+// 獲取標籤列表（只獲取類型為 'tag' 的）
+const fetchTags = async () => {
+  try {
+    const response = await studentGroupAPI.getAll()
+    const data = response.data.results || response.data || []
+    // 只顯示類型為 'tag' 的群組
+    availableTags.value = data.filter(tag => tag.group_type === 'tag')
+  } catch (error) {
+    console.error('獲取標籤失敗:', error)
+    availableTags.value = []
+  }
+}
+
+// 標籤管理相關狀態
+const showTagManager = ref(false)
+const tagForm = ref({
+  name: '',
+  description: ''
+})
+const editingTag = ref(null)
+const savingTag = ref(false)
+
+// 打開標籤管理模態框
+const openTagManager = () => {
+  showTagManager.value = true
+  editingTag.value = null
+  tagForm.value = { name: '', description: '' }
+}
+
+// 關閉標籤管理模態框
+const closeTagManager = () => {
+  showTagManager.value = false
+  editingTag.value = null
+  tagForm.value = { name: '', description: '' }
+}
+
+// 創建新標籤
+const createTag = async () => {
+  if (!tagForm.value.name.trim()) {
+    alert('請輸入標籤名稱')
+    return
+  }
+  
+  savingTag.value = true
+  try {
+    await studentGroupAPI.create({
+      name: tagForm.value.name.trim(),
+      description: tagForm.value.description.trim() || ''
+    })
+    alert('標籤創建成功')
+    await fetchTags()
+    closeTagManager()
+  } catch (error) {
+    console.error('創建標籤失敗:', error)
+    const errorMsg = error.response?.data?.detail || error.response?.data?.name?.[0] || '創建標籤失敗'
+    alert(`創建標籤失敗：${errorMsg}`)
+  } finally {
+    savingTag.value = false
+  }
+}
+
+// 編輯標籤
+const editTag = (tag) => {
+  editingTag.value = tag
+  tagForm.value = {
+    name: tag.name,
+    description: tag.description || ''
+  }
+}
+
+// 更新標籤
+const updateTag = async () => {
+  if (!tagForm.value.name.trim()) {
+    alert('請輸入標籤名稱')
+    return
+  }
+  
+  if (!editingTag.value) return
+  
+  savingTag.value = true
+  try {
+    await studentGroupAPI.update(editingTag.value.group_id, {
+      name: tagForm.value.name.trim(),
+      description: tagForm.value.description.trim() || ''
+    })
+    alert('標籤更新成功')
+    await fetchTags()
+    closeTagManager()
+  } catch (error) {
+    console.error('更新標籤失敗:', error)
+    const errorMsg = error.response?.data?.detail || error.response?.data?.name?.[0] || '更新標籤失敗'
+    alert(`更新標籤失敗：${errorMsg}`)
+  } finally {
+    savingTag.value = false
+  }
+}
+
+// 刪除標籤
+const deleteTag = async (tag) => {
+  if (!confirm(`確定要刪除標籤「${tag.name}」嗎？`)) {
+    return
+  }
+  
+  try {
+    await studentGroupAPI.delete(tag.group_id)
+    alert('標籤刪除成功')
+    await fetchTags()
+  } catch (error) {
+    console.error('刪除標籤失敗:', error)
+    alert('刪除標籤失敗，請稍後再試')
+  }
+}
+
+// 保存標籤（創建或更新）
+const saveTag = () => {
+  if (editingTag.value) {
+    updateTag()
+  } else {
+    createTag()
+  }
+}
+
+// 為學生添加/移除標籤相關狀態
+const showAddTagModal = ref(false)
+const selectedStudentForTag = ref(null)
+const addingTagToStudent = ref(false)
+
+// 打開為學生添加標籤的模態框
+const openAddTagModal = (student) => {
+  selectedStudentForTag.value = student
+  showAddTagModal.value = true
+}
+
+// 關閉添加標籤模態框
+const closeAddTagModal = () => {
+  showAddTagModal.value = false
+  selectedStudentForTag.value = null
+}
+
+// 為學生添加標籤
+const addTagToStudent = async (tag) => {
+  if (!selectedStudentForTag.value) return
+  
+  addingTagToStudent.value = true
+  try {
+    await studentGroupAPI.addStudents(tag.group_id, [selectedStudentForTag.value.id])
+    alert('標籤添加成功')
+    // 重新獲取學生列表以更新標籤
+    const queryString = new URLSearchParams(route.query).toString()
+    await fetchStudents(queryString)
+    closeAddTagModal()
+  } catch (error) {
+    console.error('添加標籤失敗:', error)
+    const errorMsg = error.response?.data?.detail || '添加標籤失敗'
+    alert(`添加標籤失敗：${errorMsg}`)
+  } finally {
+    addingTagToStudent.value = false
+  }
+}
+
+// 從學生移除標籤
+const removeStudentFromTag = async (student, tag) => {
+  if (!confirm(`確定要從「${student.name}」移除標籤「${tag.name}」嗎？`)) {
+    return
+  }
+  
+  try {
+    await studentGroupAPI.removeStudents(tag.group_id, [student.id])
+    alert('標籤移除成功')
+    // 重新獲取學生列表以更新標籤
+    const queryString = new URLSearchParams(route.query).toString()
+    await fetchStudents(queryString)
+  } catch (error) {
+    console.error('移除標籤失敗:', error)
+    alert('移除標籤失敗，請稍後再試')
+  }
+}
+
+// 處理顯示已刪除選項的變更
+const handleShowDeletedChange = () => {
+  const queryString = new URLSearchParams(route.query).toString()
+  fetchStudents(queryString)
+}
+
 onMounted(() => {
   fetchCurrentUser()
-  fetchStudents()
+  syncFiltersFromRoute()
+  const queryString = new URLSearchParams(route.query).toString()
+  fetchStudents(queryString)
   fetchCourses()
+  fetchTags() // 獲取標籤列表
 })
 </script>
 

@@ -1310,10 +1310,23 @@ class StudentGroup(models.Model):
     """
     學生群組模型
     用於個別化教學，將學生分組
+    也用於會計標籤管理
     """
+    GROUP_TYPE_CHOICES = [
+        ('teaching', '教學群組'),  # 老師用於個別化教學
+        ('tag', '標籤'),          # 會計用於標籤管理
+    ]
+    
     group_id = models.AutoField(primary_key=True, verbose_name='群組ID')
     name = models.CharField(max_length=100, verbose_name='群組名稱')
     description = models.TextField(blank=True, null=True, verbose_name='描述')
+    group_type = models.CharField(
+        max_length=20,
+        choices=GROUP_TYPE_CHOICES,
+        default='teaching',
+        verbose_name='群組類型',
+        help_text='教學群組：老師用於個別化教學；標籤：會計用於標籤管理'
+    )
     students = models.ManyToManyField(
         Student,
         related_name='student_groups',
@@ -1334,6 +1347,9 @@ class StudentGroup(models.Model):
         verbose_name = '學生群組'
         verbose_name_plural = '學生群組'
         ordering = ['name']
+        indexes = [
+            models.Index(fields=['group_type']),  # 為查詢優化添加索引
+        ]
 
     def __str__(self):
         return f"{self.name} ({self.students.count()} 位學生)"
