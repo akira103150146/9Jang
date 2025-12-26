@@ -145,14 +145,14 @@ class StudentSerializer(serializers.ModelSerializer):
     
     def get_enrollments(self, obj):
         """
-        獲取學生報名的課程列表（僅會計和管理員可見）
+        獲取學生報名的課程列表（會計、管理員和老師可見）
         返回簡化的課程信息，包含課程名稱和報名日期
         """
         request = self.context.get('request')
-        # 只有會計和管理員可以看到報名課程列表
+        # 會計、管理員和老師可以看到報名課程列表
         if not request or not request.user.is_authenticated:
             return []
-        if not (request.user.is_accountant() or request.user.is_admin()):
+        if not (request.user.is_accountant() or request.user.is_admin() or request.user.is_teacher()):
             return []
         
         # 獲取所有未刪除的報名記錄
@@ -170,19 +170,25 @@ class StudentSerializer(serializers.ModelSerializer):
     
     def get_student_groups(self, obj):
         """
-        獲取學生的標籤列表（僅會計和管理員可見）
-        只返回類型為 'tag' 的群組
+        獲取學生的標籤列表（會計、管理員和老師可見）
+        統一為標籤，不再區分類型
+        老師只能看到自己創建的標籤
         """
         request = self.context.get('request')
-        # 只有會計和管理員可以看到標籤列表
+        # 會計、管理員和老師可以看到標籤列表
         if not request or not request.user.is_authenticated:
             return []
-        if not (request.user.is_accountant() or request.user.is_admin()):
+        if not (request.user.is_accountant() or request.user.is_admin() or request.user.is_teacher()):
             return []
         
-        # 只獲取類型為 'tag' 的群組（已經 prefetch_related）
+        # 統一為標籤，不再區分類型（已經 prefetch_related）
         # 使用 all() 以利用 ViewSet 中的 prefetch_related 優化
-        groups = [g for g in obj.student_groups.all() if g.group_type == 'tag']
+        groups = obj.student_groups.all()
+        
+        # 老師只能看到自己創建的標籤
+        if request.user.is_teacher() and not (request.user.is_accountant() or request.user.is_admin()):
+            groups = groups.filter(created_by=request.user)
+        
         return [
             {
                 'group_id': group.group_id,
@@ -438,20 +444,39 @@ class CourseSerializer(serializers.ModelSerializer):
     課程資料序列化器
     """
     teacher_name = serializers.SerializerMethodField()
+    enrollments_count = serializers.SerializerMethodField()  # 報名學生人數（僅會計可見）
     
     class Meta:
         model = Course
         fields = [
             'course_id', 'course_name', 'teacher', 'teacher_name',
-            'start_time', 'end_time', 'day_of_week', 'fee_per_session', 'status'
+            'start_time', 'end_time', 'day_of_week', 'fee_per_session', 'status',
+            'enrollments_count'
         ]
-        read_only_fields = ['course_id', 'teacher_name']
+        read_only_fields = ['course_id', 'teacher_name', 'enrollments_count']
         extra_kwargs = {
             'teacher': {'required': True}  # 明確標記為必填
         }
     
     def get_teacher_name(self, obj):
         return obj.teacher.name if obj.teacher else None
+    
+    def get_enrollments_count(self, obj):
+        """
+        獲取課程的報名學生人數（僅會計和管理員可見）
+        """
+        request = self.context.get('request')
+        # 只有會計和管理員可以看到報名學生人數
+        if not request or not request.user.is_authenticated:
+            return None
+        if not (request.user.is_accountant() or request.user.is_admin()):
+            return None
+        
+        # 如果 queryset 已經使用 annotate 計算，直接使用該值
+        if hasattr(obj, '_enrollments_count'):
+            return obj._enrollments_count or 0
+        # 後備方案：如果沒有 annotate，則執行查詢
+        return obj.enrollments.filter(is_deleted=False).count()
 
 
 class EnrollmentPeriodSerializer(serializers.ModelSerializer):

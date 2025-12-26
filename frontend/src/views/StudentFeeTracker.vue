@@ -116,10 +116,16 @@ const formatAmount = (amount) => {
 }
 
 const getPaymentDate = (fee) => {
-  // 如果狀態是已繳費且有繳費時間，顯示繳費時間；否則顯示費用日期
+  // 只有已繳費的費用才顯示繳費日期
+  // 如果狀態是已繳費且有繳費時間，顯示繳費時間
   if (fee.payment_status === 'Paid' && fee.paid_at) {
     return formatDate(fee.paid_at)
   }
+  // 未繳費的費用不顯示繳費日期
+  if (fee.payment_status === 'Unpaid') {
+    return '—'
+  }
+  // 其他狀態（如部分繳費）顯示費用日期
   return formatDate(fee.fee_date)
 }
 

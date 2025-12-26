@@ -202,10 +202,28 @@ api.interceptors.response.use(
 
 // Student API
 export const studentAPI = {
-  // 獲取所有學生
-  getAll: (includeDeleted = false) => {
-    const params = includeDeleted ? '?include_deleted=true' : ''
-    return api.get(`/cramschool/students/${params}`)
+  // 獲取所有學生（支持查詢參數）
+  getAll: (includeDeleted = false, queryParams = '') => {
+    const params = new URLSearchParams()
+    if (includeDeleted) params.append('include_deleted', 'true')
+    if (queryParams) {
+      // 如果 queryParams 是字符串，直接解析並附加
+      if (typeof queryParams === 'string') {
+        const existingParams = new URLSearchParams(queryParams)
+        existingParams.forEach((value, key) => {
+          params.append(key, value)
+        })
+      } else if (typeof queryParams === 'object') {
+        // 如果是對象，轉換為查詢參數
+        Object.entries(queryParams).forEach(([key, value]) => {
+          if (value !== null && value !== undefined && value !== '') {
+            params.append(key, value)
+          }
+        })
+      }
+    }
+    const queryString = params.toString()
+    return api.get(`/cramschool/students/${queryString ? `?${queryString}` : ''}`)
   },
 
   // 獲取單個學生
@@ -225,6 +243,14 @@ export const studentAPI = {
 
   // 生成學費
   generateTuition: (id, data) => api.post(`/cramschool/students/${id}/generate_tuition/`, data),
+  // 批次生成所有學生的學費
+  batchGenerateTuitions: (studentIds = null, weeks = 4) => {
+    const data = { weeks }
+    if (studentIds && studentIds.length > 0) {
+      data.student_ids = studentIds
+    }
+    return api.post('/cramschool/students/batch-generate-tuitions/', data)
+  },
   // 重置學生密碼
   resetPassword: (id, password) => api.post(`/cramschool/students/${id}/reset-password/`, { password }),
   // 切換帳號狀態

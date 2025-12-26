@@ -56,6 +56,10 @@
             <dt class="font-medium text-slate-500">每堂費用</dt>
             <dd class="font-semibold text-slate-900">${{ course.fee_per_session }}</dd>
           </div>
+          <div v-if="canSeeAccountingFeatures && course.enrollments_count !== null && course.enrollments_count !== undefined" class="flex justify-between">
+            <dt class="font-medium text-slate-500">報名學生</dt>
+            <dd class="font-semibold text-indigo-600">{{ course.enrollments_count }} 人</dd>
+          </div>
           <!-- 學生狀態統計（僅老師和管理員可見） -->
           <div v-if="course.student_status" class="mt-3 pt-3 border-t border-slate-200">
             <div class="flex justify-between items-center mb-2">
@@ -152,6 +156,11 @@ const isTeacher = computed(() => {
   return currentUser.value && currentUser.value.role === 'TEACHER'
 })
 
+// 檢查是否可以看到會計相關功能
+const canSeeAccountingFeatures = computed(() => {
+  return currentUser.value && (currentUser.value.role === 'ACCOUNTANT' || currentUser.value.role === 'ADMIN')
+})
+
 // 獲取當前用戶信息
 const fetchCurrentUser = async () => {
   try {
@@ -185,6 +194,7 @@ const normalizeCourse = (course) => ({
   fee_per_session: course.fee_per_session,
   status: course.status || 'Active',
   student_status: course.student_status || null,
+  enrollments_count: course.enrollments_count || null, // 報名學生人數
 })
 
 const getDayDisplay = (day) => {

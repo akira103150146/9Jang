@@ -392,14 +392,23 @@ class ExtraFee(models.Model):
                 # 如果狀態從 Paid 變為非 Paid，清除繳費時間
                 elif old_status == 'Paid' and self.payment_status != 'Paid':
                     self.paid_at = None
+                # 如果狀態一直是 Unpaid，確保 paid_at 為 None
+                elif self.payment_status == 'Unpaid':
+                    self.paid_at = None
             except ExtraFee.DoesNotExist:
                 # 如果是新創建的記錄且狀態為 Paid，記錄繳費時間
                 if self.payment_status == 'Paid':
                     self.paid_at = timezone.now()
+                # 如果是新創建的記錄且狀態為 Unpaid，確保 paid_at 為 None
+                else:
+                    self.paid_at = None
         else:
             # 如果是新創建的記錄且狀態為 Paid，記錄繳費時間
             if self.payment_status == 'Paid':
                 self.paid_at = timezone.now()
+            # 如果是新創建的記錄且狀態為 Unpaid，確保 paid_at 為 None
+            else:
+                self.paid_at = None
         
         super().save(*args, **kwargs)
     

@@ -21,7 +21,6 @@ import FeeForm from '../views/FeeForm.vue'
 import RoleManagement from '../views/RoleManagement.vue'
 import AuditLog from '../views/AuditLog.vue'
 import Login from '../views/Login.vue'
-import StudentGroupManagement from '../views/StudentGroupManagement.vue'
 import StudentHome from '../views/StudentHome.vue'
 import StudentMistakeBook from '../views/StudentMistakeBook.vue'
 import StudentMyCourses from '../views/StudentMyCourses.vue'
@@ -276,12 +275,6 @@ const router = createRouter({
       component: AuditLog,
       meta: { title: '操作記錄', requiresAdmin: true },
     },
-    {
-      path: '/student-groups',
-      name: 'student-groups',
-      component: StudentGroupManagement,
-      meta: { title: '學生群組管理', allowedRoles: ['TEACHER'] },
-    },
   ],
 })
 
@@ -422,8 +415,8 @@ function getRoleBasedRouteFilter(role) {
         return true
       }
 
-      // 禁止：學生群組、訂便當、學生首頁、題庫、資源編輯、模板
-      const excludedPrefixes = ['/student-groups', '/lunch-orders', '/student-home', '/questions', '/resources', '/templates']
+      // 禁止：訂便當、學生首頁、題庫、資源編輯、模板
+      const excludedPrefixes = ['/lunch-orders', '/student-home', '/questions', '/resources', '/templates']
       if (excludedPrefixes.some(excluded => path.startsWith(excluded))) {
         return false
       }
@@ -442,7 +435,6 @@ function getRoleBasedRouteFilter(role) {
         '/questions',
         '/resources',
         '/templates',
-        '/student-groups',
         '/lunch-orders',
         '/students',
       ]
@@ -478,7 +470,7 @@ function getRoleBasedRouteFilter(role) {
       // 會計可以訪問：帳務、訂便當、學生基本資料（僅查看）、課程管理（僅查看）
       const allowedPaths = ['/', '/students', '/lunch-orders', '/attendance', '/fees', '/courses']
       // 排除教學相關模組與老師管理
-      const excludedPaths = ['/questions', '/resources', '/student-groups', '/generator', '/teachers', '/templates', '/roles', '/audit-logs', '/student-home']
+      const excludedPaths = ['/questions', '/resources', '/generator', '/teachers', '/templates', '/roles', '/audit-logs', '/student-home']
       if (excludedPaths.some(excluded => path.startsWith(excluded))) {
         return false
       }

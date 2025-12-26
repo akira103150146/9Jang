@@ -4,7 +4,8 @@ from rest_framework import viewsets, status, serializers
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
-from django.db.models import Q, Count, Sum, Prefetch, Exists, OuterRef
+from django.db.models import Q, Count, Sum, Prefetch, Exists, OuterRef, Subquery
+from django.db.models.functions import Coalesce
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
@@ -109,22 +110,34 @@ class StudentViewSet(viewsets.ModelViewSet):
             return Student.objects.none()
         
         # 先進行 annotate 聚合計算（在過濾之前）
-        # 注意：使用 distinct=True 避免多個 JOIN 導致的笛卡爾積問題
+        # 使用子查詢避免多個 JOIN 導致的笛卡爾積問題
+        # 當同時 JOIN enrollments 和 extra_fees 時，會產生笛卡爾積，導致費用被重複計算
+        # 解決方案：使用子查詢分別計算費用，避免在 annotate 時產生 JOIN
+        
         queryset = Student.objects.select_related('user').annotate(
-            # 預先計算總費用（使用 distinct 避免重複計算）
-            _total_fees=Sum(
-                'extra_fees__amount',
-                filter=Q(extra_fees__is_deleted=False),
-                distinct=True
-            ),
-            # 預先計算未繳費用（使用 distinct 避免重複計算）
-            _unpaid_fees=Sum(
-                'extra_fees__amount',
-                filter=Q(
-                    extra_fees__is_deleted=False,
-                    extra_fees__payment_status='Unpaid'
+            # 預先計算總費用（使用子查詢避免 JOIN 重複計算）
+            # 注意：不能直接在 Subquery 中使用 aggregate，需要先創建子查詢 queryset
+            _total_fees=Coalesce(
+                Subquery(
+                    ExtraFee.objects.filter(
+                        student=OuterRef('pk'),
+                        is_deleted=False
+                    ).values('student').annotate(total=Sum('amount')).values('total')[:1],
+                    output_field=models.DecimalField(max_digits=10, decimal_places=2)
                 ),
-                distinct=True
+                models.Value(0, output_field=models.DecimalField(max_digits=10, decimal_places=2))
+            ),
+            # 預先計算未繳費用（使用子查詢避免 JOIN 重複計算）
+            _unpaid_fees=Coalesce(
+                Subquery(
+                    ExtraFee.objects.filter(
+                        student=OuterRef('pk'),
+                        is_deleted=False,
+                        payment_status='Unpaid'
+                    ).values('student').annotate(total=Sum('amount')).values('total')[:1],
+                    output_field=models.DecimalField(max_digits=10, decimal_places=2)
+                ),
+                models.Value(0, output_field=models.DecimalField(max_digits=10, decimal_places=2))
             ),
             # 預先計算報名課程數量（使用 distinct 避免重複計算）
             _enrollments_count=Count(
@@ -185,12 +198,12 @@ class StudentViewSet(viewsets.ModelViewSet):
         if school:
             filters &= Q(school__icontains=school)
         
-        # 4. 標籤篩選（StudentGroup，只篩選類型為 'tag' 的）
+        # 4. 標籤篩選（StudentGroup）
         tag_id = self.request.query_params.get('tag', '').strip()
         if tag_id:
             try:
                 tag_id = int(tag_id)
-                filters &= Q(student_groups__group_id=tag_id, student_groups__group_type='tag')
+                filters &= Q(student_groups__group_id=tag_id)
             except ValueError:
                 pass
         
@@ -236,7 +249,7 @@ class StudentViewSet(viewsets.ModelViewSet):
                 )
             ),
             Prefetch('extra_fees', queryset=ExtraFee.objects.filter(is_deleted=False)),
-            Prefetch('student_groups', queryset=StudentGroup.objects.filter(group_type='tag'))
+            Prefetch('student_groups', queryset=StudentGroup.objects.all())
         )
         
         return queryset
@@ -826,6 +839,7 @@ class CourseViewSet(viewsets.ModelViewSet):
         - 管理員：可以看到所有課程
         - 老師：只能看到自己被指派的課程
         - 學生：只能看到自己報名的課程
+        - 會計：可以看到所有課程（僅查看），並顯示報名學生人數
         """
         queryset = super().get_queryset()
         
@@ -835,10 +849,25 @@ class CourseViewSet(viewsets.ModelViewSet):
         
         # 管理員：可以看到所有課程
         if self.request.user.is_admin():
+            # 為管理員也添加報名學生人數統計
+            queryset = queryset.annotate(
+                _enrollments_count=Count(
+                    'enrollments',
+                    filter=Q(enrollments__is_deleted=False),
+                    distinct=True
+                )
+            )
             return queryset
         
-        # 會計：可以看到所有課程（僅查看）
+        # 會計：可以看到所有課程（僅查看），並顯示報名學生人數
         if self.request.user.is_accountant():
+            queryset = queryset.annotate(
+                _enrollments_count=Count(
+                    'enrollments',
+                    filter=Q(enrollments__is_deleted=False),
+                    distinct=True
+                )
+            )
             return queryset
         
         # 老師：只能看到自己被指派的課程
@@ -1138,8 +1167,16 @@ class ExtraFeeViewSet(viewsets.ModelViewSet):
         - student: 學生ID
         - student_name: 學生姓名（模糊）
         - item: 名目（精準）
+        - payment_status: 繳費狀態（精準）
+        - tag: 學生標籤ID（只篩選類型為 'tag' 的群組）
         - q: 備註關鍵字（模糊）
+        - date_range: 時間範圍快捷選項（today, this_week, this_month, last_month）
+        - start_date: 開始日期（YYYY-MM-DD）
+        - end_date: 結束日期（YYYY-MM-DD）
         """
+        from datetime import date, timedelta
+        from django.utils import timezone
+        
         user = self.request.user
         if not user.is_authenticated:
             return ExtraFee.objects.none()
@@ -1166,15 +1203,102 @@ class ExtraFeeViewSet(viewsets.ModelViewSet):
         if item:
             queryset = queryset.filter(item=item)
 
+        # 繳費狀態（精準）
+        payment_status = self.request.query_params.get('payment_status', None)
+        if payment_status:
+            queryset = queryset.filter(payment_status=payment_status)
+
         # 學生姓名（模糊）
         student_name = self.request.query_params.get('student_name', None)
         if student_name:
             queryset = queryset.filter(student__name__icontains=student_name.strip())
 
+        # 標籤篩選（StudentGroup）
+        tag_id = self.request.query_params.get('tag', '').strip()
+        if tag_id:
+            try:
+                tag_id = int(tag_id)
+                queryset = queryset.filter(student__student_groups__group_id=tag_id).distinct()
+            except ValueError:
+                pass
+
         # 備註模糊搜尋
         q = self.request.query_params.get('q', None)
         if q:
             queryset = queryset.filter(notes__icontains=q.strip())
+        
+        # 時間篩選（基於繳費日期 paid_at）
+        date_range = self.request.query_params.get('date_range', '').strip()
+        start_date_param = self.request.query_params.get('start_date', '').strip()
+        end_date_param = self.request.query_params.get('end_date', '').strip()
+        
+        # 如果提供了快捷時間選項，優先使用
+        if date_range:
+            today = timezone.now().date()
+            if date_range == 'today':
+                # 當日繳費
+                start_date = today
+                end_date = today
+            elif date_range == 'this_week':
+                # 當週繳費（本週一至今天）
+                days_since_monday = today.weekday()
+                start_date = today - timedelta(days=days_since_monday)
+                end_date = today
+            elif date_range == 'this_month':
+                # 當月繳費（本月第一天至今天）
+                start_date = date(today.year, today.month, 1)
+                end_date = today
+            elif date_range == 'last_month':
+                # 上個月繳費
+                if today.month == 1:
+                    start_date = date(today.year - 1, 12, 1)
+                    end_date = date(today.year - 1, 12, 31)
+                else:
+                    start_date = date(today.year, today.month - 1, 1)
+                    # 獲取上個月的最後一天
+                    from calendar import monthrange
+                    last_day = monthrange(today.year, today.month - 1)[1]
+                    end_date = date(today.year, today.month - 1, last_day)
+            else:
+                start_date = None
+                end_date = None
+            
+            if start_date and end_date:
+                # 篩選時間範圍內的費用
+                # 已繳費的費用：基於 paid_at（繳費日期）
+                # 未繳費的費用：基於 fee_date（費用日期）
+                queryset = queryset.filter(
+                    Q(
+                        # 已繳費：paid_at 在範圍內
+                        paid_at__isnull=False,
+                        paid_at__date__gte=start_date,
+                        paid_at__date__lte=end_date
+                    ) | Q(
+                        # 未繳費：fee_date 在範圍內
+                        paid_at__isnull=True,
+                        fee_date__gte=start_date,
+                        fee_date__lte=end_date
+                    )
+                )
+        # 如果提供了具體的開始和結束日期，使用日期範圍
+        elif start_date_param or end_date_param:
+            try:
+                if start_date_param:
+                    start_date = datetime.strptime(start_date_param, '%Y-%m-%d').date()
+                    # 已繳費：paid_at >= start_date，未繳費：fee_date >= start_date
+                    queryset = queryset.filter(
+                        Q(paid_at__isnull=False, paid_at__date__gte=start_date) |
+                        Q(paid_at__isnull=True, fee_date__gte=start_date)
+                    )
+                if end_date_param:
+                    end_date = datetime.strptime(end_date_param, '%Y-%m-%d').date()
+                    # 已繳費：paid_at <= end_date，未繳費：fee_date <= end_date
+                    queryset = queryset.filter(
+                        Q(paid_at__isnull=False, paid_at__date__lte=end_date) |
+                        Q(paid_at__isnull=True, fee_date__lte=end_date)
+                    )
+            except ValueError:
+                pass  # 日期格式錯誤，忽略該篩選條件
         
         if user.is_student():
             try:
@@ -3392,6 +3516,7 @@ class OrderItemViewSet(viewsets.ModelViewSet):
 class StudentGroupViewSet(viewsets.ModelViewSet):
     """
     提供 StudentGroup 模型 CRUD 操作的 API 視圖集
+    統一為標籤功能，不再區分類型
     """
     queryset = StudentGroup.objects.prefetch_related('students', 'created_by').all()
     serializer_class = StudentGroupSerializer
@@ -3399,7 +3524,10 @@ class StudentGroupViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        根據用戶角色過濾群組類型
+        根據用戶角色過濾標籤
+        - 管理員：可以看到所有標籤
+        - 會計：可以看到所有標籤
+        - 老師：只能看到自己創建的標籤
         """
         user = self.request.user
         if not user.is_authenticated:
@@ -3407,41 +3535,73 @@ class StudentGroupViewSet(viewsets.ModelViewSet):
         if not (user.is_teacher() or user.is_accountant() or user.is_admin()):
             return StudentGroup.objects.none()
         
-        # 老師只能看到和創建教學群組
+        # 老師只能看到自己創建的標籤
         if user.is_teacher() and not (user.is_accountant() or user.is_admin()):
-            return super().get_queryset().filter(group_type='teaching')
+            return super().get_queryset().filter(created_by=user)
         
-        # 會計只能看到和創建標籤
-        if user.is_accountant() and not user.is_admin():
-            return super().get_queryset().filter(group_type='tag')
-        
-        # 管理員可以看到所有類型
+        # 會計和管理員可以看到所有標籤
         return super().get_queryset()
 
     def perform_create(self, serializer):
         """
-        根據用戶角色自動設置群組類型
+        創建標籤時自動設置創建者
         """
         user = self.request.user
         if not user.is_authenticated:
             return
         
-        # 根據用戶角色設置類型
-        if user.is_accountant() and not user.is_admin():
-            # 會計創建標籤
-            serializer.save(created_by=user, group_type='tag')
-        elif user.is_teacher() and not (user.is_accountant() or user.is_admin()):
-            # 老師創建教學群組
-            serializer.save(created_by=user, group_type='teaching')
-        else:
-            # 管理員可以選擇類型，默認為教學群組
-            group_type = self.request.data.get('group_type', 'teaching')
-            serializer.save(created_by=user, group_type=group_type)
+        # 統一為標籤，不再區分類型
+        serializer.save(created_by=user)
 
     def create(self, request, *args, **kwargs):
         if not request.user.is_authenticated or not (request.user.is_teacher() or request.user.is_accountant() or request.user.is_admin()):
             return Response({'detail': '只有老師、會計或管理員可以管理學生群組'}, status=status.HTTP_403_FORBIDDEN)
         return super().create(request, *args, **kwargs)
+    
+    def update(self, request, *args, **kwargs):
+        """
+        更新標籤：老師只能更新自己創建的標籤
+        """
+        if not request.user.is_authenticated or not (request.user.is_teacher() or request.user.is_accountant() or request.user.is_admin()):
+            return Response({'detail': '只有老師、會計或管理員可以管理學生群組'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # 老師只能更新自己創建的標籤
+        if request.user.is_teacher() and not (request.user.is_accountant() or request.user.is_admin()):
+            group = self.get_object()
+            if group.created_by != request.user:
+                return Response({'detail': '您只能更新自己創建的標籤'}, status=status.HTTP_403_FORBIDDEN)
+        
+        return super().update(request, *args, **kwargs)
+    
+    def partial_update(self, request, *args, **kwargs):
+        """
+        部分更新標籤：老師只能更新自己創建的標籤
+        """
+        if not request.user.is_authenticated or not (request.user.is_teacher() or request.user.is_accountant() or request.user.is_admin()):
+            return Response({'detail': '只有老師、會計或管理員可以管理學生群組'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # 老師只能更新自己創建的標籤
+        if request.user.is_teacher() and not (request.user.is_accountant() or request.user.is_admin()):
+            group = self.get_object()
+            if group.created_by != request.user:
+                return Response({'detail': '您只能更新自己創建的標籤'}, status=status.HTTP_403_FORBIDDEN)
+        
+        return super().partial_update(request, *args, **kwargs)
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        刪除標籤：老師只能刪除自己創建的標籤
+        """
+        if not request.user.is_authenticated or not (request.user.is_teacher() or request.user.is_accountant() or request.user.is_admin()):
+            return Response({'detail': '只有老師、會計或管理員可以管理學生群組'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # 老師只能刪除自己創建的標籤
+        if request.user.is_teacher() and not (request.user.is_accountant() or request.user.is_admin()):
+            group = self.get_object()
+            if group.created_by != request.user:
+                return Response({'detail': '您只能刪除自己創建的標籤'}, status=status.HTTP_403_FORBIDDEN)
+        
+        return super().destroy(request, *args, **kwargs)
     
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -3456,6 +3616,12 @@ class StudentGroupViewSet(viewsets.ModelViewSet):
         if not request.user.is_authenticated or not (request.user.is_teacher() or request.user.is_accountant() or request.user.is_admin()):
             return Response({'detail': '只有老師、會計或管理員可以管理學生群組'}, status=status.HTTP_403_FORBIDDEN)
         group = self.get_object()
+        
+        # 老師只能操作自己創建的標籤
+        if request.user.is_teacher() and not (request.user.is_accountant() or request.user.is_admin()):
+            if group.created_by != request.user:
+                return Response({'detail': '您只能操作自己創建的標籤'}, status=status.HTTP_403_FORBIDDEN)
+        
         student_ids = request.data.get('student_ids', [])
         
         if not student_ids:
@@ -3478,6 +3644,12 @@ class StudentGroupViewSet(viewsets.ModelViewSet):
         if not request.user.is_authenticated or not (request.user.is_teacher() or request.user.is_accountant() or request.user.is_admin()):
             return Response({'detail': '只有老師、會計或管理員可以管理學生群組'}, status=status.HTTP_403_FORBIDDEN)
         group = self.get_object()
+        
+        # 老師只能操作自己創建的標籤
+        if request.user.is_teacher() and not (request.user.is_accountant() or request.user.is_admin()):
+            if group.created_by != request.user:
+                return Response({'detail': '您只能操作自己創建的標籤'}, status=status.HTTP_403_FORBIDDEN)
+        
         student_ids = request.data.get('student_ids', [])
         
         if not student_ids:

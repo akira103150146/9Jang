@@ -17,52 +17,149 @@
     </header>
 
     <div class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
-      <div class="grid gap-3 md:grid-cols-4">
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">學生姓名（模糊）</label>
-          <input
-            v-model="filters.studentName"
-            type="text"
-            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
-            placeholder="例如：王小明"
-          />
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-slate-900">篩選條件</h3>
+        <button 
+          @click="showFilters = !showFilters" 
+          class="text-sm text-sky-600 hover:text-sky-800 font-semibold"
+        >
+          {{ showFilters ? '收起' : '展開' }}篩選
+        </button>
+      </div>
+      
+      <!-- 載入指示器 -->
+      <div v-if="isFiltering" class="mb-2 text-xs text-slate-500 flex items-center gap-2">
+        <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        搜尋中...
+      </div>
+      
+      <!-- 篩選面板 -->
+      <div v-show="showFilters" class="space-y-4">
+        <div class="grid gap-3 md:grid-cols-5">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">學生姓名（模糊）</label>
+            <input
+              v-model="filters.studentName"
+              type="text"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+              placeholder="例如：王小明"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">標籤</label>
+            <select
+              v-model="filters.tag"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+            >
+              <option value="">全部標籤</option>
+              <option v-for="tag in availableTags" :key="tag.group_id" :value="tag.group_id">
+                {{ tag.name }}
+              </option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">名目</label>
+            <select
+              v-model="filters.item"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+            >
+              <option value="">全部</option>
+              <option value="Tuition">學費</option>
+              <option value="Meal">餐費</option>
+              <option value="Transport">交通費</option>
+              <option value="Book">書籍費</option>
+              <option value="Other">其他</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">繳費狀態</label>
+            <select
+              v-model="filters.paymentStatus"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+            >
+              <option value="">全部</option>
+              <option value="Paid">已繳費</option>
+              <option value="Unpaid">未繳費</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">備註（模糊）</label>
+            <input
+              v-model="filters.q"
+              type="text"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+              placeholder="例如：發起老師"
+            />
+          </div>
         </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">名目</label>
-          <select
-            v-model="filters.item"
-            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
-          >
-            <option value="">全部</option>
-            <option value="Tuition">學費</option>
-            <option value="Meal">餐費</option>
-            <option value="Transport">交通費</option>
-            <option value="Book">書籍費</option>
-            <option value="Other">其他</option>
-          </select>
+        
+        <!-- 時間篩選 -->
+        <div class="grid gap-3 md:grid-cols-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">時間快捷選項</label>
+            <select
+              v-model="filters.dateRange"
+              @change="onDateRangeChange"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+            >
+              <option value="">不限時間</option>
+              <option value="today">當日繳費</option>
+              <option value="this_week">當週繳費</option>
+              <option value="this_month">當月繳費</option>
+              <option value="last_month">上個月繳費</option>
+              <option value="custom">自訂時間區間</option>
+            </select>
+          </div>
+          <div v-if="filters.dateRange === 'custom'">
+            <label class="block text-xs font-semibold text-slate-600 mb-1">開始日期</label>
+            <input
+              v-model="filters.startDate"
+              type="date"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+            />
+          </div>
+          <div v-if="filters.dateRange === 'custom'">
+            <label class="block text-xs font-semibold text-slate-600 mb-1">結束日期</label>
+            <input
+              v-model="filters.endDate"
+              type="date"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+            />
+          </div>
+          <div v-if="filters.dateRange === 'custom'" class="flex items-end">
+            <button
+              @click="clearDateRange"
+              class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              清除日期
+            </button>
+          </div>
         </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">備註（模糊）</label>
-          <input
-            v-model="filters.q"
-            type="text"
-            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
-            placeholder="例如：發起老師"
-          />
-        </div>
-        <div class="flex items-end gap-2">
-          <button
-            @click="applyFilters"
-            class="flex-1 rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-600"
-          >
-            搜尋
-          </button>
-          <button
-            @click="clearFilters"
+        
+        <!-- 操作按鈕 -->
+        <div class="flex gap-2 pt-2 border-t border-slate-200">
+          <button 
+            @click="clearFilters" 
             class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
           >
-            清除
+            清除所有篩選
           </button>
+        </div>
+        
+        <!-- 已套用的篩選標籤 -->
+        <div v-if="hasActiveFilters" class="flex flex-wrap gap-2 pt-2 border-t border-slate-200">
+          <span class="text-xs text-slate-500">已套用：</span>
+          <span
+            v-for="(filter, key) in activeFilters"
+            :key="key"
+            class="inline-flex items-center gap-1 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700"
+          >
+            {{ filter.label }}
+            <button @click="removeFilter(key)" class="text-sky-600 hover:text-sky-800">×</button>
+          </span>
         </div>
       </div>
 
@@ -187,6 +284,12 @@
               <tr v-if="fees.length === 0">
                 <td colspan="8" class="py-4 px-4 text-center text-slate-500">目前沒有費用記錄。</td>
               </tr>
+              <!-- 金額加總行 -->
+              <tr v-if="fees.length > 0" class="bg-slate-50 font-semibold">
+                <td colspan="3" class="px-4 py-4 text-right text-slate-700">總計：</td>
+                <td class="px-4 py-4 font-mono text-right text-slate-900">${{ formatAmount(totalAmount) }}</td>
+                <td colspan="4" class="px-4 py-4"></td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -196,9 +299,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import api, { feeAPI, studentAPI } from '../services/api'
+import api, { feeAPI, studentAPI, studentGroupAPI } from '../services/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -208,13 +311,22 @@ const loading = ref(false)
 const selectedStudent = ref(null)
 const selectedFees = ref([])
 const batchUpdating = ref(false)
+const showFilters = ref(true)  // 預設展開篩選
+const isFiltering = ref(false)  // 是否正在篩選
 
 const filters = ref({
   studentId: '',
   studentName: '',
+  tag: '',  // 標籤篩選
   item: '',
+  paymentStatus: '',  // 繳費狀態篩選
+  dateRange: '',  // 時間快捷選項
+  startDate: '',  // 開始日期
+  endDate: '',  // 結束日期
   q: '',
 })
+
+const availableTags = ref([])  // 標籤列表
 
 const itemMap = {
   'Tuition': '學費',
@@ -237,6 +349,7 @@ const normalizeFee = (fee) => ({
   item: fee.item,
   amount: fee.amount,
   fee_date: fee.fee_date,
+  paid_at: fee.paid_at,  // 繳費時間
   payment_status: fee.payment_status || 'Unpaid',
   notes: fee.notes || '',
 })
@@ -284,10 +397,16 @@ const formatAmount = (amount) => {
 }
 
 const getPaymentDate = (fee) => {
-  // 如果狀態是已繳費且有繳費時間，顯示繳費時間；否則顯示費用日期
+  // 只有已繳費的費用才顯示繳費日期
+  // 如果狀態是已繳費且有繳費時間，顯示繳費時間
   if (fee.payment_status === 'Paid' && fee.paid_at) {
     return formatDate(fee.paid_at)
   }
+  // 未繳費的費用不顯示繳費日期
+  if (fee.payment_status === 'Unpaid') {
+    return '—'
+  }
+  // 其他狀態（如部分繳費）顯示費用日期
   return formatDate(fee.fee_date)
 }
 
@@ -310,7 +429,14 @@ const fetchFees = async () => {
     const params = new URLSearchParams()
     if (filters.value.studentId) params.append('student', filters.value.studentId)
     if (filters.value.studentName) params.append('student_name', filters.value.studentName)
+    if (filters.value.tag) params.append('tag', filters.value.tag)
     if (filters.value.item) params.append('item', filters.value.item)
+    if (filters.value.paymentStatus) params.append('payment_status', filters.value.paymentStatus)
+    if (filters.value.dateRange) params.append('date_range', filters.value.dateRange)
+    if (filters.value.dateRange === 'custom') {
+      if (filters.value.startDate) params.append('start_date', filters.value.startDate)
+      if (filters.value.endDate) params.append('end_date', filters.value.endDate)
+    }
     if (filters.value.q) params.append('q', filters.value.q)
 
     const url = params.toString() ? `/cramschool/fees/?${params.toString()}` : '/cramschool/fees/'
@@ -327,30 +453,187 @@ const fetchFees = async () => {
   }
 }
 
+// 獲取標籤列表（只獲取類型為 'tag' 的）
+const fetchTags = async () => {
+  try {
+    const response = await studentGroupAPI.getAll()
+    const data = response.data.results || response.data || []
+    // 只顯示類型為 'tag' 的群組
+    availableTags.value = data.filter(tag => tag.group_type === 'tag')
+  } catch (error) {
+    console.error('獲取標籤失敗:', error)
+    availableTags.value = []
+  }
+}
+
+// 防抖函數
+let debounceTimer = null
+const debounce = (fn, delay) => {
+  return (...args) => {
+    clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+      fn(...args)
+    }, delay)
+  }
+}
+
+// 構建查詢參數
+const buildQueryParams = () => {
+  const params = {}
+  if (filters.value.studentId) params.student = filters.value.studentId
+  if (filters.value.studentName) params.student_name = filters.value.studentName
+  if (filters.value.tag) params.tag = filters.value.tag
+  if (filters.value.item) params.item = filters.value.item
+  if (filters.value.paymentStatus) params.payment_status = filters.value.paymentStatus
+  if (filters.value.dateRange) params.date_range = filters.value.dateRange
+  if (filters.value.dateRange === 'custom') {
+    if (filters.value.startDate) params.start_date = filters.value.startDate
+    if (filters.value.endDate) params.end_date = filters.value.endDate
+  }
+  if (filters.value.q) params.q = filters.value.q
+  return params
+}
+
+// 應用篩選（更新 URL 並獲取數據）
+const applyFilters = async () => {
+  if (isFiltering.value) return // 防止重複請求
+  
+  isFiltering.value = true
+  try {
+    const query = buildQueryParams()
+    // 使用 replace 避免產生過多歷史記錄
+    await router.replace({ path: '/fees', query })
+    
+    // 獲取費用列表
+    await fetchSelectedStudent()
+    await fetchFees()
+  } finally {
+    isFiltering.value = false
+  }
+}
+
+// 防抖版本的 applyFilters（用於文字輸入）
+const debouncedApplyFilters = debounce(applyFilters, 400)
+
 const syncFromRouteQuery = () => {
   filters.value.studentId = route.query.student ? String(route.query.student) : ''
   filters.value.studentName = route.query.student_name ? String(route.query.student_name) : ''
+  filters.value.tag = route.query.tag ? String(route.query.tag) : ''
   filters.value.item = route.query.item ? String(route.query.item) : ''
+  filters.value.paymentStatus = route.query.payment_status ? String(route.query.payment_status) : ''
+  filters.value.dateRange = route.query.date_range ? String(route.query.date_range) : ''
+  filters.value.startDate = route.query.start_date ? String(route.query.start_date) : ''
+  filters.value.endDate = route.query.end_date ? String(route.query.end_date) : ''
   filters.value.q = route.query.q ? String(route.query.q) : ''
-}
-
-const applyFilters = async () => {
-  const query = {}
-  if (filters.value.studentId) query.student = filters.value.studentId
-  if (filters.value.studentName) query.student_name = filters.value.studentName
-  if (filters.value.item) query.item = filters.value.item
-  if (filters.value.q) query.q = filters.value.q
-  await router.replace({ path: '/fees', query })
-  await fetchSelectedStudent()
-  await fetchFees()
+  // 如果有篩選條件，自動展開篩選面板
+  if (hasActiveFilters.value) {
+    showFilters.value = true
+  }
 }
 
 const clearFilters = async () => {
-  filters.value = { studentId: '', studentName: '', item: '', q: '' }
+  filters.value = { studentId: '', studentName: '', tag: '', item: '', paymentStatus: '', dateRange: '', startDate: '', endDate: '', q: '' }
   await router.replace({ path: '/fees', query: {} })
   selectedStudent.value = null
   await fetchFees()
 }
+
+// 清除日期範圍
+const clearDateRange = () => {
+  filters.value.dateRange = ''
+  filters.value.startDate = ''
+  filters.value.endDate = ''
+  applyFilters()
+}
+
+// 日期範圍變更處理
+const onDateRangeChange = () => {
+  // 如果選擇了快捷選項，清除自訂日期
+  if (filters.value.dateRange !== 'custom') {
+    filters.value.startDate = ''
+    filters.value.endDate = ''
+  }
+  applyFilters()
+}
+
+// 移除單個篩選
+const removeFilter = (key) => {
+  filters.value[key] = ''
+  applyFilters()
+}
+
+// 檢查是否有活躍的篩選
+const hasActiveFilters = computed(() => {
+  return Object.values(filters.value).some(value => value !== '')
+})
+
+// 獲取日期範圍顯示文字
+const getDateRangeLabel = () => {
+  if (!filters.value.dateRange) return ''
+  
+  const labels = {
+    'today': '當日繳費',
+    'this_week': '當週繳費',
+    'this_month': '當月繳費',
+    'last_month': '上個月繳費',
+    'custom': filters.value.startDate && filters.value.endDate 
+      ? `${filters.value.startDate} 至 ${filters.value.endDate}`
+      : '自訂時間區間'
+  }
+  return labels[filters.value.dateRange] || filters.value.dateRange
+}
+
+// 獲取活躍篩選的顯示標籤
+const activeFilters = computed(() => {
+  const result = {}
+  if (filters.value.studentName) result.studentName = { label: `學生：${filters.value.studentName}` }
+  if (filters.value.tag) {
+    const tag = availableTags.value.find(t => t.group_id == filters.value.tag)
+    result.tag = { label: `標籤：${tag?.name || filters.value.tag}` }
+  }
+  if (filters.value.item) {
+    result.item = { label: `名目：${getItemDisplay(filters.value.item)}` }
+  }
+  if (filters.value.paymentStatus) {
+    result.paymentStatus = { label: `狀態：${getStatusDisplay(filters.value.paymentStatus)}` }
+  }
+  if (filters.value.dateRange) {
+    result.dateRange = { label: `時間：${getDateRangeLabel()}` }
+  }
+  if (filters.value.q) result.q = { label: `備註：${filters.value.q}` }
+  return result
+})
+
+// 計算總金額
+const totalAmount = computed(() => {
+  return fees.value.reduce((sum, fee) => sum + parseFloat(fee.amount || 0), 0)
+})
+
+// 監聽需要防抖的篩選條件（文字輸入）
+watch(
+  () => [filters.value.studentName, filters.value.q],
+  () => {
+    debouncedApplyFilters()
+  }
+)
+
+// 監聽下拉選單（立即更新）
+watch(
+  () => [filters.value.tag, filters.value.item, filters.value.paymentStatus, filters.value.dateRange],
+  () => {
+    applyFilters() // 立即執行
+  }
+)
+
+// 監聽自訂日期範圍（立即更新）
+watch(
+  () => [filters.value.startDate, filters.value.endDate],
+  () => {
+    if (filters.value.dateRange === 'custom') {
+      applyFilters() // 立即執行
+    }
+  }
+)
 
 const removeStudentFilter = async () => {
   filters.value.studentId = ''
@@ -420,7 +703,13 @@ const batchUpdateStatus = async (paymentStatus) => {
 
 onMounted(() => {
   syncFromRouteQuery()
-  fetchSelectedStudent().finally(() => fetchFees())
+  fetchTags() // 獲取標籤列表
+  const queryString = new URLSearchParams(route.query).toString()
+  if (queryString) {
+    fetchSelectedStudent().finally(() => fetchFees())
+  } else {
+    fetchFees()
+  }
 })
 </script>
 

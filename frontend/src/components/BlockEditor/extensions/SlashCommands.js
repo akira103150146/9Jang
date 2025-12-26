@@ -14,11 +14,24 @@ export const SlashCommands = Extension.create({
       suggestion: {
         char: '/',
         startOfLine: false,
-        items: ({ query }) => {
-          // 獲取是否為講義模式
-          const isHandoutMode = this.options.isHandoutMode || false
+        items: ({ query, editor }) => {
+          // 從 editor 獲取 Extension 實例
+          // #region agent log
+          let isHandoutMode = false
+          try {
+            if (editor && editor.extensionManager) {
+              const ext = editor.extensionManager.extensions.find(e => e.name === 'slashCommands')
+              if (ext && ext.options) {
+                isHandoutMode = ext.options.isHandoutMode || false
+              }
+            }
+            fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SlashCommands.js:items',message:'SlashCommands items 被調用',data:{query,isHandoutMode,hasEditor:!!editor,hasExtensionManager:!!editor?.extensionManager},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+          } catch (e) {
+            fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SlashCommands.js:items',message:'獲取 isHandoutMode 失敗',data:{error:e.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+          }
+          // #endregion
           
-          return commandItems.filter(item => {
+          const filteredItems = commandItems.filter(item => {
             // 講義模式下隱藏分頁符號命令（講義模式只依賴紙張大小自動分頁）
             if (isHandoutMode && item.title === '分頁') {
               return false
@@ -30,6 +43,12 @@ export const SlashCommands = Extension.create({
               item.keywords.some(keyword => keyword.toLowerCase().includes(searchQuery))
             )
           })
+          
+          // #region agent log
+          fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SlashCommands.js:items',message:'過濾後的命令列表',data:{totalItems:commandItems.length,filteredCount:filteredItems.length,query,isHandoutMode},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
+          
+          return filteredItems
         },
         render: () => {
           let component

@@ -14,6 +14,9 @@ export const AutoPageBreak = Extension.create({
     return {
       Enter: ({ editor }) => {
         if (!this.options.enabled) {
+          // #region agent log
+          fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AutoPageBreak.js:Enter',message:'AutoPageBreak 未啟用，使用預設行為',data:{enabled:this.options.enabled},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
           return false // 使用預設行為
         }
 
@@ -26,7 +29,7 @@ export const AutoPageBreak = Extension.create({
         try {
           const pos = $from.pos
           // #region agent log
-          fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AutoPageBreak.js:Enter',message:'Enter 鍵按下',data:{pos,pageHeightPx:this.options.pageHeightPx},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AutoPageBreak.js:Enter',message:'Enter 鍵按下',data:{pos,pageHeightPx:this.options.pageHeightPx,parentType:$from.parent.type.name,parentOffset:$from.parentOffset},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
           // #endregion
           const domAtPos = editor.view.domAtPos(pos)
           let currentNode = domAtPos.node
@@ -85,46 +88,84 @@ export const AutoPageBreak = Extension.create({
           // 如果剩餘空間小於 100px（一個段落的平均高度），插入分頁符號
           if (remainingSpace < 100) {
             // #region agent log
-            fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AutoPageBreak.js:Enter',message:'需要插入分頁符號',data:{remainingSpace},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+            fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AutoPageBreak.js:Enter',message:'需要插入分頁符號',data:{remainingSpace},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
             // #endregion
+            
             // 先執行預設的 Enter 行為（創建新段落）
-            editor.commands.first(({ commands }) => [
+            const enterResult = editor.commands.first(({ commands }) => [
               () => commands.newlineInCode(),
               () => commands.createParagraphNear(),
               () => commands.liftEmptyBlock(),
               () => commands.splitBlock(),
             ])
+            
+            // #region agent log
+            fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AutoPageBreak.js:Enter',message:'Enter 預設行為執行完成',data:{enterResult,docSizeAfterEnter:editor.state.doc.content.size},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
+            // #endregion
 
             // 然後在新段落前插入分頁符號
             setTimeout(() => {
               const { state } = editor
               const { selection } = state
               const currentPos = selection.$from.pos
+              
+              // #region agent log
+              fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AutoPageBreak.js:Enter',message:'準備插入分頁符號',data:{currentPos,beforeInsert:currentPos-1,docSize:state.doc.content.size},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
+              // #endregion
 
               // 在當前位置前插入分頁符號
               editor.chain()
                 .insertContentAt(currentPos - 1, { type: 'pageBreak' })
-                .focus(currentPos + 1) // 將游標移到分頁符號後
                 .run()
-
-              // 滾動到新位置
+              
+              // 等待 DOM 更新後，將游標定位在新創建的段落中（分頁符號後）
               setTimeout(() => {
-                const newPos = editor.state.selection.$from.pos
-                const domAtNewPos = editor.view.domAtPos(newPos)
-                let newNode = domAtNewPos.node
+                const { state } = editor
+                const pageBreakPos = currentPos - 1
+                const pageBreakNode = state.doc.nodeAt(pageBreakPos)
+                
+                // 計算分頁符號後的游標位置（應該在新段落中）
+                const cursorPosAfterPageBreak = pageBreakPos + (pageBreakNode?.nodeSize || 1)
+                
+                // #region agent log
+                fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AutoPageBreak.js:Enter',message:'設置游標位置',data:{pageBreakPos,pageBreakNodeSize:pageBreakNode?.nodeSize,cursorPosAfterPageBreak,docSize:state.doc.content.size},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
+                // #endregion
+                
+                // 將游標移到分頁符號後的新段落中
+                editor.chain()
+                  .focus(cursorPosAfterPageBreak)
+                  .run()
+                
+                // #region agent log
+                setTimeout(() => {
+                  const finalPos = editor.state.selection.$from.pos
+                  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AutoPageBreak.js:Enter',message:'游標位置設置完成',data:{finalPos,expectedPos:cursorPosAfterPageBreak,match:finalPos===cursorPosAfterPageBreak},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
+                }, 20);
+                // #endregion
 
-                if (newNode.nodeType === Node.TEXT_NODE) {
-                  newNode = newNode.parentElement
-                }
+                // 滾動到新位置
+                setTimeout(() => {
+                  const newPos = editor.state.selection.$from.pos
+                  const domAtNewPos = editor.view.domAtPos(newPos)
+                  let newNode = domAtNewPos.node
 
-                if (newNode) {
-                  newNode.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                }
-              }, 50)
+                  if (newNode.nodeType === Node.TEXT_NODE) {
+                    newNode = newNode.parentElement
+                  }
+
+                  if (newNode) {
+                    newNode.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  }
+                }, 50)
+              }, 10)
             }, 10)
 
             return true // 阻止預設行為
           }
+          
+          // #region agent log
+          fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AutoPageBreak.js:Enter',message:'剩餘空間足夠，使用預設 Enter 行為',data:{remainingSpace},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
 
           return false // 使用預設 Enter 行為
         } catch (error) {
