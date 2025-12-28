@@ -62,7 +62,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { parseMarkdownToBlocks, blocksToMarkdown, getBlockTypeName } from '../utils/markdownBlockParser'
 import { useMarkdownRenderer } from '../composables/useMarkdownRenderer'
 
@@ -88,6 +88,84 @@ const isDragging = computed(() => draggingIndex.value !== null)
 watch(() => props.content, (newContent) => {
   blocks.value = parseMarkdownToBlocks(newContent)
 }, { immediate: true })
+
+// #region agent log
+// 調試函數：測量分數線位置
+const measureFractionLinePosition = () => {
+  const root = document.querySelector('.draggable-preview')
+  if (!root) return
+  
+  const fractions = root.querySelectorAll('.katex .mfrac')
+  if (fractions.length === 0) return
+  
+  fractions.forEach((mfrac, idx) => {
+    const fracLine = mfrac.querySelector('.frac-line')
+    if (!fracLine) return
+    
+    const numerator = mfrac.querySelector('.vlist-t:first-child')
+    const denominator = mfrac.querySelector('.vlist-t:last-child')
+    
+    if (!numerator || !denominator) return
+    
+    const mfracRect = mfrac.getBoundingClientRect()
+    const lineRect = fracLine.getBoundingClientRect()
+    const numRect = numerator.getBoundingClientRect()
+    const denRect = denominator.getBoundingClientRect()
+    
+    const mfracHeight = mfracRect.height
+    const lineTop = lineRect.top - mfracRect.top
+    const lineBottom = lineRect.bottom - mfracRect.top
+    const numHeight = numRect.height
+    const denHeight = denRect.height
+    
+    const computedStyle = getComputedStyle(fracLine)
+    const marginTop = parseFloat(computedStyle.marginTop) || 0
+    const marginBottom = parseFloat(computedStyle.marginBottom) || 0
+    
+    const expectedCenter = mfracHeight / 2
+    const actualCenter = lineTop + (lineBottom - lineTop) / 2
+    const offsetFromCenter = actualCenter - expectedCenter
+    
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location: 'DraggablePreview.vue:measureFractionLinePosition',
+        message: `分數線位置測量 #${idx}`,
+        data: {
+          mfracHeight,
+          lineTop,
+          lineBottom,
+          numHeight,
+          denHeight,
+          marginTop,
+          marginBottom,
+          expectedCenter,
+          actualCenter,
+          offsetFromCenter,
+          cssMarginTop: computedStyle.marginTop,
+          cssMarginBottom: computedStyle.marginBottom,
+          mfracPaddingTop: getComputedStyle(mfrac).paddingTop,
+          mfracPaddingBottom: getComputedStyle(mfrac).paddingBottom
+        },
+        timestamp: Date.now(),
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'A'
+      })
+    }).catch(() => {})
+  })
+}
+
+// 監聽 blocks 變化，在渲染後測量
+watch(() => blocks.value, () => {
+  nextTick(() => {
+    setTimeout(() => {
+      measureFractionLinePosition()
+    }, 200)
+  })
+}, { deep: true })
+// #endregion
 
 // 渲染單個區塊
 const renderBlock = (block) => {

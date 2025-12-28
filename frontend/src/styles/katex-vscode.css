@@ -44,18 +44,25 @@
 }
 
 /* 分數線樣式 - VSCode 默認樣式 */
-/* i want to make the fraction line lower*/
-.katex .frac-line {
-  border-bottom-width: 0.04em;
-  min-height: 0.04em;
-  margin-top: 0.12em;
-  margin-bottom: 0.16em;
+/* 修復：使分數線在分子和分母中間 */
+.katex .mfrac > .frac-line,
+.katex-display .mfrac > .frac-line,
+.katex:not(.katex-display) .mfrac > .frac-line,
+.katex .frac-line,
+.katex-display .frac-line,
+.katex:not(.katex-display) .frac-line {
+  border-bottom-width: 0.04em !important;
+  min-height: 0.04em !important;
+  margin-top: 0.188em !important;
+  margin-bottom: 0.092em !important;
 }
 
-/* 分數容器 */
-.katex .mfrac {
-  padding-top: 0.15em;
-  padding-bottom: 0.1em;
+/* 分數容器 - 調整 padding 以平衡空間 */
+.katex .mfrac,
+.katex-display .mfrac,
+.katex:not(.katex-display) .mfrac {
+  padding-top: 0.158em !important;
+  padding-bottom: 0.082em !important;
 }
 
 /* 根號樣式 */

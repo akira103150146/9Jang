@@ -119,8 +119,81 @@ const mountEmbeds = async () => {
   })
 }
 
+// #region agent log
+// 調試函數：測量分數線位置
+const measureFractionLinePosition = () => {
+  const root = previewRoot.value
+  if (!root) return
+  
+  const fractions = root.querySelectorAll('.katex .mfrac')
+  if (fractions.length === 0) return
+  
+  fractions.forEach((mfrac, idx) => {
+    const fracLine = mfrac.querySelector('.frac-line')
+    if (!fracLine) return
+    
+    const numerator = mfrac.querySelector('.vlist-t:first-child')
+    const denominator = mfrac.querySelector('.vlist-t:last-child')
+    
+    if (!numerator || !denominator) return
+    
+    const mfracRect = mfrac.getBoundingClientRect()
+    const lineRect = fracLine.getBoundingClientRect()
+    const numRect = numerator.getBoundingClientRect()
+    const denRect = denominator.getBoundingClientRect()
+    
+    const mfracHeight = mfracRect.height
+    const lineTop = lineRect.top - mfracRect.top
+    const lineBottom = lineRect.bottom - mfracRect.top
+    const numHeight = numRect.height
+    const denHeight = denRect.height
+    
+    const marginTop = parseFloat(getComputedStyle(fracLine).marginTop) || 0
+    const marginBottom = parseFloat(getComputedStyle(fracLine).marginBottom) || 0
+    
+    const expectedCenter = mfracHeight / 2
+    const actualCenter = lineTop + (lineBottom - lineTop) / 2
+    const offsetFromCenter = actualCenter - expectedCenter
+    
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location: 'RichTextPreview.vue:measureFractionLinePosition',
+        message: `分數線位置測量 #${idx}`,
+        data: {
+          mfracHeight,
+          lineTop,
+          lineBottom,
+          numHeight,
+          denHeight,
+          marginTop,
+          marginBottom,
+          expectedCenter,
+          actualCenter,
+          offsetFromCenter,
+          cssMarginTop: getComputedStyle(fracLine).marginTop,
+          cssMarginBottom: getComputedStyle(fracLine).marginBottom
+        },
+        timestamp: Date.now(),
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'A'
+      })
+    }).catch(() => {})
+  })
+}
+// #endregion
+
 watch(renderedContent, () => {
   mountEmbeds()
+  // #region agent log
+  nextTick(() => {
+    setTimeout(() => {
+      measureFractionLinePosition()
+    }, 100)
+  })
+  // #endregion
 })
 
 onBeforeUnmount(() => {

@@ -1223,6 +1223,19 @@ const generatePrintPreview = async (iframeDoc, iframeWindow, triggerPrint = fals
     .katex .sqrt .vlist-t2 {
       border-left: none !important;
     }
+    /* 修復分數線位置：使分數線在分子和分母中間 */
+    .katex .mfrac > .frac-line,
+    .katex .frac-line {
+      border-bottom-width: 0.04em !important;
+      min-height: 0.04em !important;
+      margin-top: 0.188em !important;
+      margin-bottom: 0.092em !important;
+    }
+    /* 分數容器 */
+    .katex .mfrac {
+      padding-top: 0.158em !important;
+      padding-bottom: 0.082em !important;
+    }
   `
   iframeDoc.head.appendChild(styleEl)
   
