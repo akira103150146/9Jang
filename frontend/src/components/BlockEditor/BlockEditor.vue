@@ -1,25 +1,13 @@
 <template>
-  <div class="block-editor-container" :class="'paper-size-' + paperSize.toLowerCase()">
+  <div class="block-editor-container">
     <!-- 游標位置指示器 -->
     <div v-if="editor && currentNodeType" class="cursor-indicator">
       <span class="indicator-icon">{{ getNodeIcon(currentNodeType) }}</span>
       <span class="indicator-text">{{ getNodeLabel(currentNodeType) }}</span>
     </div>
     
-    <!-- 頁碼覆蓋層（僅在非 readonly 且 showPageNumbers 為 true 時顯示） -->
-    <div class="page-numbers-overlay" v-if="!readonly && showPageNumbers && pageCount > 0">
-      <div 
-        v-for="pageNum in pageCount" 
-        :key="pageNum"
-        class="page-number"
-        :style="{ top: `${(pageNum - 1) * pageHeightPx + 8}px` }"
-      >
-        第 {{ pageNum }} 頁
-      </div>
-    </div>
-    
-    <!-- 白色紙張區域 -->
-    <div class="paper-sheet">
+    <!-- 編輯器內容 -->
+    <div class="editor-wrapper">
       <editor-content :editor="editor" class="editor-content" />
     </div>
     
@@ -42,7 +30,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onBeforeUnmount, provide, computed, nextTick } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount, provide, computed } from 'vue'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
@@ -53,7 +41,6 @@ import { SlashCommands } from './extensions/SlashCommands'
 import { KeyboardShortcuts } from './extensions/KeyboardShortcuts'
 import { DragHandle } from './extensions/DragHandle'
 import { Nesting } from './extensions/Nesting'
-import { AutoPageBreak } from './extensions/AutoPageBreak'
 import { parseSmartPaste } from './utils/smartPasteParser'
 import { createNodesFromTokens } from './utils/nodeConverter'
 import { uploadImageAPI } from '../../services/api'
@@ -81,15 +68,6 @@ const props = defineProps({
       isLoading: false
     })
   },
-  autoPageBreak: {
-    type: Boolean,
-    default: false
-  },
-  paperSize: {
-    type: String,
-    default: 'A4', // 'A4' or 'B4'
-    validator: (value) => ['A4', 'B4'].includes(value)
-  },
   imageMappings: {
     type: Map,
     default: () => new Map()
@@ -97,10 +75,6 @@ const props = defineProps({
   readonly: {
     type: Boolean,
     default: false
-  },
-  showPageNumbers: {
-    type: Boolean,
-    default: true
   },
   ignoreExternalUpdates: {
     type: Boolean,
@@ -127,14 +101,6 @@ provide('isHandoutMode', computed(() => props.isHandoutMode))
 
 // 追蹤當前游標所在的節點類型
 const currentNodeType = ref(null)
-
-// 頁碼計算
-const pageCount = ref(1)
-const pageHeightPx = computed(() => {
-  // A4: 257mm 內容高度 * 3.7795 = 971px
-  // B4: 313mm 內容高度 * 3.7795 = 1183px
-  return props.paperSize === 'A4' ? 971 : 1183
-})
 
 // 圖片選擇器狀態
 const imageSelectorOpen = ref(false)
@@ -204,10 +170,6 @@ const editor = useEditor({
     KeyboardShortcuts,
     DragHandle,
     Nesting,
-    AutoPageBreak.configure({
-      pageHeightPx: pageHeightPx.value,
-      enabled: props.autoPageBreak,
-    }),
   ],
   content: convertToTiptapFormat(props.modelValue),
   editable: !props.readonly,
@@ -317,7 +279,6 @@ const editor = useEditor({
     lastAppliedSequence = currentSeq
     
     emit('update:modelValue', json)
-    updatePageCount()
   },
   onSelectionUpdate: ({ editor }) => {
     // 更新當前節點類型
@@ -329,77 +290,6 @@ const editor = useEditor({
     // Editor created
   },
 })
-
-// 更新頁數計算
-function updatePageCount() {
-  if (!editor.value || !editor.value.view || !editor.value.view.dom) {
-    pageCount.value = 1
-    return
-  }
-  
-  nextTick(() => {
-    const cursorIndicator = document.querySelector('.cursor-indicator');
-    
-    // 方法 1: 計算手動插入的分頁符號數量
-    let manualPageBreaks = 0
-    if (editor.value.state && editor.value.state.doc) {
-      editor.value.state.doc.descendants((node) => {
-        if (node.type.name === 'pageBreak') {
-          manualPageBreaks++
-        }
-      })
-    }
-    
-    
-    // 如果有手動分頁符號，頁數 = 分頁符號數 + 1
-    if (manualPageBreaks > 0) {
-      pageCount.value = manualPageBreaks + 1
-      return
-    }
-    
-    // 方法 2: 如果沒有手動分頁符號，根據內容高度計算
-    const editorDOM = editor.value.view.dom
-    let editorHeight = editorDOM.scrollHeight
-    const editorOffsetHeight = editorDOM.offsetHeight
-    const editorClientHeight = editorDOM.clientHeight
-    const computedStyle = window.getComputedStyle(editorDOM)
-    const paddingTop = parseFloat(computedStyle.paddingTop) || 0
-    const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0
-    const marginTop = parseFloat(computedStyle.marginTop) || 0
-    const marginBottom = parseFloat(computedStyle.marginBottom) || 0
-    
-    // 檢查游標提示方塊對高度的影響並調整
-    const containerDOM = editorDOM.closest('.block-editor-container');
-    const containerHeight = containerDOM ? containerDOM.scrollHeight : 0;
-    let cursorIndicatorHeight = 0;
-    if (cursorIndicator) {
-      cursorIndicatorHeight = cursorIndicator.offsetHeight;
-      const cursorMarginBottom = parseFloat(window.getComputedStyle(cursorIndicator).marginBottom) || 0;
-      cursorIndicatorHeight += cursorMarginBottom;
-    }
-    
-    // 調整高度：扣除游標提示方塊的影響
-    const adjustedHeight = editorHeight - cursorIndicatorHeight;
-    
-    
-    // 使用調整後的高度計算頁數
-    const heightForCalculation = adjustedHeight > 0 ? adjustedHeight : editorHeight;
-    const visibleSeparators = Math.floor(heightForCalculation / pageHeightPx.value)
-    const remainder = heightForCalculation % pageHeightPx.value
-    const isOnBoundary = remainder < 20 || remainder > pageHeightPx.value - 20
-    const calculatedPages = isOnBoundary ? visibleSeparators : visibleSeparators + 1
-    pageCount.value = Math.max(1, calculatedPages)
-    
-    // 計算每個頁碼的實際位置（考慮游標提示方塊的偏移）
-    const pageNumberPositions = []
-    for (let i = 1; i <= pageCount.value; i++) {
-      // 頁碼位置 = (頁數-1) * 每頁高度 + 游標提示方塊高度 + 8px偏移
-      const topPosition = (i - 1) * pageHeightPx.value + cursorIndicatorHeight + 8
-      pageNumberPositions.push({pageNum: i, topPosition})
-    }
-    
-  })
-}
 
 // 取得節點圖標
 const getNodeIcon = (nodeType) => {
@@ -569,15 +459,7 @@ watch(() => props.modelValue, (newValue) => {
   // 不更新 lastAppliedSequence,因為這是外部更新
   
   editor.value.commands.setContent(newContent, false)
-  updatePageCount()
 }, { deep: true, flush: 'sync' })
-
-// 初始化時計算頁數
-onMounted(() => {
-  nextTick(() => {
-    updatePageCount()
-  })
-})
 
 onBeforeUnmount(() => {
   if (editor.value) {
@@ -587,7 +469,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* 編輯器外層容器 - 白色背景 */
+/* 編輯器外層容器 */
 .block-editor-container {
   width: 100%;
   min-height: 100vh;
@@ -595,33 +477,11 @@ onBeforeUnmount(() => {
   position: relative;
 }
 
-/* 紙張區域（不再需要額外樣式，直接使用白色背景） */
-.paper-sheet {
+/* 編輯器包裝器 */
+.editor-wrapper {
   background: white;
   width: 100%;
   padding: 0;
-  min-height: 297mm;
-  overflow-y: auto; /* 允許垂直滾動 */
-  max-height: calc(100vh - 200px); /* 限制最大高度，留出空間給頂部導航欄 */
-}
-
-/* 列印時的樣式調整 */
-@media print {
-  /* 移除外層容器的背景和 padding */
-  .block-editor-container {
-    background: white;
-    padding: 0;
-    min-height: auto;
-  }
-  
-  /* 移除紙張的陰影和邊距限制 */
-  .paper-sheet {
-    max-width: 100%;
-    margin: 0;
-    padding: 0;
-    min-height: auto;
-    box-shadow: none;
-  }
 }
 
 /* 游標位置指示器 */
@@ -645,115 +505,29 @@ onBeforeUnmount(() => {
   animation: fadeIn 0.2s ease-in-out;
 }
 
-/* 列印時隱藏游標指示器 */
+/* 列印時的處理 */
 @media print {
+  /* 隱藏游標指示器 */
   .cursor-indicator {
     display: none !important;
   }
-}
-
-/* 頁面分隔線 - A4 紙張 (使用 mm 單位確保精確度) */
-.paper-size-a4 :deep(.ProseMirror) {
-  position: relative;
-  /* 使用 mm 單位,並考慮 padding */
-  /* 257mm (內容) = 297mm (A4) - 40mm (上下 padding) */
-  background-image: repeating-linear-gradient(
-    transparent,
-    transparent calc(257mm),
-    rgba(229, 231, 235, 0.5) calc(257mm),
-    rgba(229, 231, 235, 0.5) calc(257mm + 2px)
-  );
-  background-position: 0 0;
-  /* 重要:確保 box-sizing 一致 */
-  box-sizing: border-box;
-}
-
-/* 頁面分隔線 - B4 紙張 (使用 mm 單位確保精確度) */
-.paper-size-b4 :deep(.ProseMirror) {
-  position: relative;
-  /* 313mm (內容) = 353mm (B4) - 40mm (上下 padding) */
-  background-image: repeating-linear-gradient(
-    transparent,
-    transparent calc(313mm),
-    rgba(229, 231, 235, 0.5) calc(313mm),
-    rgba(229, 231, 235, 0.5) calc(313mm + 2px)
-  );
-  background-position: 0 0;
-  /* 重要:確保 box-sizing 一致 */
-  box-sizing: border-box;
-}
-
-/* 頁碼覆蓋層 */
-.page-numbers-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  pointer-events: none;
-  z-index: 10;
-}
-
-.page-number {
-  position: absolute;
-  right: 1rem;
-  background: rgba(255, 255, 255, 0.95);
-  padding: 0.375rem 0.875rem;
-  border-radius: 0.375rem;
-  font-size: 0.75rem;
-  color: #6b7280;
-  font-weight: 600;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
-  backdrop-filter: blur(4px);
-}
-
-/* 列印時的頁碼處理 */
-@media print {
-  /* 保留頁碼覆蓋層，但調整樣式 */
-  .page-numbers-overlay {
-    display: block !important;
+  
+  /* 設置頁面大小和邊距 */
+  @page {
+    size: A4;
+    margin: 20mm;
   }
   
-  .page-number {
-    background: transparent !important;
-    box-shadow: none !important;
-    border: none !important;
-    color: #6b7280 !important;
-    font-size: 10pt !important;
-    padding: 0.25rem 0.5rem !important;
-  }
-}
-
-/* 列印時的處理 */
-@media print {
-  /* 設置頁面大小和邊距 - A4 */
-  .paper-size-a4 {
-    @page {
-      size: A4;
-      margin: 20mm;
-    }
+  .block-editor-container {
+    background: white;
+    padding: 0;
+    min-height: auto;
   }
   
-  /* 設置頁面大小和邊距 - B4 */
-  .paper-size-b4 {
-    @page {
-      size: B4;
-      margin: 20mm;
-    }
-  }
-  
-  /* 隱藏分隔線 */
-  :deep(.ProseMirror) {
-    background-image: none !important;
-  }
-
-  /* 頁碼樣式調整 */
-  .page-number {
-    background: transparent;
-    box-shadow: none;
-    border: none;
-    color: #9ca3af;
-    font-size: 0.625rem;
+  .editor-wrapper {
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
   }
   
   /* 防止元素被分頁切斷 */
@@ -791,6 +565,12 @@ onBeforeUnmount(() => {
   :deep(h6) {
     page-break-after: avoid;
     break-after: avoid;
+  }
+  
+  /* 手動分頁符號 */
+  :deep(.page-break) {
+    page-break-after: always;
+    break-after: page;
   }
 }
 

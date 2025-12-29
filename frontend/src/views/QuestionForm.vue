@@ -179,9 +179,6 @@
               <BlockEditor
                 v-model="formData.content"
                 :readonly="false"
-                :auto-page-break="false"
-                :show-page-numbers="false"
-                :paper-size="'A4'"
                 :questions="allQuestions"
               />
             </div>
@@ -209,9 +206,6 @@
               <BlockEditor
                 v-model="formData.correct_answer"
                 :readonly="false"
-                :auto-page-break="false"
-                :show-page-numbers="false"
-                :paper-size="'A4'"
                 :questions="allQuestions"
               />
             </div>
@@ -235,9 +229,6 @@
             <BlockEditor
               v-model="formData.solution_content"
               :readonly="false"
-              :auto-page-break="false"
-              :show-page-numbers="false"
-              :paper-size="'A4'"
               :questions="allQuestions"
             />
           </div>

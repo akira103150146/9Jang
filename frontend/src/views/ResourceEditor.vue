@@ -200,20 +200,6 @@
         </div>
 
         <div class="flex items-center gap-3">
-          <!-- 預覽模式切換按鈕 -->
-          <button 
-            @click="togglePreviewMode" 
-            class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            :class="isPreviewMode 
-              ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
-              : 'text-slate-700 bg-white border border-slate-300 hover:bg-slate-50'"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
-            {{ isPreviewMode ? '編輯模式' : '預覽模式' }}
-          </button>
           <button @click="print" class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -233,18 +219,8 @@
       <div 
         class="flex-1 overflow-auto relative bg-slate-100"
       >
-        <!-- 預覽模式 -->
-        <div v-if="isPreviewMode" class="preview-container">
-          <iframe 
-            ref="previewIframe"
-            class="preview-iframe"
-            sandbox="allow-same-origin"
-          ></iframe>
-        </div>
-        
-        <!-- 編輯模式 -->
-        <template v-else>
-          <!-- 講義模式：多個獨立紙張容器 -->
+        <!-- 編輯區域 -->
+        <!-- 講義模式：多個獨立紙張容器 -->
           <div v-if="resource.mode === 'HANDOUT'" class="p-8" ref="handoutContainerRef">
           <div 
             v-for="(pageContent, pageIndex) in handoutPages" 
@@ -273,11 +249,8 @@
               :questions="questions"
               :questions-pagination="questionsPagination"
               @load-more-questions="loadMoreQuestions"
-              :auto-page-break="false"
-              :paper-size="resource.settings?.handout?.paperSize || resource.settings?.paperSize || 'A4'"
               :image-mappings="imageMappings"
               :readonly="false"
-              :show-page-numbers="false"
               :ignore-external-updates="isUpdatingFromPageEditor"
               :is-handout-mode="true"
               @request-upload="openImageFolderUpload"
@@ -303,13 +276,10 @@
             :questions="questions"
             :questions-pagination="questionsPagination"
             @load-more-questions="loadMoreQuestions"
-            :auto-page-break="false"
-            :paper-size="resource.settings?.handout?.paperSize || resource.settings?.paperSize || 'A4'"
             :image-mappings="imageMappings"
             @request-upload="openImageFolderUpload"
           />
         </div>
-        </template>
       </div>
     </main>
   </div>
@@ -410,10 +380,6 @@ const imageFolderInput = ref(null)
 const uploadingImages = ref(false)
 const replacingImages = ref(false)
 const blockEditorRef = ref(null)
-
-// 預覽模式狀態
-const isPreviewMode = ref(false)
-const previewIframe = ref(null)
 
 // 獲取當前資源的映射表 key
 const getImageMappingKey = () => {
@@ -1140,22 +1106,6 @@ if (!props.viewMode) {
   )
 }
 
-// 監聽內容變化,在預覽模式下自動更新預覽
-const debouncedPreviewUpdate = debounce(() => {
-  if (isPreviewMode.value) {
-    renderPreview()
-  }
-}, 500)
-
-watch(
-  () => tiptapStructure.value,
-  () => {
-    if (isPreviewMode.value) {
-      debouncedPreviewUpdate()
-    }
-  },
-  { deep: true }
-)
 
 // 生成預覽內容的通用函數
 const generatePrintPreview = async (iframeDoc, iframeWindow, triggerPrint = false) => {
@@ -1383,15 +1333,6 @@ const renderPreview = async () => {
   await generatePrintPreview(iframeDoc, iframeWindow, false)
 }
 
-// 切換預覽模式
-const togglePreviewMode = async () => {
-  isPreviewMode.value = !isPreviewMode.value
-  
-  if (isPreviewMode.value) {
-    await nextTick()
-    renderPreview()
-  }
-}
 
 // 頁面計算已由 BlockEditor 的自動換頁功能處理
 let resizeObserver = null
@@ -2055,40 +1996,6 @@ onUnmounted(() => {
   }
 }
 
-/* 預覽容器 */
-.preview-container {
-  width: 100%;
-  height: 100%;
-  background: #525659;
-  padding: 20px;
-  overflow: auto;
-}
-
-/* 預覽 iframe */
-.preview-iframe {
-  width: 210mm;
-  min-height: 297mm;
-  margin: 0 auto;
-  display: block;
-  background: white;
-  border: none;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 
-              0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-/* 預覽模式下的縮放控制 */
-.zoom-controls {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  background: white;
-  padding: 8px;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  display: flex;
-  gap: 8px;
-  z-index: 100;
-}
 </style>
 
 <!-- 非 scoped 的列印樣式，確保能應用到所有元素 -->

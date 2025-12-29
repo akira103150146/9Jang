@@ -131,6 +131,19 @@
           重置篩選
         </button>
       </div>
+      
+      <!-- 已套用的篩選標籤 -->
+      <div v-if="hasActiveFilters" class="flex flex-wrap gap-2 pt-3 mt-3 border-t border-slate-200">
+        <span class="text-xs text-slate-500">已套用：</span>
+        <span
+          v-for="(filter, key) in activeFilters"
+          :key="key"
+          class="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700"
+        >
+          {{ filter.label }}
+          <button @click="removeFilter(key)" class="text-indigo-600 hover:text-indigo-800">×</button>
+        </span>
+      </div>
     </div>
 
     <!-- 操作按鈕 -->
@@ -437,7 +450,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch, onActivated, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, watch, onActivated, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { questionBankAPI, subjectAPI, hashtagAPI } from '../services/api'
 import RichTextPreview from './RichTextPreview.vue'
@@ -689,6 +702,67 @@ const resetFilters = () => {
   pagination.currentPage = 1
   fetchQuestions()
 }
+
+// 移除單個篩選條件
+const removeFilter = (key) => {
+  filters[key] = ''
+  pagination.currentPage = 1
+  fetchQuestions()
+}
+
+// 檢查是否有活躍的篩選
+const hasActiveFilters = computed(() => {
+  return Object.values(filters).some(value => value !== '')
+})
+
+// 獲取活躍篩選的顯示標籤
+const activeFilters = computed(() => {
+  const result = {}
+  
+  if (filters.subject_id) {
+    const subject = subjects.value.find(s => s.subject_id == filters.subject_id)
+    result.subject_id = { label: `科目：${subject?.name || filters.subject_id}` }
+  }
+  
+  if (filters.level) {
+    const levelMap = {
+      'JHS': '國中',
+      'SHS': '高中',
+      'VCS': '高職'
+    }
+    result.level = { label: `年級：${levelMap[filters.level] || filters.level}` }
+  }
+  
+  if (filters.chapter) {
+    result.chapter = { label: `章節：${filters.chapter}` }
+  }
+  
+  if (filters.difficulty) {
+    result.difficulty = { label: `難度：${filters.difficulty} 星` }
+  }
+  
+  if (filters.question_type) {
+    const typeMap = {
+      'SINGLE_CHOICE': '單選題',
+      'MULTIPLE_CHOICE': '多選題',
+      'FILL_IN_BLANK': '填充題',
+      'PROGRAMMING': '程式題',
+      'LISTENING': '聽力題'
+    }
+    result.question_type = { label: `類型：${typeMap[filters.question_type] || filters.question_type}` }
+  }
+  
+  if (filters.tag_id) {
+    const tag = tags.value.find(t => t.tag_id == filters.tag_id)
+    result.tag_id = { label: `標籤：#${tag?.tag_name || filters.tag_id}` }
+  }
+  
+  if (filters.source) {
+    result.source = { label: `來源：${filters.source}` }
+  }
+  
+  return result
+})
 
 // 防抖函數
 const debouncedFetchQuestions = () => {
