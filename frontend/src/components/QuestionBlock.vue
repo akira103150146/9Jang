@@ -25,7 +25,7 @@
       <!-- 題目內容 -->
       <div 
         class="prose prose-sm max-w-none text-slate-800"
-        v-html="renderMarkdownWithLatex(question.content)"
+        v-html="renderContent(question.content)"
       ></div>
       
       <!-- 圖片 -->
@@ -36,7 +36,7 @@
       <!-- 答案 (編輯模式可見，列印時可選隱藏) -->
       <div class="mt-4 pt-3 border-t border-slate-100 hidden group-hover:block print:hidden">
         <span class="text-xs font-bold text-slate-400 mr-2">答案</span>
-        <span class="text-sm text-slate-600 font-mono" v-html="renderMarkdownWithLatex(question.correct_answer)"></span>
+        <span class="text-sm text-slate-600 font-mono" v-html="renderContent(question.correct_answer)"></span>
       </div>
     </div>
   </div>
@@ -46,6 +46,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { questionBankAPI } from '../services/api'
 import { useMarkdownRenderer } from '../composables/useMarkdownRenderer'
+import { useTiptapConverter } from '../composables/useTiptapConverter'
 
 const props = defineProps({
   questionId: {
@@ -55,9 +56,30 @@ const props = defineProps({
 })
 
 const { renderMarkdownWithLatex } = useMarkdownRenderer()
+const { extractTextFromTiptapJSON } = useTiptapConverter()
 const question = ref(null)
 const loading = ref(true)
 const error = ref(false)
+
+// 處理內容渲染：支援 TipTap JSON 格式和 Markdown 字串
+const renderContent = (content) => {
+  if (!content) return ''
+  
+  // 如果是 TipTap JSON 格式
+  if (typeof content === 'object' && content.type === 'doc') {
+    // 使用 composable 提取文字內容
+    const textContent = extractTextFromTiptapJSON(content)
+    return renderMarkdownWithLatex(textContent)
+  }
+  
+  // 如果是字串，直接渲染
+  if (typeof content === 'string') {
+    return renderMarkdownWithLatex(content)
+  }
+  
+  // 其他情況，轉換為字串
+  return String(content)
+}
 
 const fetchQuestion = async () => {
   if (!props.questionId) return

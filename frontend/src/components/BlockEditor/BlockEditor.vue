@@ -71,6 +71,16 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
+  questionsPagination: {
+    type: Object,
+    default: () => ({
+      currentPage: 1,
+      pageSize: 10,
+      totalCount: 0,
+      hasNext: false,
+      isLoading: false
+    })
+  },
   autoPageBreak: {
     type: Boolean,
     default: false
@@ -103,11 +113,13 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'request-upload'])
+const emit = defineEmits(['update:modelValue', 'request-upload', 'load-more-questions'])
 
 // 提供模板列表給子組件
 provide('templates', computed(() => props.templates))
 provide('questions', computed(() => props.questions))
+provide('questionsPagination', computed(() => props.questionsPagination))
+provide('loadMoreQuestions', () => emit('load-more-questions'))
 // 提供圖片映射表給子組件
 provide('imageMappings', computed(() => props.imageMappings))
 // 提供模式資訊給子組件（用於過濾命令）

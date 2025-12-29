@@ -648,14 +648,22 @@ class QuestionBank(models.Model):
         verbose_name='適用年級'
     )
     chapter = models.CharField(max_length=100, verbose_name='章節/單元')
-    content = models.TextField(verbose_name='題目內容 (Markdown + LaTeX)')
+    content = models.JSONField(
+        default=dict,
+        verbose_name='題目內容 (Tiptap JSON)',
+        help_text='使用 Tiptap 編輯器創建的題目內容'
+    )
     image_path = models.CharField(
         max_length=255,
         blank=True,
         null=True,
         verbose_name='題目圖片路徑'
     )
-    correct_answer = models.TextField(verbose_name='正確答案')
+    correct_answer = models.JSONField(
+        default=dict,
+        verbose_name='正確答案 (Tiptap JSON)',
+        help_text='使用 Tiptap 編輯器創建的正確答案'
+    )
     difficulty = models.IntegerField(
         default=1,
         verbose_name='難度等級 (1-5)'
@@ -743,7 +751,7 @@ class QuestionBank(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='建立時間')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新時間')
     
-    # 新增欄位：詳解內容（Tiptap JSON 格式）
+    # 詳解內容（Tiptap JSON 格式）
     solution_content = models.JSONField(
         default=dict,
         blank=True,
@@ -775,11 +783,6 @@ class QuestionBank(models.Model):
         """
         if not json_data or not isinstance(json_data, dict):
             return []
-
-        # 兼容：以 Markdown 純文字儲存的格式（由前端 RichTextEditor 產生）
-        if json_data.get('format') == 'markdown' and isinstance(json_data.get('text'), str):
-            text = json_data.get('text', '').strip()
-            return [text] if text else []
         
         text_parts = []
         
@@ -796,11 +799,67 @@ class QuestionBank(models.Model):
         
         return text_parts
     
+    def _convert_to_tiptap_json(self, data):
+        """
+        將舊格式（字串或 {format: 'markdown', text: '...'}）轉換為 Tiptap JSON 格式
+        """
+        if not data:
+            return {'type': 'doc', 'content': []}
+        
+        # 如果已經是正確的 Tiptap JSON 格式
+        if isinstance(data, dict) and data.get('type') == 'doc':
+            return data
+        
+        # 如果是舊的 Markdown 物件格式 {format: 'markdown', text: '...'}
+        if isinstance(data, dict) and data.get('format') == 'markdown' and 'text' in data:
+            markdown_text = data.get('text', '')
+            return self._markdown_to_tiptap(markdown_text)
+        
+        # 如果是字串（舊的 Markdown 格式）
+        if isinstance(data, str):
+            return self._markdown_to_tiptap(data)
+        
+        # 如果是空物件
+        if isinstance(data, dict) and len(data) == 0:
+            return {'type': 'doc', 'content': []}
+        
+        # 其他情況返回空 doc
+        return {'type': 'doc', 'content': []}
+    
+    def _markdown_to_tiptap(self, markdown_text):
+        """
+        將 Markdown 字串轉換為 Tiptap JSON 格式
+        簡單處理：將每行轉換為段落
+        """
+        if not markdown_text or not markdown_text.strip():
+            return {'type': 'doc', 'content': []}
+        
+        lines = markdown_text.split('\n')
+        paragraphs = []
+        
+        for line in lines:
+            line = line.strip()
+            if line:
+                paragraphs.append({
+                    'type': 'paragraph',
+                    'content': [{'type': 'text', 'text': line}]
+                })
+        
+        # 如果沒有內容，至少返回一個空段落
+        if not paragraphs:
+            paragraphs.append({
+                'type': 'paragraph',
+                'content': []
+            })
+        
+        return {'type': 'doc', 'content': paragraphs}
+    
     def save(self, *args, **kwargs):
         """
-        在保存時自動從 solution_content JSON 中提取純文字
+        在保存時自動從 Tiptap JSON 中提取純文字
         存入 search_text_content 欄位
         並自動處理題目來源設置
+        自動將舊格式轉換為 Tiptap JSON 格式
         """
         # 處理題目來源
         if self.imported_from_error_log and not self.source:
@@ -808,12 +867,27 @@ class QuestionBank(models.Model):
         if not self.source:
             self.source = '九章自命題'
         
-        # 處理搜尋文字內容
+        # 自動轉換舊格式為 Tiptap JSON（在提取文字之前）
+        if self.content:
+            self.content = self._convert_to_tiptap_json(self.content)
+        if self.correct_answer:
+            self.correct_answer = self._convert_to_tiptap_json(self.correct_answer)
         if self.solution_content:
-            text_parts = self.extract_text_from_tiptap_json(self.solution_content)
-            self.search_text_content = ' '.join(text_parts)
-        else:
-            self.search_text_content = None
+            self.solution_content = self._convert_to_tiptap_json(self.solution_content)
+        
+        # 處理搜尋文字內容（從 content, correct_answer, solution_content 提取）
+        all_text_parts = []
+        
+        if self.content:
+            all_text_parts.extend(self.extract_text_from_tiptap_json(self.content))
+        
+        if self.correct_answer:
+            all_text_parts.extend(self.extract_text_from_tiptap_json(self.correct_answer))
+        
+        if self.solution_content:
+            all_text_parts.extend(self.extract_text_from_tiptap_json(self.solution_content))
+        
+        self.search_text_content = ' '.join(all_text_parts) if all_text_parts else None
         
         super().save(*args, **kwargs)
 

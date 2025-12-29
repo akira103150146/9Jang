@@ -371,10 +371,12 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { questionBankAPI, subjectAPI } from '../services/api'
 import { useMarkdownRenderer } from '../composables/useMarkdownRenderer'
+import { useTiptapConverter } from '../composables/useTiptapConverter'
 
 const router = useRouter()
 const route = useRoute()
 const { renderMarkdownWithLatex } = useMarkdownRenderer()
+const { contentToMarkdown } = useTiptapConverter()
 
 const selectedMarkdown = ref(null)
 const selectedImages = ref([])
@@ -401,10 +403,12 @@ const canImport = computed(() => {
     importParams.value.chapter
 })
 
-// 渲染 Markdown
-const renderMarkdown = (text) => {
-  if (!text) return ''
-  return renderMarkdownWithLatex(text)
+// 渲染 Markdown（支援 TipTap JSON 和字串）
+const renderMarkdown = (content) => {
+  if (!content) return ''
+  // 先轉換為 Markdown 字串（如果是 TipTap JSON）
+  const markdown = contentToMarkdown(content)
+  return renderMarkdownWithLatex(markdown)
 }
 
 // 返回上一頁

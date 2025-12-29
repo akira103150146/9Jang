@@ -175,11 +175,14 @@
             題目內容 (Markdown + LaTeX) <span class="text-red-500">*</span>
           </label>
           <div class="space-y-3">
-            <div class="border border-slate-300 rounded-lg overflow-hidden">
-              <RichTextEditor
-                :model-value="toRT(formData.content)"
-                :placeholder="'輸入題目內容...\n\n支援 Markdown 語法：\n- **粗體**\n- *斜體*\n- `程式碼`\n\n支援 LaTeX 數學公式：\n- 行內公式：$x^2 + y^2 = r^2$\n- 區塊公式：$$\n\\int_0^1 x^2 dx = \\frac{1}{3}\n$$'"
-                @update:model-value="(v) => (formData.content = fromRT(v))"
+            <div class="border border-slate-300 rounded-lg question-editor-wrapper">
+              <BlockEditor
+                v-model="formData.content"
+                :readonly="false"
+                :auto-page-break="false"
+                :show-page-numbers="false"
+                :paper-size="'A4'"
+                :questions="allQuestions"
               />
             </div>
           </div>
@@ -202,13 +205,14 @@
             </span>
           </label>
           <div class="space-y-3">
-            <div class="border border-slate-300 rounded-lg overflow-hidden">
-              <RichTextEditor
-                :model-value="toRT(formData.correct_answer)"
-                :placeholder="formData.question_type === 'SINGLE_CHOICE' || formData.question_type === 'MULTIPLE_CHOICE' 
-                  ? '輸入正確答案（例如：C 或 A,B,C）\n\n支援 Markdown 語法：\n- **粗體**\n- *斜體*\n- `程式碼`\n\n支援 LaTeX 數學公式：\n- 行內公式：$x = 5$\n- 區塊公式：$$\n\\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}\n$$'
-                  : '輸入正確答案...\n\n支援 Markdown 語法：\n- **粗體**\n- *斜體*\n- `程式碼`\n\n支援 LaTeX 數學公式：\n- 行內公式：$x = 5$\n- 區塊公式：$$\n\\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}\n$$'"
-                @update:model-value="(v) => (formData.correct_answer = fromRT(v))"
+            <div class="border border-slate-300 rounded-lg answer-editor-wrapper">
+              <BlockEditor
+                v-model="formData.correct_answer"
+                :readonly="false"
+                :auto-page-break="false"
+                :show-page-numbers="false"
+                :paper-size="'A4'"
+                :questions="allQuestions"
               />
             </div>
           </div>
@@ -222,15 +226,19 @@
           </p>
         </div>
 
-        <!-- 詳解內容（使用 RichTextEditor） -->
+        <!-- 詳解內容（使用 BlockEditor） -->
         <div>
           <label class="block text-sm font-semibold text-slate-700 mb-2">
             詳解內容（富文本編輯器）
           </label>
-          <div class="border border-slate-300 rounded-lg overflow-hidden">
-            <RichTextEditor
+          <div class="border border-slate-300 rounded-lg solution-editor-wrapper">
+            <BlockEditor
               v-model="formData.solution_content"
-              placeholder="開始輸入詳解內容..."
+              :readonly="false"
+              :auto-page-break="false"
+              :show-page-numbers="false"
+              :paper-size="'A4'"
+              :questions="allQuestions"
             />
           </div>
           <p class="mt-1 text-xs text-slate-500">
@@ -319,7 +327,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { questionBankAPI, hashtagAPI, subjectAPI } from '../services/api'
-import RichTextEditor from '../components/RichTextEditor.vue'
+import BlockEditor from '../components/BlockEditor/BlockEditor.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -337,9 +345,9 @@ const formData = ref({
   chapter: '',
   question_type: 'SINGLE_CHOICE',
   options: ['', ''],
-  content: '',
-  correct_answer: '',
-  solution_content: { format: 'markdown', text: '' },
+  content: { type: 'doc', content: [] },
+  correct_answer: { type: 'doc', content: [] },
+  solution_content: { type: 'doc', content: [] },
   difficulty: 1,
   tag_ids: [],
   source: '九章自命題',
@@ -350,29 +358,37 @@ const chapterSuggestions = ref([])
 const showChapterSuggestions = ref(false)
 const searchChapterTimeout = ref(null)
 const isAutoUpdating = ref(false) // 防止循環更新
+const allQuestions = ref([]) // 所有題目列表，用於 BlockEditor 的題目選擇器
 
-const toRT = (v) => {
-  if (typeof v === 'string') return v
-  if (v && typeof v === 'object' && typeof v.text === 'string') return v
-  return ''
-}
-
-const fromRT = (v) => {
-  if (typeof v === 'string') return v
-  if (v && typeof v === 'object' && typeof v.text === 'string') return v.text
-  return ''
+// 從 Tiptap JSON 提取純文字的輔助函式
+const extractTextFromTiptapJSON = (node) => {
+  if (!node || typeof node !== 'object') return ''
+  
+  let text = ''
+  if (node.type === 'text' && node.text) {
+    text = node.text
+  }
+  
+  if (node.content && Array.isArray(node.content)) {
+    for (const child of node.content) {
+      text += extractTextFromTiptapJSON(child)
+    }
+  }
+  
+  return text
 }
 
 // 從題目內容中提取選項
 const extractOptionsFromContent = (content) => {
   if (!content) return []
   
-  // 處理不同格式的內容
+  // 從 Tiptap JSON 提取純文字
   let contentText = ''
   if (typeof content === 'string') {
     contentText = content
-  } else if (typeof content === 'object' && content.text) {
-    contentText = content.text
+  } else if (typeof content === 'object' && content.type === 'doc') {
+    // 遞迴提取 Tiptap JSON 中的所有文字節點
+    contentText = extractTextFromTiptapJSON(content)
   } else {
     return []
   }
@@ -441,8 +457,16 @@ const extractOptionsFromContent = (content) => {
 const detectAnswerType = (answer) => {
   if (!answer) return formData.value.question_type
   
-  // 處理不同格式的答案（使用 fromRT 來統一處理）
-  const answerText = fromRT(answer)
+  // 從 Tiptap JSON 提取純文字
+  let answerText = ''
+  if (typeof answer === 'string') {
+    answerText = answer
+  } else if (typeof answer === 'object' && answer.type === 'doc') {
+    answerText = extractTextFromTiptapJSON(answer)
+  } else {
+    return formData.value.question_type
+  }
+  
   if (!answerText || !answerText.trim()) {
     return formData.value.question_type
   }
@@ -502,6 +526,541 @@ const fetchQuestion = async () => {
       })
     }
     
+    // 輔助函式：確保 Tiptap JSON 格式正確
+    // 後端會自動轉換舊格式，這裡只需要處理空值或確保格式正確
+    // 處理換行符號：將文字中的 `\\` 或行尾的 `\` 轉換為 hardBreak 節點
+    const parseLineBreaks = (text) => {
+      if (!text) return []
+      
+      const parts = []
+      let lastIndex = 0
+      // 匹配文字中的 `\\` 或行尾的 `\`（可能跟著空格）
+      // 但要排除 LaTeX 命令中的反斜線（如 \sin, \frac 等）
+      const lineBreakRegex = /\\+\s*$/gm
+      const lineBreakPositions = []
+      let match
+      
+      // 找出所有換行符號的位置
+      while ((match = lineBreakRegex.exec(text)) !== null) {
+        // 檢查是否在 LaTeX 區塊內（檢查前後字符）
+        const beforeChar = match.index > 0 ? text[match.index - 1] : ''
+        const afterChar = match.index + match[0].length < text.length ? text[match.index + match[0].length] : ''
+        
+        // 如果前後有 $，可能是 LaTeX 的一部分，跳過
+        // 如果前面是字母或數字，可能是 LaTeX 命令的一部分，跳過
+        if (beforeChar === '$' || afterChar === '$' || /[a-zA-Z0-9]/.test(beforeChar)) {
+          continue
+        }
+        
+        lineBreakPositions.push({
+          start: match.index,
+          end: match.index + match[0].length
+        })
+      }
+      
+      // 構建節點陣列
+      for (const lbMatch of lineBreakPositions) {
+        // 添加換行符號前的文字
+        if (lbMatch.start > lastIndex) {
+          const beforeText = text.substring(lastIndex, lbMatch.start)
+          if (beforeText) {
+            parts.push({ type: 'text', text: beforeText })
+          }
+        }
+        
+        // 添加 hardBreak 節點
+        parts.push({ type: 'hardBreak' })
+        
+        lastIndex = lbMatch.end
+      }
+      
+      // 添加剩餘文字
+      if (lastIndex < text.length) {
+        const remainingText = text.substring(lastIndex)
+        if (remainingText) {
+          parts.push({ type: 'text', text: remainingText })
+        }
+      }
+      
+      return parts.length > 0 ? parts : [{ type: 'text', text }]
+    }
+    
+    // 將文字中的 LaTeX 轉換為節點陣列（不處理換行符號，換行符號由 parseLineBreaks 處理）
+    const parseLatexInTextOnly = (text) => {
+      if (!text) return []
+      
+      const parts = []
+      let lastIndex = 0
+      
+      // 先處理區塊 LaTeX ($$...$$)
+      const blockLatexRegex = /\$\$([\s\S]*?)\$\$/g
+      let match
+      const blockMatches = []
+      
+      while ((match = blockLatexRegex.exec(text)) !== null) {
+        blockMatches.push({
+          start: match.index,
+          end: match.index + match[0].length,
+          latex: match[1].trim()
+        })
+      }
+      
+      // 再處理行內 LaTeX ($...$)，但要排除已經在區塊 LaTeX 中的
+      const inlineLatexRegex = /\$([^$\n]+?)\$/g
+      const inlineMatches = []
+      
+      while ((match = inlineLatexRegex.exec(text)) !== null) {
+        const start = match.index
+        const end = match.index + match[0].length
+        
+        // 檢查是否在區塊 LaTeX 內
+        const inBlock = blockMatches.some(block => start >= block.start && end <= block.end)
+        if (!inBlock) {
+          inlineMatches.push({
+            start,
+            end,
+            latex: match[1].trim()
+          })
+        }
+      }
+      
+      // 合併所有匹配（區塊和行內）
+      const allMatches = [
+        ...blockMatches.map(m => ({ ...m, isBlock: true })),
+        ...inlineMatches.map(m => ({ ...m, isBlock: false }))
+      ].sort((a, b) => a.start - b.start)
+      
+      // 構建節點陣列
+      for (const match of allMatches) {
+        // 添加匹配前的文字
+        if (match.start > lastIndex) {
+          const beforeText = text.substring(lastIndex, match.start)
+          if (beforeText) {
+            parts.push({ type: 'text', text: beforeText })
+          }
+        }
+        
+        // 添加 LaTeX 節點
+        if (match.isBlock) {
+          parts.push({
+            type: 'latexBlock',
+            attrs: {
+              id: `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              formula: match.latex,
+              displayMode: true
+            }
+          })
+        } else {
+          parts.push({
+            type: 'inlineLatex',
+            attrs: {
+              formula: match.latex
+            }
+          })
+        }
+        
+        lastIndex = match.end
+      }
+      
+      // 添加剩餘文字
+      if (lastIndex < text.length) {
+        const remainingText = text.substring(lastIndex)
+        if (remainingText) {
+          parts.push({ type: 'text', text: remainingText })
+        }
+      }
+      
+      return parts.length > 0 ? parts : [{ type: 'text', text }]
+    }
+    
+    // 將文字中的 LaTeX 和換行符號轉換為節點陣列
+    const parseLatexInText = (text) => {
+      if (!text) return []
+      
+      // 先處理換行符號，將文字分割成多個部分
+      const lineBreakParts = parseLineBreaks(text)
+      const parts = []
+      
+      // 對每個部分處理 LaTeX
+      for (const part of lineBreakParts) {
+        if (part.type === 'hardBreak') {
+          // 直接添加 hardBreak
+          parts.push(part)
+          continue
+        }
+        
+        if (part.type === 'text' && part.text) {
+          // 處理這個文字部分的 LaTeX
+          const latexParsed = parseLatexInTextOnly(part.text)
+          parts.push(...latexParsed)
+        }
+      }
+      
+      return parts.length > 0 ? parts : [{ type: 'text', text }]
+    }
+    
+    // 處理圖片連結：將 Markdown 格式的圖片連結轉換為圖片節點（同時處理換行符號）
+    const parseImageInText = (text) => {
+      if (!text) return []
+      
+      // 先處理換行符號，將文字分割成多個部分
+      const lineBreakParts = parseLineBreaks(text)
+      const parts = []
+      
+      // 對每個部分處理圖片
+      for (const part of lineBreakParts) {
+        if (part.type === 'hardBreak') {
+          // 直接添加 hardBreak
+          parts.push(part)
+          continue
+        }
+        
+        if (part.type === 'text' && part.text) {
+          const textContent = part.text
+          const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g
+          let lastIndex = 0
+          let match
+          const imageMatches = []
+          
+          while ((match = imageRegex.exec(textContent)) !== null) {
+            imageMatches.push({
+              start: match.index,
+              end: match.index + match[0].length,
+              alt: match[1] || '',
+              src: match[2]
+            })
+          }
+          
+          for (const imgMatch of imageMatches) {
+            // 添加圖片前的文字（需要處理 LaTeX）
+            if (imgMatch.start > lastIndex) {
+              const beforeText = textContent.substring(lastIndex, imgMatch.start)
+              if (beforeText) {
+                const latexParsed = parseLatexInTextOnly(beforeText)
+                parts.push(...latexParsed)
+              }
+            }
+            
+            // 添加圖片節點
+            parts.push({
+              type: 'image',
+              attrs: {
+                src: imgMatch.src,
+                alt: imgMatch.alt,
+                title: imgMatch.alt
+              }
+            })
+            
+            lastIndex = imgMatch.end
+          }
+          
+          // 添加剩餘文字（需要處理 LaTeX）
+          if (lastIndex < textContent.length) {
+            const remainingText = textContent.substring(lastIndex)
+            if (remainingText) {
+              const latexParsed = parseLatexInTextOnly(remainingText)
+              parts.push(...latexParsed)
+            }
+          }
+        }
+      }
+      
+      return parts.length > 0 ? parts : [{ type: 'text', text }]
+    }
+    
+    // 處理跨段落的 LaTeX 區塊：在 doc 層級合併跨段落的 $$...$$
+    const mergeCrossParagraphLatex = (content) => {
+      if (!Array.isArray(content)) return content
+      
+      const merged = []
+      let i = 0
+      
+      while (i < content.length) {
+        const node = content[i]
+        
+        // 如果是段落，檢查是否包含 LaTeX 區塊的開始或結束
+        if (node.type === 'paragraph' && node.content && Array.isArray(node.content)) {
+          // 提取段落中的所有文字
+          const paragraphText = node.content
+            .filter(c => c.type === 'text' && c.text)
+            .map(c => c.text)
+            .join('')
+          
+          // 檢查是否包含 $$ 開始或結束
+          const hasStartDollar = paragraphText.includes('$$')
+          const hasEndDollar = paragraphText.endsWith('$$')
+          
+          if (hasStartDollar && !hasEndDollar) {
+            // 這是 LaTeX 區塊的開始，需要合併後續段落直到找到 $$
+            let latexText = paragraphText
+            let j = i + 1
+            let foundEnd = false
+            
+            // 收集 LaTeX 區塊開始前的文字
+            const beforeLatex = paragraphText.substring(0, paragraphText.indexOf('$$'))
+            
+            // 收集 LaTeX 內容（從 $$ 開始）
+            latexText = paragraphText.substring(paragraphText.indexOf('$$') + 2)
+            
+            // 繼續查找後續段落
+            while (j < content.length && !foundEnd) {
+              const nextNode = content[j]
+              if (nextNode.type === 'paragraph' && nextNode.content && Array.isArray(nextNode.content)) {
+                const nextText = nextNode.content
+                  .filter(c => c.type === 'text' && c.text)
+                  .map(c => c.text)
+                  .join('')
+                
+                if (nextText.includes('$$')) {
+                  // 找到結束
+                  const endIndex = nextText.indexOf('$$')
+                  latexText += nextText.substring(0, endIndex)
+                  const afterLatex = nextText.substring(endIndex + 2)
+                  foundEnd = true
+                  
+                  // 創建 LaTeX 區塊
+                  const latexBlock = {
+                    type: 'latexBlock',
+                    attrs: {
+                      id: `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                      formula: latexText.trim(),
+                      displayMode: true
+                    }
+                  }
+                  
+                  // 添加開始前的文字段落（需要處理圖片和 LaTeX）
+                  if (beforeLatex.trim()) {
+                    const beforeParts = parseImageInText(beforeLatex)
+                    const beforeContent = []
+                    for (const part of beforeParts) {
+                      if (part.type === 'text') {
+                        const latexParsed = parseLatexInText(part.text)
+                        beforeContent.push(...latexParsed)
+                      } else {
+                        beforeContent.push(part)
+                      }
+                    }
+                    merged.push({
+                      type: 'paragraph',
+                      content: beforeContent
+                    })
+                  }
+                  
+                  // 添加 LaTeX 區塊
+                  merged.push(latexBlock)
+                  
+                  // 添加結束後的文字段落（需要處理圖片和 LaTeX）
+                  if (afterLatex.trim()) {
+                    const afterParts = parseImageInText(afterLatex)
+                    const afterContent = []
+                    for (const part of afterParts) {
+                      if (part.type === 'text') {
+                        const latexParsed = parseLatexInText(part.text)
+                        afterContent.push(...latexParsed)
+                      } else {
+                        afterContent.push(part)
+                      }
+                    }
+                    merged.push({
+                      type: 'paragraph',
+                      content: afterContent
+                    })
+                  }
+                  
+                  i = j + 1
+                  continue
+                } else {
+                  // 繼續收集 LaTeX 內容
+                  latexText += nextText
+                  j++
+                }
+              } else {
+                j++
+              }
+            }
+            
+            if (!foundEnd) {
+              // 沒有找到結束，當作普通段落處理（不遞迴調用，避免循環）
+              const processedNode = processParagraphNode(node)
+              merged.push(processedNode)
+              i++
+            }
+          } else {
+            // 普通段落，正常處理（不遞迴調用，避免循環）
+            const processedNode = processParagraphNode(node)
+            merged.push(processedNode)
+            i++
+          }
+        } else {
+          // 非段落節點，正常處理（不遞迴調用，避免循環）
+          merged.push(node)
+          i++
+        }
+      }
+      
+      return merged
+    }
+    
+    // 處理段落節點（不遞迴，避免循環）
+    const processParagraphNode = (node) => {
+      if (node.type !== 'paragraph' || !node.content || !Array.isArray(node.content)) {
+        return node
+      }
+      
+      const processedContent = []
+      for (const child of node.content) {
+        if (child.type === 'text' && child.text) {
+          // 先處理圖片，再處理 LaTeX
+          const imageParsed = parseImageInText(child.text)
+          if (imageParsed.length === 1 && imageParsed[0].type === 'text') {
+            const latexParsed = parseLatexInText(child.text)
+            processedContent.push(...latexParsed)
+          } else {
+            // 有圖片，需要對每個文字節點處理 LaTeX
+            for (const part of imageParsed) {
+              if (part.type === 'text') {
+                const latexParsed = parseLatexInText(part.text)
+                processedContent.push(...latexParsed)
+              } else {
+                processedContent.push(part)
+              }
+            }
+          }
+        } else {
+          processedContent.push(child)
+        }
+      }
+      
+      // 特殊處理：如果段落只包含一個 latexBlock，直接返回 latexBlock
+      if (processedContent.length === 1 && processedContent[0].type === 'latexBlock') {
+        return processedContent[0]
+      }
+      
+      return {
+        ...node,
+        content: processedContent
+      }
+    }
+    
+    // 將 Tiptap JSON 中的 LaTeX 文字轉換為 LaTeX 節點
+    const convertLatexInTiptapJSON = (node) => {
+      if (!node || typeof node !== 'object') return node
+      
+      // 如果已經是 LaTeX 節點，確保屬性名稱正確
+      if (node.type === 'latexBlock') {
+        // 如果使用舊的屬性名稱，轉換為新的
+        if (node.attrs && node.attrs.latex !== undefined && node.attrs.formula === undefined) {
+          return {
+            ...node,
+            attrs: {
+              ...node.attrs,
+              formula: node.attrs.latex,
+              id: node.attrs.id || `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              displayMode: node.attrs.displayMode !== undefined ? node.attrs.displayMode : true
+            }
+          }
+        }
+        return node
+      }
+      
+      if (node.type === 'inlineLatex') {
+        // 如果使用舊的屬性名稱，轉換為新的
+        if (node.attrs && node.attrs.latex !== undefined && node.attrs.formula === undefined) {
+          return {
+            ...node,
+            attrs: {
+              ...node.attrs,
+              formula: node.attrs.latex
+            }
+          }
+        }
+        return node
+      }
+      
+      // 如果是 doc 節點，先處理跨段落的 LaTeX
+      if (node.type === 'doc' && node.content && Array.isArray(node.content)) {
+        const mergedContent = mergeCrossParagraphLatex(node.content)
+        return {
+          ...node,
+          content: mergedContent
+        }
+      }
+      
+      // 如果是文字節點，先處理圖片，再處理 LaTeX
+      if (node.type === 'text' && node.text) {
+        // 先處理圖片連結
+        const imageParsed = parseImageInText(node.text)
+        // 如果沒有圖片，直接處理 LaTeX
+        if (imageParsed.length === 1 && imageParsed[0].type === 'text') {
+          const latexParsed = parseLatexInText(node.text)
+          // 如果只有一個節點且是文字，直接返回
+          if (latexParsed.length === 1 && latexParsed[0].type === 'text') {
+            return node
+          }
+          // 否則返回解析後的節點陣列
+          return latexParsed
+        } else {
+          // 有圖片，需要對每個文字節點處理 LaTeX
+          const finalParts = []
+          for (const part of imageParsed) {
+            if (part.type === 'text') {
+              const latexParsed = parseLatexInText(part.text)
+              finalParts.push(...latexParsed)
+            } else {
+              finalParts.push(part)
+            }
+          }
+          return finalParts
+        }
+      }
+      
+      // 如果是段落節點，使用 processParagraphNode 處理
+      if (node.type === 'paragraph') {
+        return processParagraphNode(node)
+      }
+      
+      // 如果有子節點，遞迴處理
+      if (node.content && Array.isArray(node.content)) {
+        const processedContent = []
+        for (const child of node.content) {
+          const processed = convertLatexInTiptapJSON(child)
+          if (Array.isArray(processed)) {
+            // 如果返回陣列，展開它
+            processedContent.push(...processed)
+          } else if (processed) {
+            processedContent.push(processed)
+          }
+        }
+        return {
+          ...node,
+          content: processedContent
+        }
+      }
+      
+      return node
+    }
+    
+    const ensureTiptapFormat = (data) => {
+      // 處理空值或空物件
+      if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
+        return { type: 'doc', content: [] }
+      }
+      // 如果已經是正確的 Tiptap 格式
+      if (typeof data === 'object' && data.type === 'doc') {
+        // 轉換其中的 LaTeX 文字為 LaTeX 節點
+        const converted = convertLatexInTiptapJSON(data)
+        // 確保返回的是正確的 doc 結構
+        if (converted && converted.type === 'doc') {
+          return converted
+        } else {
+          // 如果轉換後不是 doc，包裝成 doc
+          return { type: 'doc', content: Array.isArray(converted) ? converted : (converted ? [converted] : []) }
+        }
+      }
+      // 其他情況返回空 doc（理論上不應該發生，因為後端會自動轉換）
+      return { type: 'doc', content: [] }
+    }
+    
     isAutoUpdating.value = true
     formData.value = {
       subject: question.subject?.subject_id || question.subject,
@@ -509,9 +1068,9 @@ const fetchQuestion = async () => {
       chapter: question.chapter,
       question_type: question.question_type || 'SINGLE_CHOICE',
       options: question.options || (question.question_type === 'SINGLE_CHOICE' || question.question_type === 'MULTIPLE_CHOICE' ? ['', ''] : []),
-      content: question.content,
-      correct_answer: question.correct_answer,
-      solution_content: question.solution_content || { format: 'markdown', text: '' },
+      content: ensureTiptapFormat(question.content),
+      correct_answer: ensureTiptapFormat(question.correct_answer),
+      solution_content: ensureTiptapFormat(question.solution_content),
       difficulty: question.difficulty,
       tag_ids: tagIds,
       metadata: question.metadata || {}
@@ -644,18 +1203,20 @@ const saveQuestion = async () => {
     alert('請輸入章節/單元')
     return
   }
-  if (!formData.value.content?.trim()) {
+  // 驗證 Tiptap JSON 格式的內容
+  const contentText = extractTextFromTiptapJSON(formData.value.content)
+  if (!contentText || !contentText.trim()) {
     alert('請輸入題目內容')
     return
   }
-  if (!formData.value.correct_answer?.trim()) {
+  const answerText = extractTextFromTiptapJSON(formData.value.correct_answer)
+  if (!answerText || !answerText.trim()) {
     alert('請輸入正確答案')
     return
   }
 
   saving.value = true
   try {
-    // RichTextEditor 現在用 Markdown 純文字：確保送到後端仍是 JSONField 可接受的物件
     // 處理選項：如果不是選擇題，設為空陣列
     const options = (formData.value.question_type === 'SINGLE_CHOICE' || formData.value.question_type === 'MULTIPLE_CHOICE')
       ? formData.value.options.filter(opt => opt?.trim())
@@ -668,14 +1229,6 @@ const saveQuestion = async () => {
       tag_ids: undefined
     }
     delete data.tag_ids
-
-    if (typeof formData.value.solution_content === 'string') {
-      formData.value.solution_content = { format: 'markdown', text: formData.value.solution_content }
-    } else if (formData.value.solution_content && typeof formData.value.solution_content === 'object') {
-      if (!('format' in formData.value.solution_content) && 'text' in formData.value.solution_content) {
-        formData.value.solution_content.format = 'markdown'
-      }
-    }
 
     let createdQuestion = null
     if (isEdit.value) {
@@ -760,20 +1313,95 @@ watch(() => formData.value.correct_answer, (newAnswer) => {
   }
 }, { deep: true })
 
+// 獲取所有題目列表（用於 BlockEditor 的題目選擇器）
+const fetchAllQuestions = async () => {
+  // #region agent log
+  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionForm.vue:fetchAllQuestions:start',message:'fetchAllQuestions called',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'F'})}).catch(()=>{});
+  // #endregion
+  
+  try {
+    // #region agent log
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionForm.vue:fetchAllQuestions:beforeAPI',message:'calling questionBankAPI.getAll',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'F,G'})}).catch(()=>{});
+    // #endregion
+    
+    const response = await questionBankAPI.getAll()
+    
+    // #region agent log
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionForm.vue:fetchAllQuestions:afterAPI',message:'questionBankAPI.getAll response',data:{hasData:!!response.data,dataLength:response.data?.length,responseKeys:Object.keys(response)},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'G,H'})}).catch(()=>{});
+    // #endregion
+    
+    allQuestions.value = response.data || []
+    
+    // #region agent log
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionForm.vue:fetchAllQuestions:success',message:'fetched all questions',data:{totalQuestions:allQuestions.value.length,firstQuestion:allQuestions.value[0]},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'F,G,H'})}).catch(()=>{});
+    // #endregion
+  } catch (error) {
+    console.error('獲取題目列表失敗：', error)
+    
+    // #region agent log
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionForm.vue:fetchAllQuestions:error',message:'failed to fetch questions',data:{errorMessage:error.message,errorStack:error.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'G'})}).catch(()=>{});
+    // #endregion
+  }
+}
+
 onMounted(async () => {
+  // #region agent log
+  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionForm.vue:onMounted:start',message:'onMounted called',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'F'})}).catch(()=>{});
+  // #endregion
+  
   await Promise.all([
     fetchSubjects(),
-    fetchHashtags()
+    fetchHashtags(),
+    fetchAllQuestions() // 獲取所有題目
   ])
+  
+  // #region agent log
+  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionForm.vue:onMounted:afterFetch',message:'after fetching subjects, hashtags, questions',data:{allQuestionsLength:allQuestions.value.length},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'F,H'})}).catch(()=>{});
+  // #endregion
+  
   // 載入完成標籤後再載入題目（因為需要標籤來映射 tag_ids）
   await fetchQuestion()
   // 標記題目已載入，啟用自動提取功能（新增模式也需要啟用）
   isQuestionLoaded.value = true
+  
+  // #region agent log
+  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionForm.vue:onMounted:complete',message:'onMounted complete',data:{allQuestionsLength:allQuestions.value.length},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'F,H'})}).catch(()=>{});
+  // #endregion
 })
 </script>
 
 <style scoped>
 .markdown-preview {
   line-height: 1.6;
+}
+
+/* 讓編輯器高度自動調整，隨內容增加而變高 */
+.question-editor-wrapper :deep(.block-editor-container),
+.answer-editor-wrapper :deep(.block-editor-container),
+.solution-editor-wrapper :deep(.block-editor-container) {
+  min-height: auto;
+}
+
+.question-editor-wrapper :deep(.paper-sheet),
+.answer-editor-wrapper :deep(.paper-sheet),
+.solution-editor-wrapper :deep(.paper-sheet) {
+  max-height: none !important; /* 移除最大高度限制 */
+  min-height: 200px; /* 設置最小高度 */
+  height: auto; /* 自動高度 */
+  overflow-y: auto; /* 當內容超出時顯示滾動條 */
+}
+
+.question-editor-wrapper :deep(.editor-content),
+.answer-editor-wrapper :deep(.editor-content),
+.solution-editor-wrapper :deep(.editor-content) {
+  min-height: 200px; /* 設置最小高度 */
+  height: auto; /* 自動高度 */
+}
+
+.question-editor-wrapper :deep(.ProseMirror),
+.answer-editor-wrapper :deep(.ProseMirror),
+.solution-editor-wrapper :deep(.ProseMirror) {
+  min-height: 200px; /* 設置最小高度 */
+  height: auto; /* 自動高度 */
 }
 </style>

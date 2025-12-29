@@ -289,10 +289,12 @@
             <div class="space-y-3">
               <!-- 編輯區域 -->
               <div class="relative">
-                <RichTextEditor
-                  :model-value="toRT(errorFormData.content)"
-                  :placeholder="'輸入題目內容...\n\n支援 Markdown 語法：\n- **粗體**\n- *斜體*\n- `程式碼`\n\n支援 LaTeX 數學公式：\n- 行內公式：$x^2 + y^2 = r^2$\n- 區塊公式：$$\n\\int_0^1 x^2 dx = \\frac{1}{3}\n$$'"
-                  @update:model-value="(v) => (errorFormData.content = fromRT(v))"
+                <BlockEditor
+                  v-model="errorFormData.content"
+                  :templates="[]"
+                  :questions="[]"
+                  :auto-page-break="false"
+                  :show-page-numbers="false"
                 />
               </div>
             </div>
@@ -307,10 +309,12 @@
             <div class="space-y-3">
               <!-- 編輯區域 -->
               <div class="relative">
-                <RichTextEditor
-                  :model-value="toRT(errorFormData.correct_answer)"
-                  :placeholder="'輸入正確答案...\n\n支援 Markdown 語法：\n- **粗體**\n- *斜體*\n- `程式碼`\n\n支援 LaTeX 數學公式：\n- 行內公式：$x = 5$\n- 區塊公式：$$\n\\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}\n$$'"
-                  @update:model-value="(v) => (errorFormData.correct_answer = fromRT(v))"
+                <BlockEditor
+                  v-model="errorFormData.correct_answer"
+                  :templates="[]"
+                  :questions="[]"
+                  :auto-page-break="false"
+                  :show-page-numbers="false"
                 />
               </div>
             </div>
@@ -593,10 +597,10 @@
               <span class="text-sm text-slate-600">錯誤次數：<strong>{{ selectedError.error_count }}</strong></span>
             </div>
             <h4 class="text-lg font-semibold text-slate-900 mb-2">{{ questionDetail.chapter }}</h4>
-            <div class="text-sm text-slate-700 mb-3 markdown-preview" v-html="renderMarkdownWithLatex(questionDetail.content)"></div>
+            <div class="text-sm text-slate-700 mb-3 markdown-preview" v-html="renderMarkdownWithLatex(contentToMarkdown(questionDetail.content))"></div>
             <div v-if="questionDetail.correct_answer" class="text-sm text-slate-600 markdown-preview">
               <span class="font-semibold">正確答案：</span>
-              <span v-html="renderMarkdownWithLatex(questionDetail.correct_answer)"></span>
+              <span v-html="renderMarkdownWithLatex(contentToMarkdown(questionDetail.correct_answer))"></span>
             </div>
           </div>
 
@@ -677,7 +681,7 @@
                 <h4 class="text-lg font-semibold text-slate-900 mb-1">
                   {{ note.title }}
                 </h4>
-                <div v-if="note.content" class="text-sm text-slate-600 mb-3 line-clamp-2 markdown-preview" v-html="renderMarkdownWithLatex(note.content)"></div>
+                <div v-if="note.content" class="text-sm text-slate-600 mb-3 line-clamp-2 markdown-preview" v-html="renderMarkdownWithLatex(contentToMarkdown(note.content))"></div>
               </div>
             </div>
           </div>
@@ -712,7 +716,7 @@
               </span>
             </div>
             <h4 class="text-lg font-semibold text-slate-900 mb-2">{{ selectedNote.title }}</h4>
-            <div v-if="selectedNote.content" class="text-sm text-slate-700 mb-3 markdown-preview" v-html="renderMarkdownWithLatex(selectedNote.content)"></div>
+            <div v-if="selectedNote.content" class="text-sm text-slate-700 mb-3 markdown-preview" v-html="renderMarkdownWithLatex(contentToMarkdown(selectedNote.content))"></div>
           </div>
 
           <div v-if="selectedNote.images && selectedNote.images.length > 0" class="rounded-lg border border-slate-200 bg-white p-4">
@@ -803,20 +807,24 @@
           </div>
 
           <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">題目內容 (Markdown + LaTeX) *</label>
-            <RichTextEditor
-              :model-value="toRT(importFormData.content)"
-              :placeholder="'輸入題目內容...'"
-              @update:model-value="(v) => (importFormData.content = fromRT(v))"
+            <label class="block text-sm font-semibold text-slate-700 mb-1">題目內容 *</label>
+            <BlockEditor
+              v-model="importFormData.content"
+              :templates="[]"
+              :questions="[]"
+              :auto-page-break="false"
+              :show-page-numbers="false"
             />
           </div>
 
           <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1">正確答案 (Markdown + LaTeX) *</label>
-            <RichTextEditor
-              :model-value="toRT(importFormData.correct_answer)"
-              :placeholder="'輸入正確答案...'"
-              @update:model-value="(v) => (importFormData.correct_answer = fromRT(v))"
+            <label class="block text-sm font-semibold text-slate-700 mb-1">正確答案 *</label>
+            <BlockEditor
+              v-model="importFormData.correct_answer"
+              :templates="[]"
+              :questions="[]"
+              :auto-page-break="false"
+              :show-page-numbers="false"
             />
           </div>
 
@@ -894,24 +902,17 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { errorLogAPI, errorLogImageAPI, questionBankAPI, studentAPI, subjectAPI, hashtagAPI, authAPI, studentMistakeNoteAPI } from '../services/api'
 import { useMarkdownRenderer } from '../composables/useMarkdownRenderer'
-import RichTextEditor from '../components/RichTextEditor.vue'
+import { useTiptapConverter } from '../composables/useTiptapConverter'
+import BlockEditor from '../components/BlockEditor/BlockEditor.vue'
 import ImageRotator from '../components/ImageRotator.vue'
 import { compressImageFile } from '../utils/imageCompress'
 
 // 使用 Markdown 渲染 composable
 const { renderMarkdownWithLatex } = useMarkdownRenderer()
+// 使用 TipTap 轉換 composable
+const { contentToMarkdown } = useTiptapConverter()
 
-const toRT = (v) => {
-  if (typeof v === 'string') return v
-  if (v && typeof v === 'object' && typeof v.text === 'string') return v
-  return ''
-}
-
-const fromRT = (v) => {
-  if (typeof v === 'string') return v
-  if (v && typeof v === 'object' && typeof v.text === 'string') return v.text
-  return ''
-}
+// TipTap 直接使用 JSON 格式，不需要轉換函數
 
 const route = useRoute()
 const studentId = parseInt(route.params.id)
@@ -1018,7 +1019,8 @@ const getLevelDisplay = (level) => {
 
 const getQuestionContent = (questionId) => {
   const question = questions.value.find(q => q.question_id === questionId)
-  return question ? question.content : '載入中...'
+  if (!question) return '載入中...'
+  return contentToMarkdown(question.content)
 }
 
 const fetchStudentInfo = async () => {

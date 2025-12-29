@@ -65,9 +65,9 @@
             </div>
           </div>
 
-          <!-- 學生群組 -->
+          <!-- 學生標籤 -->
           <div class="space-y-3">
-            <label class="block text-sm font-medium text-slate-700">可見學生群組</label>
+            <label class="block text-sm font-medium text-slate-700">可見學生標籤</label>
             <div class="space-y-2 max-h-40 overflow-y-auto border border-slate-200 rounded p-2">
               <div v-for="g in studentGroups" :key="g.group_id" class="flex items-center">
                 <input
@@ -271,6 +271,8 @@
               @update:model-value="(newContent) => handlePageEditorUpdate(pageIndex, newContent.content || [])"
               :templates="templates"
               :questions="questions"
+              :questions-pagination="questionsPagination"
+              @load-more-questions="loadMoreQuestions"
               :auto-page-break="false"
               :paper-size="resource.settings?.handout?.paperSize || resource.settings?.paperSize || 'A4'"
               :image-mappings="imageMappings"
@@ -299,6 +301,8 @@
             @update:model-value="handleBlockEditorUpdate"
             :templates="templates"
             :questions="questions"
+            :questions-pagination="questionsPagination"
+            @load-more-questions="loadMoreQuestions"
             :auto-page-break="false"
             :paper-size="resource.settings?.handout?.paperSize || resource.settings?.paperSize || 'A4'"
             :image-mappings="imageMappings"
@@ -366,6 +370,15 @@ const studentGroups = ref([])
 const availableTags = ref([])
 const questions = ref([])
 const templates = ref([])
+
+// 題目分頁狀態
+const questionsPagination = ref({
+  currentPage: 1,
+  pageSize: 10,
+  totalCount: 0,
+  hasNext: false,
+  isLoading: false
+})
 
 // Resource Data
 const resource = reactive({
@@ -925,7 +938,7 @@ const fetchInitialData = async () => {
       courseAPI.getAll(),
       studentGroupAPI.getAll(),
       hashtagAPI.getAll(),
-      questionBankAPI.getAll(),
+      questionBankAPI.getAll({ params: { page: 1, page_size: 10 } }), // 首次載入第一頁（10題）
       contentTemplateAPI.getAll()
     ])
 
@@ -934,6 +947,15 @@ const fetchInitialData = async () => {
     availableTags.value = tRes.data.results || tRes.data
     questions.value = qRes.data.results || qRes.data
     templates.value = templateRes.data.results || templateRes.data
+    
+    // 更新分頁資訊
+    questionsPagination.value = {
+      currentPage: 1,
+      pageSize: 10,
+      totalCount: qRes.data.count || questions.value.length,
+      hasNext: !!qRes.data.next,
+      isLoading: false
+    }
 
     // If edit mode
     if (route.params.id) {
@@ -1004,6 +1026,42 @@ const fetchInitialData = async () => {
     setTimeout(() => {
       isInitializing.value = false
     }, 100)
+  }
+}
+
+// 載入更多題目（無限滾動）
+const loadMoreQuestions = async () => {
+  if (questionsPagination.value.isLoading || !questionsPagination.value.hasNext) {
+    return
+  }
+  
+  questionsPagination.value.isLoading = true
+  
+  try {
+    const nextPage = questionsPagination.value.currentPage + 1
+    
+    const qRes = await questionBankAPI.getAll({ 
+      params: { 
+        page: nextPage, 
+        page_size: 10 
+      } 
+    })
+    
+    // 將新題目追加到現有列表
+    const newQuestions = qRes.data.results || []
+    questions.value = [...questions.value, ...newQuestions]
+    
+    // 更新分頁資訊
+    questionsPagination.value = {
+      currentPage: nextPage,
+      pageSize: 10,
+      totalCount: qRes.data.count || questionsPagination.value.totalCount,
+      hasNext: !!qRes.data.next,
+      isLoading: false
+    }
+  } catch (error) {
+    console.error('載入更多題目失敗：', error)
+    questionsPagination.value.isLoading = false
   }
 }
 

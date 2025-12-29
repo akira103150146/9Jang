@@ -41,7 +41,9 @@
           <!-- 批次選擇數量 -->
           <div class="batch-select-section">
             <div class="batch-info">
-              <span class="filtered-count">篩選結果: {{ filteredQuestions.length }} 題</span>
+              <span class="filtered-count">
+                已載入: {{ filteredQuestions.length }} / {{ questionsPagination.totalCount }} 題
+              </span>
               <span class="selected-count">已選: {{ selectedQuestionIds.length }} 題</span>
             </div>
             <div class="batch-actions">
@@ -65,7 +67,7 @@
         </div>
 
         <!-- 題目列表 -->
-        <div class="question-list">
+        <div class="question-list" ref="questionListRef" @scroll="handleScroll">
           <div
             v-for="question in filteredQuestions"
             :key="question.question_id"
@@ -90,6 +92,18 @@
               <div class="question-preview" v-html="renderPreview(question.content)"></div>
             </div>
           </div>
+          
+          <!-- 載入中指示器 -->
+          <div v-if="questionsPagination.isLoading" class="loading-indicator">
+            <div class="spinner"></div>
+            <span>載入中...</span>
+          </div>
+          
+          <!-- 已載入全部提示 -->
+          <div v-else-if="!questionsPagination.hasNext && filteredQuestions.length > 0" class="end-indicator">
+            已載入全部題目（共 {{ questionsPagination.totalCount }} 題）
+          </div>
+          
           <div v-if="filteredQuestions.length === 0" class="empty-state">
             沒有符合條件的題目
           </div>
@@ -108,8 +122,9 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, inject, onMounted, onBeforeUnmount } from 'vue'
 import { useMarkdownRenderer } from '../../../composables/useMarkdownRenderer'
+import { useTiptapConverter } from '../../../composables/useTiptapConverter'
 
 const props = defineProps({
   modelValue: {
@@ -124,7 +139,18 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'select'])
 
+// 注入分頁狀態和載入更多的函數
+const questionsPagination = inject('questionsPagination', ref({
+  currentPage: 1,
+  pageSize: 10,
+  totalCount: 0,
+  hasNext: false,
+  isLoading: false
+}))
+const loadMoreQuestions = inject('loadMoreQuestions', () => {})
+
 const { renderMarkdownWithLatex } = useMarkdownRenderer()
+const { extractTextFromTiptapJSON } = useTiptapConverter()
 
 const filters = ref({
   subject: '',
@@ -146,7 +172,7 @@ const subjects = computed(() => {
 
 // 篩選後的題目列表
 const filteredQuestions = computed(() => {
-  return props.questions.filter(q => {
+  const filtered = props.questions.filter(q => {
     if (filters.value.subject && q.subject_name !== filters.value.subject) {
       return false
     }
@@ -158,13 +184,28 @@ const filteredQuestions = computed(() => {
     }
     return true
   })
+  
+  return filtered
 })
 
 const renderPreview = (content) => {
   if (!content) return ''
+  
+  // 處理 TipTap JSON 格式
+  let textContent = ''
+  if (typeof content === 'object' && content.type === 'doc') {
+    // 使用 composable 提取文字
+    textContent = extractTextFromTiptapJSON(content)
+  } else if (typeof content === 'string') {
+    textContent = content
+  } else {
+    textContent = String(content)
+  }
+  
   // 只顯示前100個字元
-  const text = content.replace(/[#*>\[\]!]/g, '').substring(0, 100)
-  return renderMarkdownWithLatex(text + (content.length > 100 ? '...' : ''))
+  const text = textContent.replace(/[#*>\[\]!]/g, '').substring(0, 100)
+  
+  return renderMarkdownWithLatex(text + (textContent.length > 100 ? '...' : ''))
 }
 
 const toggleQuestion = (questionId) => {
@@ -202,6 +243,23 @@ const close = () => {
   emit('update:modelValue', false)
   selectedQuestionIds.value = []
   batchCount.value = null
+}
+
+// 無限滾動處理
+const questionListRef = ref(null)
+
+const handleScroll = () => {
+  if (!questionListRef.value) return
+  
+  const { scrollTop, scrollHeight, clientHeight } = questionListRef.value
+  
+  // 當滾動到距離底部 100px 時觸發載入
+  const threshold = 100
+  const isNearBottom = scrollTop + clientHeight >= scrollHeight - threshold
+  
+  if (isNearBottom && questionsPagination.value.hasNext && !questionsPagination.value.isLoading) {
+    loadMoreQuestions()
+  }
 }
 </script>
 
@@ -513,5 +571,40 @@ const close = () => {
 .btn-confirm:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* 載入中指示器 */
+.loading-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2rem;
+  color: rgb(100, 116, 139);
+  font-size: 0.875rem;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgb(226, 232, 240);
+  border-top-color: rgb(99, 102, 241);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 已載入全部提示 */
+.end-indicator {
+  text-align: center;
+  padding: 1.5rem;
+  color: rgb(148, 163, 184);
+  font-size: 0.875rem;
+  border-top: 1px solid rgb(226, 232, 240);
 }
 </style>

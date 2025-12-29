@@ -775,9 +775,65 @@ class QuestionBankSerializer(serializers.ModelSerializer):
         
         return result
     
+    def _convert_to_tiptap_json(self, data):
+        """
+        將舊格式（字串或 {format: 'markdown', text: '...'}）轉換為 Tiptap JSON 格式
+        """
+        if not data:
+            return {'type': 'doc', 'content': []}
+        
+        # 如果已經是正確的 Tiptap JSON 格式
+        if isinstance(data, dict) and data.get('type') == 'doc':
+            return data
+        
+        # 如果是舊的 Markdown 物件格式 {format: 'markdown', text: '...'}
+        if isinstance(data, dict) and data.get('format') == 'markdown' and 'text' in data:
+            markdown_text = data.get('text', '')
+            return self._markdown_to_tiptap(markdown_text)
+        
+        # 如果是字串（舊的 Markdown 格式）
+        if isinstance(data, str):
+            return self._markdown_to_tiptap(data)
+        
+        # 如果是空物件
+        if isinstance(data, dict) and len(data) == 0:
+            return {'type': 'doc', 'content': []}
+        
+        # 其他情況返回空 doc
+        return {'type': 'doc', 'content': []}
+    
+    def _markdown_to_tiptap(self, markdown_text):
+        """
+        將 Markdown 字串轉換為 Tiptap JSON 格式
+        簡單處理：將每行轉換為段落
+        """
+        if not markdown_text or not markdown_text.strip():
+            return {'type': 'doc', 'content': []}
+        
+        lines = markdown_text.split('\n')
+        paragraphs = []
+        
+        for line in lines:
+            line = line.strip()
+            if line:
+                paragraphs.append({
+                    'type': 'paragraph',
+                    'content': [{'type': 'text', 'text': line}]
+                })
+        
+        # 如果沒有內容，至少返回一個空段落
+        if not paragraphs:
+            paragraphs.append({
+                'type': 'paragraph',
+                'content': []
+            })
+        
+        return {'type': 'doc', 'content': paragraphs}
+    
     def create(self, validated_data):
         """
         創建題目並關聯標籤
+        自動將舊格式轉換為 Tiptap JSON 格式
         """
         tag_ids = validated_data.pop('tag_ids_input', [])
         request = self.context.get('request')
@@ -786,6 +842,14 @@ class QuestionBankSerializer(serializers.ModelSerializer):
             # 如果沒有指定來源，預設為老師新增
             if 'source' not in validated_data:
                 validated_data['source'] = 'teacher_created'
+        
+        # 自動轉換舊格式為 Tiptap JSON
+        if 'content' in validated_data:
+            validated_data['content'] = self._convert_to_tiptap_json(validated_data['content'])
+        if 'correct_answer' in validated_data:
+            validated_data['correct_answer'] = self._convert_to_tiptap_json(validated_data['correct_answer'])
+        if 'solution_content' in validated_data:
+            validated_data['solution_content'] = self._convert_to_tiptap_json(validated_data['solution_content'])
         
         question = QuestionBank.objects.create(**validated_data)
         
@@ -803,8 +867,17 @@ class QuestionBankSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         """
         更新題目並處理標籤關聯
+        自動將舊格式轉換為 Tiptap JSON 格式
         """
         tag_ids = validated_data.pop('tag_ids_input', None)
+        
+        # 自動轉換舊格式為 Tiptap JSON
+        if 'content' in validated_data:
+            validated_data['content'] = self._convert_to_tiptap_json(validated_data['content'])
+        if 'correct_answer' in validated_data:
+            validated_data['correct_answer'] = self._convert_to_tiptap_json(validated_data['correct_answer'])
+        if 'solution_content' in validated_data:
+            validated_data['solution_content'] = self._convert_to_tiptap_json(validated_data['solution_content'])
         
         # 更新題目基本資訊
         for attr, value in validated_data.items():

@@ -2,7 +2,27 @@
   <div>
     <!-- 篩選表單 -->
     <div class="mb-6 rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-slate-900">篩選條件</h3>
+        <button 
+          @click="showFilters = !showFilters" 
+          class="text-sm text-indigo-600 hover:text-indigo-800 font-semibold"
+        >
+          {{ showFilters ? '收起' : '展開' }}篩選
+        </button>
+      </div>
+      
+      <!-- 載入指示器 -->
+      <div v-if="isFiltering" class="mb-2 text-xs text-slate-500 flex items-center gap-2">
+        <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        搜尋中...
+      </div>
+      
+      <!-- 篩選面板 -->
+      <div v-show="showFilters" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <!-- 科目篩選 -->
         <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1">科目</label>
@@ -103,18 +123,12 @@
         </div>
       </div>
 
-      <div class="mt-4 flex justify-end gap-2">
+      <div v-show="showFilters" class="mt-4 flex justify-end gap-2">
         <button
           @click="resetFilters"
           class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
         >
-          重置
-        </button>
-        <button
-          @click="handleSearch"
-          class="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-600"
-        >
-          搜尋
+          重置篩選
         </button>
       </div>
     </div>
@@ -330,7 +344,7 @@
               >
                 <span class="text-sm font-medium text-slate-600 w-6">{{ String.fromCharCode(65 + index) }}.</span>
                 <div class="flex-1">
-                  <RichTextPreview :content="option" />
+                  <RichTextPreview :content="getOptionContent(option)" />
                 </div>
               </div>
             </div>
@@ -435,10 +449,13 @@ const subjects = ref([])
 const tags = ref([])
 const sourceOptions = ref([])
 const loading = ref(false)
+const isFiltering = ref(false)
+const showFilters = ref(true)
 const previewQuestion = ref(null)
 const imageModal = ref({ open: false, url: '', caption: '' })
 const questionsContainer = ref(null)
 let savedScrollPosition = 0
+let filterTimeout = null
 
 const pagination = reactive({
   currentPage: 1,
@@ -488,16 +505,60 @@ const getLevelName = (level) => {
   return map[level] || level
 }
 
+// 從 Tiptap JSON 提取純文字的輔助函式
+const extractTextFromTiptapJSON = (node) => {
+  if (!node || typeof node !== 'object') return ''
+  
+  let text = ''
+  if (node.type === 'text' && node.text) {
+    text = node.text
+  }
+  
+  if (node.content && Array.isArray(node.content)) {
+    for (const child of node.content) {
+      text += extractTextFromTiptapJSON(child)
+    }
+  }
+  
+  return text
+}
+
 const getContentPreview = (content) => {
   if (!content) return '無內容'
-  // 移除 Markdown 格式標記
-  const text = content.replace(/#{1,6}\s+/g, '')
-    .replace(/\*\*/g, '')
-    .replace(/\*/g, '')
-    .replace(/`/g, '')
-    .replace(/\$/g, '')
-    .trim()
-  return text.length > 100 ? text.substring(0, 100) + '...' : text
+  
+  // 如果是 Tiptap JSON 格式
+  if (typeof content === 'object' && content !== null) {
+    // 檢查是否為 Tiptap JSON 格式
+    if (content.type === 'doc') {
+      const text = extractTextFromTiptapJSON(content).trim()
+      return text.length > 100 ? text.substring(0, 100) + '...' : text || '無內容'
+    }
+    // 如果是空物件或其他物件格式
+    if (Object.keys(content).length === 0) {
+      return '無內容'
+    }
+    // 嘗試提取文字（可能是其他格式的物件）
+    try {
+      const text = extractTextFromTiptapJSON(content).trim()
+      return text.length > 100 ? text.substring(0, 100) + '...' : text || '無內容'
+    } catch (e) {
+      return '無內容'
+    }
+  }
+  
+  // 如果是字串（舊格式，向後相容）
+  if (typeof content === 'string') {
+    // 移除 Markdown 格式標記
+    const text = content.replace(/#{1,6}\s+/g, '')
+      .replace(/\*\*/g, '')
+      .replace(/\*/g, '')
+      .replace(/`/g, '')
+      .replace(/\$/g, '')
+      .trim()
+    return text.length > 100 ? text.substring(0, 100) + '...' : text
+  }
+  
+  return '無內容'
 }
 
 const fetchQuestions = async () => {
@@ -513,6 +574,7 @@ const fetchQuestions = async () => {
   }
   
   loading.value = true
+  isFiltering.value = true
   try {
     const params = {}
     if (filters.subject_id) params.subject = filters.subject_id
@@ -554,6 +616,7 @@ const fetchQuestions = async () => {
   } finally {
     // 先更新 loading 狀態，但保持內容可見以避免高度變化
     loading.value = false
+    isFiltering.value = false
     
     // 由於現在使用遮罩而不是替換內容，內容高度不會改變，所以不需要恢復滾動位置
     // 但為了保險起見，如果滾動位置被改變了，我們還是要恢復
@@ -615,11 +678,6 @@ const fetchSourceOptions = async () => {
   }
 }
 
-const handleSearch = () => {
-  pagination.currentPage = 1
-  fetchQuestions()
-}
-
 const resetFilters = () => {
   filters.subject_id = ''
   filters.level = ''
@@ -631,6 +689,34 @@ const resetFilters = () => {
   pagination.currentPage = 1
   fetchQuestions()
 }
+
+// 防抖函數
+const debouncedFetchQuestions = () => {
+  if (filterTimeout) {
+    clearTimeout(filterTimeout)
+  }
+  filterTimeout = setTimeout(() => {
+    pagination.currentPage = 1
+    fetchQuestions()
+  }, 500)
+}
+
+// 監聽章節篩選（文字輸入，使用防抖）
+watch(
+  () => filters.chapter,
+  () => {
+    debouncedFetchQuestions()
+  }
+)
+
+// 監聽其他篩選條件（下拉選單，立即執行）
+watch(
+  () => [filters.subject_id, filters.level, filters.difficulty, filters.question_type, filters.tag_id, filters.source],
+  () => {
+    pagination.currentPage = 1
+    fetchQuestions()
+  }
+)
 
 const goToPage = async (page) => {
   if (page >= 1 && page <= pagination.totalPages) {
@@ -666,29 +752,160 @@ const closeImageModal = () => {
   imageModal.value = { open: false, url: '', caption: '' }
 }
 
+// 將 Tiptap JSON 轉換為 Markdown 字串
+const tiptapToMarkdown = (node) => {
+  if (!node || typeof node !== 'object') return ''
+  
+  let markdown = ''
+  
+  // 處理文字節點
+  if (node.type === 'text') {
+    let text = node.text || ''
+    // 處理文字標記
+    if (node.marks) {
+      for (const mark of node.marks) {
+        if (mark.type === 'bold') {
+          text = `**${text}**`
+        } else if (mark.type === 'italic') {
+          text = `*${text}*`
+        } else if (mark.type === 'code') {
+          text = `\`${text}\``
+        }
+      }
+    }
+    return text
+  }
+  
+  // 處理不同類型的節點
+  if (node.type === 'paragraph') {
+    if (node.content && Array.isArray(node.content)) {
+      const paraText = node.content.map(child => tiptapToMarkdown(child)).join('')
+      markdown += paraText + '\n\n'
+    } else {
+      markdown += '\n\n'
+    }
+  } else if (node.type === 'heading') {
+    const level = node.attrs?.level || 1
+    const headingText = node.content ? node.content.map(child => tiptapToMarkdown(child)).join('') : ''
+    markdown += '#'.repeat(level) + ' ' + headingText + '\n\n'
+  } else if (node.type === 'codeBlock') {
+    const codeText = node.content ? node.content.map(child => tiptapToMarkdown(child)).join('') : ''
+    const language = node.attrs?.language || 'text'
+    markdown += '```' + language + '\n' + codeText + '\n```\n\n'
+  } else if (node.type === 'hardBreak') {
+    markdown += '\n'
+  } else if (node.type === 'bulletList' || node.type === 'orderedList') {
+    if (node.content && Array.isArray(node.content)) {
+      node.content.forEach((item, index) => {
+        const itemText = item.content ? item.content.map(child => tiptapToMarkdown(child)).join('').trim() : ''
+        const prefix = node.type === 'orderedList' ? `${index + 1}. ` : '- '
+        markdown += prefix + itemText + '\n'
+      })
+      markdown += '\n'
+    }
+  } else if (node.type === 'blockquote') {
+    const quoteText = node.content ? node.content.map(child => tiptapToMarkdown(child)).join('').trim() : ''
+    markdown += '> ' + quoteText.split('\n').join('\n> ') + '\n\n'
+  } else if (node.type === 'latexBlock') {
+    const latex = node.attrs?.latex || ''
+    // LaTeX 中的反斜線需要保留，直接使用字串拼接避免模板字串轉義問題
+    markdown += '$$\n' + latex + '\n$$\n\n'
+  } else if (node.type === 'inlineLatex') {
+    const latex = node.attrs?.latex || ''
+    // LaTeX 中的反斜線需要保留，直接使用字串拼接避免模板字串轉義問題
+    markdown += '$' + latex + '$'
+  } else if (node.type === 'image') {
+    const src = node.attrs?.src || ''
+    const alt = node.attrs?.alt || ''
+    markdown += `![${alt}](${src})\n\n`
+  } else if (node.type === 'questionBlock') {
+    // 題目區塊：顯示為佔位符
+    const questionId = node.attrs?.questionId || ''
+    markdown += `\n[題目區塊: ${questionId || '未指定'}]\n\n`
+  } else if (node.type === 'templateBlock') {
+    // 模板區塊：顯示為佔位符
+    const templateId = node.attrs?.templateId || ''
+    markdown += `\n[模板區塊: ${templateId || '未指定'}]\n\n`
+  } else if (node.type === 'diagram2DBlock' || node.type === 'diagram2D') {
+    // 2D 圖表：顯示為佔位符
+    markdown += `\n[2D 圖表]\n\n`
+  } else if (node.type === 'diagram3DBlock' || node.type === 'diagram3D') {
+    // 3D 圖表：顯示為佔位符
+    markdown += `\n[3D 圖表]\n\n`
+  } else if (node.type === 'circuitBlock' || node.type === 'circuit') {
+    // 電路圖：顯示為佔位符
+    markdown += `\n[電路圖]\n\n`
+  } else if (node.type === 'imagePlaceholder') {
+    // 圖片佔位符
+    const alt = node.attrs?.alt || '圖片'
+    markdown += `\n[圖片: ${alt}]\n\n`
+  } else if (node.type === 'pageBreak') {
+    // 分頁符
+    markdown += `\n---\n\n`
+  } else if (node.content && Array.isArray(node.content)) {
+    // 遞迴處理子節點
+    markdown += node.content.map(child => tiptapToMarkdown(child)).join('')
+  }
+  
+  return markdown
+}
+
 const getQuestionContent = (question) => {
   if (!question) return ''
+  // 如果是字串（舊格式，向後相容）
   if (typeof question.content === 'string') return question.content
+  // 如果是舊的物件格式 {format: 'markdown', text: '...'}
   if (question.content && typeof question.content === 'object' && question.content.text) {
     return question.content.text
+  }
+  // 如果是 Tiptap JSON 格式
+  if (question.content && typeof question.content === 'object' && question.content.type === 'doc') {
+    return tiptapToMarkdown(question.content).trim()
   }
   return ''
 }
 
 const getQuestionAnswer = (question) => {
   if (!question) return ''
+  // 如果是字串（舊格式，向後相容）
   if (typeof question.correct_answer === 'string') return question.correct_answer
+  // 如果是舊的物件格式 {format: 'markdown', text: '...'}
   if (question.correct_answer && typeof question.correct_answer === 'object' && question.correct_answer.text) {
     return question.correct_answer.text
+  }
+  // 如果是 Tiptap JSON 格式
+  if (question.correct_answer && typeof question.correct_answer === 'object' && question.correct_answer.type === 'doc') {
+    return tiptapToMarkdown(question.correct_answer).trim()
   }
   return ''
 }
 
 const getQuestionSolution = (question) => {
   if (!question || !question.solution_content) return ''
+  // 如果是字串（舊格式，向後相容）
   if (typeof question.solution_content === 'string') return question.solution_content
+  // 如果是舊的物件格式 {format: 'markdown', text: '...'}
   if (question.solution_content && typeof question.solution_content === 'object' && question.solution_content.text) {
     return question.solution_content.text
+  }
+  // 如果是 Tiptap JSON 格式
+  if (question.solution_content && typeof question.solution_content === 'object' && question.solution_content.type === 'doc') {
+    return tiptapToMarkdown(question.solution_content).trim()
+  }
+  return ''
+}
+
+const getOptionContent = (option) => {
+  if (!option) return ''
+  // 如果是字串（舊格式，向後相容）
+  if (typeof option === 'string') return option
+  // 如果是 Tiptap JSON 格式
+  if (option && typeof option === 'object' && option.type === 'doc') {
+    return tiptapToMarkdown(option).trim()
+  }
+  // 如果是其他物件格式，嘗試轉換
+  if (option && typeof option === 'object') {
+    return tiptapToMarkdown(option).trim()
   }
   return ''
 }
