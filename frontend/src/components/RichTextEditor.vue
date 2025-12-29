@@ -82,6 +82,10 @@ import MarkdownEditor from './MarkdownEditor.vue'
 import DraggablePreview from './DraggablePreview.vue'
 import SnippetManagerModal from './SnippetManagerModal.vue'
 
+// #region agent log
+console.log('%c[DEBUG MODE] RichTextEditor script loaded', 'background: #f00; color: #fff; font-size: 14px; padding: 2px 5px;');
+// #endregion
+
 const props = defineProps({
   modelValue: {
     type: [String, Object],
@@ -115,11 +119,28 @@ const normalizeIncoming = (value) => {
   return ''
 }
 
+let isInternalUpdate = false
+
 watch(
   () => props.modelValue,
   (v) => {
+    // #region agent log
+    console.log('[RichText] watch props.modelValue', {isInternalUpdate,vType:typeof v,vFormat:v?.format,textLength:v?.text?.length,currentTextLength:text.value?.length});
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'RichTextEditor.vue:122',message:'watch props.modelValue',data:{isInternalUpdate,vType:typeof v,vFormat:v?.format,textLength:v?.text?.length,currentTextLength:text.value?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+    if (isInternalUpdate) {
+      // 重置標誌後立即返回
+      isInternalUpdate = false
+      return
+    }
     const next = normalizeIncoming(v)
-    if (text.value !== next) text.value = next
+    if (text.value !== next) {
+      // #region agent log
+      console.log('[RichText] UPDATING text.value', {prevLength:text.value?.length,nextLength:next?.length});
+      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'RichTextEditor.vue:131',message:'UPDATING text.value in RichTextEditor',data:{prevLength:text.value?.length,nextLength:next?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
+      text.value = next
+    }
   },
   { immediate: true, deep: true }
 )
@@ -127,6 +148,17 @@ watch(
 watch(
   () => text.value,
   (v) => {
+    // #region agent log
+    console.log('[RichText] watch text.value', {isInternalUpdate,vLength:v?.length});
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'RichTextEditor.vue:147',message:'watch text.value',data:{isInternalUpdate,vLength:v?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+    if (isInternalUpdate) return
+    // #region agent log
+    console.log('[RichText] EMITTING update:modelValue', {textLength:v?.length});
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'RichTextEditor.vue:152',message:'EMITTING update:modelValue from RichTextEditor',data:{textLength:v?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+    // 在 emit 前設置標誌，防止循環
+    isInternalUpdate = true
     emit('update:modelValue', { format: 'markdown', text: v })
   }
 )

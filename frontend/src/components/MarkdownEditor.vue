@@ -8,12 +8,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { EditorView, keymap, highlightSpecialChars, drawSelection, highlightActiveLine, lineNumbers, highlightActiveLineGutter } from '@codemirror/view'
-import { EditorState, Compartment, Prec } from '@codemirror/state'
+import { EditorState, Compartment } from '@codemirror/state'
 import { history, defaultKeymap, historyKeymap } from '@codemirror/commands'
 import { markdown } from '@codemirror/lang-markdown'
-import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap, acceptCompletion, completionStatus } from '@codemirror/autocomplete'
+import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete'
 import { bracketMatching, foldGutter, indentOnInput, syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 import { uploadImageAPI, getBackendBaseURL } from '../services/api'
 import { getAllSnippets } from '../services/snippets'
@@ -464,6 +464,10 @@ const customCompletions = (context) => {
 }
 
 onMounted(() => {
+  // #region agent log
+  console.log('%c[DEBUG MODE] MarkdownEditor mounted', 'background: #222; color: #bada55; font-size: 14px; padding: 2px 5px;');
+  // #endregion
+  
   if (!editorContainer.value) return
   
   const startState = EditorState.create({
@@ -485,29 +489,21 @@ onMounted(() => {
       highlightActiveLineGutter(),
       syntaxHighlighting(defaultHighlightStyle),
       markdown(),
-      // 使用 Prec.highest 確保自動完成的 Enter 鍵處理有最高優先級
-      Prec.highest(keymap.of([
-        {
-          key: 'Enter',
-          run: (view) => {
-            // 直接嘗試接受自動完成，acceptCompletion 會自動檢查面板是否打開
-            const accepted = acceptCompletion(view)
-            // 如果成功接受自動完成，返回 true 阻止默認行為（換行）
-            // 如果沒有自動完成面板打開，返回 false 讓其他 keymap 處理（插入換行）
-            return accepted
-          }
-        }
-      ])),
-      // completionKeymap 已經包含在 defaultKeymap 中，但我們的自定義處理器優先級更高
-      Prec.high(keymap.of(completionKeymap)),
+      // completionKeymap 會自動處理自動完成的 Enter 鍵
       keymap.of([
+        ...completionKeymap,
         ...closeBracketsKeymap,
         ...defaultKeymap,
         ...historyKeymap
       ]),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
+          // #region agent log
           const content = update.state.doc.toString()
+          const selection = update.state.selection.main
+          console.log('[MD-Editor] updateListener triggered', {contentLength:content.length,selectionFrom:selection.from,selectionTo:selection.to});
+          fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MarkdownEditor.vue:509',message:'updateListener triggered',data:{contentLength:content.length,selectionFrom:selection.from,selectionTo:selection.to,userEvent:update.transactions[0]?.annotation?.('userEvent')},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
           emit('update:modelValue', content)
         }
       }),
@@ -561,25 +557,21 @@ onMounted(() => {
   // 添加 paste 事件監聽器
   const dom = view.dom
   dom.addEventListener('paste', handlePaste)
-  // 修正：有些情況 Enter 不會進到 CodeMirror keymap（但 completion tooltip 仍是 active）。
-  // 用 capture 階段攔截，若 completion active/pending 就直接 acceptCompletion 並阻止換行。
-  dom.addEventListener(
-    'keydown',
-    (evt) => {
-      if (evt.key !== 'Enter') return
-      const status = view ? completionStatus(view.state) : null
-      const accepted = status === 'active' || status === 'pending' ? acceptCompletion(view) : false
-      if (accepted) {
-        evt.preventDefault()
-        evt.stopPropagation()
-      }
-    },
-    true
-  )
 })
 
 watch(() => props.modelValue, (newValue) => {
-  if (view && view.state.doc.toString() !== newValue) {
+  // #region agent log
+  console.log('[MD-Editor] watch props.modelValue', {newValueLength:newValue?.length,hasView:!!view,currentContentLength:view?.state.doc.length});
+  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MarkdownEditor.vue:556',message:'watch props.modelValue triggered',data:{newValueLength:newValue?.length,hasView:!!view,currentContentLength:view?.state.doc.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'C'})}).catch(()=>{});
+  // #endregion
+  if (!view) return
+  const currentContent = view.state.doc.toString()
+  // 只有在內容真的不同時才更新，避免循環更新
+  if (currentContent !== newValue) {
+    // #region agent log
+    console.log('[MD-Editor] DISPATCHING content update', {currentLength:currentContent.length,newLength:newValue?.length});
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MarkdownEditor.vue:564',message:'DISPATCHING content update',data:{currentLength:currentContent.length,newLength:newValue?.length,selectionBefore:view.state.selection.main},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     view.dispatch({
       changes: {
         from: 0,

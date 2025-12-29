@@ -288,18 +288,24 @@ const editor = useEditor({
     },
   },
   onUpdate: ({ editor }) => {
-    // 設置標誌防止 watch 循環更新
-    isUpdatingFromEditor = true
     const json = editor.getJSON()
+    const newContentJSON = JSON.stringify(json)
+    
+    // 檢查內容是否真的改變了
+    if (lastContentJSON === newContentJSON) {
+      return
+    }
+    
+    // 遞增序列號,標記這是來自編輯器的更新
+    updateSequence++
+    const currentSeq = updateSequence
+    
+    // 同步更新 lastContentJSON 和 lastAppliedSequence
+    lastContentJSON = newContentJSON
+    lastAppliedSequence = currentSeq
+    
     emit('update:modelValue', json)
-    
-    // 更新頁數
     updatePageCount()
-    
-    // 重置標誌
-    setTimeout(() => {
-      isUpdatingFromEditor = false
-    }, 100)
   },
   onSelectionUpdate: ({ editor }) => {
     // 更新當前節點類型
@@ -523,25 +529,36 @@ function convertToTiptapFormat(structure) {
 }
 
 // 監聽外部變更
-// 添加一個標誌來防止循環更新
-let isUpdatingFromEditor = false
+// 使用序列號機制而不是布爾標誌,避免時序競爭
+let updateSequence = 0 // 每次編輯器內部更新時遞增
+let lastAppliedSequence = -1 // watch 中最後應用的序列號
+let lastContentJSON = '' // 緩存內容,避免不必要的 JSON.stringify
 
 watch(() => props.modelValue, (newValue) => {
-  // 如果正在從頁面編輯器更新，忽略外部變化（避免覆蓋編輯器內容）
-  if (!editor.value || isUpdatingFromEditor || props.ignoreExternalUpdates) {
+  if (!editor.value || props.ignoreExternalUpdates) {
     return
   }
 
-  const currentContent = editor.value.getJSON()
   const newContent = convertToTiptapFormat(newValue)
+  const newContentJSON = JSON.stringify(newContent)
 
-  // 避免不必要的更新
-  if (JSON.stringify(currentContent) !== JSON.stringify(newContent)) {
-    editor.value.commands.setContent(newContent, false)
-    // 內容更新後重新計算頁數
-    updatePageCount()
+  // 檢查內容是否與緩存相同 - 關鍵!這能防止回滾
+  if (lastContentJSON === newContentJSON) {
+    return
   }
-}, { deep: true })
+  
+  // 新增檢查:如果新內容的長度小於緩存,且時間很近,很可能是舊的延遲更新,忽略它
+  if (newContentJSON.length < lastContentJSON.length && updateSequence > lastAppliedSequence) {
+    return
+  }
+  
+  // 內容確實不同且不是過期的更新,需要更新編輯器
+  lastContentJSON = newContentJSON
+  // 不更新 lastAppliedSequence,因為這是外部更新
+  
+  editor.value.commands.setContent(newContent, false)
+  updatePageCount()
+}, { deep: true, flush: 'sync' })
 
 // 初始化時計算頁數
 onMounted(() => {
