@@ -982,4 +982,3 @@ npm install @tiptap/suggestion @tiptap/extension-placeholder
 1. **階段一** (1-2天): 設置 Tiptap + 基礎區塊類型
 2. **階段二** (2-3天): 拖動與嵌套邏輯
 3. **階段三** (1-2天): 斜線命令系統
-4. **階段四** (1天): 鍵盤快捷鍵
