@@ -85,42 +85,65 @@
   </node-view-wrapper>
 </template>
 
-<script setup>
-import { ref, computed, onMounted, watch } from 'vue'
-import { NodeViewWrapper, NodeViewContent, nodeViewProps } from '@tiptap/vue-3'
+<script setup lang="ts">
+import { ref, computed, type Ref } from 'vue'
+import { NodeViewWrapper, NodeViewContent, nodeViewProps, type NodeViewProps } from '@tiptap/vue-3'
 
-const props = defineProps(nodeViewProps)
+/**
+ * 電路配置類型
+ */
+interface CircuitConfig {
+  width?: number
+  height?: number
+  nodes?: Array<{
+    id: string
+    position: { x: number; y: number }
+  }>
+  components?: Array<{
+    id: string
+    type: 'resistor' | 'galvanometer' | 'battery'
+    position: { x: number; y: number }
+    label?: string
+    value?: string
+  }>
+  wires?: Array<{
+    from: string
+    to: string
+  }>
+}
 
-const isEditing = ref(false)
-const configText = ref(JSON.stringify(props.node.attrs.config || {}, null, 2))
-const containerRef = ref(null)
+const props = defineProps<NodeViewProps>()
 
-const hasConfig = computed(() => {
-  return props.node.attrs.config && Object.keys(props.node.attrs.config).length > 0
+const isEditing: Ref<boolean> = ref(false)
+const configText: Ref<string> = ref(JSON.stringify((props.node.attrs.config as CircuitConfig) || {}, null, 2))
+const containerRef: Ref<HTMLElement | null> = ref(null)
+
+const hasConfig = computed((): boolean => {
+  const config = props.node.attrs.config as CircuitConfig | undefined
+  return config ? Object.keys(config).length > 0 : false
 })
 
 // 解析電路配置
-const circuitConfig = computed(() => {
-  const config = props.node.attrs.config || {}
-  return config
+const circuitConfig = computed((): CircuitConfig => {
+  return (props.node.attrs.config as CircuitConfig) || {}
 })
 
 // 獲取節點或元件的位置
-const getNodePosition = (id) => {
+const getNodePosition = (id: string): { x: number; y: number } => {
   // 先在 nodes 中查找
-  const node = circuitConfig.value.nodes?.find(n => n.id === id)
+  const node = circuitConfig.value.nodes?.find((n) => n.id === id)
   if (node) return node.position
-  
+
   // 再在 components 中查找
-  const component = circuitConfig.value.components?.find(c => c.id === id)
+  const component = circuitConfig.value.components?.find((c) => c.id === id)
   if (component) return component.position
-  
+
   return { x: 0, y: 0 }
 }
 
-const handleSave = () => {
+const handleSave = (): void => {
   try {
-    const config = JSON.parse(configText.value)
+    const config: CircuitConfig = JSON.parse(configText.value)
     props.updateAttributes({ config })
     isEditing.value = false
   } catch (error) {

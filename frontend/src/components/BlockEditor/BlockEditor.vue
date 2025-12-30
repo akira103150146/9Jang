@@ -32,9 +32,9 @@
   </div>
 </template>
 
-<script setup>
-import { ref, watch, onMounted, onBeforeUnmount, provide, computed } from 'vue'
-import { EditorContent, useEditor } from '@tiptap/vue-3'
+<script setup lang="ts">
+import { ref, watch, onMounted, onBeforeUnmount, provide, computed, type Ref } from 'vue'
+import { EditorContent, useEditor, type Editor } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
 import ImageSelectorModal from './components/ImageSelectorModal.vue'
@@ -46,50 +46,79 @@ import { useEditorConfiguration } from '../../composables/useEditorConfiguration
 import { useModalManager } from '../../composables/useModalManager'
 import { convertToTiptapFormat } from '../../utils/tiptapConverter'
 import { getNodeIcon, getNodeLabel } from '../../constants/nodeTypes'
+import type { TiptapDocument } from '@9jang/shared'
 
-const props = defineProps({
-  modelValue: {
-    type: [Object, Array],
-    default: () => ([])
-  },
-  templates: {
-    type: Array,
-    default: () => []
-  },
-  questions: {
-    type: Array,
-    default: () => []
-  },
-  questionsPagination: {
-    type: Object,
-    default: () => ({
-      currentPage: 1,
-      pageSize: 10,
-      totalCount: 0,
-      hasNext: false,
-      isLoading: false
-    })
-  },
-  imageMappings: {
-    type: Map,
-    default: () => new Map()
-  },
-  readonly: {
-    type: Boolean,
-    default: false
-  },
-  ignoreExternalUpdates: {
-    type: Boolean,
-    default: false
-  },
-  // 是否為講義模式（用於過濾命令，例如隱藏分頁符號命令）
-  isHandoutMode: {
-    type: Boolean,
-    default: false
-  }
+/**
+ * 問題分頁配置
+ */
+interface QuestionsPagination {
+  currentPage: number
+  pageSize: number
+  totalCount: number
+  hasNext: boolean
+  isLoading: boolean
+}
+
+/**
+ * 模板類型
+ */
+interface Template {
+  id: number
+  name: string
+  tiptap_structure?: TiptapDocument
+  [key: string]: unknown
+}
+
+/**
+ * 問題類型
+ */
+interface Question {
+  id: number
+  [key: string]: unknown
+}
+
+/**
+ * 組件 Props
+ */
+interface Props {
+  modelValue?: TiptapDocument | unknown[]
+  templates?: Template[]
+  questions?: Question[]
+  questionsPagination?: QuestionsPagination
+  imageMappings?: Map<string, string>
+  readonly?: boolean
+  ignoreExternalUpdates?: boolean
+  /** 是否為講義模式（用於過濾命令，例如隱藏分頁符號命令） */
+  isHandoutMode?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  modelValue: () => [],
+  templates: () => [],
+  questions: () => [],
+  questionsPagination: () => ({
+    currentPage: 1,
+    pageSize: 10,
+    totalCount: 0,
+    hasNext: false,
+    isLoading: false
+  }),
+  imageMappings: () => new Map(),
+  readonly: false,
+  ignoreExternalUpdates: false,
+  isHandoutMode: false
 })
 
-const emit = defineEmits(['update:modelValue', 'request-upload', 'load-more-questions'])
+/**
+ * 組件 Emits
+ */
+interface Emits {
+  (e: 'update:modelValue', value: TiptapDocument | unknown[]): void
+  (e: 'request-upload'): void
+  (e: 'load-more-questions'): void
+}
+
+const emit = defineEmits<Emits>()
 
 // 提供模板列表給子組件
 provide('templates', computed(() => props.templates))
@@ -102,15 +131,15 @@ provide('imageMappings', computed(() => props.imageMappings))
 provide('isHandoutMode', computed(() => props.isHandoutMode))
 
 // 追蹤當前游標所在的節點類型
-const currentNodeType = ref(null)
+const currentNodeType: Ref<string | null> = ref(null)
 
 // 使用 Modal 管理 composable
 const { openModal, closeModal, isModalOpen, getModalOptions } = useModalManager()
 
 // 圖片選擇器相關狀態
-const currentPlaceholderNode = ref(null)
-const currentOnSelect = ref(null)
-const currentTemplateOnSelect = ref(null)
+const currentPlaceholderNode: Ref<unknown | null> = ref(null)
+const currentOnSelect: Ref<((url: string) => void) | null> = ref(null)
+const currentTemplateOnSelect: Ref<((templateId: number) => void) | null> = ref(null)
 
 // 使用編輯器事件系統
 const editorEvents = useEditorEvents()
@@ -134,11 +163,12 @@ const unregisterTemplateSelector = editorEvents.onTemplateSelectorOpen(handleOpe
 
 // 橋接：保持向後兼容，監聽 window 事件並轉發到新系統
 // 這允許 commandItems.js 等純 JS 文件繼續使用 window 事件
-const bridgeWindowEvent = (event) => {
-  if (event.type === 'openImageSelector' && event.detail) {
-    handleOpenImageSelector(event.detail)
-  } else if (event.type === 'openTemplateSelector' && event.detail) {
-    handleOpenTemplateSelector(event.detail)
+const bridgeWindowEvent = (event: Event): void => {
+  const customEvent = event as CustomEvent
+  if (customEvent.type === 'openImageSelector' && customEvent.detail) {
+    handleOpenImageSelector(customEvent.detail as ImageSelectorOptions)
+  } else if (customEvent.type === 'openTemplateSelector' && customEvent.detail) {
+    handleOpenTemplateSelector(customEvent.detail as TemplateSelectorOptions)
   }
 }
 
@@ -156,7 +186,7 @@ onBeforeUnmount(() => {
 })
 
 // 處理模板選擇
-const handleTemplateSelect = (templateId) => {
+const handleTemplateSelect = (templateId: number): void => {
   if (currentTemplateOnSelect.value) {
     currentTemplateOnSelect.value(templateId)
     currentTemplateOnSelect.value = null
@@ -165,7 +195,7 @@ const handleTemplateSelect = (templateId) => {
 }
 
 // 處理圖片選擇
-const handleImageSelect = (url) => {
+const handleImageSelect = (url: string): void => {
   if (currentOnSelect.value) {
     currentOnSelect.value(url)
     currentOnSelect.value = null
@@ -175,11 +205,17 @@ const handleImageSelect = (url) => {
 }
 
 // 處理上傳新圖片
-const handleUploadNewImage = () => {
+const handleUploadNewImage = (): void => {
   emit('request-upload')
 }
 
-const handleImageUploaded = (data) => {
+interface ImageUploadData {
+  filename: string
+  url: string
+  [key: string]: unknown
+}
+
+const handleImageUploaded = (data: ImageUploadData): void => {
   // 通知父組件圖片已上傳，需要保存映射表
   editorEvents.notifyImageMappingUpdated(data)
 }
@@ -199,23 +235,23 @@ const editor = useEditor({
     handlePaste: async (view, event, slice) => {
       const { handlePaste: pasteHandler } = useEditorPaste({
         editor: () => editor.value,
-        imageMappings: () => props.imageMappings
+        imageMappings: () => props.imageMappings ?? new Map()
       })
       return await pasteHandler(view, event, slice)
-    },
+    }
   },
-  onUpdate: ({ editor: editorInstance }) => {
+  onUpdate: ({ editor: editorInstance }: { editor: Editor }) => {
     editorSync.handleEditorUpdate({ editor: editorInstance })
   },
-  onSelectionUpdate: ({ editor }) => {
+  onSelectionUpdate: ({ editor }: { editor: Editor }) => {
     // 更新當前節點類型
     const { $from } = editor.state.selection
     const node = $from.parent
     currentNodeType.value = node ? node.type.name : null
   },
-  onCreate: ({ editor }) => {
+  onCreate: ({ editor }: { editor: Editor }) => {
     // Editor created
-  },
+  }
 })
 
 // 節點圖標和標籤函數已從 constants/nodeTypes.js 導入
@@ -232,12 +268,12 @@ defineExpose({
 // 使用編輯器同步 composable
 const editorSync = useEditorSync({
   editor,
-  onUpdate: (json) => {
+  onUpdate: (json: TiptapDocument | unknown[]) => {
     emit('update:modelValue', json)
   },
   ignoreExternalUpdates: props.ignoreExternalUpdates,
   convertToTiptapFormat,
-  modelValue: () => props.modelValue
+  modelValue: () => props.modelValue ?? []
 })
 
 onBeforeUnmount(() => {

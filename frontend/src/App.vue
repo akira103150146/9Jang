@@ -39,37 +39,37 @@
   </div>
 </template>
 
-<script setup>
-import { computed, ref, watch, onMounted } from 'vue'
+<script setup lang="ts">
+import { computed, ref, watch, onMounted, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Sidebar from './components/Sidebar.vue'
 import ChangePasswordModal from './components/ChangePasswordModal.vue'
 import { authAPI } from './services/api'
 
-const sidebarOpen = ref(false)
+const sidebarOpen: Ref<boolean> = ref(false)
 const route = useRoute()
 const router = useRouter()
-const showChangePasswordModal = ref(false)
+const showChangePasswordModal: Ref<boolean> = ref(false)
 
-const pageTitle = computed(() => route.meta.title || '九章後台管理系統')
-const isLoginPage = computed(() => route.name === 'login')
+const pageTitle = computed<string>(() => (route.meta.title as string) || '九章後台管理系統')
+const isLoginPage = computed<boolean>(() => route.name === 'login')
 
-const toggleSidebar = () => {
+const toggleSidebar = (): void => {
   sidebarOpen.value = !sidebarOpen.value
 }
 
-const closeSidebar = () => {
+const closeSidebar = (): void => {
   sidebarOpen.value = false
 }
 
 // 檢查是否需要修改密碼
-const checkPasswordChange = async () => {
+const checkPasswordChange = async (): Promise<void> => {
   if (isLoginPage.value) return
-  
+
   try {
     const userStr = localStorage.getItem('user')
     if (userStr) {
-      const user = JSON.parse(userStr)
+      const user = JSON.parse(userStr) as { must_change_password?: boolean }
       if (user.must_change_password) {
         showChangePasswordModal.value = true
       }
@@ -79,7 +79,7 @@ const checkPasswordChange = async () => {
   }
 }
 
-const handlePasswordChangeSuccess = async () => {
+const handlePasswordChangeSuccess = async (): Promise<void> => {
   // 重新獲取用戶信息
   try {
     const response = await authAPI.getCurrentUser()

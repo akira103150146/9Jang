@@ -187,63 +187,80 @@
   </div>
 </template>
 
-<script setup>
-import { ref, watch } from 'vue'
+<script setup lang="ts">
+import { ref, watch, type Ref } from 'vue'
 import { learningResourceAPI, courseAPI } from '../services/api'
-import axios from 'axios'
+import type { Course, LearningResource } from '@9jang/shared'
+import type { TiptapDocument } from '@9jang/shared'
 
-const props = defineProps({
-  isOpen: {
-    type: Boolean,
-    required: true
-  },
-  course: {
-    type: Object,
-    required: true
-  },
-  isTeacher: {
-    type: Boolean,
-    default: false
-  }
+type ResourceMode = 'HANDOUT' | 'ONLINE_QUIZ' | 'LEETCODE' | 'LISTENING_TEST' | 'FLASHCARD'
+
+interface Resource extends Partial<LearningResource> {
+  resource_id: number
+  title: string
+  mode: ResourceMode
+  created_at?: string
+  course_names?: string[]
+  courses?: number[]
+  [key: string]: unknown
+}
+
+interface NewResource {
+  title: string
+  mode: ResourceMode
+}
+
+interface Props {
+  isOpen: boolean
+  course: Course & { course_id?: number; id?: number; course_name?: string }
+  isTeacher?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  isTeacher: false
 })
 
-const emit = defineEmits(['close'])
+interface Emits {
+  (e: 'close'): void
+}
 
-const loading = ref(false)
-const resources = ref([])
-const showCreateResourceModal = ref(false)
-const showBindResourceModal = ref(false)
-const loadingAvailableResources = ref(false)
-const availableResources = ref([])
+const emit = defineEmits<Emits>()
 
-const newResource = ref({
+const loading: Ref<boolean> = ref(false)
+const resources: Ref<Resource[]> = ref([])
+const showCreateResourceModal: Ref<boolean> = ref(false)
+const showBindResourceModal: Ref<boolean> = ref(false)
+const loadingAvailableResources: Ref<boolean> = ref(false)
+const availableResources: Ref<Resource[]> = ref([])
+
+const newResource: Ref<NewResource> = ref({
   title: '',
   mode: 'HANDOUT'
 })
 
-const modeDisplayMap = {
-  'HANDOUT': '講義模式',
-  'ONLINE_QUIZ': '線上測驗模式',
-  'LEETCODE': '程式題模式',
-  'LISTENING_TEST': '聽力測驗模式',
-  'FLASHCARD': '單字卡模式'
+const modeDisplayMap: Record<string, string> = {
+  HANDOUT: '講義模式',
+  ONLINE_QUIZ: '線上測驗模式',
+  LEETCODE: '程式題模式',
+  LISTENING_TEST: '聽力測驗模式',
+  FLASHCARD: '單字卡模式'
 }
 
-const getModeDisplay = (mode) => {
+const getModeDisplay = (mode: string): string => {
   return modeDisplayMap[mode] || mode
 }
 
-const fetchData = async () => {
+const fetchData = async (): Promise<void> => {
   if (!props.course) return
-  
+
   loading.value = true
   try {
-    const courseId = props.course.course_id || props.course.id
-    
+    const courseId = (props.course.course_id || props.course.id) as number
+
     // 使用新的課程資源 API endpoint
     const resourcesRes = await courseAPI.getResources(courseId)
-    const resourcesData = resourcesRes.data
-    resources.value = Array.isArray(resourcesData) ? resourcesData : []
+    const resourcesData = resourcesRes.data as Resource[] | { results?: Resource[] }
+    resources.value = Array.isArray(resourcesData) ? resourcesData : (resourcesData as { results?: Resource[] }).results || []
   } catch (error) {
     console.error('Error fetching course data:', error)
     resources.value = []
@@ -252,16 +269,16 @@ const fetchData = async () => {
   }
 }
 
-const fetchAvailableResources = async () => {
+const fetchAvailableResources = async (): Promise<void> => {
   loadingAvailableResources.value = true
   try {
     // 獲取所有自己的教學資源（不限定課程）
     const res = await learningResourceAPI.getAll()
-    const allResources = res.data.results || res.data
-    
+    const allResources = ((res.data as { results?: Resource[] }) | Resource[]).results || (res.data as Resource[])
+
     // 過濾出未綁定到當前課程的資源
-    const courseId = props.course.course_id || props.course.id
-    availableResources.value = allResources.filter(r => {
+    const courseId = (props.course.course_id || props.course.id) as number
+    availableResources.value = (allResources as Resource[]).filter((r) => {
       // 如果資源沒有綁定課程，或者沒有綁定到當前課程
       return !r.courses || !r.courses.includes(courseId)
     })
@@ -274,31 +291,38 @@ const fetchAvailableResources = async () => {
 }
 
 // 同時監聽 isOpen 和 course，確保兩者都準備好時才載入數據
-watch(() => [props.isOpen, props.course], ([newIsOpen, newCourse]) => {
-  if (newIsOpen && newCourse) {
-    fetchData()
-  } else if (!newIsOpen) {
-    // Reset state when closed
-    resources.value = []
-    showCreateResourceModal.value = false
-    showBindResourceModal.value = false
-    newResource.value = { title: '', mode: 'HANDOUT' }
-  }
-}, { immediate: true })
+watch(
+  () => [props.isOpen, props.course],
+  ([newIsOpen, _newCourse]) => {
+    if (newIsOpen && props.course) {
+      fetchData()
+    } else if (!newIsOpen) {
+      // Reset state when closed
+      resources.value = []
+      showCreateResourceModal.value = false
+      showBindResourceModal.value = false
+      newResource.value = { title: '', mode: 'HANDOUT' }
+    }
+  },
+  { immediate: true }
+)
 
-watch(() => showBindResourceModal.value, (newVal) => {
-  if (newVal) {
-    fetchAvailableResources()
+watch(
+  () => showBindResourceModal.value,
+  (newVal) => {
+    if (newVal) {
+      fetchAvailableResources()
+    }
   }
-})
+)
 
-const close = () => {
+const close = (): void => {
   emit('close')
 }
 
-const formatDate = (dateString) => {
+const formatDate = (dateString: string | unknown): string => {
   if (!dateString) return ''
-  return new Date(dateString).toLocaleString('zh-TW', {
+  return new Date(dateString as string).toLocaleString('zh-TW', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -307,15 +331,15 @@ const formatDate = (dateString) => {
   })
 }
 
-const createResource = async () => {
+const createResource = async (): Promise<void> => {
   if (!newResource.value.title) {
     alert('請輸入標題')
     return
   }
-  
+
   try {
-    const courseId = props.course.course_id || props.course.id
-    
+    const courseId = (props.course.course_id || props.course.id) as number
+
     await learningResourceAPI.create({
       title: newResource.value.title,
       mode: newResource.value.mode,
@@ -323,10 +347,10 @@ const createResource = async () => {
       tiptap_structure: {
         type: 'doc',
         content: [{ type: 'paragraph', content: [] }]
-      },
+      } as TiptapDocument,
       settings: {}
     })
-    
+
     alert('創建成功')
     showCreateResourceModal.value = false
     newResource.value = { title: '', mode: 'HANDOUT' }
@@ -337,11 +361,11 @@ const createResource = async () => {
   }
 }
 
-const bindResource = async (resource) => {
+const bindResource = async (resource: Resource): Promise<void> => {
   try {
-    const courseId = props.course.course_id || props.course.id
+    const courseId = (props.course.course_id || props.course.id) as number
     await learningResourceAPI.bindToCourse(resource.resource_id, courseId, 'add')
-    
+
     alert('綁定成功')
     showBindResourceModal.value = false
     fetchData()
@@ -351,16 +375,16 @@ const bindResource = async (resource) => {
   }
 }
 
-const unbindResource = async (resource) => {
+const unbindResource = async (resource: Resource): Promise<void> => {
   if (!confirm(`確定要從此課程解除綁定「${resource.title}」嗎？`)) {
     return
   }
-  
+
   try {
-    const courseId = props.course.course_id || props.course.id
-    
+    const courseId = (props.course.course_id || props.course.id) as number
+
     await learningResourceAPI.bindToCourse(resource.resource_id, courseId, 'remove')
-    
+
     alert('解除綁定成功')
     fetchData()
   } catch (error) {
@@ -369,28 +393,29 @@ const unbindResource = async (resource) => {
   }
 }
 
-const viewResource = (resource) => {
+const viewResource = (resource: Resource): void => {
   // 導航到資源查看頁面
   window.location.href = `/resources/view/${resource.resource_id}`
 }
 
-const editResource = (resource) => {
+const editResource = (resource: Resource): void => {
   // 導航到資源編輯頁面
   window.location.href = `/resources/edit/${resource.resource_id}`
 }
 
-const deleteResource = async (resource) => {
+const deleteResource = async (resource: Resource): Promise<void> => {
   if (!confirm(`確定要刪除「${resource.title}」嗎？此操作無法復原！`)) {
     return
   }
-  
+
   try {
     await learningResourceAPI.delete(resource.resource_id)
     alert('刪除成功')
     fetchData()
   } catch (error) {
     console.error('刪除教學資源失敗:', error)
-    if (error.response?.status === 403) {
+    const axiosError = error as { response?: { status?: number } }
+    if (axiosError.response?.status === 403) {
       alert('您沒有權限刪除此資源')
     } else {
       alert('刪除失敗，請稍後再試')

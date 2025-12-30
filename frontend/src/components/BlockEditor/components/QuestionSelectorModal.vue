@@ -121,58 +121,98 @@
   </teleport>
 </template>
 
-<script setup>
-import { ref, computed, inject, onMounted, onBeforeUnmount } from 'vue'
+<script setup lang="ts">
+import { ref, computed, inject, onMounted, onBeforeUnmount, type Ref, type InjectionKey } from 'vue'
 import { useMarkdownRenderer } from '../../../composables/useMarkdownRenderer'
 import { useTiptapConverter } from '../../../composables/useTiptapConverter'
+import type { TiptapDocument } from '@9jang/shared'
 
-const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    default: false
-  },
-  questions: {
-    type: Array,
-    default: () => []
-  }
+/**
+ * 問題類型
+ */
+interface Question {
+  question_id: number
+  subject_name?: string
+  chapter?: string
+  difficulty?: number
+  content?: TiptapDocument | string
+  [key: string]: unknown
+}
+
+/**
+ * 問題分頁配置
+ */
+interface QuestionsPagination {
+  currentPage: number
+  pageSize: number
+  totalCount: number
+  hasNext: boolean
+  isLoading: boolean
+}
+
+interface Props {
+  modelValue?: boolean
+  questions?: Question[]
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  modelValue: false,
+  questions: () => []
 })
 
-const emit = defineEmits(['update:modelValue', 'select'])
+interface Emits {
+  (e: 'update:modelValue', value: boolean): void
+  (e: 'select', questionIds: number | number[]): void
+}
+
+const emit = defineEmits<Emits>()
 
 // 注入分頁狀態和載入更多的函數
-const questionsPagination = inject('questionsPagination', ref({
-  currentPage: 1,
-  pageSize: 10,
-  totalCount: 0,
-  hasNext: false,
-  isLoading: false
-}))
-const loadMoreQuestions = inject('loadMoreQuestions', () => {})
+const QuestionsPaginationInjectionKey: InjectionKey<Ref<QuestionsPagination>> = Symbol('questionsPagination')
+const LoadMoreQuestionsInjectionKey: InjectionKey<() => void> = Symbol('loadMoreQuestions')
+
+const questionsPagination: Ref<QuestionsPagination> = inject(
+  QuestionsPaginationInjectionKey,
+  ref({
+    currentPage: 1,
+    pageSize: 10,
+    totalCount: 0,
+    hasNext: false,
+    isLoading: false
+  })
+)
+const loadMoreQuestions = inject(LoadMoreQuestionsInjectionKey, () => {})
 
 const { renderMarkdownWithLatex } = useMarkdownRenderer()
 const { contentToMarkdown } = useTiptapConverter()
 
-const filters = ref({
+interface Filters {
+  subject: string
+  chapter: string
+  difficulty: string
+}
+
+const filters: Ref<Filters> = ref({
   subject: '',
   chapter: '',
   difficulty: ''
 })
 
-const selectedQuestionIds = ref([])
-const batchCount = ref(null)
+const selectedQuestionIds: Ref<number[]> = ref([])
+const batchCount: Ref<number | null> = ref(null)
 
 // 取得所有科目
-const subjects = computed(() => {
-  const subjectSet = new Set()
-  props.questions.forEach(q => {
+const subjects = computed<string[]>(() => {
+  const subjectSet = new Set<string>()
+  props.questions.forEach((q) => {
     if (q.subject_name) subjectSet.add(q.subject_name)
   })
   return Array.from(subjectSet).sort()
 })
 
 // 篩選後的題目列表
-const filteredQuestions = computed(() => {
-  const filtered = props.questions.filter(q => {
+const filteredQuestions = computed<Question[]>(() => {
+  const filtered = props.questions.filter((q) => {
     if (filters.value.subject && q.subject_name !== filters.value.subject) {
       return false
     }
@@ -184,31 +224,31 @@ const filteredQuestions = computed(() => {
     }
     return true
   })
-  
+
   return filtered
 })
 
-const renderPreview = (content) => {
+const renderPreview = (content: TiptapDocument | string | unknown): string => {
   if (!content) return ''
-  
+
   // 處理 TipTap JSON 格式，保留 LaTeX 標記
   let markdownContent = ''
-  if (typeof content === 'object' && content.type === 'doc') {
+  if (typeof content === 'object' && content !== null && (content as { type?: string }).type === 'doc') {
     // 使用 contentToMarkdown 保留 LaTeX 標記
-    markdownContent = contentToMarkdown(content)
+    markdownContent = contentToMarkdown(content as TiptapDocument)
   } else if (typeof content === 'string') {
     markdownContent = content
   } else {
     markdownContent = String(content)
   }
-  
+
   // 只顯示前 200 個字元（因為包含 LaTeX 標記會比較長）
   const text = markdownContent.substring(0, 200)
-  
+
   return renderMarkdownWithLatex(text + (markdownContent.length > 200 ? '...' : ''))
 }
 
-const toggleQuestion = (questionId) => {
+const toggleQuestion = (questionId: number): void => {
   const index = selectedQuestionIds.value.indexOf(questionId)
   if (index > -1) {
     selectedQuestionIds.value.splice(index, 1)
@@ -219,44 +259,42 @@ const toggleQuestion = (questionId) => {
   }
 }
 
-const selectBatch = () => {
+const selectBatch = (): void => {
   if (!batchCount.value || batchCount.value < 1) return
-  
+
   const count = Math.min(batchCount.value, 100, filteredQuestions.value.length)
-  selectedQuestionIds.value = filteredQuestions.value
-    .slice(0, count)
-    .map(q => q.question_id)
+  selectedQuestionIds.value = filteredQuestions.value.slice(0, count).map((q) => q.question_id)
 }
 
-const clearSelection = () => {
+const clearSelection = (): void => {
   selectedQuestionIds.value = []
 }
 
-const confirm = () => {
+const confirm = (): void => {
   if (selectedQuestionIds.value.length > 0) {
     emit('select', selectedQuestionIds.value)
     close()
   }
 }
 
-const close = () => {
+const close = (): void => {
   emit('update:modelValue', false)
   selectedQuestionIds.value = []
   batchCount.value = null
 }
 
 // 無限滾動處理
-const questionListRef = ref(null)
+const questionListRef: Ref<HTMLElement | null> = ref(null)
 
-const handleScroll = () => {
+const handleScroll = (): void => {
   if (!questionListRef.value) return
-  
+
   const { scrollTop, scrollHeight, clientHeight } = questionListRef.value
-  
+
   // 當滾動到距離底部 100px 時觸發載入
   const threshold = 100
   const isNearBottom = scrollTop + clientHeight >= scrollHeight - threshold
-  
+
   if (isNearBottom && questionsPagination.value.hasNext && !questionsPagination.value.isLoading) {
     loadMoreQuestions()
   }

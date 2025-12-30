@@ -34,48 +34,65 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 
-const props = defineProps({
-  paperSize: {
-    type: String,
-    default: 'A4'
-  },
-  orientation: {
-    type: String,
-    default: 'portrait'
-  },
-  structure: {
-    type: Array,
-    default: () => []
-  },
-  margins: {
-    type: Object,
-    default: () => ({ top: 20, right: 20, bottom: 20, left: 20 })
-  },
-  format: {
-    type: String,
-    default: 'question_only'
-  }
+type PaperSize = 'A4' | 'B4'
+type Orientation = 'portrait' | 'landscape'
+type Format = 'question_only' | string
+
+interface PaperDimension {
+  width: number
+  height: number
+}
+
+interface Margins {
+  top: number
+  right: number
+  bottom: number
+  left: number
+}
+
+interface Block {
+  id?: string
+  type: string
+  question_id?: number
+  template_id?: number
+  [key: string]: unknown
+}
+
+interface Props {
+  paperSize?: PaperSize
+  orientation?: Orientation
+  structure?: Block[]
+  margins?: Margins
+  format?: Format
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  paperSize: 'A4',
+  orientation: 'portrait',
+  structure: () => [],
+  margins: () => ({ top: 20, right: 20, bottom: 20, left: 20 }),
+  format: 'question_only'
 })
 
 // 紙張尺寸（mm 轉 px，假設 96 DPI）
-const paperDimensions = {
+const paperDimensions: Record<PaperSize, PaperDimension> = {
   A4: { width: 210, height: 297 },
   B4: { width: 250, height: 353 }
 }
 
-const paperClass = computed(() => {
+const paperClass = computed<string>(() => {
   return props.orientation === 'landscape' ? 'landscape' : 'portrait'
 })
 
-const paperStyle = computed(() => {
-  const dim = paperDimensions[props.paperSize] || paperDimensions.A4
+const paperStyle = computed<Record<string, string>>(() => {
+  const dim = paperDimensions[props.paperSize]
   const scale = 0.5 // 縮放比例，方便預覽
   const width = props.orientation === 'landscape' ? dim.height : dim.width
   const height = props.orientation === 'landscape' ? dim.width : dim.height
-  
+
   return {
     width: `${width * scale}mm`,
     height: `${height * scale}mm`,
@@ -83,7 +100,7 @@ const paperStyle = computed(() => {
   }
 })
 
-const contentStyle = computed(() => {
+const contentStyle = computed<Record<string, string>>(() => {
   return {
     paddingTop: `${props.margins.top}px`,
     paddingRight: `${props.margins.right}px`,

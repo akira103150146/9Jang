@@ -7,44 +7,74 @@
   </div>
 </template>
 
-<script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+<script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, ref, type Ref } from 'vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
-const props = defineProps({
-  data: {
-    type: Object,
-    default: () => ({}),
-  },
+interface Object3D {
+  type: string
+  data?: {
+    start?: [number, number, number]
+    end?: [number, number, number]
+    size?: number
+    color?: number
+    position?: [number, number, number]
+    radius?: number
+    [key: string]: unknown
+  }
+  [key: string]: unknown
+}
+
+interface Diagram3DData {
+  objects?: Object3D[]
+  [key: string]: unknown
+}
+
+interface Data {
+  diagram_data?: Diagram3DData
+  backup_image?: string
+  backupImage?: string
+  [key: string]: unknown
+}
+
+interface Props {
+  data?: Data | Diagram3DData
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  data: () => ({})
 })
 
-const canvasContainer = ref(null)
-let scene = null
-let camera = null
-let renderer = null
-let controls = null
-let animationId = null
-let handleResizeFn = null
+const canvasContainer: Ref<HTMLElement | null> = ref(null)
+let scene: THREE.Scene | null = null
+let camera: THREE.PerspectiveCamera | null = null
+let renderer: THREE.WebGLRenderer | null = null
+let controls: OrbitControls | null = null
+let animationId: number | null = null
+let handleResizeFn: (() => void) | null = null
 
-const diagramData = computed(() => {
-  if (props.data && typeof props.data === 'object' && props.data.diagram_data) return props.data.diagram_data
-  return props.data || {}
+const diagramData = computed<Diagram3DData>(() => {
+  if (props.data && typeof props.data === 'object' && 'diagram_data' in props.data) {
+    return (props.data as Data).diagram_data || {}
+  }
+  return (props.data as Diagram3DData) || {}
 })
 
-const backupImage = computed(() => {
+const backupImage = computed<string>(() => {
   if (!props.data || typeof props.data !== 'object') return ''
-  return props.data.backup_image || props.data.backupImage || ''
+  const data = props.data as Data
+  return data.backup_image || data.backupImage || ''
 })
 
-const loadDiagramData = (data) => {
+const loadDiagramData = (data: Diagram3DData): void => {
   if (!scene || !data || !Array.isArray(data.objects)) return
   data.objects.forEach((obj) => {
     try {
       switch (obj.type) {
         case 'vector': {
-          const start = new THREE.Vector3(...(obj.data?.start || [0, 0, 0]))
-          const end = new THREE.Vector3(...(obj.data?.end || [1, 1, 1]))
+          const start = new THREE.Vector3(...((obj.data?.start as [number, number, number]) || [0, 0, 0]))
+          const end = new THREE.Vector3(...((obj.data?.end as [number, number, number]) || [1, 1, 1]))
           const direction = new THREE.Vector3().subVectors(end, start).normalize()
           const length = start.distanceTo(end)
           const arrow = new THREE.ArrowHelper(direction, start, length, 0xef4444, 0.2, 0.1)
@@ -54,9 +84,9 @@ const loadDiagramData = (data) => {
         case 'cube': {
           const size = obj.data?.size ?? 1
           const geometry = new THREE.BoxGeometry(size, size, size)
-          const material = new THREE.MeshBasicMaterial({ color: obj.data?.color ?? 0x22c55e, wireframe: true })
+          const material = new THREE.MeshBasicMaterial({ color: (obj.data?.color as number) ?? 0x22c55e, wireframe: true })
           const cube = new THREE.Mesh(geometry, material)
-          const pos = obj.data?.position || [0, 0.5, 0]
+          const pos = (obj.data?.position as [number, number, number]) || [0, 0.5, 0]
           cube.position.set(pos[0], pos[1], pos[2])
           scene.add(cube)
           break
@@ -64,9 +94,9 @@ const loadDiagramData = (data) => {
         case 'sphere': {
           const radius = obj.data?.radius ?? 0.5
           const geometry = new THREE.SphereGeometry(radius, 24, 24)
-          const material = new THREE.MeshBasicMaterial({ color: obj.data?.color ?? 0x3b82f6, wireframe: true })
+          const material = new THREE.MeshBasicMaterial({ color: (obj.data?.color as number) ?? 0x3b82f6, wireframe: true })
           const sphere = new THREE.Mesh(geometry, material)
-          const pos = obj.data?.position || [2, 0.5, 0]
+          const pos = (obj.data?.position as [number, number, number]) || [2, 0.5, 0]
           sphere.position.set(pos[0], pos[1], pos[2])
           scene.add(sphere)
           break

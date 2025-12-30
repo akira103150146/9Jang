@@ -36,37 +36,41 @@
   </node-view-wrapper>
 </template>
 
-<script setup>
-import { ref, computed, nextTick } from 'vue'
-import { NodeViewWrapper, NodeViewContent, nodeViewProps } from '@tiptap/vue-3'
+<script setup lang="ts">
+import { ref, computed, nextTick, type Ref } from 'vue'
+import { NodeViewWrapper, NodeViewContent, nodeViewProps, type NodeViewProps } from '@tiptap/vue-3'
 import katex from 'katex'
+import type { LaTeXBlockAttributes } from '../extensions/LaTeXBlock'
 
-const props = defineProps(nodeViewProps)
+const props = defineProps<NodeViewProps>()
 
-const isEditing = ref(false)
-const localFormula = ref(props.node.attrs.formula || '')
-const textareaRef = ref(null)
+const isEditing: Ref<boolean> = ref(false)
+const localFormula: Ref<string> = ref((props.node.attrs.formula as string) || '')
+const textareaRef: Ref<HTMLTextAreaElement | null> = ref(null)
 
 // 渲染 LaTeX 公式
-const renderedFormula = computed(() => {
-  if (!props.node.attrs.formula) return ''
-  
+const renderedFormula = computed((): string => {
+  const formula = props.node.attrs.formula as string | undefined
+  if (!formula) return ''
+
   try {
-    return katex.renderToString(props.node.attrs.formula, {
-      displayMode: props.node.attrs.displayMode,
+    const displayMode = (props.node.attrs.displayMode as boolean | undefined) ?? true
+    return katex.renderToString(formula, {
+      displayMode,
       throwOnError: false,
       trust: true
     })
   } catch (error) {
     console.error('KaTeX render error:', error)
-    return `<span class="katex-error">公式錯誤: ${error.message}</span>`
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    return `<span class="katex-error">公式錯誤: ${errorMessage}</span>`
   }
 })
 
-const startEditing = () => {
+const startEditing = (): void => {
   isEditing.value = true
-  localFormula.value = props.node.attrs.formula || ''
-  
+  localFormula.value = (props.node.attrs.formula as string) || ''
+
   nextTick(() => {
     if (textareaRef.value) {
       textareaRef.value.focus()
@@ -74,19 +78,19 @@ const startEditing = () => {
   })
 }
 
-const handleSave = () => {
+const handleSave = (): void => {
   props.updateAttributes({
     formula: localFormula.value
-  })
+  } as Partial<LaTeXBlockAttributes>)
   isEditing.value = false
 }
 
-const handleCancel = () => {
-  localFormula.value = props.node.attrs.formula || ''
+const handleCancel = (): void => {
+  localFormula.value = (props.node.attrs.formula as string) || ''
   isEditing.value = false
 }
 
-const handleBlur = () => {
+const handleBlur = (): void => {
   // 延遲處理以允許按鈕點擊
   setTimeout(() => {
     if (isEditing.value) {
@@ -95,7 +99,7 @@ const handleBlur = () => {
   }, 200)
 }
 
-const handleEscape = () => {
+const handleEscape = (): void => {
   handleCancel()
 }
 </script>

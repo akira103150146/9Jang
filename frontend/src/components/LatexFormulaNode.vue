@@ -11,9 +11,9 @@
   </NodeViewWrapper>
 </template>
 
-<script setup>
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
-import { NodeViewWrapper } from '@tiptap/vue-3'
+<script setup lang="ts">
+import { ref, watch, onMounted, onBeforeUnmount, type Ref } from 'vue'
+import { NodeViewWrapper, nodeViewProps, type NodeViewProps } from '@tiptap/vue-3'
 import katex from 'katex'
 import 'katex/dist/katex.css'
 import { EditorView, keymap } from '@codemirror/view'
@@ -21,56 +21,41 @@ import { EditorState } from '@codemirror/state'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { latex } from 'codemirror-lang-latex'
 import { history, defaultKeymap, historyKeymap } from '@codemirror/commands'
-import { lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection, highlightActiveLine } from '@codemirror/view'
+import {
+  lineNumbers,
+  highlightActiveLineGutter,
+  highlightSpecialChars,
+  drawSelection,
+  highlightActiveLine
+} from '@codemirror/view'
 import { bracketMatching, foldGutter, indentOnInput, syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 
-const props = defineProps({
-  node: {
-    type: Object,
-    required: true,
-  },
-  updateAttributes: {
-    type: Function,
-    required: true,
-  },
-  deleteNode: {
-    type: Function,
-    required: true,
-  },
-  getPos: {
-    type: Function,
-    required: true,
-  },
-  editor: {
-    type: Object,
-    required: true,
-  },
-})
+const props = defineProps<NodeViewProps>()
 
-const editorContainer = ref(null)
-const isEditing = ref(false)
-const localLatex = ref(props.node.attrs.latex || '')
-const displayMode = ref(props.node.attrs.displayMode !== false)
-const renderedLatex = ref('')
-let view = null
+const editorContainer: Ref<HTMLElement | null> = ref(null)
+const isEditing: Ref<boolean> = ref(false)
+const localLatex: Ref<string> = ref((props.node.attrs.latex as string) || '')
+const displayMode: Ref<boolean> = ref((props.node.attrs.displayMode as boolean | undefined) !== false)
+const renderedLatex: Ref<string> = ref('')
+let view: EditorView | null = null
 
-const renderLatex = (latex) => {
-  if (!latex) return ''
+const renderLatex = (latexStr: string): string => {
+  if (!latexStr) return ''
   try {
-    return katex.renderToString(latex, {
+    return katex.renderToString(latexStr, {
       throwOnError: false,
-      displayMode: displayMode.value,
+      displayMode: displayMode.value
     })
   } catch (error) {
     console.error('LaTeX 渲染錯誤：', error)
-    return `<div class="latex-error">LaTeX 錯誤: ${latex}</div>`
+    return `<div class="latex-error">LaTeX 錯誤: ${latexStr}</div>`
   }
 }
 
-const startEditing = () => {
+const startEditing = (): void => {
   isEditing.value = true
-  localLatex.value = props.node.attrs.latex || ''
-  
+  localLatex.value = (props.node.attrs.latex as string) || ''
+
   // 等待 DOM 更新後初始化編輯器
   setTimeout(() => {
     if (editorContainer.value && !view) {
@@ -79,7 +64,7 @@ const startEditing = () => {
   }, 0)
 }
 
-const initEditor = () => {
+const initEditor = (): void => {
   if (!editorContainer.value) return
 
   const startState = EditorState.create({
@@ -103,7 +88,7 @@ const initEditor = () => {
         }
       }),
       EditorView.domEventHandlers({
-        keydown: (view, event) => {
+        keydown: (_view, event) => {
           // Ctrl/Cmd + Enter 保存
           if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
             event.preventDefault()
@@ -118,43 +103,43 @@ const initEditor = () => {
           }
           // 阻止事件冒泡到 Tiptap
           event.stopPropagation()
-        },
+        }
       }),
       keymap.of([...defaultKeymap, ...historyKeymap]),
       EditorView.theme({
         '&': {
           fontSize: '14px',
-          fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
+          fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace'
         },
         '.cm-editor': {
           borderRadius: '0.5rem',
           border: '1px solid rgb(51, 65, 85)',
-          backgroundColor: 'rgb(30, 41, 59)',
+          backgroundColor: 'rgb(30, 41, 59)'
         },
         '.cm-focused': {
           outline: '2px solid rgb(99, 102, 241)',
-          outlineOffset: '2px',
+          outlineOffset: '2px'
         },
         '.cm-scroller': {
-          padding: '0.75rem',
+          padding: '0.75rem'
         },
         '.cm-content': {
           minHeight: '100px',
-          padding: '0.5rem 0',
-        },
-      }),
-    ],
+          padding: '0.5rem 0'
+        }
+      })
+    ]
   })
 
   view = new EditorView({
     state: startState,
-    parent: editorContainer.value,
+    parent: editorContainer.value
   })
 }
 
-const handleSave = () => {
+const handleSave = (): void => {
   isEditing.value = false
-  if (localLatex.value !== props.node.attrs.latex) {
+  if (localLatex.value !== (props.node.attrs.latex as string)) {
     props.updateAttributes({ latex: localLatex.value })
   }
   if (view) {
@@ -163,24 +148,31 @@ const handleSave = () => {
   }
 }
 
-const handleCancel = () => {
+const handleCancel = (): void => {
   isEditing.value = false
-  localLatex.value = props.node.attrs.latex || ''
+  localLatex.value = (props.node.attrs.latex as string) || ''
   if (view) {
     view.destroy()
     view = null
   }
 }
 
-watch(() => props.node.attrs.latex, (newLatex) => {
-  localLatex.value = newLatex
-  renderedLatex.value = renderLatex(newLatex)
-}, { immediate: true })
+watch(
+  () => props.node.attrs.latex as string | undefined,
+  (newLatex) => {
+    localLatex.value = newLatex || ''
+    renderedLatex.value = renderLatex(localLatex.value)
+  },
+  { immediate: true }
+)
 
-watch(() => props.node.attrs.displayMode, (newMode) => {
-  displayMode.value = newMode !== false
-  renderedLatex.value = renderLatex(localLatex.value)
-})
+watch(
+  () => props.node.attrs.displayMode as boolean | undefined,
+  (newMode) => {
+    displayMode.value = newMode !== false
+    renderedLatex.value = renderLatex(localLatex.value)
+  }
+)
 
 onBeforeUnmount(() => {
   if (view) {

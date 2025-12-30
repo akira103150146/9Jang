@@ -33,35 +33,32 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
+<script setup lang="ts">
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount, type Ref } from 'vue'
+import type { CommandItem } from '../utils/commandItems'
 
-const props = defineProps({
-  items: {
-    type: Array,
-    required: true
-  },
-  command: {
-    type: Function,
-    required: true
-  }
-})
+interface Props {
+  items: CommandItem[]
+  command: (item: CommandItem | { close: boolean }) => void
+}
 
-const searchQuery = ref('')
-const selectedIndex = ref(0)
-const menuRef = ref(null)
-const searchInput = ref(null)
+const props = defineProps<Props>()
+
+const searchQuery: Ref<string> = ref('')
+const selectedIndex: Ref<number> = ref(0)
+const menuRef: Ref<HTMLElement | null> = ref(null)
+const searchInput: Ref<HTMLInputElement | null> = ref(null)
 
 // 過濾項目
-const filteredItems = computed(() => {
+const filteredItems = computed<CommandItem[]>(() => {
   if (!searchQuery.value) return props.items
-  
+
   const query = searchQuery.value.toLowerCase()
-  return props.items.filter(item => {
+  return props.items.filter((item) => {
     return (
       item.title.toLowerCase().includes(query) ||
       item.description.toLowerCase().includes(query) ||
-      item.keywords.some(keyword => keyword.toLowerCase().includes(query))
+      item.keywords.some((keyword) => keyword.toLowerCase().includes(query))
     )
   })
 })
@@ -72,7 +69,7 @@ watch(filteredItems, () => {
 })
 
 // 鍵盤導航
-const handleKeyDown = (event) => {
+const handleKeyDown = (event: KeyboardEvent): void => {
   if (event.key === 'ArrowUp') {
     event.preventDefault()
     selectedIndex.value = Math.max(0, selectedIndex.value - 1)
@@ -91,7 +88,7 @@ const handleKeyDown = (event) => {
 }
 
 // 選擇項目
-const selectItem = (index) => {
+const selectItem = (index: number): void => {
   const item = filteredItems.value[index]
   if (item) {
     props.command(item)
@@ -99,7 +96,7 @@ const selectItem = (index) => {
 }
 
 // 滾動到選中的項目
-const scrollToSelected = () => {
+const scrollToSelected = (): void => {
   nextTick(() => {
     const selectedElement = menuRef.value?.querySelector('.is-selected')
     if (selectedElement) {

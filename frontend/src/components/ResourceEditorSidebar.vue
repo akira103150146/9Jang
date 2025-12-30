@@ -2,7 +2,7 @@
   <aside class="w-80 flex-shrink-0 bg-white border-r border-slate-200 flex flex-col shadow-lg z-10 transition-all duration-300" :class="{ '-ml-80': !sidebarOpen }">
     <div class="p-4 border-b border-slate-100 flex items-center justify-between">
       <h2 class="font-bold text-slate-800">資源編輯器</h2>
-      <button @click="$emit('close')" class="text-slate-400 hover:text-slate-600 lg:hidden">
+      <button @click="emit('close')" class="text-slate-400 hover:text-slate-600 lg:hidden">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
           <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
         </svg>
@@ -95,35 +95,35 @@
             已上傳 {{ imageMappings.size }} 張圖片
           </p>
           <div v-if="imageMappings.size > 0" class="flex gap-2">
-            <button 
-              @click="$emit('replace-all-images')" 
-              class="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-slate-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              :disabled="viewMode || replacingImages"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              {{ replacingImages ? '替換中...' : '替換' }}
-            </button>
-            <button 
-              @click="$emit('clear-image-mappings')" 
-              class="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-slate-400 disabled:cursor-not-allowed flex items-center justify-center"
-              :disabled="viewMode"
-              title="清空當前文件的圖片映射表"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
-          </div>
-          <input
-            ref="imageFolderInput"
-            type="file"
-            multiple
-            accept="image/png,image/jpeg,image/jpg,image/gif"
-            @change="$emit('image-folder-upload', $event)"
-            style="display: none"
-          />
+          <button
+            @click="emit('replace-all-images')"
+            class="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-slate-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            :disabled="viewMode || replacingImages"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            {{ replacingImages ? '替換中...' : '替換' }}
+          </button>
+          <button
+            @click="emit('clear-image-mappings')"
+            class="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-slate-400 disabled:cursor-not-allowed flex items-center justify-center"
+            :disabled="viewMode"
+            title="清空當前文件的圖片映射表"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </div>
+        <input
+          ref="imageFolderInput"
+          type="file"
+          multiple
+          accept="image/png,image/jpeg,image/jpg,image/gif"
+          @change="emit('image-folder-upload', ($event.target as HTMLInputElement).files!)"
+          style="display: none"
+        />
         </div>
 
         <!-- 列印浮水印設定 -->
@@ -136,7 +136,7 @@
                 type="checkbox"
                 id="enable-watermark"
                 :checked="watermarkEnabled"
-                @change="$emit('update:watermarkEnabled', $event.target.checked)"
+                @change="emit('update:watermarkEnabled', ($event.target as HTMLInputElement).checked)"
                 :disabled="viewMode"
                 class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
               />
@@ -161,15 +161,15 @@
                 ref="watermarkInput"
                 type="file"
                 accept="image/png,image/jpeg,image/jpg,image/svg+xml"
-                @change="$emit('watermark-upload', $event)"
+                @change="handleWatermarkUpload"
                 style="display: none"
               />
               
               <!-- 浮水印預覽 -->
               <div v-if="watermarkImage" class="mt-2 p-2 bg-slate-50 rounded border border-slate-200">
                 <img :src="watermarkImage" alt="浮水印預覽" class="max-h-20 mx-auto opacity-30">
-                <button 
-                  @click="$emit('remove-watermark')" 
+                <button
+                  @click="emit('remove-watermark')"
                   class="mt-2 w-full px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
                   :disabled="viewMode"
                 >
@@ -185,7 +185,7 @@
                 <input
                   type="range"
                   :value="watermarkOpacity"
-                  @input="$emit('update:watermarkOpacity', Number($event.target.value))"
+                  @input="emit('update:watermarkOpacity', Number(($event.target as HTMLInputElement).value))"
                   min="5"
                   max="30"
                   step="5"
@@ -203,10 +203,20 @@
           <div class="flex flex-wrap gap-2 mb-2">
             <span v-for="tagId in resource.tag_ids" :key="tagId" class="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800">
               #{{ getTagName(tagId) }}
-              <button v-if="!viewMode" @click="$emit('remove-tag', tagId)" class="ml-1 text-indigo-600 hover:text-indigo-900">×</button>
+              <button
+                v-if="!viewMode"
+                @click="emit('remove-tag', tagId)"
+                class="ml-1 text-indigo-600 hover:text-indigo-900"
+              >
+                ×
+              </button>
             </span>
           </div>
-          <select v-if="!viewMode" @change="$emit('add-tag', $event.target.value)" class="w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border">
+          <select
+            v-if="!viewMode"
+            @change="emit('add-tag', Number(($event.target as HTMLSelectElement).value))"
+            class="w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+          >
             <option value="">+ 新增標籤</option>
             <option v-for="t in availableTags" :key="t.tag_id" :value="t.tag_id">
               {{ t.tag_name }}
@@ -234,8 +244,8 @@
   </aside>
 </template>
 
-<script setup>
-import { ref } from 'vue'
+<script setup lang="ts">
+import { ref, type Ref } from 'vue'
 import { useResourceEditorContext } from '../composables/useResourceEditorContext'
 
 // 使用 context 注入，減少 props
@@ -255,27 +265,38 @@ const {
   getTagName
 } = useResourceEditorContext()
 
-defineProps({
-  sidebarOpen: {
-    type: Boolean,
-    default: true
-  }
+interface Props {
+  sidebarOpen?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  sidebarOpen: true
 })
 
-defineEmits([
-  'close',
-  'replace-all-images',
-  'clear-image-mappings',
-  'image-folder-upload',
-  'watermark-upload',
-  'remove-watermark',
-  'add-tag',
-  'remove-tag',
-  'update:watermarkEnabled',
-  'update:watermarkOpacity'
-])
+interface Emits {
+  (e: 'close'): void
+  (e: 'replace-all-images'): void
+  (e: 'clear-image-mappings'): void
+  (e: 'image-folder-upload', files: FileList): void
+  (e: 'watermark-upload', file: File): void
+  (e: 'remove-watermark'): void
+  (e: 'add-tag', tagId: number): void
+  (e: 'remove-tag', tagId: number): void
+  (e: 'update:watermarkEnabled', value: boolean): void
+  (e: 'update:watermarkOpacity', value: number): void
+}
 
-const showJson = ref(false)
-const imageFolderInput = ref(null)
-const watermarkInput = ref(null)
+const emit = defineEmits<Emits>()
+
+const showJson: Ref<boolean> = ref(false)
+const imageFolderInput: Ref<HTMLInputElement | null> = ref(null)
+const watermarkInput: Ref<HTMLInputElement | null> = ref(null)
+
+const handleWatermarkUpload = (event: Event): void => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (file) {
+    emit('watermark-upload', file)
+  }
+}
 </script>

@@ -36,20 +36,43 @@
   </node-view-wrapper>
 </template>
 
-<script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
-import { NodeViewWrapper, NodeViewContent, nodeViewProps } from '@tiptap/vue-3'
+<script setup lang="ts">
+import { ref, computed, watch, onMounted, onBeforeUnmount, type Ref } from 'vue'
+import { NodeViewWrapper, NodeViewContent, nodeViewProps, type NodeViewProps } from '@tiptap/vue-3'
 
-const props = defineProps(nodeViewProps)
+interface JSXGraphConfig {
+  boundingbox?: number[]
+  axis?: boolean
+  showCopyright?: boolean
+  showNavigation?: boolean
+  [key: string]: unknown
+}
 
-const isEditing = ref(false)
-const configText = ref('')
-const boardRef = ref(null)
-const boardId = computed(() => `jsxgraph-${props.node.attrs.id}`)
-const board = ref(null)
+declare global {
+  interface Window {
+    JXG?: {
+      JSXGraph: {
+        initBoard: (id: string, config: JSXGraphConfig) => {
+          board: {
+            suspendUpdate: () => void
+          }
+        }
+      }
+    }
+  }
+}
 
-const hasConfig = computed(() => {
-  return props.node.attrs.config && Object.keys(props.node.attrs.config).length > 0
+const props = defineProps<NodeViewProps>()
+
+const isEditing: Ref<boolean> = ref(false)
+const configText: Ref<string> = ref('')
+const boardRef: Ref<HTMLElement | null> = ref(null)
+const boardId = computed<string>(() => `jsxgraph-${props.node.attrs.id as string}`)
+const board: Ref<{ board: { suspendUpdate: () => void } } | null> = ref(null)
+
+const hasConfig = computed<boolean>(() => {
+  const config = props.node.attrs.config as JSXGraphConfig | undefined
+  return config ? Object.keys(config).length > 0 : false
 })
 
 // 初始化配置文本
@@ -72,16 +95,16 @@ onBeforeUnmount(() => {
   }
 })
 
-const handleEdit = () => {
+const handleEdit = (): void => {
   isEditing.value = !isEditing.value
   if (isEditing.value && hasConfig.value) {
     configText.value = JSON.stringify(props.node.attrs.config, null, 2)
   }
 }
 
-const handleSaveConfig = () => {
+const handleSaveConfig = (): void => {
   try {
-    const config = JSON.parse(configText.value)
+    const config: JSXGraphConfig = JSON.parse(configText.value)
     props.updateAttributes({
       config
     })
@@ -92,16 +115,16 @@ const handleSaveConfig = () => {
   }
 }
 
-const initBoard = async () => {
+const initBoard = async (): Promise<void> => {
   if (!hasConfig.value || !boardRef.value) return
-  
+
   try {
     // 動態載入 JSXGraph
     if (typeof window.JXG === 'undefined') {
       console.warn('JSXGraph not loaded')
       return
     }
-    
+
     // 清除舊的 board
     if (board.value) {
       try {
@@ -110,29 +133,32 @@ const initBoard = async () => {
         // ignore
       }
     }
-    
+
     // 創建新的 board
-    const config = {
+    const config: JSXGraphConfig = {
       boundingbox: [-5, 5, 5, -5],
       axis: true,
       showCopyright: false,
       showNavigation: false,
-      ...props.node.attrs.config
+      ...(props.node.attrs.config as JSXGraphConfig)
     }
-    
-    board.value = window.JXG.JSXGraph.initBoard(boardId.value, config)
-    
+
+    board.value = window.JXG!.JSXGraph.initBoard(boardId.value, config)
   } catch (error) {
     console.error('Failed to initialize JSXGraph:', error)
   }
 }
 
 // 監聽配置變化
-watch(() => props.node.attrs.config, () => {
-  if (!isEditing.value && hasConfig.value) {
-    initBoard()
-  }
-}, { deep: true })
+watch(
+  () => props.node.attrs.config as JSXGraphConfig | undefined,
+  () => {
+    if (!isEditing.value && hasConfig.value) {
+      initBoard()
+    }
+  },
+  { deep: true }
+)
 </script>
 
 <style scoped>

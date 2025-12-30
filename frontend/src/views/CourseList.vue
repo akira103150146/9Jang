@@ -133,102 +133,138 @@
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted, computed } from 'vue'
+<script setup lang="ts">
+import { ref, onMounted, computed, type Ref } from 'vue'
 import { courseAPI } from '../services/api'
 import { mockCourses } from '../data/mockData'
 import CourseDetailModal from '../components/CourseDetailModal.vue'
 
-const courses = ref([])
-const loading = ref(false)
-const usingMock = ref(false)
-const currentUser = ref(null)
-const isCourseModalOpen = ref(false)
-const selectedCourse = ref(null)
+/**
+ * 用戶類型
+ */
+interface User {
+  role?: 'ADMIN' | 'TEACHER' | 'ACCOUNTANT' | 'STUDENT'
+  [key: string]: unknown
+}
+
+/**
+ * 課程類型
+ */
+interface Course {
+  course_id: number
+  course_name: string
+  teacher?: unknown
+  teacher_name?: string
+  start_time: string
+  end_time: string
+  day_of_week: string
+  fee_per_session: number
+  status: 'Active' | 'Pending' | 'Closed'
+  student_status?: {
+    total_students: number
+    present_count: number
+    leave_count: number
+    inactive_count: number
+  } | null
+  enrollments_count?: number | null
+  id?: number
+  [key: string]: unknown
+}
+
+const courses: Ref<Course[]> = ref([])
+const loading: Ref<boolean> = ref(false)
+const usingMock: Ref<boolean> = ref(false)
+const currentUser: Ref<User | null> = ref(null)
+const isCourseModalOpen: Ref<boolean> = ref(false)
+const selectedCourse: Ref<Course | null> = ref(null)
 
 // 檢查是否為管理員
-const isAdmin = computed(() => {
-  return currentUser.value && currentUser.value.role === 'ADMIN'
+const isAdmin = computed<boolean>(() => {
+  return currentUser.value?.role === 'ADMIN'
 })
 
 // 檢查是否為老師
-const isTeacher = computed(() => {
-  return currentUser.value && currentUser.value.role === 'TEACHER'
+const isTeacher = computed<boolean>(() => {
+  return currentUser.value?.role === 'TEACHER'
 })
 
 // 檢查是否可以看到會計相關功能
-const canSeeAccountingFeatures = computed(() => {
-  return currentUser.value && (currentUser.value.role === 'ACCOUNTANT' || currentUser.value.role === 'ADMIN')
+const canSeeAccountingFeatures = computed<boolean>(() => {
+  return currentUser.value?.role === 'ACCOUNTANT' || currentUser.value?.role === 'ADMIN'
 })
 
 // 獲取當前用戶信息
-const fetchCurrentUser = async () => {
+const fetchCurrentUser = async (): Promise<void> => {
   try {
     const userStr = localStorage.getItem('user')
     if (userStr) {
-      currentUser.value = JSON.parse(userStr)
+      currentUser.value = JSON.parse(userStr) as User
     }
   } catch (error) {
     console.error('獲取用戶信息失敗:', error)
   }
 }
 
-const dayMap = {
-  'Mon': '週一',
-  'Tue': '週二',
-  'Wed': '週三',
-  'Thu': '週四',
-  'Fri': '週五',
-  'Sat': '週六',
-  'Sun': '週日',
+const dayMap: Record<string, string> = {
+  Mon: '週一',
+  Tue: '週二',
+  Wed: '週三',
+  Thu: '週四',
+  Fri: '週五',
+  Sat: '週六',
+  Sun: '週日'
 }
 
-const normalizeCourse = (course) => ({
-  course_id: course.course_id || course.id,
-  course_name: course.course_name,
-  teacher: course.teacher,
-  teacher_name: course.teacher_name || course.teacher?.name || '',
-  start_time: course.start_time,
-  end_time: course.end_time,
-  day_of_week: course.day_of_week,
-  fee_per_session: course.fee_per_session,
-  status: course.status || 'Active',
-  student_status: course.student_status || null,
-  enrollments_count: course.enrollments_count || null, // 報名學生人數
-})
+const normalizeCourse = (course: unknown): Course => {
+  const c = course as Course & { id?: number; teacher?: { name?: string } }
+  return {
+    course_id: c.course_id || c.id || 0,
+    course_name: c.course_name || '',
+    teacher: c.teacher,
+    teacher_name: c.teacher_name || (c.teacher && typeof c.teacher === 'object' ? c.teacher.name : undefined) || '',
+    start_time: c.start_time || '',
+    end_time: c.end_time || '',
+    day_of_week: c.day_of_week || '',
+    fee_per_session: c.fee_per_session || 0,
+    status: (c.status as 'Active' | 'Pending' | 'Closed') || 'Active',
+    student_status: c.student_status || null,
+    enrollments_count: c.enrollments_count || null,
+    ...c
+  }
+}
 
-const getDayDisplay = (day) => {
+const getDayDisplay = (day: string): string => {
   return dayMap[day] || day
 }
 
-const formatTime = (time) => {
+const formatTime = (time: string | unknown): string => {
   if (!time) return ''
   // 如果是 HH:MM:SS 格式，只取前5個字符
-  return typeof time === 'string' ? time.substring(0, 5) : time
+  return typeof time === 'string' ? time.substring(0, 5) : String(time)
 }
 
-const getStatusClass = (status) => {
-  const statusMap = {
-    'Active': 'bg-emerald-50 text-emerald-600',
-    'Pending': 'bg-amber-50 text-amber-600',
-    'Closed': 'bg-slate-100 text-slate-600',
+const getStatusClass = (status: string): string => {
+  const statusMap: Record<string, string> = {
+    Active: 'bg-emerald-50 text-emerald-600',
+    Pending: 'bg-amber-50 text-amber-600',
+    Closed: 'bg-slate-100 text-slate-600'
   }
   return statusMap[status] || 'bg-slate-100 text-slate-600'
 }
 
-const fetchCourses = async () => {
+const fetchCourses = async (): Promise<void> => {
   loading.value = true
   try {
     const response = await courseAPI.getAll()
-    const data = response.data.results || response.data
-    const normalizedCourses = data.map((item) => normalizeCourse(item))
-    
+    const data = ((response.data as { results?: unknown[] }) | unknown[]).results || (response.data as unknown[])
+    const normalizedCourses = (data as unknown[]).map((item) => normalizeCourse(item))
+
     // 如果是老師或管理員，獲取每個課程的學生狀態統計
     if (currentUser.value && (currentUser.value.role === 'TEACHER' || currentUser.value.role === 'ADMIN')) {
       const statusPromises = normalizedCourses.map(async (course) => {
         try {
           const statusRes = await courseAPI.getStudentStatus(course.course_id)
-          course.student_status = statusRes.data
+          course.student_status = statusRes.data as Course['student_status']
         } catch (error) {
           console.warn(`獲取課程 ${course.course_id} 的學生狀態失敗:`, error)
           course.student_status = null
@@ -239,18 +275,18 @@ const fetchCourses = async () => {
     } else {
       courses.value = normalizedCourses
     }
-    
+
     usingMock.value = false
   } catch (error) {
     console.warn('獲取課程資料失敗，使用 mock 資料：', error)
-    courses.value = mockCourses.map((item) => normalizeCourse(item))
+    courses.value = (mockCourses as unknown[]).map((item) => normalizeCourse(item))
     usingMock.value = true
   } finally {
     loading.value = false
   }
 }
 
-const deleteCourse = async (id, name) => {
+const deleteCourse = async (id: number, name: string): Promise<void> => {
   if (!id) {
     alert('示意資料無法刪除，請於 API 可用後再操作。')
     return
@@ -270,12 +306,12 @@ const deleteCourse = async (id, name) => {
   }
 }
 
-const openCourseDetail = (course) => {
+const openCourseDetail = (course: Course): void => {
   selectedCourse.value = course
   isCourseModalOpen.value = true
 }
 
-const closeCourseModal = () => {
+const closeCourseModal = (): void => {
   isCourseModalOpen.value = false
   // 不要將 selectedCourse 設為 null，讓組件保持存在以便 watcher 正常工作
   // selectedCourse.value = null

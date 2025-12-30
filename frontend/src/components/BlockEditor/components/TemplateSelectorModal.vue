@@ -62,49 +62,63 @@
   </teleport>
 </template>
 
-<script setup>
-import { ref, computed } from 'vue'
+<script setup lang="ts">
+import { ref, computed, type Ref } from 'vue'
 
-const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    default: false
-  },
-  templates: {
-    type: Array,
-    default: () => []
-  }
+interface Template {
+  template_id: number
+  title: string
+  description?: string
+  structure?: unknown[]
+  [key: string]: unknown
+}
+
+interface Props {
+  modelValue?: boolean
+  templates?: Template[]
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  modelValue: false,
+  templates: () => []
 })
 
-const emit = defineEmits(['update:modelValue', 'select'])
+interface Emits {
+  (e: 'update:modelValue', value: boolean): void
+  (e: 'select', templateId: number): void
+}
 
-const searchQuery = ref('')
-const selectedTemplateId = ref(null)
+const emit = defineEmits<Emits>()
+
+const searchQuery: Ref<string> = ref('')
+const selectedTemplateId: Ref<number | null> = ref(null)
 
 // 篩選後的模板列表
-const filteredTemplates = computed(() => {
+const filteredTemplates = computed<Template[]>(() => {
   if (!searchQuery.value) {
     return props.templates
   }
   const query = searchQuery.value.toLowerCase()
-  return props.templates.filter(t => {
-    return t.title?.toLowerCase().includes(query) ||
-           t.description?.toLowerCase().includes(query)
+  return props.templates.filter((t) => {
+    return (
+      t.title?.toLowerCase().includes(query) ||
+      t.description?.toLowerCase().includes(query)
+    )
   })
 })
 
-const selectTemplate = (templateId) => {
+const selectTemplate = (templateId: number): void => {
   selectedTemplateId.value = templateId
 }
 
-const confirm = () => {
+const confirm = (): void => {
   if (selectedTemplateId.value) {
     emit('select', selectedTemplateId.value)
     close()
   }
 }
 
-const close = () => {
+const close = (): void => {
   emit('update:modelValue', false)
   selectedTemplateId.value = null
   searchQuery.value = ''

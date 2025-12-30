@@ -26,21 +26,32 @@
   </div>
 </template>
 
-<script setup>
-import { nextTick, onMounted, ref, watch } from 'vue'
+<script setup lang="ts">
+import { nextTick, onMounted, ref, watch, type Ref } from 'vue'
 import 'mathlive'
 
-const props = defineProps({
-  latex: {
-    type: String,
-    default: '',
-  },
+interface MathFieldElement extends HTMLElement {
+  value?: string
+  focus?: () => void
+}
+
+interface Props {
+  latex?: string
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  latex: ''
 })
 
-const emit = defineEmits(['save', 'cancel'])
+interface Emits {
+  (e: 'save', value: string): void
+  (e: 'cancel'): void
+}
 
-const localLatex = ref(props.latex || '')
-const mathFieldRef = ref(null)
+const emit = defineEmits<Emits>()
+
+const localLatex: Ref<string> = ref(props.latex || '')
+const mathFieldRef: Ref<MathFieldElement | null> = ref(null)
 
 watch(
   () => props.latex,
@@ -49,12 +60,12 @@ watch(
   }
 )
 
-const syncFromField = () => {
+const syncFromField = (): void => {
   if (!mathFieldRef.value) return
   localLatex.value = mathFieldRef.value.value || ''
 }
 
-const emitSave = () => {
+const emitSave = (): void => {
   emit('save', localLatex.value || '')
 }
 
@@ -62,12 +73,14 @@ onMounted(async () => {
   await nextTick()
   try {
     mathFieldRef.value?.focus?.()
-  } catch (e) {}
+  } catch (e) {
+    // ignore
+  }
 
   // Esc 關閉
   const el = mathFieldRef.value
   if (el) {
-    el.addEventListener('keydown', (evt) => {
+    el.addEventListener('keydown', (evt: KeyboardEvent) => {
       if (evt.key === 'Escape') {
         evt.preventDefault()
         emit('cancel')

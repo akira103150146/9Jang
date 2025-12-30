@@ -9,7 +9,7 @@
       :value="modelValue"
       :disabled="disabled"
       :class="selectClasses"
-      @change="$emit('update:modelValue', $event.target.value)"
+      @change="emit('update:modelValue', ($event.target as HTMLSelectElement).value)"
       @blur="$emit('blur', $event)"
       @focus="$emit('focus', $event)"
     >
@@ -29,89 +29,79 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 
-const props = defineProps({
-  modelValue: {
-    type: [String, Number],
-    default: ''
-  },
-  label: {
-    type: String,
-    default: ''
-  },
-  placeholder: {
-    type: String,
-    default: ''
-  },
-  disabled: {
-    type: Boolean,
-    default: false
-  },
-  required: {
-    type: Boolean,
-    default: false
-  },
-  error: {
-    type: String,
-    default: ''
-  },
-  hint: {
-    type: String,
-    default: ''
-  },
-  size: {
-    type: String,
-    default: 'md',
-    validator: (value) => ['sm', 'md', 'lg'].includes(value)
-  },
-  // 選項數據（可以是字符串數組或對象數組）
-  options: {
-    type: Array,
-    default: () => []
-  },
-  // 當 options 是對象數組時，指定 value 字段名
-  optionValue: {
-    type: String,
-    default: 'value'
-  },
-  // 當 options 是對象數組時，指定 label 字段名
-  optionLabel: {
-    type: String,
-    default: 'label'
-  }
+type SelectSize = 'sm' | 'md' | 'lg'
+
+type Option = string | number | { [key: string]: unknown }
+
+interface Props {
+  modelValue?: string | number
+  label?: string
+  placeholder?: string
+  disabled?: boolean
+  required?: boolean
+  error?: string
+  hint?: string
+  size?: SelectSize
+  options?: Option[]
+  optionValue?: string
+  optionLabel?: string
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  modelValue: '',
+  label: '',
+  placeholder: '',
+  disabled: false,
+  required: false,
+  error: '',
+  hint: '',
+  size: 'md',
+  options: () => [],
+  optionValue: 'value',
+  optionLabel: 'label'
 })
 
-defineEmits(['update:modelValue', 'blur', 'focus'])
+interface Emits {
+  (e: 'update:modelValue', value: string | number): void
+  (e: 'blur', event: FocusEvent): void
+  (e: 'focus', event: FocusEvent): void
+}
 
-const selectId = computed(() => `select-${Math.random().toString(36).substr(2, 9)}`)
+const emit = defineEmits<Emits>()
 
-const selectClasses = computed(() => {
-  const base = 'w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed bg-white'
-  
-  const sizeClasses = {
+const selectId = computed<string>(() => `select-${Math.random().toString(36).substring(2, 11)}`)
+
+const selectClasses = computed<string>(() => {
+  const base =
+    'w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed bg-white'
+
+  const sizeClasses: Record<SelectSize, string> = {
     sm: 'px-2 py-1 text-sm',
     md: 'px-3 py-2 text-sm',
     lg: 'px-4 py-3 text-base'
   }
-  
+
   const errorClasses = props.error ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''
-  
+
   return `${base} ${sizeClasses[props.size]} ${errorClasses}`
 })
 
-const getOptionValue = (option) => {
+const getOptionValue = (option: Option): string | number => {
   if (typeof option === 'string' || typeof option === 'number') {
     return option
   }
-  return option[props.optionValue] ?? option.value ?? option.id
+  const obj = option as { [key: string]: unknown }
+  return (obj[props.optionValue] ?? obj.value ?? obj.id ?? '') as string | number
 }
 
-const getOptionLabel = (option) => {
+const getOptionLabel = (option: Option): string => {
   if (typeof option === 'string' || typeof option === 'number') {
-    return option
+    return String(option)
   }
-  return option[props.optionLabel] ?? option.label ?? option.name ?? String(option.value)
+  const obj = option as { [key: string]: unknown }
+  return (obj[props.optionLabel] ?? obj.label ?? obj.name ?? String(obj.value) ?? '') as string
 }
 </script>

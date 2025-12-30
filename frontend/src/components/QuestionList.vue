@@ -449,35 +449,88 @@
   </div>
 </template>
 
-<script setup>
-import { ref, reactive, computed, onMounted, watch, onActivated, nextTick } from 'vue'
+<script setup lang="ts">
+import { ref, reactive, computed, onMounted, watch, onActivated, nextTick, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { questionBankAPI, subjectAPI, hashtagAPI } from '../services/api'
 import RichTextPreview from './RichTextPreview.vue'
+import type { Question, Subject, Tag, TiptapDocument } from '@9jang/shared'
+
+type QuestionType = 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE' | 'FILL_IN_BLANK' | 'PROGRAMMING' | 'LISTENING'
+type Level = 'JHS' | 'SHS' | 'VCS'
+
+interface QuestionWithExtras extends Question {
+  question_id: number
+  subject_name?: string
+  level: Level
+  chapter?: string
+  difficulty: number
+  question_type: QuestionType
+  content: TiptapDocument | string | unknown
+  correct_answer: TiptapDocument | string | unknown
+  solution_content?: TiptapDocument | string | unknown
+  options?: (TiptapDocument | string | unknown)[]
+  tags?: string[]
+  source?: string
+  source_display?: string
+  error_log_images?: Array<{ image_id: number; image_url: string; caption?: string }>
+  [key: string]: unknown
+}
+
+interface Pagination {
+  currentPage: number
+  totalPages: number
+  totalCount: number
+  pageSize: number
+}
+
+interface Filters {
+  subject_id: string
+  level: string
+  chapter: string
+  difficulty: string
+  question_type: string
+  tag_id: string
+  source: string
+}
+
+interface ImageModal {
+  open: boolean
+  url: string
+  caption: string
+}
+
+interface TiptapNode {
+  type: string
+  text?: string
+  content?: TiptapNode[]
+  marks?: Array<{ type: string }>
+  attrs?: Record<string, unknown>
+}
 
 const router = useRouter()
 
-const questions = ref([])
-const subjects = ref([])
-const tags = ref([])
-const sourceOptions = ref([])
-const loading = ref(false)
-const isFiltering = ref(false)
-const showFilters = ref(true)
-const previewQuestion = ref(null)
-const imageModal = ref({ open: false, url: '', caption: '' })
-const questionsContainer = ref(null)
+const questions: Ref<QuestionWithExtras[]> = ref([])
+const subjects: Ref<Subject[]> = ref([])
+const tags: Ref<Tag[]> = ref([])
+const sourceOptions: Ref<string[]> = ref([])
+const loading: Ref<boolean> = ref(false)
+const isFiltering: Ref<boolean> = ref(false)
+const showFilters: Ref<boolean> = ref(true)
+const previewQuestion: Ref<QuestionWithExtras | null> = ref(null)
+const imageModal: Ref<ImageModal> = ref({ open: false, url: '', caption: '' })
+const questionsContainer: Ref<HTMLElement | null> = ref(null)
 let savedScrollPosition = 0
-let filterTimeout = null
+let filterTimeout: ReturnType<typeof setTimeout> | null = null
 
-const pagination = reactive({
+const pagination = reactive<Pagination>({
   currentPage: 1,
   totalPages: 1,
   totalCount: 0,
   pageSize: 10
 })
 
-const filters = reactive({
+const filters = reactive<Filters>({
   subject_id: '',
   level: '',
   chapter: '',
@@ -487,82 +540,85 @@ const filters = reactive({
   source: ''
 })
 
-const getTypeColor = (type) => {
-  const map = {
-    'SINGLE_CHOICE': 'bg-blue-50 text-blue-700 ring-blue-600/20',
-    'MULTIPLE_CHOICE': 'bg-purple-50 text-purple-700 ring-purple-600/20',
-    'FILL_IN_BLANK': 'bg-green-50 text-green-700 ring-green-600/20',
-    'PROGRAMMING': 'bg-orange-50 text-orange-700 ring-orange-600/20',
-    'LISTENING': 'bg-yellow-50 text-yellow-700 ring-yellow-600/20',
+const getTypeColor = (type: string): string => {
+  const map: Record<string, string> = {
+    SINGLE_CHOICE: 'bg-blue-50 text-blue-700 ring-blue-600/20',
+    MULTIPLE_CHOICE: 'bg-purple-50 text-purple-700 ring-purple-600/20',
+    FILL_IN_BLANK: 'bg-green-50 text-green-700 ring-green-600/20',
+    PROGRAMMING: 'bg-orange-50 text-orange-700 ring-orange-600/20',
+    LISTENING: 'bg-yellow-50 text-yellow-700 ring-yellow-600/20'
   }
   return map[type] || 'bg-slate-50 text-slate-700 ring-slate-600/20'
 }
 
-const getTypeName = (type) => {
-  const map = {
-    'SINGLE_CHOICE': '單選題',
-    'MULTIPLE_CHOICE': '多選題',
-    'FILL_IN_BLANK': '填充題',
-    'PROGRAMMING': '程式題',
-    'LISTENING': '聽力題',
+const getTypeName = (type: string): string => {
+  const map: Record<string, string> = {
+    SINGLE_CHOICE: '單選題',
+    MULTIPLE_CHOICE: '多選題',
+    FILL_IN_BLANK: '填充題',
+    PROGRAMMING: '程式題',
+    LISTENING: '聽力題'
   }
   return map[type] || type
 }
 
-const getLevelName = (level) => {
-  const map = {
-    'JHS': '國中',
-    'SHS': '高中',
-    'VCS': '高職',
+const getLevelName = (level: string): string => {
+  const map: Record<string, string> = {
+    JHS: '國中',
+    SHS: '高中',
+    VCS: '高職'
   }
   return map[level] || level
 }
 
 // 從 Tiptap JSON 提取純文字的輔助函式
-const extractTextFromTiptapJSON = (node) => {
+const extractTextFromTiptapJSON = (node: TiptapNode | unknown): string => {
   if (!node || typeof node !== 'object') return ''
-  
+
+  const n = node as TiptapNode
   let text = ''
-  if (node.type === 'text' && node.text) {
-    text = node.text
+  if (n.type === 'text' && n.text) {
+    text = n.text
   }
-  
-  if (node.content && Array.isArray(node.content)) {
-    for (const child of node.content) {
+
+  if (n.content && Array.isArray(n.content)) {
+    for (const child of n.content) {
       text += extractTextFromTiptapJSON(child)
     }
   }
-  
+
   return text
 }
 
-const getContentPreview = (content) => {
+const getContentPreview = (content: TiptapDocument | string | unknown): string => {
   if (!content) return '無內容'
-  
+
   // 如果是 Tiptap JSON 格式
   if (typeof content === 'object' && content !== null) {
+    const c = content as TiptapDocument & { type?: string }
     // 檢查是否為 Tiptap JSON 格式
-    if (content.type === 'doc') {
-      const text = extractTextFromTiptapJSON(content).trim()
+    if (c.type === 'doc') {
+      const text = extractTextFromTiptapJSON(c as unknown as TiptapNode).trim()
       return text.length > 100 ? text.substring(0, 100) + '...' : text || '無內容'
     }
     // 如果是空物件或其他物件格式
-    if (Object.keys(content).length === 0) {
+    if (Object.keys(c).length === 0) {
       return '無內容'
     }
     // 嘗試提取文字（可能是其他格式的物件）
     try {
-      const text = extractTextFromTiptapJSON(content).trim()
+      const text = extractTextFromTiptapJSON(c as unknown as TiptapNode).trim()
       return text.length > 100 ? text.substring(0, 100) + '...' : text || '無內容'
     } catch (e) {
       return '無內容'
     }
   }
-  
+
   // 如果是字串（舊格式，向後相容）
   if (typeof content === 'string') {
     // 移除 Markdown 格式標記
-    const text = content.replace(/#{1,6}\s+/g, '')
+    const text = content
+      .replace(/#{1,6}\s+/g, '')
       .replace(/\*\*/g, '')
       .replace(/\*/g, '')
       .replace(/`/g, '')
@@ -570,11 +626,11 @@ const getContentPreview = (content) => {
       .trim()
     return text.length > 100 ? text.substring(0, 100) + '...' : text
   }
-  
+
   return '無內容'
 }
 
-const fetchQuestions = async () => {
+const fetchQuestions = async (): Promise<void> => {
   // 保存當前滾動位置
   const mainElement = document.querySelector('main')
   const mainScroll = mainElement ? mainElement.scrollTop : 0
@@ -589,13 +645,13 @@ const fetchQuestions = async () => {
   loading.value = true
   isFiltering.value = true
   try {
-    const params = {}
+    const params: Record<string, string | number | number[]> = {}
     if (filters.subject_id) params.subject = filters.subject_id
     if (filters.level) params.level = filters.level
     if (filters.chapter) params.chapter = filters.chapter
     if (filters.difficulty) params.difficulty = filters.difficulty
     if (filters.question_type) params.question_type = filters.question_type
-    if (filters.tag_id) params.tags = [filters.tag_id]
+    if (filters.tag_id) params.tags = [parseInt(filters.tag_id, 10)]
     if (filters.source) params.source = filters.source
 
     // 添加分頁參數
@@ -604,12 +660,13 @@ const fetchQuestions = async () => {
     params.page = pagination.currentPage
 
     const response = await questionBankAPI.getAll({ params })
-    const questionsData = response.data.results || response.data || []
-    
+    const questionsData = ((response.data as { results?: QuestionWithExtras[] }) | QuestionWithExtras[]).results || (response.data as QuestionWithExtras[]) || []
+
     // 更新分頁資訊
-    if (response.data.count !== undefined) {
-      pagination.totalCount = response.data.count
-      pagination.totalPages = Math.ceil(response.data.count / pagination.pageSize)
+    const data = response.data as { count?: number }
+    if (data.count !== undefined) {
+      pagination.totalCount = data.count
+      pagination.totalPages = Math.ceil(data.count / pagination.pageSize)
     } else {
       // 如果沒有分頁資訊，假設只有一頁
       pagination.totalCount = questionsData.length
@@ -617,12 +674,12 @@ const fetchQuestions = async () => {
     }
 
     // 確保每個題目都有必要的欄位
-    questions.value = questionsData.map(q => ({
+    questions.value = questionsData.map((q) => ({
       ...q,
-      question_type: q.question_type || 'SINGLE_CHOICE',
+      question_type: (q.question_type as QuestionType) || 'SINGLE_CHOICE',
       options: q.options || [],
       tags: q.tags || []
-    }))
+    })) as QuestionWithExtras[]
   } catch (error) {
     console.error('獲取題目失敗：', error)
     questions.value = []
@@ -652,46 +709,38 @@ const fetchQuestions = async () => {
   }
 }
 
-const fetchSubjects = async () => {
+const fetchSubjects = async (): Promise<void> => {
   try {
     const response = await subjectAPI.getAll()
-    subjects.value = response.data.results || response.data || []
+    subjects.value = ((response.data as { results?: Subject[] }) | Subject[]).results || (response.data as Subject[]) || []
   } catch (error) {
     console.warn('獲取科目失敗：', error)
     subjects.value = []
   }
 }
 
-const fetchTags = async () => {
+const fetchTags = async (): Promise<void> => {
   try {
     const response = await hashtagAPI.getAll()
-    tags.value = response.data.results || response.data || []
+    tags.value = ((response.data as { results?: Tag[] }) | Tag[]).results || (response.data as Tag[]) || []
   } catch (error) {
     console.warn('獲取標籤失敗：', error)
     tags.value = []
   }
 }
 
-const fetchSourceOptions = async () => {
+const fetchSourceOptions = async (): Promise<void> => {
   try {
     const response = await questionBankAPI.getSourceOptions()
-    sourceOptions.value = response.data.options || []
+    sourceOptions.value = (response.data as { options?: string[] }).options || []
   } catch (error) {
     console.warn('獲取來源選項失敗：', error)
     // 如果 API 失敗，使用預設選項
-    sourceOptions.value = [
-      '九章自命題',
-      '學生錯題',
-      '學測',
-      '會考',
-      '統測',
-      '模擬考',
-      '基測',
-    ]
+    sourceOptions.value = ['九章自命題', '學生錯題', '學測', '會考', '統測', '模擬考', '基測']
   }
 }
 
-const resetFilters = () => {
+const resetFilters = (): void => {
   filters.subject_id = ''
   filters.level = ''
   filters.chapter = ''
@@ -704,68 +753,68 @@ const resetFilters = () => {
 }
 
 // 移除單個篩選條件
-const removeFilter = (key) => {
-  filters[key] = ''
+const removeFilter = (key: keyof Filters): void => {
+  filters[key] = '' as never
   pagination.currentPage = 1
   fetchQuestions()
 }
 
 // 檢查是否有活躍的篩選
-const hasActiveFilters = computed(() => {
-  return Object.values(filters).some(value => value !== '')
+const hasActiveFilters = computed<boolean>(() => {
+  return Object.values(filters).some((value) => value !== '')
 })
 
 // 獲取活躍篩選的顯示標籤
-const activeFilters = computed(() => {
-  const result = {}
-  
+const activeFilters = computed<Record<string, { label: string }>>(() => {
+  const result: Record<string, { label: string }> = {}
+
   if (filters.subject_id) {
-    const subject = subjects.value.find(s => s.subject_id == filters.subject_id)
+    const subject = subjects.value.find((s) => String(s.subject_id) === filters.subject_id)
     result.subject_id = { label: `科目：${subject?.name || filters.subject_id}` }
   }
-  
+
   if (filters.level) {
-    const levelMap = {
-      'JHS': '國中',
-      'SHS': '高中',
-      'VCS': '高職'
+    const levelMap: Record<string, string> = {
+      JHS: '國中',
+      SHS: '高中',
+      VCS: '高職'
     }
     result.level = { label: `年級：${levelMap[filters.level] || filters.level}` }
   }
-  
+
   if (filters.chapter) {
     result.chapter = { label: `章節：${filters.chapter}` }
   }
-  
+
   if (filters.difficulty) {
     result.difficulty = { label: `難度：${filters.difficulty} 星` }
   }
-  
+
   if (filters.question_type) {
-    const typeMap = {
-      'SINGLE_CHOICE': '單選題',
-      'MULTIPLE_CHOICE': '多選題',
-      'FILL_IN_BLANK': '填充題',
-      'PROGRAMMING': '程式題',
-      'LISTENING': '聽力題'
+    const typeMap: Record<string, string> = {
+      SINGLE_CHOICE: '單選題',
+      MULTIPLE_CHOICE: '多選題',
+      FILL_IN_BLANK: '填充題',
+      PROGRAMMING: '程式題',
+      LISTENING: '聽力題'
     }
     result.question_type = { label: `類型：${typeMap[filters.question_type] || filters.question_type}` }
   }
-  
+
   if (filters.tag_id) {
-    const tag = tags.value.find(t => t.tag_id == filters.tag_id)
+    const tag = tags.value.find((t) => String(t.tag_id) === filters.tag_id)
     result.tag_id = { label: `標籤：#${tag?.tag_name || filters.tag_id}` }
   }
-  
+
   if (filters.source) {
     result.source = { label: `來源：${filters.source}` }
   }
-  
+
   return result
 })
 
 // 防抖函數
-const debouncedFetchQuestions = () => {
+const debouncedFetchQuestions = (): void => {
   if (filterTimeout) {
     clearTimeout(filterTimeout)
   }
@@ -792,19 +841,19 @@ watch(
   }
 )
 
-const goToPage = async (page) => {
+const goToPage = async (page: number): Promise<void> => {
   if (page >= 1 && page <= pagination.totalPages) {
     pagination.currentPage = page
     await fetchQuestions()
   }
 }
 
-const showQuestionPreview = async (question) => {
+const showQuestionPreview = async (question: QuestionWithExtras): Promise<void> => {
   // 如果只有基本信息，需要獲取完整題目詳情
   if (!question.content || !question.correct_answer) {
     try {
       const response = await questionBankAPI.getById(question.question_id)
-      previewQuestion.value = response.data
+      previewQuestion.value = response.data as QuestionWithExtras
     } catch (error) {
       console.error('獲取題目詳情失敗：', error)
       previewQuestion.value = question
@@ -814,30 +863,31 @@ const showQuestionPreview = async (question) => {
   }
 }
 
-const closePreview = () => {
+const closePreview = (): void => {
   previewQuestion.value = null
 }
 
-const openImageModal = (url, caption = '') => {
+const openImageModal = (url: string, caption = ''): void => {
   imageModal.value = { open: true, url, caption }
 }
 
-const closeImageModal = () => {
+const closeImageModal = (): void => {
   imageModal.value = { open: false, url: '', caption: '' }
 }
 
 // 將 Tiptap JSON 轉換為 Markdown 字串
-const tiptapToMarkdown = (node) => {
+const tiptapToMarkdown = (node: TiptapNode | unknown): string => {
   if (!node || typeof node !== 'object') return ''
-  
+
+  const n = node as TiptapNode
   let markdown = ''
-  
+
   // 處理文字節點
-  if (node.type === 'text') {
-    let text = node.text || ''
+  if (n.type === 'text') {
+    let text = n.text || ''
     // 處理文字標記
-    if (node.marks) {
-      for (const mark of node.marks) {
+    if (n.marks) {
+      for (const mark of n.marks) {
         if (mark.type === 'bold') {
           text = `**${text}**`
         } else if (mark.type === 'italic') {
@@ -849,154 +899,154 @@ const tiptapToMarkdown = (node) => {
     }
     return text
   }
-  
+
   // 處理不同類型的節點
-  if (node.type === 'paragraph') {
-    if (node.content && Array.isArray(node.content)) {
-      const paraText = node.content.map(child => tiptapToMarkdown(child)).join('')
+  if (n.type === 'paragraph') {
+    if (n.content && Array.isArray(n.content)) {
+      const paraText = n.content.map((child) => tiptapToMarkdown(child)).join('')
       markdown += paraText + '\n\n'
     } else {
       markdown += '\n\n'
     }
-  } else if (node.type === 'heading') {
-    const level = node.attrs?.level || 1
-    const headingText = node.content ? node.content.map(child => tiptapToMarkdown(child)).join('') : ''
+  } else if (n.type === 'heading') {
+    const level = ((n.attrs as { level?: number })?.level) || 1
+    const headingText = n.content ? n.content.map((child) => tiptapToMarkdown(child)).join('') : ''
     markdown += '#'.repeat(level) + ' ' + headingText + '\n\n'
-  } else if (node.type === 'codeBlock') {
-    const codeText = node.content ? node.content.map(child => tiptapToMarkdown(child)).join('') : ''
-    const language = node.attrs?.language || 'text'
+  } else if (n.type === 'codeBlock') {
+    const codeText = n.content ? n.content.map((child) => tiptapToMarkdown(child)).join('') : ''
+    const language = ((n.attrs as { language?: string })?.language) || 'text'
     markdown += '```' + language + '\n' + codeText + '\n```\n\n'
-  } else if (node.type === 'hardBreak') {
+  } else if (n.type === 'hardBreak') {
     markdown += '\n'
-  } else if (node.type === 'bulletList' || node.type === 'orderedList') {
-    if (node.content && Array.isArray(node.content)) {
-      node.content.forEach((item, index) => {
-        const itemText = item.content ? item.content.map(child => tiptapToMarkdown(child)).join('').trim() : ''
-        const prefix = node.type === 'orderedList' ? `${index + 1}. ` : '- '
+  } else if (n.type === 'bulletList' || n.type === 'orderedList') {
+    if (n.content && Array.isArray(n.content)) {
+      n.content.forEach((item, index) => {
+        const itemText = item.content ? item.content.map((child) => tiptapToMarkdown(child)).join('').trim() : ''
+        const prefix = n.type === 'orderedList' ? `${index + 1}. ` : '- '
         markdown += prefix + itemText + '\n'
       })
       markdown += '\n'
     }
-  } else if (node.type === 'blockquote') {
-    const quoteText = node.content ? node.content.map(child => tiptapToMarkdown(child)).join('').trim() : ''
+  } else if (n.type === 'blockquote') {
+    const quoteText = n.content ? n.content.map((child) => tiptapToMarkdown(child)).join('').trim() : ''
     markdown += '> ' + quoteText.split('\n').join('\n> ') + '\n\n'
-  } else if (node.type === 'latexBlock') {
-    const latex = node.attrs?.latex || ''
+  } else if (n.type === 'latexBlock') {
+    const latex = ((n.attrs as { latex?: string })?.latex) || ''
     // LaTeX 中的反斜線需要保留，直接使用字串拼接避免模板字串轉義問題
     markdown += '$$\n' + latex + '\n$$\n\n'
-  } else if (node.type === 'inlineLatex') {
-    const latex = node.attrs?.latex || ''
+  } else if (n.type === 'inlineLatex') {
+    const latex = ((n.attrs as { latex?: string })?.latex) || ''
     // LaTeX 中的反斜線需要保留，直接使用字串拼接避免模板字串轉義問題
     markdown += '$' + latex + '$'
-  } else if (node.type === 'image') {
-    const src = node.attrs?.src || ''
-    const alt = node.attrs?.alt || ''
+  } else if (n.type === 'image') {
+    const src = ((n.attrs as { src?: string })?.src) || ''
+    const alt = ((n.attrs as { alt?: string })?.alt) || ''
     markdown += `![${alt}](${src})\n\n`
-  } else if (node.type === 'questionBlock') {
+  } else if (n.type === 'questionBlock') {
     // 題目區塊：顯示為佔位符
-    const questionId = node.attrs?.questionId || ''
+    const questionId = ((n.attrs as { questionId?: string })?.questionId) || ''
     markdown += `\n[題目區塊: ${questionId || '未指定'}]\n\n`
-  } else if (node.type === 'templateBlock') {
+  } else if (n.type === 'templateBlock') {
     // 模板區塊：顯示為佔位符
-    const templateId = node.attrs?.templateId || ''
+    const templateId = ((n.attrs as { templateId?: string })?.templateId) || ''
     markdown += `\n[模板區塊: ${templateId || '未指定'}]\n\n`
-  } else if (node.type === 'diagram2DBlock' || node.type === 'diagram2D') {
+  } else if (n.type === 'diagram2DBlock' || n.type === 'diagram2D') {
     // 2D 圖表：顯示為佔位符
     markdown += `\n[2D 圖表]\n\n`
-  } else if (node.type === 'diagram3DBlock' || node.type === 'diagram3D') {
+  } else if (n.type === 'diagram3DBlock' || n.type === 'diagram3D') {
     // 3D 圖表：顯示為佔位符
     markdown += `\n[3D 圖表]\n\n`
-  } else if (node.type === 'circuitBlock' || node.type === 'circuit') {
+  } else if (n.type === 'circuitBlock' || n.type === 'circuit') {
     // 電路圖：顯示為佔位符
     markdown += `\n[電路圖]\n\n`
-  } else if (node.type === 'imagePlaceholder') {
+  } else if (n.type === 'imagePlaceholder') {
     // 圖片佔位符
-    const alt = node.attrs?.alt || '圖片'
+    const alt = ((n.attrs as { alt?: string })?.alt) || '圖片'
     markdown += `\n[圖片: ${alt}]\n\n`
-  } else if (node.type === 'pageBreak') {
+  } else if (n.type === 'pageBreak') {
     // 分頁符
     markdown += `\n---\n\n`
-  } else if (node.content && Array.isArray(node.content)) {
+  } else if (n.content && Array.isArray(n.content)) {
     // 遞迴處理子節點
-    markdown += node.content.map(child => tiptapToMarkdown(child)).join('')
+    markdown += n.content.map((child) => tiptapToMarkdown(child)).join('')
   }
-  
+
   return markdown
 }
 
-const getQuestionContent = (question) => {
+const getQuestionContent = (question: QuestionWithExtras | null): string => {
   if (!question) return ''
   // 如果是字串（舊格式，向後相容）
   if (typeof question.content === 'string') return question.content
   // 如果是舊的物件格式 {format: 'markdown', text: '...'}
-  if (question.content && typeof question.content === 'object' && question.content.text) {
-    return question.content.text
+  if (question.content && typeof question.content === 'object' && (question.content as { text?: string }).text) {
+    return (question.content as { text: string }).text
   }
   // 如果是 Tiptap JSON 格式
-  if (question.content && typeof question.content === 'object' && question.content.type === 'doc') {
-    return tiptapToMarkdown(question.content).trim()
+  if (question.content && typeof question.content === 'object' && (question.content as TiptapDocument).type === 'doc') {
+    return tiptapToMarkdown(question.content as unknown as TiptapNode).trim()
   }
   return ''
 }
 
-const getQuestionAnswer = (question) => {
+const getQuestionAnswer = (question: QuestionWithExtras | null): string => {
   if (!question) return ''
   // 如果是字串（舊格式，向後相容）
   if (typeof question.correct_answer === 'string') return question.correct_answer
   // 如果是舊的物件格式 {format: 'markdown', text: '...'}
-  if (question.correct_answer && typeof question.correct_answer === 'object' && question.correct_answer.text) {
-    return question.correct_answer.text
+  if (question.correct_answer && typeof question.correct_answer === 'object' && (question.correct_answer as { text?: string }).text) {
+    return (question.correct_answer as { text: string }).text
   }
   // 如果是 Tiptap JSON 格式
-  if (question.correct_answer && typeof question.correct_answer === 'object' && question.correct_answer.type === 'doc') {
-    return tiptapToMarkdown(question.correct_answer).trim()
+  if (question.correct_answer && typeof question.correct_answer === 'object' && (question.correct_answer as TiptapDocument).type === 'doc') {
+    return tiptapToMarkdown(question.correct_answer as unknown as TiptapNode).trim()
   }
   return ''
 }
 
-const getQuestionSolution = (question) => {
+const getQuestionSolution = (question: QuestionWithExtras | null): string => {
   if (!question || !question.solution_content) return ''
   // 如果是字串（舊格式，向後相容）
   if (typeof question.solution_content === 'string') return question.solution_content
   // 如果是舊的物件格式 {format: 'markdown', text: '...'}
-  if (question.solution_content && typeof question.solution_content === 'object' && question.solution_content.text) {
-    return question.solution_content.text
+  if (question.solution_content && typeof question.solution_content === 'object' && (question.solution_content as { text?: string }).text) {
+    return (question.solution_content as { text: string }).text
   }
   // 如果是 Tiptap JSON 格式
-  if (question.solution_content && typeof question.solution_content === 'object' && question.solution_content.type === 'doc') {
-    return tiptapToMarkdown(question.solution_content).trim()
+  if (question.solution_content && typeof question.solution_content === 'object' && (question.solution_content as TiptapDocument).type === 'doc') {
+    return tiptapToMarkdown(question.solution_content as unknown as TiptapNode).trim()
   }
   return ''
 }
 
-const getOptionContent = (option) => {
+const getOptionContent = (option: TiptapDocument | string | unknown): string => {
   if (!option) return ''
   // 如果是字串（舊格式，向後相容）
   if (typeof option === 'string') return option
   // 如果是 Tiptap JSON 格式
-  if (option && typeof option === 'object' && option.type === 'doc') {
-    return tiptapToMarkdown(option).trim()
+  if (option && typeof option === 'object' && (option as TiptapDocument).type === 'doc') {
+    return tiptapToMarkdown(option as unknown as TiptapNode).trim()
   }
   // 如果是其他物件格式，嘗試轉換
   if (option && typeof option === 'object') {
-    return tiptapToMarkdown(option).trim()
+    return tiptapToMarkdown(option as unknown as TiptapNode).trim()
   }
   return ''
 }
 
-const createQuestion = () => {
+const createQuestion = (): void => {
   router.push({ path: '/questions/new', query: { returnTab: 'questions' } })
 }
 
-const importQuestions = () => {
+const importQuestions = (): void => {
   router.push({ path: '/questions/import', query: { returnTab: 'questions' } })
 }
 
-const editQuestion = (id) => {
+const editQuestion = (id: number): void => {
   router.push({ path: `/questions/edit/${id}`, query: { returnTab: 'questions' } })
 }
 
-const deleteQuestion = async (id) => {
+const deleteQuestion = async (id: number): Promise<void> => {
   if (!confirm('確定要刪除此題目嗎？此操作無法復原。')) return
   try {
     await questionBankAPI.delete(id)

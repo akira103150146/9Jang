@@ -58,43 +58,48 @@
   </node-view-wrapper>
 </template>
 
-<script setup>
-import { ref, watch, computed, inject, nextTick } from 'vue'
-import { NodeViewWrapper, NodeViewContent, nodeViewProps } from '@tiptap/vue-3'
+<script setup lang="ts">
+import { ref, watch, computed, inject, nextTick, type Ref, type InjectionKey } from 'vue'
+import { NodeViewWrapper, NodeViewContent, nodeViewProps, type NodeViewProps } from '@tiptap/vue-3'
 import { contentTemplateAPI } from '../../../services/api'
 import TemplateSelectorModal from './TemplateSelectorModal.vue'
 import BlockEditor from '../BlockEditor.vue'
+import type { TiptapDocument } from '@9jang/shared'
 
-const props = defineProps(nodeViewProps)
+/**
+ * 模板類型
+ */
+interface Template {
+  id: number
+  title: string
+  tiptap_structure?: TiptapDocument
+  [key: string]: unknown
+}
+
+const props = defineProps<NodeViewProps>()
 
 // 從父組件注入可用的模板列表和圖片映射表
-const availableTemplates = inject('templates', ref([]))
-const imageMappings = inject('imageMappings', ref(new Map()))
+const TemplatesInjectionKey: InjectionKey<Ref<Template[]>> = Symbol('templates')
+const ImageMappingsInjectionKey: InjectionKey<Ref<Map<string, string>>> = Symbol('imageMappings')
 
-const templateData = ref(null)
-const loading = ref(false)
-const showSelector = ref(false)
-const templateContentRef = ref(null)
+const availableTemplates: Ref<Template[]> = inject(TemplatesInjectionKey, ref([]))
+const imageMappings: Ref<Map<string, string>> = inject(ImageMappingsInjectionKey, ref(new Map()))
+
+const templateData: Ref<Template | null> = ref(null)
+const loading: Ref<boolean> = ref(false)
+const showSelector: Ref<boolean> = ref(false)
+const templateContentRef: Ref<HTMLElement | null> = ref(null)
 
 // 載入模板數據
-const loadTemplate = async (templateId) => {
+const loadTemplate = async (templateId: number): Promise<void> => {
   if (!templateId) return
-  
+
   loading.value = true
   try {
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TemplateBlockComponent.vue:79',message:'開始載入模板',data:{templateId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
     const response = await contentTemplateAPI.getById(templateId)
-    templateData.value = response.data
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TemplateBlockComponent.vue:87',message:'模板載入完成',data:{templateData:templateData.value,hasTiptapStructure:!!templateData.value?.tiptap_structure,hasStructure:!!templateData.value?.structure,tiptapStructureType:templateData.value?.tiptap_structure?.type},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
+    templateData.value = response.data as Template
   } catch (error) {
     console.error('Failed to load template:', error)
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TemplateBlockComponent.vue:90',message:'模板載入失敗',data:{error:error.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
     templateData.value = null
   } finally {
     loading.value = false
@@ -102,35 +107,36 @@ const loadTemplate = async (templateId) => {
 }
 
 // 監聽 templateId 變化
-watch(() => props.node.attrs.templateId, (newId) => {
-  if (newId) {
-    loadTemplate(newId)
-  } else {
-    templateData.value = null
-  }
-}, { immediate: true })
+watch(
+  () => props.node.attrs.templateId as number | undefined,
+  (newId) => {
+    if (newId) {
+      loadTemplate(newId)
+    } else {
+      templateData.value = null
+    }
+  },
+  { immediate: true }
+)
 
 // 監聽模板內容載入完成後，檢查高度
-watch(() => templateData.value?.tiptap_structure, async (newStructure) => {
-  if (newStructure && templateContentRef.value) {
-    await nextTick()
-    // #region agent log
-    const container = templateContentRef.value
-    const blockEditor = container?.querySelector('.block-editor-container')
-    const paperSheet = container?.querySelector('.paper-sheet')
-    const proseMirror = container?.querySelector('.ProseMirror')
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TemplateBlockComponent.vue:watch',message:'模板內容高度檢查',data:{containerHeight:container?.offsetHeight,blockEditorHeight:blockEditor?.offsetHeight,blockEditorMinHeight:window.getComputedStyle(blockEditor).minHeight,paperSheetHeight:paperSheet?.offsetHeight,paperSheetMinHeight:window.getComputedStyle(paperSheet).minHeight,proseMirrorHeight:proseMirror?.offsetHeight,proseMirrorMinHeight:window.getComputedStyle(proseMirror).minHeight},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
-  }
-}, { immediate: true })
+watch(
+  () => templateData.value?.tiptap_structure,
+  async (newStructure) => {
+    if (newStructure && templateContentRef.value) {
+      await nextTick()
+    }
+  },
+  { immediate: true }
+)
 
-const onTemplateSelected = (templateId) => {
+const onTemplateSelected = (templateId: number): void => {
   props.updateAttributes({
     templateId
   })
 }
 
-const handleChangeTemplate = () => {
+const handleChangeTemplate = (): void => {
   // 打開選擇器而不是清除
   showSelector.value = true
 }

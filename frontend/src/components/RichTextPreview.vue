@@ -4,29 +4,39 @@
   </div>
 </template>
 
-<script setup>
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import { createApp, h } from 'vue'
+<script setup lang="ts">
+import { computed, nextTick, onBeforeUnmount, ref, watch, type Ref } from 'vue'
+import { createApp, h, type App } from 'vue'
 import { useMarkdownRenderer } from '../composables/useMarkdownRenderer'
 import Diagram2DPreview from './Diagram2DPreview.vue'
 import Diagram3DPreview from './Diagram3DPreview.vue'
 import CircuitPreview from './CircuitPreview.vue'
 
-const props = defineProps({
-  content: {
-    type: String,
-    default: '',
-  },
+interface Props {
+  content?: string
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  content: ''
 })
 
-const emit = defineEmits(['jump-to'])
+interface JumpToPayload {
+  pos: number | null
+  line: number | null
+}
+
+interface Emits {
+  (e: 'jump-to', payload: JumpToPayload): void
+}
+
+const emit = defineEmits<Emits>()
 
 const { renderMarkdownWithLatex, renderMarkdownWithLatexAndSourceMap } = useMarkdownRenderer()
 
-const previewRoot = ref(null)
-const mounted = new Map() // el -> app
+const previewRoot: Ref<HTMLElement | null> = ref(null)
+const mounted = new Map<HTMLElement, App>() // el -> app
 
-const renderedContent = computed(() => {
+const renderedContent = computed<string>(() => {
   // 優先使用帶 source map 的渲染（用於點預覽跳回編輯）
   if (typeof renderMarkdownWithLatexAndSourceMap === 'function') {
     return renderMarkdownWithLatexAndSourceMap(props.content || '')
@@ -34,7 +44,7 @@ const renderedContent = computed(() => {
   return renderMarkdownWithLatex(props.content || '')
 })
 
-const unmountAll = () => {
+const unmountAll = (): void => {
   mounted.forEach((app) => {
     try {
       app.unmount()
@@ -45,12 +55,12 @@ const unmountAll = () => {
   mounted.clear()
 }
 
-const mountEmbeds = async () => {
+const mountEmbeds = async (): Promise<void> => {
   await nextTick()
   unmountAll()
   const root = previewRoot.value
   if (!root) return
-  const nodes = root.querySelectorAll?.('[data-embed-type][data-embed]')
+  const nodes = root.querySelectorAll<HTMLElement>('[data-embed-type][data-embed]')
   if (!nodes || nodes.length === 0) return
 
   nodes.forEach((el) => {
@@ -63,14 +73,14 @@ const mountEmbeds = async () => {
       raw = ''
     }
 
-    let data = {}
+    let data: Record<string, unknown> = {}
     try {
       data = raw ? JSON.parse(raw) : {}
     } catch (e) {
       data = {}
     }
 
-    let Comp = null
+    let Comp: unknown = null
     if (type === 'diagram2d') Comp = Diagram2DPreview
     else if (type === 'diagram3d') Comp = Diagram3DPreview
     else if (type === 'circuit') Comp = CircuitPreview
@@ -80,7 +90,7 @@ const mountEmbeds = async () => {
     // 清空 placeholder 文字後掛載
     el.innerHTML = ''
     const app = createApp({
-      render: () => h(Comp, { data }),
+      render: () => h(Comp as any, { data })
     })
     app.mount(el)
     mounted.set(el, app)
@@ -168,21 +178,22 @@ onBeforeUnmount(() => {
   unmountAll()
 })
 
-const onPreviewClick = (event) => {
+const onPreviewClick = (event: MouseEvent): void => {
   // 移除數學公式和嵌入元件的編輯功能
   // 只保留跳轉到源代碼的功能
-  const el = event?.target?.closest?.('[data-source-pos],[data-source-line]')
+  const target = event.target as HTMLElement | null
+  const el = target?.closest<HTMLElement>('[data-source-pos],[data-source-line]')
   if (!el) return
   const posAttr = el.getAttribute('data-source-pos')
   const lineAttr = el.getAttribute('data-source-line')
   const pos = posAttr != null ? Number(posAttr) : null
   const line = lineAttr != null ? Number(lineAttr) : null
   if (Number.isFinite(pos) && pos >= 0) {
-    emit('jump-to', { pos, line: Number.isFinite(line) ? line : null })
+    emit('jump-to', { pos: pos as number, line: Number.isFinite(line) ? (line as number) : null })
     return
   }
   if (Number.isFinite(line) && line >= 1) {
-    emit('jump-to', { pos: null, line })
+    emit('jump-to', { pos: null, line: line as number })
   }
 }
 </script>

@@ -46,63 +46,70 @@
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted, watch, inject, computed } from 'vue'
+<script setup lang="ts">
+import { ref, onMounted, watch, inject, computed, type Ref } from 'vue'
 import { questionBankAPI } from '../services/api'
 import { useMarkdownRenderer } from '../composables/useMarkdownRenderer'
 import { useTiptapConverter } from '../composables/useTiptapConverter'
+import type { Question, TiptapDocument } from '@9jang/shared'
+import type { PrintMode } from '../composables/usePrintPreview.types'
 
-const props = defineProps({
-  questionId: {
-    type: [Number, String],
-    required: true
-  },
-  showMetadata: {
-    type: Boolean,
-    default: false
-  },
-  questionNumber: {
-    type: Number,
-    default: null
-  }
+interface QuestionWithExtras extends Question {
+  question_id: number
+  content: TiptapDocument | string | unknown
+  correct_answer: TiptapDocument | string | unknown
+  solution_content?: TiptapDocument | string | unknown
+  image_path?: string
+  [key: string]: unknown
+}
+
+interface Props {
+  questionId: number | string
+  showMetadata?: boolean
+  questionNumber?: number | null
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  showMetadata: false,
+  questionNumber: null
 })
 
 // 注入顯示模式
-const printMode = inject('printMode', ref('with-all'))
+const printMode = inject<Ref<PrintMode>>('printMode', ref('with-all'))
 
 // 計算是否顯示答案和詳解
-const showAnswer = computed(() => {
+const showAnswer = computed<boolean>(() => {
   const mode = printMode.value
   return mode === 'with-answer' || mode === 'with-all'
 })
 
-const showSolution = computed(() => {
+const showSolution = computed<boolean>(() => {
   const mode = printMode.value
   return mode === 'with-solution' || mode === 'with-all'
 })
 
 const { renderMarkdownWithLatex } = useMarkdownRenderer()
 const { contentToMarkdown } = useTiptapConverter()
-const question = ref(null)
-const loading = ref(true)
-const error = ref(false)
+const question: Ref<QuestionWithExtras | null> = ref(null)
+const loading: Ref<boolean> = ref(true)
+const error: Ref<boolean> = ref(false)
 
-const renderContent = (content) => {
+const renderContent = (content: TiptapDocument | string | unknown): string => {
   if (!content) return ''
   // 使用 contentToMarkdown 保留 LaTeX 標記，然後用 renderMarkdownWithLatex 渲染
-  const markdownContent = contentToMarkdown(content)
+  const markdownContent = contentToMarkdown(content as TiptapDocument)
   return renderMarkdownWithLatex(markdownContent)
 }
 
-const fetchQuestion = async () => {
+const fetchQuestion = async (): Promise<void> => {
   if (!props.questionId) return
-  
+
   loading.value = true
   error.value = false
   
   try {
     const response = await questionBankAPI.getById(props.questionId)
-    question.value = response.data
+    question.value = response.data as QuestionWithExtras
   } catch (e) {
     console.error('Fetch question error', e)
     error.value = true
@@ -111,9 +118,12 @@ const fetchQuestion = async () => {
   }
 }
 
-watch(() => props.questionId, () => {
-  fetchQuestion()
-})
+watch(
+  () => props.questionId,
+  () => {
+    fetchQuestion()
+  }
+)
 
 onMounted(() => {
   fetchQuestion()

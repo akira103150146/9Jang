@@ -6,8 +6,8 @@
       @close="sidebarOpen = false"
       @replace-all-images="replaceAllImages"
       @clear-image-mappings="clearImageMappings"
-      @image-folder-upload="handleImageFolderUpload"
-      @watermark-upload="handleWatermarkUpload"
+      @image-folder-upload="handleImageFolderUploadWrapper"
+      @watermark-upload="handleWatermarkUploadWrapper"
       @remove-watermark="removeWatermark"
       @add-tag="addTag"
       @remove-tag="removeTag"
@@ -89,8 +89,8 @@
             ref="blockEditorRef"
             :model-value="tiptapStructure"
             @update:model-value="handleBlockEditorUpdate"
-            :templates="templates"
-            :questions="questions"
+            :templates="templates.map(t => ({ id: t.template_id, name: t.title, tiptap_structure: t.tiptap_structure, ...t }))"
+            :questions="questions.map(q => ({ id: q.question_id, ...q }))"
             :questions-pagination="questionsPagination"
             @load-more-questions="loadMoreQuestions"
             :image-mappings="imageMappings"
@@ -120,8 +120,8 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed, onMounted, onUnmounted, provide, watch, nextTick } from 'vue'
+<script setup lang="ts">
+import { ref, computed, onMounted, onUnmounted, provide, watch, nextTick, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BlockEditor from '../components/BlockEditor/BlockEditor.vue'
 import ResourceEditorSidebar from '../components/ResourceEditorSidebar.vue'
@@ -138,29 +138,30 @@ import { provideResourceEditorContext } from '../composables/useResourceEditorCo
 import { AUTO_SAVE_CONFIG, EDITOR_CONFIG, PRINT_CONFIG } from '../constants/editorConfig'
 import { debounce } from '../utils/debounce'
 import { formatTime } from '../utils/dateFormat'
+import type { Editor } from '@tiptap/core'
+import type { PrintMode } from '../composables/usePrintPreview.types'
 
-const props = defineProps({
-  id: {
-    type: String,
-    default: null
-  },
-  viewMode: {
-    type: Boolean,
-    default: false
-  }
+interface Props {
+  id?: string | null
+  viewMode?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  id: null,
+  viewMode: false
 })
 
 const route = useRoute()
 const router = useRouter()
 
 // 返回上一頁
-const goBack = () => {
-  const returnTab = route.query.returnTab || 'questions'
+const goBack = (): void => {
+  const returnTab = (route.query.returnTab as string) || 'questions'
   router.push({ path: '/questions', query: { tab: returnTab } })
 }
 
 // State
-const sidebarOpen = ref(true)
+const sidebarOpen: Ref<boolean> = ref(true)
 
 // 使用資源元數據 composable
 const {
@@ -180,7 +181,7 @@ const {
 } = useQuestionPagination()
 
 // 圖片管理
-const blockEditorRef = ref(null)
+const blockEditorRef: Ref<{ editor: Editor } | null> = ref(null)
 
 // 使用資源編輯 composable
 const {
@@ -211,18 +212,21 @@ const {
   openImageFolderUpload,
   replaceAllImages
 } = useImageManagement({
-  resourceId: computed(() => route.params.id),
-  resourceTitle: computed(() => resource.title),
+  resourceId: computed(() => {
+    const id = route.params.id
+    return typeof id === 'string' ? parseInt(id, 10) : null
+  }),
+  resourceTitle: computed(() => resource.value?.title || 'untitled'),
   blockEditorRef
 })
 
 // 包裝 saveResource 以傳遞 migrateTempMappings
-const saveResource = (manual = false) => {
+const saveResource = (manual = false): Promise<void> => {
   return saveResourceBase(manual, { migrateTempMappings })
 }
 
 // 列印模式選擇
-const printModeSelection = ref(PRINT_CONFIG.MODES.QUESTION_ONLY)
+const printModeSelection = ref<PrintMode>(PRINT_CONFIG.MODES.QUESTION_ONLY)
 
 // 使用浮水印管理 composable
 const {
@@ -250,11 +254,15 @@ const debouncedPreRender = debounce(() => {
   preRenderPrintContent(printModeSelection)
 }, 800)
 
-watch(printModeSelection, async (newMode) => {
-  // 延遲執行，確保模式切換完成
-  await nextTick()
-  debouncedPreRender()
-}, { immediate: false })
+watch(
+  printModeSelection,
+  async (_newMode) => {
+    // 延遲執行，確保模式切換完成
+    await nextTick()
+    debouncedPreRender()
+  },
+  { immediate: false }
+)
 
 // 提供給子組件使用
 provide('printMode', printModeSelection)
@@ -269,26 +277,26 @@ const {
 // 提供 Resource Editor 上下文給子組件（特別是 ResourceEditorSidebar）
 provideResourceEditorContext({
   // 資源相關
-  resource,
+  resource: resource.value,
   viewMode: props.viewMode,
-  
+
   // 元數據
-  courses,
-  studentGroups,
-  availableTags,
-  
+  courses: courses.value,
+  studentGroups: studentGroups.value,
+  availableTags: availableTags.value,
+
   // 圖片管理
-  imageMappings,
-  uploadingImages,
-  replacingImages,
-  
+  imageMappings: Object.fromEntries(imageMappings.value),
+  uploadingImages: uploadingImages.value,
+  replacingImages: replacingImages.value,
+
   // 浮水印
-  watermarkEnabled,
-  watermarkImage,
-  watermarkOpacity,
-  
+  watermarkEnabled: watermarkEnabled.value,
+  watermarkImage: watermarkImage.value,
+  watermarkOpacity: watermarkOpacity.value,
+
   // 其他
-  tiptapStructureRef,
+  tiptapStructureRef: tiptapStructureRef.value,
   getTagName
 })
 
@@ -301,11 +309,11 @@ const editorEvents = useEditorEventsProvider()
 // formatTime 已從 utils/dateFormat.js 導入
 
 // Data Fetching
-const fetchInitialData = async () => {
+const fetchInitialData = async (): Promise<void> => {
   try {
     // 獲取元數據（使用 composable）
     await fetchMetadata()
-    
+
     // 載入題目（使用 composable）
     await fetchInitialQuestions()
 
@@ -322,8 +330,31 @@ const debouncedSave = debounce(() => saveResource(false), AUTO_SAVE_CONFIG.DEBOU
 // 設置自動保存
 setupAutoSave(debouncedSave)
 
+// 包裝圖片資料夾上傳處理（將 FileList 轉換為 Event）
+const handleImageFolderUploadWrapper = (files: FileList): void => {
+  const fakeEvent = {
+    target: {
+      files
+    }
+  } as unknown as Event
+  handleImageFolderUpload(fakeEvent)
+}
+
+// 包裝浮水印上傳處理（將 File 轉換為 Event）
+const handleWatermarkUploadWrapper = (file: File): void => {
+  const dataTransfer = new DataTransfer()
+  dataTransfer.items.add(file)
+  const fakeEvent = {
+    target: {
+      files: dataTransfer.files,
+      value: ''
+    }
+  } as unknown as Event
+  handleWatermarkUpload(fakeEvent)
+}
+
 // 監聽圖片映射表更新事件，自動保存
-const handleImageMappingUpdated = () => {
+const handleImageMappingUpdated = (): void => {
   saveImageMappings()
 }
 

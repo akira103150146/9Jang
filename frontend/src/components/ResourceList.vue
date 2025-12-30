@@ -168,57 +168,76 @@
   </div>
 </template>
 
-<script setup>
-import { ref, reactive, onMounted, watch } from 'vue'
+<script setup lang="ts">
+import { ref, reactive, onMounted, watch, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { learningResourceAPI } from '../services/api'
 import BlockEditor from './BlockEditor/BlockEditor.vue'
+import type { LearningResource, TiptapDocument } from '@9jang/shared'
+
+type ResourceMode = 'HANDOUT' | 'ONLINE_QUIZ' | 'LEETCODE' | 'LISTENING_TEST' | 'FLASHCARD'
+
+interface Resource extends Partial<LearningResource> {
+  resource_id: number
+  title: string
+  mode: ResourceMode
+  course_name?: string
+  updated_at?: string
+  tags?: string[]
+  tiptap_structure?: TiptapDocument
+  [key: string]: unknown
+}
+
+interface Filters {
+  resource_type: string
+}
 
 const router = useRouter()
 
-const resources = ref([])
-const loading = ref(false)
-const previewResource = ref(null)
-const loadingPreview = ref(false)
-const previewError = ref(false)
-const filters = reactive({
+const resources: Ref<Resource[]> = ref([])
+const loading: Ref<boolean> = ref(false)
+const previewResource: Ref<Resource | null> = ref(null)
+const loadingPreview: Ref<boolean> = ref(false)
+const previewError: Ref<boolean> = ref(false)
+const filters = reactive<Filters>({
   resource_type: ''
 })
 
-const getModeColor = (mode) => {
-  const map = {
-    'HANDOUT': 'bg-blue-50 text-blue-700 ring-blue-600/20',
-    'ONLINE_QUIZ': 'bg-green-50 text-green-700 ring-green-600/20',
-    'LEETCODE': 'bg-purple-50 text-purple-700 ring-purple-600/20',
-    'LISTENING_TEST': 'bg-yellow-50 text-yellow-700 ring-yellow-600/20',
-    'FLASHCARD': 'bg-pink-50 text-pink-700 ring-pink-600/20',
+const getModeColor = (mode: string): string => {
+  const map: Record<string, string> = {
+    HANDOUT: 'bg-blue-50 text-blue-700 ring-blue-600/20',
+    ONLINE_QUIZ: 'bg-green-50 text-green-700 ring-green-600/20',
+    LEETCODE: 'bg-purple-50 text-purple-700 ring-purple-600/20',
+    LISTENING_TEST: 'bg-yellow-50 text-yellow-700 ring-yellow-600/20',
+    FLASHCARD: 'bg-pink-50 text-pink-700 ring-pink-600/20'
   }
   return map[mode] || map['HANDOUT']
 }
 
-const getModeName = (mode) => {
-  const map = {
-    'HANDOUT': '講義模式',
-    'ONLINE_QUIZ': '線上測驗模式',
-    'LEETCODE': '程式題模式',
-    'LISTENING_TEST': '聽力測驗模式',
-    'FLASHCARD': '單字卡模式',
+const getModeName = (mode: string): string => {
+  const map: Record<string, string> = {
+    HANDOUT: '講義模式',
+    ONLINE_QUIZ: '線上測驗模式',
+    LEETCODE: '程式題模式',
+    LISTENING_TEST: '聽力測驗模式',
+    FLASHCARD: '單字卡模式'
   }
   return map[mode] || mode
 }
 
-const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString()
+const formatDate = (dateString: string | unknown): string => {
+  if (!dateString) return ''
+  return new Date(dateString as string).toLocaleDateString()
 }
 
-const fetchResources = async () => {
+const fetchResources = async (): Promise<void> => {
   loading.value = true
   try {
-    const params = {}
+    const params: { resource_type?: string } = {}
     if (filters.resource_type) params.resource_type = filters.resource_type
-    
+
     const response = await learningResourceAPI.getAll(params)
-    resources.value = response.data.results || response.data
+    resources.value = ((response.data as { results?: Resource[] }) | Resource[]).results || (response.data as Resource[])
   } catch (error) {
     console.error('Fetch resources failed', error)
   } finally {
@@ -226,23 +245,23 @@ const fetchResources = async () => {
   }
 }
 
-const createResource = () => {
+const createResource = (): void => {
   router.push({ path: '/resources/new', query: { returnTab: 'resources' } })
 }
 
-const createQuestion = () => {
+const createQuestion = (): void => {
   router.push('/questions/new')
 }
 
-const importQuestions = () => {
+const importQuestions = (): void => {
   router.push('/questions/import')
 }
 
-const editResource = (id) => {
+const editResource = (id: number): void => {
   router.push({ path: `/resources/edit/${id}`, query: { returnTab: 'resources' } })
 }
 
-const deleteResource = async (id) => {
+const deleteResource = async (id: number): Promise<void> => {
   if (!confirm('確定要刪除此文件嗎？此操作無法復原。')) return
   try {
     await learningResourceAPI.delete(id)
@@ -253,14 +272,14 @@ const deleteResource = async (id) => {
   }
 }
 
-const showResourcePreview = async (resource) => {
+const showResourcePreview = async (resource: Resource): Promise<void> => {
   // 如果只有基本信息，需要獲取完整的資源詳情（包含 tiptap_structure）
   if (!resource.tiptap_structure) {
     loadingPreview.value = true
     previewError.value = false
     try {
       const response = await learningResourceAPI.getById(resource.resource_id)
-      previewResource.value = response.data
+      previewResource.value = response.data as Resource
     } catch (error) {
       console.error('獲取資源詳情失敗：', error)
       previewError.value = true
@@ -273,7 +292,7 @@ const showResourcePreview = async (resource) => {
   }
 }
 
-const closePreview = () => {
+const closePreview = (): void => {
   previewResource.value = null
   loadingPreview.value = false
   previewError.value = false

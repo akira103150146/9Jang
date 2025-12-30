@@ -196,8 +196,8 @@
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted, computed } from 'vue'
+<script setup lang="ts">
+import { ref, onMounted, computed, type Ref } from 'vue'
 import { studentAPI, teacherAPI, courseAPI, enrollmentAPI, feeAPI, leaveAPI } from '../services/api'
 import {
   mockStudents,
@@ -205,99 +205,153 @@ import {
   mockCourses,
   mockEnrollments,
   mockExtraFees,
-  mockLeaveRequests,
+  mockLeaveRequests
 } from '../data/mockData'
 
-const students = ref([])
-const teachers = ref([])
-const courses = ref([])
-const enrollments = ref([])
-const fees = ref([])
-const leaves = ref([])
-
-const loadingEnrollments = ref(false)
-const loadingFees = ref(false)
-const loadingCourses = ref(false)
-const loadingLeaves = ref(false)
-
-const dayMap = {
-  'Mon': '週一',
-  'Tue': '週二',
-  'Wed': '週三',
-  'Thu': '週四',
-  'Fri': '週五',
-  'Sat': '週六',
-  'Sun': '週日',
+/**
+ * 數據類型定義
+ */
+interface Student {
+  student_id: number
+  unpaid_fees?: number | string
+  [key: string]: unknown
 }
 
-const itemMap = {
-  'Tuition': '學費',
-  'Transport': '交通費',
-  'Meal': '餐費',
-  'Book': '書籍費',
-  'Other': '其他',
+interface Teacher {
+  teacher_id: number
+  [key: string]: unknown
 }
 
-const statusMap = {
-  'Pending': '待審核',
-  'Approved': '已核准',
-  'Rejected': '已拒絕',
+interface Course {
+  course_id: number
+  course_name: string
+  status: 'Active' | 'Pending' | 'Closed'
+  day_of_week: string
+  start_time: string
+  end_time: string
+  [key: string]: unknown
 }
 
-const courseStatusMap = {
-  'Active': '進行中',
-  'Pending': '待開課',
-  'Closed': '已結束',
+interface Enrollment {
+  enrollment_id: number
+  student_name: string
+  course_name: string
+  enroll_date: string
+  discount_rate?: number
+  [key: string]: unknown
 }
 
-const paymentStatusMap = {
-  'Paid': '已繳費',
-  'Unpaid': '未繳費',
-  'Partial': '部分繳費',
+interface Fee {
+  fee_id: number
+  student_name: string
+  item: string
+  amount: number | string
+  payment_status: 'Paid' | 'Unpaid' | 'Partial'
+  student?: number
+  student_id?: number
+  [key: string]: unknown
 }
 
-const totalStudents = computed(() => students.value.length)
-const totalTeachers = computed(() => teachers.value.length)
-const totalCourses = computed(() => courses.value.length)
-const totalEnrollments = computed(() => enrollments.value.length)
+interface Leave {
+  leave_id: number
+  student_name: string
+  course_name: string
+  leave_date: string
+  reason: string
+  approval_status: 'Pending' | 'Approved' | 'Rejected'
+  [key: string]: unknown
+}
 
-const activeCourses = computed(() => {
-  return courses.value.filter(c => c.status === 'Active').slice(0, 5)
+const students: Ref<Student[]> = ref([])
+const teachers: Ref<Teacher[]> = ref([])
+const courses: Ref<Course[]> = ref([])
+const enrollments: Ref<Enrollment[]> = ref([])
+const fees: Ref<Fee[]> = ref([])
+const leaves: Ref<Leave[]> = ref([])
+
+const loadingEnrollments: Ref<boolean> = ref(false)
+const loadingFees: Ref<boolean> = ref(false)
+const loadingCourses: Ref<boolean> = ref(false)
+const loadingLeaves: Ref<boolean> = ref(false)
+
+const dayMap: Record<string, string> = {
+  Mon: '週一',
+  Tue: '週二',
+  Wed: '週三',
+  Thu: '週四',
+  Fri: '週五',
+  Sat: '週六',
+  Sun: '週日'
+}
+
+const itemMap: Record<string, string> = {
+  Tuition: '學費',
+  Transport: '交通費',
+  Meal: '餐費',
+  Book: '書籍費',
+  Other: '其他'
+}
+
+const statusMap: Record<string, string> = {
+  Pending: '待審核',
+  Approved: '已核准',
+  Rejected: '已拒絕'
+}
+
+const courseStatusMap: Record<string, string> = {
+  Active: '進行中',
+  Pending: '待開課',
+  Closed: '已結束'
+}
+
+const paymentStatusMap: Record<string, string> = {
+  Paid: '已繳費',
+  Unpaid: '未繳費',
+  Partial: '部分繳費'
+}
+
+const totalStudents = computed<number>(() => students.value.length)
+const totalTeachers = computed<number>(() => teachers.value.length)
+const totalCourses = computed<number>(() => courses.value.length)
+const totalEnrollments = computed<number>(() => enrollments.value.length)
+
+const activeCourses = computed<Course[]>(() => {
+  return courses.value.filter((c) => c.status === 'Active').slice(0, 5)
 })
 
-const recentEnrollments = computed(() => {
+const recentEnrollments = computed<Enrollment[]>(() => {
   return enrollments.value.slice(0, 5)
 })
 
 // 所有未繳費用（用於顯示列表）
-const allPendingFees = computed(() => {
+const allPendingFees = computed<Fee[]>(() => {
   if (!Array.isArray(fees.value)) return []
-  return fees.value.filter(f => {
+  return fees.value.filter((f) => {
     // 過濾掉已繳費的，保留未繳和部分繳費的
     return f && f.payment_status && f.payment_status !== 'Paid'
   })
 })
 
 // 待處理款項列表（只顯示前5筆）
-const pendingFeesList = computed(() => {
+const pendingFeesList = computed<Fee[]>(() => {
   return allPendingFees.value.slice(0, 5)
 })
 
-const pendingLeaves = computed(() => {
-  return leaves.value.filter(l => l.approval_status === 'Pending').slice(0, 5)
+const pendingLeaves = computed<Leave[]>(() => {
+  return leaves.value.filter((l) => l.approval_status === 'Pending').slice(0, 5)
 })
 
 // 計算所有未繳費用的總金額（與學生資訊頁面一致：從所有學生的 unpaid_fees 總和）
-const pendingFeeAmount = computed(() => {
+const pendingFeeAmount = computed<number>(() => {
   if (!Array.isArray(students.value)) return 0
   return students.value.reduce((sum, student) => {
-    const unpaidFees = parseFloat(student.unpaid_fees) || 0
+    const unpaidFees = parseFloat(String(student.unpaid_fees || 0)) || 0
     return sum + unpaidFees
   }, 0)
 })
 
 // 計算所有未繳費用的總筆數（與學生資訊頁面一致）
-const totalPendingFeesCount = computed(() => {
+const totalPendingFeesCount = computed<number>(() => {
   return allPendingFees.value.length
 })
 
@@ -332,72 +386,78 @@ const metrics = computed(() => [
   },
 ])
 
-const getDayDisplay = (day) => {
+const getDayDisplay = (day: string): string => {
   return dayMap[day] || day
 }
 
-const formatTime = (time) => {
+const formatTime = (time: string | unknown): string => {
   if (!time) return ''
-  return typeof time === 'string' ? time.substring(0, 5) : time
+  return typeof time === 'string' ? time.substring(0, 5) : String(time)
 }
 
-const formatDate = (date) => {
+const formatDate = (date: string | unknown): string => {
   if (!date) return ''
-  return typeof date === 'string' ? date.replace(/-/g, '/') : date
+  return typeof date === 'string' ? date.replace(/-/g, '/') : String(date)
 }
 
-const getItemDisplay = (item) => {
+const getItemDisplay = (item: string): string => {
   return itemMap[item] || item
 }
 
-const formatAmount = (amount) => {
+const formatAmount = (amount: number | string | unknown): string => {
   // 格式化為整數，並加上千分位分隔符
-  const intAmount = Math.round(parseFloat(amount || 0))
+  const intAmount = Math.round(parseFloat(String(amount || 0)))
   return intAmount.toLocaleString('zh-TW', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
-const getLeaveStatusDisplay = (status) => {
+const getLeaveStatusDisplay = (status: string): string => {
   return statusMap[status] || status
 }
 
-const getCourseStatusDisplay = (status) => {
+const getCourseStatusDisplay = (status: string): string => {
   return courseStatusMap[status] || status
 }
 
-const getPaymentStatusDisplay = (status) => {
+const getPaymentStatusDisplay = (status: string): string => {
   return paymentStatusMap[status] || status
 }
 
-const getLeaveStatusClass = (status) => {
-  const map = {
-    'Approved': 'bg-emerald-50 text-emerald-600',
-    'Pending': 'bg-amber-50 text-amber-600',
-    'Rejected': 'bg-rose-50 text-rose-600',
+const getLeaveStatusClass = (status: string): string => {
+  const map: Record<string, string> = {
+    Approved: 'bg-emerald-50 text-emerald-600',
+    Pending: 'bg-amber-50 text-amber-600',
+    Rejected: 'bg-rose-50 text-rose-600'
   }
   return map[status] ?? 'bg-slate-100 text-slate-700'
 }
 
-const getCourseStatusClass = (status) => {
-  const map = {
-    'Active': 'bg-emerald-50 text-emerald-600',
-    'Pending': 'bg-amber-50 text-amber-600',
-    'Closed': 'bg-slate-100 text-slate-700',
+const getCourseStatusClass = (status: string): string => {
+  const map: Record<string, string> = {
+    Active: 'bg-emerald-50 text-emerald-600',
+    Pending: 'bg-amber-50 text-amber-600',
+    Closed: 'bg-slate-100 text-slate-700'
   }
   return map[status] ?? 'bg-slate-100 text-slate-700'
 }
 
-const getPaymentStatusClass = (status) => {
-  const map = {
-    'Paid': 'bg-emerald-50 text-emerald-600',
-    'Partial': 'bg-amber-50 text-amber-600',
-    'Unpaid': 'bg-rose-50 text-rose-600',
+const getPaymentStatusClass = (status: string): string => {
+  const map: Record<string, string> = {
+    Paid: 'bg-emerald-50 text-emerald-600',
+    Partial: 'bg-amber-50 text-amber-600',
+    Unpaid: 'bg-rose-50 text-rose-600'
   }
   return map[status] ?? 'bg-slate-100 text-slate-700'
 }
 
-const getStudentFeePath = (fee) => {
+const getStudentFeePath = (fee: Fee): string => {
   // 獲取學生ID，支持多種可能的欄位名稱
-  const studentId = fee.student || fee.student_id || (fee.student && typeof fee.student === 'object' ? fee.student.student_id || fee.student.id : null)
+  const studentId =
+    fee.student ||
+    fee.student_id ||
+    (fee.student && typeof fee.student === 'object'
+      ? ((fee.student as { student_id?: number; id?: number }).student_id ||
+        (fee.student as { id?: number }).id)
+      : null)
   if (studentId) {
     return `/students/${studentId}/fees`
   }
@@ -405,47 +465,47 @@ const getStudentFeePath = (fee) => {
   return '/students'
 }
 
-const fetchStudents = async () => {
+const fetchStudents = async (): Promise<void> => {
   try {
     const response = await studentAPI.getAll()
-    const data = response.data.results || response.data
-    students.value = data
+    const data = (response.data as { results?: Student[] } | Student[]).results || (response.data as Student[])
+    students.value = data as Student[]
   } catch (error) {
     console.warn('獲取學生資料失敗，使用 mock 資料：', error)
-    students.value = mockStudents
+    students.value = mockStudents as Student[]
   }
 }
 
-const fetchTeachers = async () => {
+const fetchTeachers = async (): Promise<void> => {
   try {
     const response = await teacherAPI.getAll()
-    const data = response.data.results || response.data
-    teachers.value = data
+    const data = (response.data as { results?: Teacher[] } | Teacher[]).results || (response.data as Teacher[])
+    teachers.value = data as Teacher[]
   } catch (error) {
     console.warn('獲取老師資料失敗，使用 mock 資料：', error)
-    teachers.value = mockTeachers
+    teachers.value = mockTeachers as Teacher[]
   }
 }
 
-const fetchCourses = async () => {
+const fetchCourses = async (): Promise<void> => {
   loadingCourses.value = true
   try {
     const response = await courseAPI.getAll()
-    const data = response.data.results || response.data
-    courses.value = data
+    const data = (response.data as { results?: Course[] } | Course[]).results || (response.data as Course[])
+    courses.value = data as Course[]
   } catch (error) {
     console.warn('獲取課程資料失敗，使用 mock 資料：', error)
-    courses.value = mockCourses
+    courses.value = mockCourses as Course[]
   } finally {
     loadingCourses.value = false
   }
 }
 
-const fetchEnrollments = async () => {
+const fetchEnrollments = async (): Promise<void> => {
   loadingEnrollments.value = true
   try {
     const response = await enrollmentAPI.getAll()
-    const data = response.data.results || response.data
+    const data = (response.data as { results?: Enrollment[] } | Enrollment[]).results || (response.data as Enrollment[])
     enrollments.value = data
   } catch (error) {
     console.warn('獲取報名記錄失敗，使用 mock 資料：', error)

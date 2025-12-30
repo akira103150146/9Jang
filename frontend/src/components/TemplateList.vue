@@ -69,29 +69,31 @@
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted, watch } from 'vue'
+<script setup lang="ts">
+import { ref, onMounted, watch, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { contentTemplateAPI } from '../services/api'
+import type { ContentTemplate } from '@9jang/shared'
 
 const router = useRouter()
-const templates = ref([])
-const loading = ref(false)
-const search = ref('')
+const templates: Ref<ContentTemplate[]> = ref([])
+const loading: Ref<boolean> = ref(false)
+const search: Ref<string> = ref('')
 
-const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString()
+const formatDate = (dateString: string | unknown): string => {
+  if (!dateString) return ''
+  return new Date(dateString as string).toLocaleDateString()
 }
 
-const fetchTemplates = async () => {
+const fetchTemplates = async (): Promise<void> => {
   loading.value = true
   try {
     // 暫時沒有後端搜尋 API，先前端過濾 (如果有的話)
     const response = await contentTemplateAPI.getAll()
-    const allTemplates = response.data.results || response.data
-    
+    const allTemplates = ((response.data as { results?: ContentTemplate[] }) | ContentTemplate[]).results || (response.data as ContentTemplate[])
+
     if (search.value) {
-      templates.value = allTemplates.filter(t => t.title.toLowerCase().includes(search.value.toLowerCase()))
+      templates.value = allTemplates.filter((t) => t.title.toLowerCase().includes(search.value.toLowerCase()))
     } else {
       templates.value = allTemplates
     }
@@ -102,7 +104,7 @@ const fetchTemplates = async () => {
   }
 }
 
-const deleteTemplate = async (id) => {
+const deleteTemplate = async (id: number): Promise<void> => {
   if (!confirm('確定要刪除此模板嗎？')) return
   try {
     await contentTemplateAPI.delete(id)
@@ -113,19 +115,19 @@ const deleteTemplate = async (id) => {
   }
 }
 
-const createTemplate = () => {
+const createTemplate = (): void => {
   router.push({ path: '/templates/new', query: { returnTab: 'templates' } })
 }
 
-const editTemplate = (id) => {
+const editTemplate = (id: number): void => {
   router.push({ path: `/templates/edit/${id}`, query: { returnTab: 'templates' } })
 }
 
-const useTemplate = (template) => {
+const useTemplate = (template: ContentTemplate): void => {
   // 跳轉到新建資源頁面，並傳遞 template_id 作為 query param
   router.push({
     path: '/resources/new',
-    query: { template_id: template.template_id }
+    query: { template_id: String(template.template_id) }
   })
 }
 

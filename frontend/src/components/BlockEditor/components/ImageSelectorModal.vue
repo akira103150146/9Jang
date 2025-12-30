@@ -48,70 +48,93 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed, inject, watch, onMounted, onBeforeUnmount } from 'vue'
+<script setup lang="ts">
+import { ref, computed, inject, watch, onBeforeUnmount, type Ref, type InjectionKey } from 'vue'
 import { uploadImageAPI } from '../../../services/api'
 
-const props = defineProps({
-  isOpen: { type: Boolean, default: false }
+interface Props {
+  isOpen?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  isOpen: false
 })
 
-const emit = defineEmits(['close', 'select', 'upload-new', 'image-uploaded'])
+interface ImageUploadedData {
+  filename: string
+  url: string
+}
 
-const imageMappings = inject('imageMappings', computed(() => new Map()))
-const searchQuery = ref('')
-const uploading = ref(false)
+interface Emits {
+  (e: 'close'): void
+  (e: 'select', url: string): void
+  (e: 'upload-new'): void
+  (e: 'image-uploaded', data: ImageUploadedData): void
+}
 
-const filteredImages = computed(() => {
+const emit = defineEmits<Emits>()
+
+const ImageMappingsInjectionKey: InjectionKey<Ref<Map<string, string>>> = Symbol('imageMappings')
+const imageMappings: Ref<Map<string, string>> = inject(
+  ImageMappingsInjectionKey,
+  computed(() => new Map())
+)
+const searchQuery: Ref<string> = ref('')
+const uploading: Ref<boolean> = ref(false)
+
+const filteredImages = computed<Array<[string, string]>>(() => {
   if (!searchQuery.value) {
     return Array.from(imageMappings.value.entries())
   }
-  
+
   const query = searchQuery.value.toLowerCase()
   return Array.from(imageMappings.value.entries()).filter(([filename]) =>
     filename.toLowerCase().includes(query)
   )
 })
 
-const close = () => {
+const close = (): void => {
   emit('close')
 }
 
-const selectImage = (url) => {
+const selectImage = (url: string): void => {
   emit('select', url)
   close()
 }
 
-const uploadNew = () => {
+const uploadNew = (): void => {
   emit('upload-new')
   close()
 }
 
 // 處理圖片貼上
-const handlePaste = async (event) => {
+const handlePaste = async (event: ClipboardEvent): Promise<void> => {
   if (!props.isOpen) return
-  
+
   const clipboardData = event.clipboardData
   if (!clipboardData) return
-  
+
   // 檢查是否有圖片
   const items = Array.from(clipboardData.items)
-  const imageItem = items.find(item => item.type.startsWith('image/'))
-  
+  const imageItem = items.find((item) => item.type.startsWith('image/'))
+
   if (imageItem) {
     event.preventDefault()
     event.stopPropagation()
-    
+
     const file = imageItem.getAsFile()
     if (!file) return
-    
+
     uploading.value = true
-    
+
     try {
       // 上傳圖片
       const response = await uploadImageAPI.upload(file)
-      const imageUrl = response.data.url || response.data.image_url || response.data.url
-      
+      const imageUrl =
+        (response.data as { url?: string; image_url?: string }).url ||
+        (response.data as { image_url?: string }).image_url ||
+        ''
+
       if (imageUrl) {
         // 將圖片添加到映射表（imageMappings 是 computed，需要通過 .value 訪問實際的 Map）
         const mappings = imageMappings.value
@@ -120,7 +143,7 @@ const handlePaste = async (event) => {
           // 通知父組件圖片已上傳，需要保存映射表
           emit('image-uploaded', { filename: file.name, url: imageUrl })
         }
-        
+
         // 自動選擇並插入圖片
         selectImage(imageUrl)
       }
@@ -134,15 +157,18 @@ const handlePaste = async (event) => {
 }
 
 // 監聽 Modal 打開/關閉狀態，添加/移除 paste 事件監聽器
-watch(() => props.isOpen, (isOpen) => {
-  if (isOpen) {
-    // Modal 打開時，添加 paste 事件監聽器
-    document.addEventListener('paste', handlePaste, true)
-  } else {
-    // Modal 關閉時，移除 paste 事件監聽器
-    document.removeEventListener('paste', handlePaste, true)
+watch(
+  () => props.isOpen,
+  (isOpen) => {
+    if (isOpen) {
+      // Modal 打開時，添加 paste 事件監聽器
+      document.addEventListener('paste', handlePaste, true)
+    } else {
+      // Modal 關閉時，移除 paste 事件監聽器
+      document.removeEventListener('paste', handlePaste, true)
+    }
   }
-})
+)
 
 // 組件卸載時清理
 onBeforeUnmount(() => {

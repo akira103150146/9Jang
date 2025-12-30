@@ -86,41 +86,59 @@
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted } from 'vue'
+<script setup lang="ts">
+import { ref, onMounted, type Ref } from 'vue'
 import { teacherAPI } from '../services/api'
 import { mockTeachers } from '../data/mockData'
 
-const teachers = ref([])
-const loading = ref(false)
-const usingMock = ref(false)
+/**
+ * 老師類型
+ */
+interface Teacher {
+  teacher_id: number
+  name: string
+  username: string
+  permission_level: string
+  phone?: string
+  hire_date?: string
+  id?: number
+  [key: string]: unknown
+}
 
-const normalizeTeacher = (teacher) => ({
-  teacher_id: teacher.teacher_id || teacher.id,
-  name: teacher.name,
-  username: teacher.username,
-  permission_level: teacher.permission_level || 'Teacher',
-  phone: teacher.phone || '',
-  hire_date: teacher.hire_date || '',
-})
+const teachers: Ref<Teacher[]> = ref([])
+const loading: Ref<boolean> = ref(false)
+const usingMock: Ref<boolean> = ref(false)
 
-const fetchTeachers = async () => {
+const normalizeTeacher = (teacher: unknown): Teacher => {
+  const t = teacher as Teacher & { id?: number }
+  return {
+    teacher_id: t.teacher_id || t.id || 0,
+    name: t.name || '',
+    username: t.username || '',
+    permission_level: t.permission_level || 'Teacher',
+    phone: t.phone || '',
+    hire_date: t.hire_date || '',
+    ...t
+  }
+}
+
+const fetchTeachers = async (): Promise<void> => {
   loading.value = true
   try {
     const response = await teacherAPI.getAll()
-    const data = response.data.results || response.data
-    teachers.value = data.map((item) => normalizeTeacher(item))
+    const data = ((response.data as { results?: unknown[] }) | unknown[]).results || (response.data as unknown[])
+    teachers.value = (data as unknown[]).map((item) => normalizeTeacher(item))
     usingMock.value = false
   } catch (error) {
     console.warn('獲取老師資料失敗，使用 mock 資料：', error)
-    teachers.value = mockTeachers
+    teachers.value = (mockTeachers as unknown[]).map((item) => normalizeTeacher(item))
     usingMock.value = true
   } finally {
     loading.value = false
   }
 }
 
-const deleteTeacher = async (id, name) => {
+const deleteTeacher = async (id: number, name: string): Promise<void> => {
   if (!id) {
     alert('示意資料無法刪除，請於 API 可用後再操作。')
     return

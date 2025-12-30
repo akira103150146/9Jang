@@ -21,44 +21,39 @@
   </NodeViewWrapper>
 </template>
 
-<script setup>
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
-import { NodeViewWrapper } from '@tiptap/vue-3'
+<script setup lang="ts">
+import { ref, onMounted, onBeforeUnmount, watch, type Ref } from 'vue'
+import { NodeViewWrapper, nodeViewProps, type NodeViewProps } from '@tiptap/vue-3'
 // 使用簡單的 SVG 繪製方式，避免複雜的 SVG.js 依賴
 // 實際使用時可以替換為 LogicFlow 或其他電路圖庫
 
-const props = defineProps({
-  node: {
-    type: Object,
-    required: true,
-  },
-  updateAttributes: {
-    type: Function,
-    required: true,
-  },
-  deleteNode: {
-    type: Function,
-    required: true,
-  },
-  getPos: {
-    type: Function,
-    required: true,
-  },
-  editor: {
-    type: Object,
-    required: true,
-  },
-})
+const props = defineProps<NodeViewProps>()
 
-const canvasContainer = ref(null)
-let svgElement = null
-const elements = ref([])
+interface CircuitElement {
+  type: string
+  id?: string
+  data?: {
+    position?: [number, number]
+    value?: string
+    [key: string]: unknown
+  }
+  [key: string]: unknown
+}
 
-const initCanvas = () => {
+interface CircuitData {
+  elements?: CircuitElement[]
+  [key: string]: unknown
+}
+
+const canvasContainer: Ref<HTMLElement | null> = ref(null)
+let svgElement: SVGElement | null = null
+const elements: Ref<CircuitElement[]> = ref([])
+
+const initCanvas = (): void => {
   if (!canvasContainer.value) return
 
   // 創建 SVG 元素
-  svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+  svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg') as SVGElement
   svgElement.setAttribute('width', '800')
   svgElement.setAttribute('height', '600')
   svgElement.setAttribute('viewBox', '0 0 800 600')
@@ -66,89 +61,89 @@ const initCanvas = () => {
   canvasContainer.value.appendChild(svgElement)
 
   // 載入現有數據
-  const attrs = props.node.attrs
+  const attrs = props.node.attrs as { circuit_data?: CircuitData }
   if (attrs.circuit_data && attrs.circuit_data.elements) {
     loadCircuitData(attrs.circuit_data)
   }
 }
 
-const addResistor = () => {
+const addResistor = (): void => {
   if (!svgElement) return
   const x = 100 + elements.value.length * 150
   const y = 300
-  
+
   // 繪製電阻符號（矩形）
   const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
-  rect.setAttribute('x', x)
-  rect.setAttribute('y', y - 10)
+  rect.setAttribute('x', String(x))
+  rect.setAttribute('y', String(y - 10))
   rect.setAttribute('width', '60')
   rect.setAttribute('height', '20')
   rect.setAttribute('fill', 'white')
   rect.setAttribute('stroke', '#000')
   rect.setAttribute('stroke-width', '2')
   svgElement.appendChild(rect)
-  
+
   const line1 = document.createElementNS('http://www.w3.org/2000/svg', 'line')
-  line1.setAttribute('x1', x)
-  line1.setAttribute('y1', y)
-  line1.setAttribute('x2', x + 60)
-  line1.setAttribute('y2', y)
+  line1.setAttribute('x1', String(x))
+  line1.setAttribute('y1', String(y))
+  line1.setAttribute('x2', String(x + 60))
+  line1.setAttribute('y2', String(y))
   line1.setAttribute('stroke', '#000')
   line1.setAttribute('stroke-width', '2')
   svgElement.appendChild(line1)
-  
+
   const line2 = document.createElementNS('http://www.w3.org/2000/svg', 'line')
-  line2.setAttribute('x1', x + 60)
-  line2.setAttribute('y1', y)
-  line2.setAttribute('x2', x + 120)
-  line2.setAttribute('y2', y)
+  line2.setAttribute('x1', String(x + 60))
+  line2.setAttribute('y1', String(y))
+  line2.setAttribute('x2', String(x + 120))
+  line2.setAttribute('y2', String(y))
   line2.setAttribute('stroke', '#000')
   line2.setAttribute('stroke-width', '2')
   svgElement.appendChild(line2)
-  
+
   const elementId = `resistor_${Date.now()}`
   rect.setAttribute('id', elementId)
-  
+
   elements.value.push({
     type: 'resistor',
     id: elementId,
-    data: { position: [x, y], value: '1kΩ' },
+    data: { position: [x, y] as [number, number], value: '1kΩ' }
   })
-  
+
   updateCircuitData()
 }
 
-const addCapacitor = () => {
+const addCapacitor = (): void => {
   if (!svgElement) return
   const x = 100 + elements.value.length * 150
   const y = 300
-  
+
   // 繪製電容符號（兩條平行線）
-  const createLine = (x1, y1, x2, y2) => {
+  const createLine = (x1: number, y1: number, x2: number, y2: number): SVGLineElement => {
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line')
-    line.setAttribute('x1', x1)
-    line.setAttribute('y1', y1)
-    line.setAttribute('x2', x2)
-    line.setAttribute('y2', y2)
+    line.setAttribute('x1', String(x1))
+    line.setAttribute('y1', String(y1))
+    line.setAttribute('x2', String(x2))
+    line.setAttribute('y2', String(y2))
     line.setAttribute('stroke', '#000')
     line.setAttribute('stroke-width', '2')
-    svgElement.appendChild(line)
+    svgElement!.appendChild(line)
     return line
   }
-  
+
   createLine(x, y - 20, x, y + 20)
   createLine(x + 40, y - 20, x + 40, y + 20)
   createLine(x - 20, y, x, y)
   createLine(x + 40, y, x + 60, y)
-  
+
   const elementId = `capacitor_${Date.now()}`
-  
+
   elements.value.push({
     type: 'capacitor',
     id: elementId,
-    data: { position: [x, y], value: '10μF' },
+    data: { position: [x, y] as [number, number], value: '10μF' }
   })
-  
+
   updateCircuitData()
 }
 

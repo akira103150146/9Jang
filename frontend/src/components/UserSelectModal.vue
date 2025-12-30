@@ -70,50 +70,67 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+<script setup lang="ts">
+import { ref, computed, watch, type Ref } from 'vue'
 import { userAPI } from '../services/api'
 
-const props = defineProps({
-  isOpen: {
-    type: Boolean,
-    default: false
-  },
-  role: {
-    type: String,
-    default: ''
-  }
-})
-
-const emit = defineEmits(['close', 'select'])
-
-const users = ref([])
-const loading = ref(false)
-const searchQuery = ref('')
-
-const roleDisplayMap = {
-  'ADMIN': '系統管理員',
-  'TEACHER': '老師',
-  'STUDENT': '學生',
-  'ACCOUNTANT': '會計'
+/**
+ * 用戶類型
+ */
+interface User {
+  id: number
+  username: string
+  email?: string
+  first_name?: string
+  last_name?: string
+  role: 'ADMIN' | 'TEACHER' | 'STUDENT' | 'ACCOUNTANT'
+  [key: string]: unknown
 }
 
-const roleDisplay = computed(() => {
+interface Props {
+  isOpen?: boolean
+  role?: string
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  isOpen: false,
+  role: ''
+})
+
+interface Emits {
+  (e: 'close'): void
+  (e: 'select', user: User): void
+}
+
+const emit = defineEmits<Emits>()
+
+const users: Ref<User[]> = ref([])
+const loading: Ref<boolean> = ref(false)
+const searchQuery: Ref<string> = ref('')
+
+const roleDisplayMap: Record<string, string> = {
+  ADMIN: '系統管理員',
+  TEACHER: '老師',
+  STUDENT: '學生',
+  ACCOUNTANT: '會計'
+}
+
+const roleDisplay = computed<string>(() => {
   return roleDisplayMap[props.role] || props.role
 })
 
-const fetchUsers = async () => {
+const fetchUsers = async (): Promise<void> => {
   if (!props.isOpen) return
-  
+
   loading.value = true
   try {
     const response = await userAPI.getAll()
-    
+
     // Handle both array (no pagination) and paginated response
     if (Array.isArray(response.data)) {
-      users.value = response.data
-    } else if (response.data && Array.isArray(response.data.results)) {
-      users.value = response.data.results
+      users.value = response.data as User[]
+    } else if (response.data && Array.isArray((response.data as { results?: User[] }).results)) {
+      users.value = (response.data as { results: User[] }).results
     } else {
       users.value = []
       console.warn('Unexpected user API response format:', response.data)
@@ -125,36 +142,40 @@ const fetchUsers = async () => {
   }
 }
 
-watch(() => props.isOpen, (newVal) => {
-  if (newVal) {
-    fetchUsers()
-    searchQuery.value = ''
+watch(
+  () => props.isOpen,
+  (newVal) => {
+    if (newVal) {
+      fetchUsers()
+      searchQuery.value = ''
+    }
   }
-})
+)
 
-const filteredUsers = computed(() => {
+const filteredUsers = computed<User[]>(() => {
   let result = users.value
-  
+
   // Filter by role
   if (props.role) {
-    result = result.filter(user => user.role === props.role)
+    result = result.filter((user) => user.role === props.role)
   }
-  
+
   // Filter by search query
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
-    result = result.filter(user => 
-      user.username.toLowerCase().includes(query) ||
-      (user.email && user.email.toLowerCase().includes(query)) ||
-      (user.first_name && user.first_name.toLowerCase().includes(query)) ||
-      (user.last_name && user.last_name.toLowerCase().includes(query))
+    result = result.filter(
+      (user) =>
+        user.username.toLowerCase().includes(query) ||
+        (user.email && user.email.toLowerCase().includes(query)) ||
+        (user.first_name && user.first_name.toLowerCase().includes(query)) ||
+        (user.last_name && user.last_name.toLowerCase().includes(query))
     )
   }
-  
+
   return result
 })
 
-const getUserInitials = (user) => {
+const getUserInitials = (user: User | null): string => {
   if (!user) return '?'
   if (user.first_name || user.last_name) {
     const first = user.first_name?.charAt(0) || ''
@@ -164,7 +185,7 @@ const getUserInitials = (user) => {
   return user.username?.charAt(0).toUpperCase() || '?'
 }
 
-const selectUser = (user) => {
+const selectUser = (user: User): void => {
   emit('select', user)
 }
 </script>

@@ -81,34 +81,45 @@
   </div>
 </template>
 
-<script setup>
-import { ref } from 'vue'
+<script setup lang="ts">
+import { ref, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { authAPI } from '../services/api'
 import ChangePasswordModal from '../components/ChangePasswordModal.vue'
 
+interface LoginForm {
+  email: string
+  password: string
+}
+
 const router = useRouter()
 
-const form = ref({
+const form: Ref<LoginForm> = ref({
   email: '',
   password: ''
 })
 
-const loading = ref(false)
-const error = ref('')
-const showChangePasswordModal = ref(false)
+const loading: Ref<boolean> = ref(false)
+const error: Ref<string> = ref('')
+const showChangePasswordModal: Ref<boolean> = ref(false)
 
-const handleLogin = async () => {
+const handleLogin = async (): Promise<void> => {
   loading.value = true
   error.value = ''
 
   try {
     const response = await authAPI.login(form.value.email, form.value.password)
-    
+
     // authAPI.login 已經處理了 token 和用戶信息的保存
-    if (response.data.user && response.data.access) {
+    const data = response.data as {
+      user?: { must_change_password?: boolean }
+      access?: string
+      must_change_password?: boolean
+    }
+
+    if (data.user && data.access) {
       // 檢查是否需要修改密碼
-      if (response.data.must_change_password || response.data.user.must_change_password) {
+      if (data.must_change_password || data.user.must_change_password) {
         // 保存臨時密碼，用於首次登入修改密碼
         localStorage.setItem('temp_password', form.value.password)
         showChangePasswordModal.value = true
@@ -121,8 +132,9 @@ const handleLogin = async () => {
     }
   } catch (err) {
     console.error('登入錯誤:', err)
-    if (err.response?.data?.detail) {
-      error.value = err.response.data.detail
+    const axiosError = err as { response?: { data?: { detail?: string } } }
+    if (axiosError.response?.data?.detail) {
+      error.value = axiosError.response.data.detail
     } else {
       error.value = '登入失敗，請稍後再試'
     }
@@ -131,7 +143,7 @@ const handleLogin = async () => {
   }
 }
 
-const handlePasswordChangeSuccess = async () => {
+const handlePasswordChangeSuccess = async (): Promise<void> => {
   // 清除臨時密碼
   localStorage.removeItem('temp_password')
   // 重新獲取用戶信息

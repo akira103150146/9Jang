@@ -21,10 +21,10 @@
   </node-view-wrapper>
 </template>
 
-<script setup>
-import { NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3'
+<script setup lang="ts">
+import { NodeViewWrapper, nodeViewProps, type NodeViewProps } from '@tiptap/vue-3'
 
-defineProps(nodeViewProps)
+defineProps<NodeViewProps>()
 </script>
 
 <style scoped>

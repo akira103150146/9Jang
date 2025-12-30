@@ -6,31 +6,59 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 
-const props = defineProps({
-  data: {
-    type: Object,
-    default: () => ({}),
-  },
+interface CircuitElement {
+  type: string
+  data?: {
+    position?: [number, number]
+    value?: string
+    [key: string]: unknown
+  }
+  position?: [number, number]
+  [key: string]: unknown
+}
+
+interface CircuitData {
+  elements?: CircuitElement[]
+  [key: string]: unknown
+}
+
+interface Data {
+  circuit_data?: CircuitData
+  circuitData?: CircuitData
+  backup_image?: string
+  backupImage?: string
+  elements?: CircuitElement[]
+  [key: string]: unknown
+}
+
+interface Props {
+  data?: Data | CircuitData
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  data: () => ({})
 })
 
-const backupImage = computed(() => {
+const backupImage = computed<string>(() => {
   if (!props.data || typeof props.data !== 'object') return ''
-  return props.data.backup_image || props.data.backupImage || ''
+  const data = props.data as Data
+  return data.backup_image || data.backupImage || ''
 })
 
-const circuitData = computed(() => {
+const circuitData = computed<CircuitData | null>(() => {
   if (!props.data || typeof props.data !== 'object') return null
-  if (props.data.circuit_data) return props.data.circuit_data
-  if (props.data.circuitData) return props.data.circuitData
+  const data = props.data as Data
+  if (data.circuit_data) return data.circuit_data
+  if (data.circuitData) return data.circuitData
   // 允許直接給 {elements:[...]}
-  if (Array.isArray(props.data.elements)) return props.data
+  if (Array.isArray(data.elements)) return data as CircuitData
   return null
 })
 
-const backupImageHtml = computed(() => {
+const backupImageHtml = computed<string>(() => {
   const src = backupImage.value
   if (!src) return ''
   if (typeof src === 'string' && src.startsWith('data:image/svg+xml')) {
@@ -40,7 +68,7 @@ const backupImageHtml = computed(() => {
   return `<img src="${src}" alt="電路圖" style="max-width: 100%; height: auto;" />`
 })
 
-const svgHtml = computed(() => {
+const svgHtml = computed<string>(() => {
   const cd = circuitData.value
   const els = cd?.elements
 
@@ -49,13 +77,13 @@ const svgHtml = computed(() => {
   // 簡易 SVG renderer（依 position 畫符號；不處理連線，先以元件視覺化為主）
   const width = 900
   const height = 520
-  const parts = []
+  const parts: string[] = []
 
-  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const esc = (s: unknown): string => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
-  els.forEach((el) => {
+  els.forEach((el: CircuitElement) => {
     const type = el?.type
-    const pos = el?.data?.position || el?.position || [100, 100]
+    const pos = el?.data?.position || el?.position || ([100, 100] as [number, number])
     const x = Number(pos[0]) || 100
     const y = Number(pos[1]) || 100
     const value = el?.data?.value

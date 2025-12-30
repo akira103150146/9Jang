@@ -71,91 +71,106 @@
   </div>
 </template>
 
-<script setup>
-import { ref, watch } from 'vue'
+<script setup lang="ts">
+import { ref, watch, type Ref } from 'vue'
 import { authAPI } from '../services/api'
 
-const props = defineProps({
-  show: {
-    type: Boolean,
-    default: false
-  },
-  isFirstLogin: {
-    type: Boolean,
-    default: false
-  }
+interface Props {
+  show?: boolean
+  isFirstLogin?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  show: false,
+  isFirstLogin: false
 })
 
-const emit = defineEmits(['close', 'success'])
+interface PasswordForm {
+  old_password: string
+  new_password: string
+  confirm_password: string
+}
 
-const form = ref({
+interface Emits {
+  (e: 'close'): void
+  (e: 'success'): void
+}
+
+const emit = defineEmits<Emits>()
+
+const form: Ref<PasswordForm> = ref({
   old_password: '',
   new_password: '',
   confirm_password: ''
 })
 
-const loading = ref(false)
-const error = ref('')
+const loading: Ref<boolean> = ref(false)
+const error: Ref<string> = ref('')
 
-watch(() => props.show, (newVal) => {
-  if (newVal) {
-    // 重置表單
-    form.value = {
-      old_password: '',
-      new_password: '',
-      confirm_password: ''
+watch(
+  () => props.show,
+  (newVal) => {
+    if (newVal) {
+      // 重置表單
+      form.value = {
+        old_password: '',
+        new_password: '',
+        confirm_password: ''
+      }
+      error.value = ''
     }
-    error.value = ''
   }
-})
+)
 
-const handleChangePassword = async () => {
+const handleChangePassword = async (): Promise<void> => {
   error.value = ''
-  
+
   // 驗證新密碼長度
   if (form.value.new_password.length < 6) {
     error.value = '新密碼至少需要6位字符'
     return
   }
-  
+
   // 驗證兩次輸入的密碼是否一致
   if (form.value.new_password !== form.value.confirm_password) {
     error.value = '兩次輸入的密碼不一致'
     return
   }
-  
+
   // 首次登入不需要舊密碼
   if (!props.isFirstLogin && !form.value.old_password) {
     error.value = '請輸入舊密碼'
     return
   }
-  
+
   loading.value = true
-  
+
   try {
     // 首次登入時，使用當前密碼作為舊密碼（從 localStorage 獲取）
-    let oldPassword
+    let oldPassword: string
     if (props.isFirstLogin) {
       // 首次登入，從 localStorage 獲取臨時密碼
-      oldPassword = localStorage.getItem('temp_password')
-      if (!oldPassword) {
+      const tempPassword = localStorage.getItem('temp_password')
+      if (!tempPassword) {
         error.value = '無法獲取當前密碼，請重新登入'
         loading.value = false
         return
       }
+      oldPassword = tempPassword
     } else {
       oldPassword = form.value.old_password
     }
-    
+
     await authAPI.changePassword(oldPassword, form.value.new_password)
-    
+
     alert('密碼修改成功')
     emit('success')
     emit('close')
   } catch (err) {
     console.error('修改密碼失敗:', err)
-    if (err.response?.data?.detail) {
-      error.value = err.response.data.detail
+    const axiosError = err as { response?: { data?: { detail?: string } } }
+    if (axiosError.response?.data?.detail) {
+      error.value = axiosError.response.data.detail
     } else {
       error.value = '修改密碼失敗，請稍後再試'
     }

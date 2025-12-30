@@ -33,32 +33,33 @@
   </node-view-wrapper>
 </template>
 
-<script setup>
-import { ref, onMounted, computed } from 'vue'
-import { NodeViewWrapper, NodeViewContent, nodeViewProps } from '@tiptap/vue-3'
+<script setup lang="ts">
+import { ref, onMounted, computed, type Ref } from 'vue'
+import { NodeViewWrapper, NodeViewContent, nodeViewProps, type NodeViewProps } from '@tiptap/vue-3'
 
-const props = defineProps(nodeViewProps)
+const props = defineProps<NodeViewProps>()
 
 // 檢查是否為 readonly 模式
-const isReadonly = computed(() => !props.editor.isEditable)
+const isReadonly = computed<boolean>(() => !props.editor.isEditable)
 
-const isHovered = ref(false)
-const sectionTitle = ref(props.node.attrs.title || '')
+const isHovered: Ref<boolean> = ref(false)
+const sectionTitle: Ref<string> = ref((props.node.attrs.title as string) || '')
 
-const updateTitle = () => {
+const updateTitle = (): void => {
   props.updateAttributes({ title: sectionTitle.value })
 }
 
-const handleDelete = () => {
+const handleDelete = (): void => {
   const pos = props.getPos()
-  props.editor.chain().focus().deleteRange({ 
-    from: pos, 
-    to: pos + props.node.nodeSize 
+  if (pos === null || pos === undefined) return
+  props.editor.chain().focus().deleteRange({
+    from: pos,
+    to: pos + props.node.nodeSize
   }).run()
 }
 
 onMounted(() => {
-  sectionTitle.value = props.node.attrs.title || ''
+  sectionTitle.value = (props.node.attrs.title as string) || ''
 })
 </script>
 

@@ -25,53 +25,62 @@
   </div>
 </template>
 
-<script setup>
-import { ref } from 'vue'
+<script setup lang="ts">
+import { ref, type Ref } from 'vue'
+import type { Editor } from '@tiptap/core'
+import type { Node } from '@tiptap/pm/model'
 
-const props = defineProps({
-  node: {
-    type: Object,
-    required: true
-  },
-  editor: {
-    type: Object,
-    required: true
-  }
-})
+interface Props {
+  node: Node
+  editor: Editor
+}
 
-const emit = defineEmits(['drag-start', 'drag-end'])
+const props = defineProps<Props>()
 
-const isDragging = ref(false)
+interface DragStartPayload {
+  node: Node
+  pos: number
+  event: MouseEvent
+}
 
-const handleMouseDown = (event) => {
+interface Emits {
+  (e: 'drag-start', payload: DragStartPayload): void
+  (e: 'drag-end'): void
+}
+
+const emit = defineEmits<Emits>()
+
+const isDragging: Ref<boolean> = ref(false)
+
+const handleMouseDown = (event: MouseEvent): void => {
   event.preventDefault()
   isDragging.value = true
-  
+
   const { view } = props.editor
   const { state } = view
   const { selection } = state
-  
+
   // 找到當前節點的位置
   const pos = selection.$anchor.before(selection.$anchor.depth)
-  
+
   emit('drag-start', {
     node: props.node,
     pos,
     event
   })
-  
+
   // 監聽滑鼠移動和放開
-  const handleMouseMove = (e) => {
+  const handleMouseMove = (_e: MouseEvent): void => {
     // 拖動邏輯在父組件處理
   }
-  
-  const handleMouseUp = () => {
+
+  const handleMouseUp = (): void => {
     isDragging.value = false
     emit('drag-end')
     document.removeEventListener('mousemove', handleMouseMove)
     document.removeEventListener('mouseup', handleMouseUp)
   }
-  
+
   document.addEventListener('mousemove', handleMouseMove)
   document.addEventListener('mouseup', handleMouseUp)
 }

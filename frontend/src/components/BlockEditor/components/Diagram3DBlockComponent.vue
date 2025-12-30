@@ -32,23 +32,28 @@
   </node-view-wrapper>
 </template>
 
-<script setup>
-import { ref, computed } from 'vue'
-import { NodeViewWrapper, NodeViewContent, nodeViewProps } from '@tiptap/vue-3'
+<script setup lang="ts">
+import { ref, computed, type Ref } from 'vue'
+import { NodeViewWrapper, NodeViewContent, nodeViewProps, type NodeViewProps } from '@tiptap/vue-3'
 
-const props = defineProps(nodeViewProps)
+interface ThreeJSConfig {
+  [key: string]: unknown
+}
 
-const isEditing = ref(false)
-const configText = ref(JSON.stringify(props.node.attrs.config || {}, null, 2))
-const containerRef = ref(null)
+const props = defineProps<NodeViewProps>()
 
-const hasConfig = computed(() => {
-  return props.node.attrs.config && Object.keys(props.node.attrs.config).length > 0
+const isEditing: Ref<boolean> = ref(false)
+const configText: Ref<string> = ref(JSON.stringify((props.node.attrs.config as ThreeJSConfig) || {}, null, 2))
+const containerRef: Ref<HTMLElement | null> = ref(null)
+
+const hasConfig = computed<boolean>(() => {
+  const config = props.node.attrs.config as ThreeJSConfig | undefined
+  return config ? Object.keys(config).length > 0 : false
 })
 
-const handleSave = () => {
+const handleSave = (): void => {
   try {
-    const config = JSON.parse(configText.value)
+    const config: ThreeJSConfig = JSON.parse(configText.value)
     props.updateAttributes({ config })
     isEditing.value = false
     // TODO: 初始化 Three.js 場景

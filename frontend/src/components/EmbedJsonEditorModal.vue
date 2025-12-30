@@ -30,18 +30,28 @@
   </div>
 </template>
 
-<script setup>
-import { computed, ref, watch } from 'vue'
+<script setup lang="ts">
+import { computed, ref, watch, type Ref, type Component } from 'vue'
 
-const props = defineProps({
-  title: { type: String, default: '編輯' },
-  initial: { type: String, default: '{}' },
-  previewComponent: { type: [Object, Function], required: true },
+interface Props {
+  title?: string
+  initial?: string
+  previewComponent: Component | (() => Component)
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  title: '編輯',
+  initial: '{}'
 })
 
-const emit = defineEmits(['save', 'cancel'])
+interface Emits {
+  (e: 'save', value: string): void
+  (e: 'cancel'): void
+}
 
-const raw = ref(props.initial || '{}')
+const emit = defineEmits<Emits>()
+
+const raw: Ref<string> = ref(props.initial || '{}')
 watch(
   () => props.initial,
   (v) => {
@@ -49,23 +59,24 @@ watch(
   }
 )
 
-const parseError = ref('')
-const parsed = computed(() => {
+const parseError: Ref<string> = ref('')
+const parsed = computed<Record<string, unknown> | null>(() => {
   try {
     parseError.value = ''
     return raw.value ? JSON.parse(raw.value) : {}
   } catch (e) {
-    parseError.value = `JSON 解析失敗：${e?.message || 'unknown'}`
+    const error = e as Error
+    parseError.value = `JSON 解析失敗：${error?.message || 'unknown'}`
     return null
   }
 })
 
-const parsedForPreview = computed(() => {
+const parsedForPreview = computed<Record<string, unknown>>(() => {
   // 讓 preview 元件同時支援 {diagram_data:{...}} 或直接 {...}
   return parsed.value || {}
 })
 
-const emitSave = () => {
+const emitSave = (): void => {
   emit('save', raw.value || '{}')
 }
 </script>

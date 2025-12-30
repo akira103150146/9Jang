@@ -99,63 +99,108 @@
   </aside>
 </template>
 
-<script setup>
-import { ref, computed, onMounted } from 'vue'
+<script setup lang="ts">
+import { ref, computed, onMounted, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { authAPI, setTokens, clearTokens } from '../services/api'
 import logoUrl from '../assets/logo_jiuzhang.png'
 import UserSelectModal from './UserSelectModal.vue'
 
-defineProps({
-  isOpen: {
-    type: Boolean,
-    default: false,
-  },
+/**
+ * 用戶類型
+ */
+interface User {
+  id: number
+  username: string
+  role: 'ADMIN' | 'TEACHER' | 'STUDENT' | 'ACCOUNTANT'
+  role_display?: string
+  first_name?: string
+  last_name?: string
+  must_change_password?: boolean
+  custom_role?: number
+  [key: string]: unknown
+}
+
+/**
+ * 權限類型
+ */
+interface Permission {
+  permission_type: string
+  resource: string
+  [key: string]: unknown
+}
+
+/**
+ * 導航項類型
+ */
+interface NavItem {
+  name: string
+  label: string
+  path: string
+  requiresAdmin: boolean
+  allowedRoles: string[]
+}
+
+interface Props {
+  isOpen?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  isOpen: false
 })
 
-defineEmits(['close'])
+interface Emits {
+  (e: 'close'): void
+}
+
+const emit = defineEmits<Emits>()
 
 const route = useRoute()
 const router = useRouter()
-const currentUser = ref(null)
-const userPermissions = ref([])
-// const tempRole = ref(null) // Deprecated: Old role simulation
-const selectedRole = ref('')
-const showUserSelectModal = ref(false)
-const targetRole = ref('')
-const isImpersonating = ref(false)
+const currentUser: Ref<User | null> = ref(null)
+const userPermissions: Ref<Permission[]> = ref([])
+const selectedRole: Ref<string> = ref('')
+const showUserSelectModal: Ref<boolean> = ref(false)
+const targetRole: Ref<string> = ref('')
+const isImpersonating: Ref<boolean> = ref(false)
 
-const roleDisplayMap = {
-  'ADMIN': '系統管理員',
-  'TEACHER': '老師',
-  'STUDENT': '學生',
-  'ACCOUNTANT': '會計'
+const roleDisplayMap: Record<string, string> = {
+  ADMIN: '系統管理員',
+  TEACHER: '老師',
+  STUDENT: '學生',
+  ACCOUNTANT: '會計'
 }
 
-const effectiveRoleDisplay = computed(() => {
-  return currentUser.value?.role_display || roleDisplayMap[currentUser.value?.role] || currentUser.value?.role || ''
+const effectiveRoleDisplay = computed<string>(() => {
+  if (!currentUser.value) return ''
+  return (
+    currentUser.value.role_display ||
+    roleDisplayMap[currentUser.value.role] ||
+    currentUser.value.role ||
+    ''
+  )
 })
 
 // 獲取用戶頭像初始字母
-const getUserInitials = (user) => {
+const getUserInitials = (user: User | null): string => {
   if (!user) return '?'
-  
+
   // 優先使用 first_name 和 last_name
   if (user.first_name || user.last_name) {
     const first = user.first_name?.charAt(0) || ''
     const last = user.last_name?.charAt(0) || ''
     return (first + last).toUpperCase() || user.username?.charAt(0).toUpperCase() || '?'
   }
-  
+
   // 如果沒有姓名，使用 username 的第一個字符
   if (user.username) {
     return user.username.charAt(0).toUpperCase()
   }
-  
+
   return '?'
 }
 
-const allNavItems = [
+const allNavItems: NavItem[] = [
   { name: 'student-home', label: '首頁', path: '/student-home', requiresAdmin: false, allowedRoles: ['STUDENT'] },
   { name: 'my-courses', label: '我的課程', path: '/my-courses', requiresAdmin: false, allowedRoles: ['STUDENT'] },
   { name: 'student-mistake-book', label: '錯題本', path: '/student-mistake-book', requiresAdmin: false, allowedRoles: ['STUDENT'] },
@@ -176,7 +221,7 @@ const allNavItems = [
 ]
 
 // 根據權限過濾菜單項
-const navItems = computed(() => {
+const navItems = computed<NavItem[]>(() => {
   if (!currentUser.value) {
     return []
   }
@@ -184,7 +229,7 @@ const navItems = computed(() => {
   const role = currentUser.value.role
 
   // 根據角色過濾（包括管理員）
-  return allNavItems.filter(item => {
+  return allNavItems.filter((item) => {
     // 管理員專用頁面：只有管理員可以看到
     if (item.requiresAdmin) {
       return role === 'ADMIN'
@@ -198,7 +243,7 @@ const navItems = computed(() => {
     // 檢查頁面權限（用於自定義角色）
     if (userPermissions.value.length > 0) {
       return userPermissions.value.some(
-        p => p.permission_type === 'page' && p.resource === item.path
+        (p) => p.permission_type === 'page' && p.resource === item.path
       )
     }
 
@@ -207,17 +252,26 @@ const navItems = computed(() => {
   })
 })
 
-const childMatchMap = {
+const childMatchMap: Record<string, string[]> = {
   'student-list': ['student-list', 'student-add', 'student-edit', 'student-fees'],
-  'fees': ['fees', 'fee-add', 'fee-edit'],
+  fees: ['fees', 'fee-add', 'fee-edit'],
   'lunch-orders': ['lunch-orders', 'group-order-detail', 'join-group-order'],
-  'questions': ['questions', 'resource-new', 'resource-edit', 'template-new', 'template-edit', 'question-new', 'question-edit', 'question-import'], // Keep sidebar active for editor, template editor, and import page
+  questions: [
+    'questions',
+    'resource-new',
+    'resource-edit',
+    'template-new',
+    'template-edit',
+    'question-new',
+    'question-edit',
+    'question-import'
+  ], // Keep sidebar active for editor, template editor, and import page
   'my-courses': ['my-courses'],
-  'student-mistake-book': ['student-mistake-book'],
+  'student-mistake-book': ['student-mistake-book']
 }
 
-const isActive = (name) => {
-  const current = route.name
+const isActive = (name: string): boolean => {
+  const current = route.name as string
   if (childMatchMap[name]) {
     return childMatchMap[name].includes(current)
   }
@@ -225,7 +279,7 @@ const isActive = (name) => {
 }
 
 // 獲取當前用戶和權限
-const fetchUserInfo = async () => {
+const fetchUserInfo = async (): Promise<void> => {
   try {
     // 檢查是否在登入頁面
     if (route.name === 'login') {
@@ -245,40 +299,42 @@ const fetchUserInfo = async () => {
     // 從 localStorage 獲取用戶信息
     const userStr = localStorage.getItem('user')
     if (userStr) {
-      currentUser.value = JSON.parse(userStr)
+      currentUser.value = JSON.parse(userStr) as User
       // Force disable password change prompt during impersonation
       if (isImpersonating.value && currentUser.value.must_change_password) {
         currentUser.value.must_change_password = false
         // Update local storage to prevent prompt on refresh
         localStorage.setItem('user', JSON.stringify(currentUser.value))
       }
-      
+
       // 如果用戶有自訂角色，獲取權限
       if (currentUser.value.custom_role) {
         const { roleAPI } = await import('../services/api')
         const response = await roleAPI.getById(currentUser.value.custom_role)
-        const role = response.data
+        const role = response.data as { permissions?: Permission[] }
         userPermissions.value = role.permissions || []
       }
     } else {
       // 嘗試從 API 獲取
       const { authAPI } = await import('../services/api')
       const response = await authAPI.getCurrentUser()
-      currentUser.value = response.data
+      currentUser.value = response.data as User
       // Force disable password change prompt during impersonation
       if (isImpersonating.value && currentUser.value.must_change_password) {
         currentUser.value.must_change_password = false
       }
       localStorage.setItem('user', JSON.stringify(currentUser.value))
-      
-      if (response.data.custom_role) {
+
+      if (currentUser.value.custom_role) {
         const { roleAPI } = await import('../services/api')
-        const roleResponse = await roleAPI.getById(response.data.custom_role)
-        userPermissions.value = roleResponse.data.permissions || []
+        const roleResponse = await roleAPI.getById(currentUser.value.custom_role)
+        const role = roleResponse.data as { permissions?: Permission[] }
+        userPermissions.value = role.permissions || []
       }
     }
   } catch (error) {
-    if (error.response?.status === 401) {
+    const axiosError = error as { response?: { status?: number } }
+    if (axiosError.response?.status === 401) {
       clearTokens()
       currentUser.value = null
       userPermissions.value = []
@@ -292,7 +348,7 @@ const fetchUserInfo = async () => {
   }
 }
 
-const handleLogout = async () => {
+const handleLogout = async (): Promise<void> => {
   try {
     // 如果是模擬中，直接登出會清除所有 token (包括原始管理員的)
     // 這裡我們直接調用 API 並清除所有本地存儲
@@ -306,29 +362,30 @@ const handleLogout = async () => {
     localStorage.removeItem('original_refresh_token')
     localStorage.removeItem('original_user')
     localStorage.removeItem('temp_role')
-    
+
     isImpersonating.value = false
     selectedRole.value = ''
     router.push('/login')
   }
 }
 
-const handleRoleSelect = (event) => {
-  const role = event.target.value
+const handleRoleSelect = (event: Event): void => {
+  const target = event.target as HTMLSelectElement
+  const role = target.value
   if (!role) return
-  
+
   targetRole.value = role
   showUserSelectModal.value = true
   // Reset select to avoid state issues if modal cancelled
-  selectedRole.value = '' 
+  selectedRole.value = ''
 }
 
-const closeUserSelectModal = () => {
+const closeUserSelectModal = (): void => {
   showUserSelectModal.value = false
   targetRole.value = ''
 }
 
-const handleUserSelect = async (user) => {
+const handleUserSelect = async (user: { id: number }): Promise<void> => {
   try {
     // 1. 獲取管理員 Token（如果處於模擬狀態，從 original_access_token 獲取）
     let adminAccess = localStorage.getItem('original_access_token')
@@ -363,17 +420,17 @@ const handleUserSelect = async (user) => {
     
     // 4. 設置新 Token
     setTokens(response.data.access, response.data.refresh)
-    const impersonatedUser = response.data.user
+    const impersonatedUser = response.data.user as User
     impersonatedUser.must_change_password = false // Force disable password change for impersonation
     localStorage.setItem('user', JSON.stringify(impersonatedUser))
-    
+
     // 5. 更新模擬狀態和用戶信息
     isImpersonating.value = true
     currentUser.value = impersonatedUser
-    
+
     // 6. 關閉 Modal
     closeUserSelectModal()
-    
+
     // 7. 根據角色決定跳轉
     if (impersonatedUser.role === 'STUDENT') {
       window.location.href = '/student-home'
@@ -387,7 +444,6 @@ const handleUserSelect = async (user) => {
       // 其他角色重新載入頁面
       window.location.reload()
     }
-    
   } catch (error) {
     console.error('模擬用戶失敗:', error)
     alert('模擬用戶失敗，請稍後再試')
@@ -395,7 +451,7 @@ const handleUserSelect = async (user) => {
   }
 }
 
-const stopImpersonation = () => {
+const stopImpersonation = (): void => {
   const originalAccess = localStorage.getItem('original_access_token')
   const originalRefresh = localStorage.getItem('original_refresh_token')
   const originalUser = localStorage.getItem('original_user')

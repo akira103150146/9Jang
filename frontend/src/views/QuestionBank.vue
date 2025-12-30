@@ -44,18 +44,25 @@
 </template>
 
 
-<script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+<script setup lang="ts">
+import { ref, computed, watch, onMounted, type Ref } from 'vue'
 import { useRoute } from 'vue-router'
 import ResourceList from '../components/ResourceList.vue'
 import TemplateList from '../components/TemplateList.vue'
 import QuestionList from '../components/QuestionList.vue'
 
+type TabId = 'questions' | 'resources' | 'templates'
+
+interface Tab {
+  id: TabId
+  name: string
+}
+
 const route = useRoute()
 
 // Tabs Configuration
-const currentTab = ref('questions')
-const tabs = [
+const currentTab: Ref<TabId> = ref('questions')
+const tabs: Tab[] = [
   { id: 'questions', name: '題庫' },
   { id: 'resources', name: '文件庫' },
   { id: 'templates', name: '模板庫' }
@@ -63,32 +70,36 @@ const tabs = [
 
 // 從 URL 查詢參數讀取 tab，如果有的話
 onMounted(() => {
-  if (route.query.tab && ['questions', 'resources', 'templates'].includes(route.query.tab)) {
-    currentTab.value = route.query.tab
+  const tab = route.query.tab as string | undefined
+  if (tab && ['questions', 'resources', 'templates'].includes(tab)) {
+    currentTab.value = tab as TabId
   }
 })
 
 // 監聽路由查詢參數變化，動態切換 tab
-watch(() => route.query.tab, (newTab) => {
-  if (newTab && ['questions', 'resources', 'templates'].includes(newTab)) {
-    currentTab.value = newTab
+watch(
+  () => route.query.tab,
+  (newTab) => {
+    if (newTab && ['questions', 'resources', 'templates'].includes(newTab as string)) {
+      currentTab.value = newTab as TabId
+    }
   }
-})
+)
 
-const headerTitle = computed(() => {
-  const map = {
-    'questions': '題庫管理',
-    'resources': '教學資源管理',
-    'templates': '內容模板管理'
+const headerTitle = computed<string>(() => {
+  const map: Record<TabId, string> = {
+    questions: '題庫管理',
+    resources: '教學資源管理',
+    templates: '內容模板管理'
   }
   return map[currentTab.value] || '題庫管理'
 })
 
-const headerDescription = computed(() => {
-  const map = {
-    'questions': '新增、編輯與管理題目，支援多種題目類型',
-    'resources': '創建、編輯與管理教學資源，支援多種模式',
-    'templates': '管理可重複使用的內容模板'
+const headerDescription = computed<string>(() => {
+  const map: Record<TabId, string> = {
+    questions: '新增、編輯與管理題目，支援多種題目類型',
+    resources: '創建、編輯與管理教學資源，支援多種模式',
+    templates: '管理可重複使用的內容模板'
   }
   return map[currentTab.value] || '新增、編輯與管理題目'
 })

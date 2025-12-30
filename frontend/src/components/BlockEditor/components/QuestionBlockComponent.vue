@@ -42,34 +42,41 @@
   </node-view-wrapper>
 </template>
 
-<script setup>
-import { ref, inject, computed } from 'vue'
-import { NodeViewWrapper, NodeViewContent, nodeViewProps } from '@tiptap/vue-3'
+<script setup lang="ts">
+import { ref, inject, computed, type Ref, type InjectionKey } from 'vue'
+import { NodeViewWrapper, NodeViewContent, nodeViewProps, type NodeViewProps } from '@tiptap/vue-3'
 import QuestionBlock from '../../QuestionBlock.vue'
 import QuestionSelectorModal from './QuestionSelectorModal.vue'
 
-const props = defineProps(nodeViewProps)
+interface Question {
+  id: number
+  [key: string]: unknown
+}
+
+const props = defineProps<NodeViewProps>()
 
 // 從父組件注入可用的題目列表
-const availableQuestions = inject('questions', [])
-// 注入 readonly 狀態
-const isReadonly = computed(() => !props.editor.isEditable)
+const QuestionsInjectionKey: InjectionKey<Question[]> = Symbol('questions')
+const availableQuestions: Question[] = inject(QuestionsInjectionKey, [])
 
-const showSelector = ref(false)
-const isHovered = ref(false)
+// 注入 readonly 狀態
+const isReadonly = computed<boolean>(() => !props.editor.isEditable)
+
+const showSelector: Ref<boolean> = ref(false)
+const isHovered: Ref<boolean> = ref(false)
 
 // 計算題號：根據最近的 SectionBlock（大題標題）來編號
-const questionNumber = computed(() => {
+const questionNumber = computed<number | null>(() => {
   try {
     const editor = props.editor
-    if (!editor || !props.node.attrs.questionId) return null
-    
+    if (!editor || !(props.node.attrs.questionId as number | undefined)) return null
+
     const currentPos = props.getPos()
     if (currentPos === undefined || currentPos === null) return null
-    
+
     let count = 0
     let lastSectionPos = -1
-    
+
     // 遍歷文檔，找到當前題目之前最近的 SectionBlock
     editor.state.doc.descendants((node, pos) => {
       // 如果遇到 SectionBlock 且在當前節點之前，記錄其位置
@@ -77,16 +84,16 @@ const questionNumber = computed(() => {
         lastSectionPos = pos
         count = 0 // 重置計數
       }
-      
+
       // 如果是題目區塊且有 questionId
-      if (node.type.name === 'questionBlock' && node.attrs.questionId) {
+      if (node.type.name === 'questionBlock' && (node.attrs.questionId as number | undefined)) {
         // 只計算在最近的 SectionBlock 之後的題目
         if (pos > lastSectionPos && pos <= currentPos) {
           count++
         }
       }
     })
-    
+
     return count > 0 ? count : null
   } catch (error) {
     console.error('計算題號時出錯:', error)
@@ -94,20 +101,21 @@ const questionNumber = computed(() => {
   }
 })
 
-const handleSelectQuestion = () => {
+const handleSelectQuestion = (): void => {
   // 打開題目選擇器
   showSelector.value = true
 }
 
-const handleDelete = () => {
+const handleDelete = (): void => {
   const pos = props.getPos()
-  props.editor.chain().focus().deleteRange({ 
-    from: pos, 
-    to: pos + props.node.nodeSize 
+  if (pos === null || pos === undefined) return
+  props.editor.chain().focus().deleteRange({
+    from: pos,
+    to: pos + props.node.nodeSize
   }).run()
 }
 
-const onQuestionSelected = async (questionIds) => {
+const onQuestionSelected = async (questionIds: number | number[]): Promise<void> => {
   // 如果是陣列(多選),處理批次插入
   if (Array.isArray(questionIds)) {
     // 取得編輯器實例
@@ -115,15 +123,16 @@ const onQuestionSelected = async (questionIds) => {
     if (!editor) return
     
     // 如果當前節點還沒有 questionId,設定第一個
-    if (!props.node.attrs.questionId && questionIds.length > 0) {
+    if (!(props.node.attrs.questionId as number | undefined) && questionIds.length > 0) {
       props.updateAttributes({
         questionId: questionIds[0]
       })
-      
+
       // 插入剩餘的題目 - 在當前節點後面插入
       if (questionIds.length > 1) {
         // 重要：使用當前編輯器的選區位置，而不是節點的文檔位置
         const currentNodePos = props.getPos()
+        if (currentNodePos === null || currentNodePos === undefined) return
         const pos = currentNodePos + props.node.nodeSize
         
         // 批次插入其他題目 - 逐個插入以確保所有題目都被添加，並檢查是否需要分頁
@@ -138,7 +147,7 @@ const onQuestionSelected = async (questionIds) => {
           const questionBlock = {
             type: 'questionBlock',
             attrs: {
-              id: `block-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
+              id: `block-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 11)}`,
               questionId: qId
             }
           }
@@ -247,24 +256,23 @@ const onQuestionSelected = async (questionIds) => {
       }
     } else {
       // 如果當前節點已有題目,在後面插入所有選中的題目
-      const pos = props.getPos() + props.node.nodeSize
-      
+      const currentNodePos = props.getPos()
+      if (currentNodePos === null || currentNodePos === undefined) return
+      const pos = currentNodePos + props.node.nodeSize
+
       // 逐個插入所有題目
       let currentPos = pos
-      questionIds.forEach((qId, index) => {
+      questionIds.forEach((qId: number, index: number) => {
         const questionBlock = {
-        type: 'questionBlock',
-        attrs: {
-            id: `block-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
-          questionId: qId
+          type: 'questionBlock',
+          attrs: {
+            id: `block-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 11)}`,
+            questionId: qId
           }
         }
-      
-        const result = editor.chain()
-        .focus()
-          .insertContentAt(currentPos, questionBlock)
-        .run()
-        
+
+        const result = editor.chain().focus().insertContentAt(currentPos, questionBlock).run()
+
         // 更新下一個插入位置
         if (result) {
           currentPos += 2
@@ -274,7 +282,7 @@ const onQuestionSelected = async (questionIds) => {
   } else {
     // 單選模式(向後兼容)
     props.updateAttributes({
-      questionId: questionIds
+      questionId: questionIds as number
     })
   }
 }
