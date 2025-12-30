@@ -73,20 +73,12 @@ const printMode = inject('printMode', ref('with-all'))
 // 計算是否顯示答案和詳解
 const showAnswer = computed(() => {
   const mode = printMode.value
-  const result = mode === 'with-answer' || mode === 'with-all'
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionBlock.vue:showAnswer:computed',message:'Computing showAnswer',data:{questionId:props.questionId,mode:mode,result:result},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-2',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
-  return result
+  return mode === 'with-answer' || mode === 'with-all'
 })
 
 const showSolution = computed(() => {
   const mode = printMode.value
-  const result = mode === 'with-solution' || mode === 'with-all'
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionBlock.vue:showSolution:computed',message:'Computing showSolution',data:{questionId:props.questionId,mode:mode,result:result},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-2',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
-  return result
+  return mode === 'with-solution' || mode === 'with-all'
 })
 
 const { renderMarkdownWithLatex } = useMarkdownRenderer()
@@ -97,19 +89,9 @@ const error = ref(false)
 
 const renderContent = (content) => {
   if (!content) return ''
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionBlock.vue:renderContent:start',message:'Rendering content',data:{questionId:props.questionId,contentType:typeof content,contentIsString:typeof content === 'string',contentIsObject:typeof content === 'object',contentPreview:typeof content === 'string' ? content.substring(0, 100) : JSON.stringify(content).substring(0, 100)},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-3',hypothesisId:'I'})}).catch(()=>{});
-  // #endregion
   // 使用 contentToMarkdown 保留 LaTeX 標記，然後用 renderMarkdownWithLatex 渲染
   const markdownContent = contentToMarkdown(content)
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionBlock.vue:renderContent:afterMarkdown',message:'After contentToMarkdown',data:{questionId:props.questionId,markdownLength:markdownContent.length,markdownPreview:markdownContent.substring(0, 200),hasLatex:markdownContent.includes('$')},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-3',hypothesisId:'I'})}).catch(()=>{});
-  // #endregion
-  const rendered = renderMarkdownWithLatex(markdownContent)
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionBlock.vue:renderContent:afterRender',message:'After renderMarkdownWithLatex',data:{questionId:props.questionId,renderedLength:rendered.length,renderedPreview:rendered.substring(0, 200),hasKatex:rendered.includes('katex')},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-3',hypothesisId:'I'})}).catch(()=>{});
-  // #endregion
-  return rendered
+  return renderMarkdownWithLatex(markdownContent)
 }
 
 const fetchQuestion = async () => {

@@ -298,7 +298,7 @@
       >
         <!-- 編輯區域 - 統一使用單一連續編輯器 -->
         <div class="relative print:shadow-none continuous-editor mx-auto bg-white shadow-sm my-8 max-w-4xl"
-          :style="{
+            :style="{
             padding: '40px',
             minHeight: '100vh'
           }"
@@ -436,6 +436,9 @@ const printModeHistory = ref([])
 // 列印準備狀態
 const isPreparingPrint = ref(false)
 const printPreparationMessage = ref('正在準備列印內容...')
+// 用於取消正在進行的列印
+let currentPrintAbortController = null
+let currentPrintMode = null
 
 // 浮水印設定
 const watermarkEnabled = ref(false)
@@ -457,9 +460,6 @@ watch(printModeSelection, (newMode, oldMode) => {
   if (printModeHistory.value.length > 5) {
     printModeHistory.value.shift()
   }
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:printModeSelection:watch',message:'Print mode changed',data:{from:oldMode,to:newMode,history:printModeHistory.value},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-2',hypothesisId:'F'})}).catch(()=>{});
-  // #endregion
 })
 
 // 獲取當前資源的映射表 key
@@ -863,16 +863,8 @@ const saveResource = async (manual = false) => {
   
   isSaving.value = true
   
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:saveResource:before_payload',message:'Resource data before payload creation',data:{resource:JSON.parse(JSON.stringify(resource)),tiptapStructureType:typeof tiptapStructureRef.value,hasTiptapStructure:!!tiptapStructureRef.value},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A,B,C,D'})}).catch(()=>{});
-  // #endregion
-  
   // 過濾掉 course_ids 中的 null 值
   const cleanedCourseIds = (resource.course_ids || []).filter(id => id !== null && id !== undefined)
-  
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:saveResource:after_filter',message:'Filtered null values from course_ids',data:{originalCourseIds:resource.course_ids,cleanedCourseIds:cleanedCourseIds},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
   
   const payload = {
     ...resource,
@@ -882,29 +874,10 @@ const saveResource = async (manual = false) => {
     student_group_ids: resource.student_group_ids
   }
   
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:saveResource:payload_created',message:'Payload created',data:{payloadKeys:Object.keys(payload),courseIds:payload.course_ids,studentGroupIds:payload.student_group_ids,mode:payload.mode,title:payload.title,tagIdsInput:payload.tag_ids_input,hasTiptapStructure:!!payload.tiptap_structure},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'B,C,D'})}).catch(()=>{});
-  // #endregion
-  
-  // #region agent log
-  try {
-    const payloadStr = JSON.stringify(payload);
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:saveResource:payload_serialized',message:'Payload serialization successful',data:{payloadLength:payloadStr.length,payloadPreview:payloadStr.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
-  } catch (serError) {
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:saveResource:payload_serialization_error',message:'Payload serialization FAILED',data:{error:serError.message},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
-  }
-  // #endregion
-  
   try {
     let response
     if (route.params.id) {
-      // #region agent log
-      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:saveResource:before_update',message:'About to call API update',data:{resourceId:route.params.id},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'E'})}).catch(()=>{});
-      // #endregion
       response = await learningResourceAPI.update(route.params.id, payload)
-      // #region agent log
-      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:saveResource:after_update',message:'API update successful',data:{responseStatus:response.status},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'E'})}).catch(()=>{});
-      // #endregion
     } else {
       response = await learningResourceAPI.create(payload)
       // Redirect to edit mode if created
@@ -925,9 +898,6 @@ const saveResource = async (manual = false) => {
     }
     lastSaved.value = new Date()
   } catch (error) {
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:saveResource:api_error',message:'API call failed',data:{errorMessage:error.message,errorResponse:error.response?.data,errorStatus:error.response?.status,errorStatusText:error.response?.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'E'})}).catch(()=>{});
-    // #endregion
     console.error('Save failed', error)
     if (manual) {
       const errorMsg = error.response?.data?.detail || '儲存失敗，請稍後再試'
@@ -969,9 +939,6 @@ if (!props.viewMode) {
 
 // 生成預覽內容的通用函數
 const generatePrintPreview = async (iframeDoc, iframeWindow, triggerPrint = false) => {
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:generatePrintPreview:start',message:'generatePrintPreview called',data:{printModeSelection:printModeSelection.value,triggerPrint:triggerPrint,iframeBodyContent:iframeDoc.body ? iframeDoc.body.innerHTML.substring(0, 200) : 'no body'},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-2',hypothesisId:'F'})}).catch(()=>{});
-  // #endregion
   
   // 等待 Vue 響應式更新完成（模式切換後需要時間讓子組件重新渲染）
   await nextTick()
@@ -1199,48 +1166,83 @@ const generatePrintPreview = async (iframeDoc, iframeWindow, triggerPrint = fals
         color: black !important;
         font-size: 1.1em !important;
         line-height: 1.6 !important;
+        /* 防止 KaTeX 元素被拆分 */
+        display: inline-block !important;
+        white-space: nowrap !important;
+        word-break: keep-all !important;
+        overflow: visible !important;
+        position: relative !important;
+        vertical-align: baseline !important;
       }
       
       .print-container .katex *,
       .katex * {
         color: black !important;
-      }
-      
-      /* 修復根號線拉長問題：限制根號內部元素的最大高度 */
-      .print-container .katex .sqrt .vlist-t,
-      .katex .sqrt .vlist-t {
-        max-height: 1.2em !important;
-        overflow: hidden !important;
-      }
-      
-      /* 確保 SVG 根號線不會被裁剪 */
-      .print-container .katex .sqrt .svg-align,
-      .katex .sqrt .svg-align {
+        /* 防止 KaTeX 內部元素被拆分 */
+        white-space: nowrap !important;
+        word-break: keep-all !important;
         overflow: visible !important;
       }
       
-      /* 隱藏可能產生垂直線的 vlist-t2 邊框 */
-      .print-container .katex .sqrt .vlist-t2,
-      .katex .sqrt .vlist-t2 {
-        border-left: none !important;
+      /* 確保 KaTeX 的 HTML 和 MathML 結構完整 */
+      .print-container .katex-html,
+      .katex-html {
+        display: inline-block !important;
+        white-space: nowrap !important;
+        word-break: keep-all !important;
+        overflow: visible !important;
       }
       
-      /* 修復分數線位置：使分數線在分子和分母中間 */
+      .print-container .katex-mathml,
+      .katex-mathml {
+        display: none !important;
+      }
+      
+      /* 確保 KaTeX 的 SVG 元素不被拆分 */
+      .print-container .katex svg,
+      .katex svg {
+        display: inline-block !important;
+        white-space: nowrap !important;
+        word-break: keep-all !important;
+        overflow: visible !important;
+        vertical-align: baseline !important;
+      }
+      
+    /* 修復根號線拉長問題：限制根號內部元素的最大高度 */
+      .print-container .katex .sqrt .vlist-t,
+    .katex .sqrt .vlist-t {
+      max-height: 1.2em !important;
+      overflow: hidden !important;
+    }
+      
+    /* 確保 SVG 根號線不會被裁剪 */
+      .print-container .katex .sqrt .svg-align,
+    .katex .sqrt .svg-align {
+      overflow: visible !important;
+    }
+      
+    /* 隱藏可能產生垂直線的 vlist-t2 邊框 */
+      .print-container .katex .sqrt .vlist-t2,
+    .katex .sqrt .vlist-t2 {
+      border-left: none !important;
+    }
+      
+    /* 修復分數線位置：使分數線在分子和分母中間 */
       .print-container .katex .mfrac > .frac-line,
       .print-container .katex .frac-line,
-      .katex .mfrac > .frac-line,
-      .katex .frac-line {
-        border-bottom-width: 0.04em !important;
-        min-height: 0.04em !important;
-        margin-top: 0.188em !important;
-        margin-bottom: 0.092em !important;
-      }
+    .katex .mfrac > .frac-line,
+    .katex .frac-line {
+      border-bottom-width: 0.04em !important;
+      min-height: 0.04em !important;
+      margin-top: 0.188em !important;
+      margin-bottom: 0.092em !important;
+    }
       
-      /* 分數容器 */
+    /* 分數容器 */
       .print-container .katex .mfrac,
-      .katex .mfrac {
-        padding-top: 0.158em !important;
-        padding-bottom: 0.082em !important;
+    .katex .mfrac {
+      padding-top: 0.158em !important;
+      padding-bottom: 0.082em !important;
       }
     }
   `
@@ -1263,12 +1265,43 @@ const generatePrintPreview = async (iframeDoc, iframeWindow, triggerPrint = fals
     return style.display !== 'none' && style.visibility !== 'hidden'
   })
   
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:generatePrintPreview:beforeClone',message:'Before cloning editor content',data:{printMode:printModeSelection.value,originalAnswerSectionsCount:originalAnswerSections.length,originalSolutionSectionsCount:originalSolutionSections.length,originalVisibleAnswersCount:originalVisibleAnswers.length,originalVisibleSolutionsCount:originalVisibleSolutions.length},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-2',hypothesisId:'A,B,C'})}).catch(()=>{});
-  // #endregion
-  
   // 複製編輯器內容
   const clone = editorContainer.cloneNode(true)
+  
+  // 確保克隆後的 KaTeX 元素保持完整結構
+  const originalKatexElements = editorContainer.querySelectorAll('.katex')
+  const clonedKatexElements = clone.querySelectorAll('.katex')
+  // 檢查是否有 KaTeX 元素在克隆後丟失了內容或結構
+  let repairedKatexCount = 0
+  clonedKatexElements.forEach((clonedEl, index) => {
+    const hasContent = clonedEl.innerHTML.length > 0
+    const hasHtml = !!clonedEl.querySelector('.katex-html')
+    const hasMathml = !!clonedEl.querySelector('.katex-mathml')
+    const hasSvg = !!clonedEl.querySelector('svg')
+    
+    // 檢查 KaTeX 元素是否完整（應該有 HTML 或 MathML，以及可能的 SVG）
+    if (!hasContent || (!hasHtml && !hasMathml)) {
+      // 如果克隆後的 KaTeX 元素內容為空或缺少 HTML 結構，嘗試從原始元素複製
+      if (index < originalKatexElements.length) {
+        const originalEl = originalKatexElements[index]
+        if (originalEl && originalEl.innerHTML.length > 0) {
+          // 使用 outerHTML 來完整複製整個元素（包括元素本身）
+          const originalParent = originalEl.parentElement
+          const clonedParent = clonedEl.parentElement
+          if (originalParent && clonedParent) {
+            // 創建一個臨時容器來保存原始元素的完整 HTML
+            const tempDiv = document.createElement('div')
+            tempDiv.innerHTML = originalEl.outerHTML
+            const newEl = tempDiv.firstElementChild
+            if (newEl) {
+              clonedParent.replaceChild(newEl, clonedEl)
+              repairedKatexCount++
+            }
+          }
+        }
+      }
+    }
+  })
   
   // 檢查克隆後的 DOM 中答案和詳解的狀態
   const clonedAnswerSections = clone.querySelectorAll('.answer-section')
@@ -1281,10 +1314,6 @@ const generatePrintPreview = async (iframeDoc, iframeWindow, triggerPrint = fals
     const style = window.getComputedStyle(el)
     return style.display !== 'none' && style.visibility !== 'hidden'
   })
-  
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:generatePrintPreview:afterClone',message:'After cloning editor content',data:{clonedAnswerSectionsCount:clonedAnswerSections.length,clonedSolutionSectionsCount:clonedSolutionSections.length,clonedVisibleAnswersCount:clonedVisibleAnswers.length,clonedVisibleSolutionsCount:clonedVisibleSolutions.length,cloneChildrenCount:clone.children.length,cloneTextLength:clone.textContent.length,hasQuestionBlocks:clone.querySelectorAll('.question-display').length,hasSectionBlocks:clone.querySelectorAll('.section-block').length},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-2',hypothesisId:'C,D,E'})}).catch(()=>{});
-  // #endregion
   
   // 移除編輯器特定的類別和屬性
   clone.classList.remove('continuous-editor')
@@ -1365,10 +1394,6 @@ const generatePrintPreview = async (iframeDoc, iframeWindow, triggerPrint = fals
     })
     content.style.cssText = 'font-size: 0.875rem !important; color: black !important; line-height: 1.6 !important; margin-top: 0.25rem !important;'
   })
-  
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:generatePrintPreview:cleaned',message:'Content cleaned for print',data:{questionDisplays:clone.querySelectorAll('.question-display').length,answerSections:clone.querySelectorAll('.answer-section').length,solutionSections:clone.querySelectorAll('.solution-section').length,answerSectionsWithContent:Array.from(clone.querySelectorAll('.answer-section')).filter(el=>el.textContent.trim().length>0).length,solutionSectionsWithContent:Array.from(clone.querySelectorAll('.solution-section')).filter(el=>el.textContent.trim().length>0).length,answerSectionsWithInlineStyles:Array.from(clone.querySelectorAll('.answer-section')).filter(el=>el.style.cssText.includes('background: white')).length,solutionSectionsWithInlineStyles:Array.from(clone.querySelectorAll('.solution-section')).filter(el=>el.style.cssText.includes('background: white')).length},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-3',hypothesisId:'H'})}).catch(()=>{});
-  // #endregion
   
   container.appendChild(clone)
   
@@ -1472,12 +1497,10 @@ const generatePrintPreview = async (iframeDoc, iframeWindow, triggerPrint = fals
     content.style.setProperty('margin-top', '0.25rem', 'important')
   })
   
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:generatePrintPreview:afterForceStyles',message:'After forcing inline styles in iframe',data:{iframeAnswerSectionsCount:iframeAnswerSectionsAfterAppend.length,iframeSolutionSectionsCount:iframeSolutionSectionsAfterAppend.length,firstAnswerSectionStyle:iframeAnswerSectionsAfterAppend[0]?iframeAnswerSectionsAfterAppend[0].style.cssText:'',firstSolutionSectionStyle:iframeSolutionSectionsAfterAppend[0]?iframeSolutionSectionsAfterAppend[0].style.cssText:''},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-3',hypothesisId:'H'})}).catch(()=>{});
-  // #endregion
-  
   // 等待 DOM 更新後檢查 iframe 中的樣式
   setTimeout(() => {
+    // 檢查 iframe 中的 KaTeX 元素
+    
     const iframeAnswerSections = iframeDoc.querySelectorAll('.answer-section')
     const iframeSolutionSections = iframeDoc.querySelectorAll('.solution-section')
     const iframeAnswerStyles = Array.from(iframeAnswerSections).slice(0, 1).map(el => {
@@ -1567,10 +1590,6 @@ const generatePrintPreview = async (iframeDoc, iframeWindow, triggerPrint = fals
         return false
       }
     })
-    
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:generatePrintPreview:iframeStyles',message:'Styles in iframe after append',data:{iframeAnswerSectionsCount:iframeAnswerSections.length,iframeSolutionSectionsCount:iframeSolutionSections.length,iframeAnswerStyles:iframeAnswerStyles,iframeSolutionStyles:iframeSolutionStyles,iframeTextStyles:iframeTextStyles,iframeTextElementsCount:iframeTextElements.length,katexElementsCount:katexElements.length,katexStyles:katexStyles,hasPrintMedia:hasPrintMedia,styleSheetsCount:styleSheets.length},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-4',hypothesisId:'J'})}).catch(()=>{});
-    // #endregion
   }, 200)
   
   // 添加浮水印（如果啟用）
@@ -1608,19 +1627,30 @@ let existingPrintFrames = []
 
 // 簡化後的 print() 函數
 const print = async () => {
-  // 如果正在準備，直接返回
-  if (isPreparingPrint.value) {
-    return
+  const requestedMode = printModeSelection.value
+  
+  // 如果正在準備，取消當前的列印並開始新的列印
+  if (isPreparingPrint.value && currentPrintAbortController) {
+    currentPrintAbortController.abort()
+    currentPrintAbortController = null
+    // 等待一小段時間讓取消操作完成
+    await new Promise(resolve => setTimeout(resolve, 100))
   }
+  
+  // 創建新的 AbortController
+  const abortController = new AbortController()
+  currentPrintAbortController = abortController
+  currentPrintMode = requestedMode
   
   // 設置準備狀態
   isPreparingPrint.value = true
   printPreparationMessage.value = '正在等待組件更新...'
   
   try {
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:start',message:'Print function called',data:{printModeSelection:printModeSelection.value,resourceMode:resource.mode,printModeType:typeof printModeSelection.value,printModeHistory:printModeHistory.value},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-3',hypothesisId:'G'})}).catch(()=>{});
-    // #endregion
+    // 檢查是否已被取消
+    if (abortController.signal.aborted) {
+      return
+    }
     
     // 等待 Vue 響應式更新完成（模式切換後需要時間讓子組件重新渲染）
     await nextTick()
@@ -1633,7 +1663,18 @@ const print = async () => {
     let isReady = false
     
     while (retryCount < maxRetries && !isReady) {
+      // 檢查是否已被取消
+      if (abortController.signal.aborted) {
+        return
+      }
+      
       await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // 再次檢查模式是否已改變
+      if (printModeSelection.value !== requestedMode) {
+        abortController.abort()
+        return
+      }
       
       const editorContainer = document.querySelector('.continuous-editor') || 
                               document.querySelector('.block-editor-container') ||
@@ -1643,9 +1684,9 @@ const print = async () => {
         const answerSections = editorContainer.querySelectorAll('.answer-section')
         const solutionSections = editorContainer.querySelectorAll('.solution-section')
         
-        // 根據當前模式檢查顯示狀態
-        const expectedAnswers = printModeSelection.value === 'with-answer' || printModeSelection.value === 'with-all'
-        const expectedSolutions = printModeSelection.value === 'with-solution' || printModeSelection.value === 'with-all'
+        // 根據請求的模式檢查顯示狀態（使用 requestedMode 而不是 printModeSelection.value）
+        const expectedAnswers = requestedMode === 'with-answer' || requestedMode === 'with-all'
+        const expectedSolutions = requestedMode === 'with-solution' || requestedMode === 'with-all'
         
         const visibleAnswers = Array.from(answerSections).filter(el => {
           const style = window.getComputedStyle(el)
@@ -1662,9 +1703,6 @@ const print = async () => {
         
         if (answerMatch && solutionMatch) {
           isReady = true
-          // #region agent log
-          fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:componentsReady',message:'Components ready for print',data:{printModeSelection:printModeSelection.value,retryCount:retryCount,answerSectionsCount:answerSections.length,visibleAnswersCount:visibleAnswers.length,solutionSectionsCount:solutionSections.length,visibleSolutionsCount:visibleSolutions.length,expectedAnswers:expectedAnswers,expectedSolutions:expectedSolutions},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-3',hypothesisId:'G'})}).catch(()=>{});
-          // #endregion
           break
         }
       }
@@ -1675,9 +1713,6 @@ const print = async () => {
     
     if (!isReady) {
       console.warn('組件可能未完全更新，但繼續列印流程')
-      // #region agent log
-      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:componentsNotReady',message:'Components may not be ready, but continuing',data:{printModeSelection:printModeSelection.value,retryCount:retryCount},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-3',hypothesisId:'G'})}).catch(()=>{});
-      // #endregion
     }
     
     // 清理殘留的 iframe
@@ -1697,35 +1732,27 @@ const print = async () => {
     })
     
     printPreparationMessage.value = '正在創建列印預覽...'
+  
+  // 創建臨時 iframe 用於列印
+  const printFrame = document.createElement('iframe')
+  printFrame.style.position = 'fixed'
+  printFrame.style.right = '0'
+  printFrame.style.bottom = '0'
+  printFrame.style.width = '0'
+  printFrame.style.height = '0'
+  printFrame.style.border = '0'
+  document.body.appendChild(printFrame)
+  
+  // 等待 iframe 載入
+  await new Promise(resolve => {
+    printFrame.onload = resolve
+    printFrame.src = 'about:blank'
+  })
+  
+  const iframeDoc = printFrame.contentDocument || printFrame.contentWindow.document
+  const iframeWindow = printFrame.contentWindow
     
-    // 創建臨時 iframe 用於列印
-    const printFrame = document.createElement('iframe')
-    printFrame.style.position = 'fixed'
-    printFrame.style.right = '0'
-    printFrame.style.bottom = '0'
-    printFrame.style.width = '0'
-    printFrame.style.height = '0'
-    printFrame.style.border = '0'
-    document.body.appendChild(printFrame)
-    
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:iframeCreated',message:'Print iframe created',data:{printModeSelection:printModeSelection.value},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-3',hypothesisId:'G'})}).catch(()=>{});
-    // #endregion
-    
-    // 等待 iframe 載入
-    await new Promise(resolve => {
-      printFrame.onload = resolve
-      printFrame.src = 'about:blank'
-    })
-    
-    const iframeDoc = printFrame.contentDocument || printFrame.contentWindow.document
-    const iframeWindow = printFrame.contentWindow
-    
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:beforeGenerate',message:'Before generatePrintPreview',data:{iframeDocReady:!!iframeDoc,iframeWindowReady:!!iframeWindow,printModeSelection:printModeSelection.value,iframeBodyEmpty:!iframeDoc.body || iframeDoc.body.innerHTML.trim().length === 0},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-3',hypothesisId:'G'})}).catch(()=>{});
-    // #endregion
-    
-    // 確保 iframe 內容已清空（防止殘留）
+  // 確保 iframe 內容已清空（防止殘留）
     if (iframeDoc.body) {
       iframeDoc.body.innerHTML = ''
     }
@@ -1733,15 +1760,25 @@ const print = async () => {
       iframeDoc.head.innerHTML = ''
     }
     
-    printPreparationMessage.value = '正在生成列印內容...'
+    // 再次檢查是否已被取消
+    if (abortController.signal.aborted) {
+      return
+    }
     
-    // 生成預覽並觸發列印
-    await generatePrintPreview(iframeDoc, iframeWindow, true)
+    printPreparationMessage.value = '正在生成列印內容...'
+  
+  // 生成預覽並觸發列印
+  await generatePrintPreview(iframeDoc, iframeWindow, true)
+    
+  // 最後檢查是否已被取消
+  if (abortController.signal.aborted) {
+    return
+  }
     
     printPreparationMessage.value = '列印預覽已準備完成'
-    
-    // 列印完成後清理
-    setTimeout(() => {
+  
+  // 列印完成後清理
+  setTimeout(() => {
       try {
         if (printFrame.parentNode) {
           printFrame.parentNode.removeChild(printFrame)
@@ -1749,17 +1786,23 @@ const print = async () => {
       } catch (e) {
         console.warn('Failed to remove print frame:', e)
       }
-    }, 1000)
+  }, 1000)
   } catch (error) {
+    // 如果是取消操作，不顯示錯誤
+    if (error.name === 'AbortError' || abortController.signal.aborted) {
+      return
+    }
+    
     console.error('Print error:', error)
     alert('列印預覽時發生錯誤：' + (error.message || '未知錯誤'))
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:error',message:'Print error occurred',data:{error:error.message,stack:error.stack,printModeSelection:printModeSelection.value},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-3',hypothesisId:'G'})}).catch(()=>{});
-    // #endregion
   } finally {
-    // 清除準備狀態
-    isPreparingPrint.value = false
-    printPreparationMessage.value = '正在準備列印內容...'
+    // 只有在當前列印請求完成時才重置狀態
+    if (currentPrintAbortController === abortController) {
+      currentPrintAbortController = null
+      currentPrintMode = null
+      isPreparingPrint.value = false
+      printPreparationMessage.value = '正在準備列印內容...'
+    }
   }
 }
 
