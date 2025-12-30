@@ -3,19 +3,6 @@
     <!-- 左側邊欄：設定與資源庫 -->
     <ResourceEditorSidebar
       :sidebar-open="sidebarOpen"
-      :view-mode="viewMode"
-      :resource="resource"
-      :courses="courses"
-      :student-groups="studentGroups"
-      :available-tags="availableTags"
-      :image-mappings="imageMappings"
-      :uploading-images="uploadingImages"
-      :replacing-images="replacingImages"
-      :watermark-enabled="watermarkEnabled"
-      :watermark-image="watermarkImage"
-      :watermark-opacity="watermarkOpacity"
-      :tiptap-structure-ref="tiptapStructureRef"
-      :get-tag-name="getTagName"
       @close="sidebarOpen = false"
       @replace-all-images="replaceAllImages"
       @clear-image-mappings="clearImageMappings"
@@ -108,6 +95,7 @@
             @load-more-questions="loadMoreQuestions"
             :image-mappings="imageMappings"
             @request-upload="openImageFolderUpload"
+            :is-handout-mode="resource.mode === 'HANDOUT'"
           />
         </div>
       </div>
@@ -133,7 +121,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, provide } from 'vue'
+import { ref, computed, onMounted, onUnmounted, provide, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BlockEditor from '../components/BlockEditor/BlockEditor.vue'
 import ResourceEditorSidebar from '../components/ResourceEditorSidebar.vue'
@@ -146,6 +134,7 @@ import { useTagManagement } from '../composables/useTagManagement'
 import { useWatermark } from '../composables/useWatermark'
 import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts'
 import { useEditorEventsProvider } from '../composables/useEditorEvents'
+import { provideResourceEditorContext } from '../composables/useResourceEditorContext'
 import { AUTO_SAVE_CONFIG, EDITOR_CONFIG, PRINT_CONFIG } from '../constants/editorConfig'
 import { debounce } from '../utils/debounce'
 import { formatTime } from '../utils/dateFormat'
@@ -248,22 +237,60 @@ const {
 const {
   isPreparingPrint,
   printPreparationMessage,
-  print: handlePrint
+  print: handlePrint,
+  preRenderPrintContent
 } = usePrintPreview({
   watermarkEnabled,
   watermarkImage,
   watermarkOpacity
 })
 
+// 監聽列印模式變化，預先渲染（使用防抖避免頻繁調用）
+const debouncedPreRender = debounce(() => {
+  preRenderPrintContent(printModeSelection)
+}, 800)
+
+watch(printModeSelection, async (newMode) => {
+  // 延遲執行，確保模式切換完成
+  await nextTick()
+  debouncedPreRender()
+}, { immediate: false })
+
 // 提供給子組件使用
 provide('printMode', printModeSelection)
 
-// 使用標籤管理 composable
+// 使用標籤管理 composable（必須在使用 getTagName 之前）
 const {
   getTagName,
   addTag,
   removeTag
 } = useTagManagement(resource, availableTags)
+
+// 提供 Resource Editor 上下文給子組件（特別是 ResourceEditorSidebar）
+provideResourceEditorContext({
+  // 資源相關
+  resource,
+  viewMode: props.viewMode,
+  
+  // 元數據
+  courses,
+  studentGroups,
+  availableTags,
+  
+  // 圖片管理
+  imageMappings,
+  uploadingImages,
+  replacingImages,
+  
+  // 浮水印
+  watermarkEnabled,
+  watermarkImage,
+  watermarkOpacity,
+  
+  // 其他
+  tiptapStructureRef,
+  getTagName
+})
 
 // 使用鍵盤快捷鍵 composable
 useKeyboardShortcuts()
@@ -305,6 +332,9 @@ const unregisterImageMapping = editorEvents.onImageMappingUpdated(handleImageMap
 
 onMounted(() => {
   fetchInitialData()
+  
+  // 初始化時預渲染當前模式（使用防抖避免與 watch 衝突）
+  debouncedPreRender()
 })
 
 onUnmounted(() => {

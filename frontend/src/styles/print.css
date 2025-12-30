@@ -165,8 +165,17 @@
   .katex .msupsub .mfrac .frac-line {
     border-bottom-width: 0.06em !important;
     min-height: 0.06em !important;
-    margin-top: 0.1em !important;
-    margin-bottom: 0.1em !important;
+    /* 調整間距避免切到分子或分母 */
+    margin-top: 0.12em !important;
+    margin-bottom: 0.15em !important;
+  }
+  
+  /* 確保所有分數線有正確的間距 */
+  .katex .mfrac > .frac-line,
+  .katex .frac-line {
+    /* 與編輯器中的 katex-vscode.css 保持一致，但調整避免切到分子 */
+    margin-top: 0.12em !important;
+    margin-bottom: 0.15em !important;
   }
   
   .katex .msupsub .mfrac .vlist-t2 {

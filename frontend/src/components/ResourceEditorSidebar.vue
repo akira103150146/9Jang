@@ -236,63 +236,29 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useResourceEditorContext } from '../composables/useResourceEditorContext'
+
+// 使用 context 注入，減少 props
+const {
+  resource,
+  viewMode,
+  courses,
+  studentGroups,
+  availableTags,
+  imageMappings,
+  uploadingImages,
+  replacingImages,
+  watermarkEnabled,
+  watermarkImage,
+  watermarkOpacity,
+  tiptapStructureRef,
+  getTagName
+} = useResourceEditorContext()
 
 defineProps({
   sidebarOpen: {
     type: Boolean,
     default: true
-  },
-  viewMode: {
-    type: Boolean,
-    default: false
-  },
-  resource: {
-    type: Object,
-    required: true
-  },
-  courses: {
-    type: Array,
-    default: () => []
-  },
-  studentGroups: {
-    type: Array,
-    default: () => []
-  },
-  availableTags: {
-    type: Array,
-    default: () => []
-  },
-  imageMappings: {
-    type: Map,
-    default: () => new Map()
-  },
-  uploadingImages: {
-    type: Boolean,
-    default: false
-  },
-  replacingImages: {
-    type: Boolean,
-    default: false
-  },
-  watermarkEnabled: {
-    type: Boolean,
-    default: false
-  },
-  watermarkImage: {
-    type: String,
-    default: null
-  },
-  watermarkOpacity: {
-    type: Number,
-    default: 10
-  },
-  tiptapStructureRef: {
-    type: Object,
-    required: true
-  },
-  getTagName: {
-    type: Function,
-    required: true
   }
 })
 

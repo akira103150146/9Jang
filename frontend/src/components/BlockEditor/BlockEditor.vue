@@ -14,8 +14,8 @@
     <!-- 圖片選擇器 Modal (僅在編輯模式顯示) -->
     <ImageSelectorModal
       v-if="!readonly"
-      :is-open="imageSelectorOpen"
-      @close="imageSelectorOpen = false"
+      :is-open="isModalOpen('imageSelector')"
+      @close="closeModal('imageSelector')"
       @select="handleImageSelect"
       @upload-new="handleUploadNewImage"
       @image-uploaded="handleImageUploaded"
@@ -24,7 +24,8 @@
     <!-- 模板選擇器 Modal (僅在編輯模式顯示) -->
     <TemplateSelectorModal
       v-if="!readonly"
-      v-model="templateSelectorOpen"
+      :is-open="isModalOpen('templateSelector')"
+      @close="closeModal('templateSelector')"
       :templates="templates"
       @select="handleTemplateSelect"
     />
@@ -36,16 +37,13 @@ import { ref, watch, onMounted, onBeforeUnmount, provide, computed } from 'vue'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
-import { LaTeXBlock, InlineLatex, ImagePlaceholder, TemplateBlock, Diagram2DBlock, Diagram3DBlock, CircuitBlock, QuestionBlock, PageBreakBlock, SectionBlock } from './extensions'
 import ImageSelectorModal from './components/ImageSelectorModal.vue'
 import TemplateSelectorModal from './components/TemplateSelectorModal.vue'
-import { SlashCommands } from './extensions/SlashCommands'
-import { KeyboardShortcuts } from './extensions/KeyboardShortcuts'
-import { DragHandle } from './extensions/DragHandle'
-import { Nesting } from './extensions/Nesting'
 import { useEditorPaste } from '../../composables/useEditorPaste'
 import { useEditorSync } from '../../composables/useEditorSync'
 import { useEditorEvents } from '../../composables/useEditorEvents'
+import { useEditorConfiguration } from '../../composables/useEditorConfiguration'
+import { useModalManager } from '../../composables/useModalManager'
 import { convertToTiptapFormat } from '../../utils/tiptapConverter'
 import { getNodeIcon, getNodeLabel } from '../../constants/nodeTypes'
 
@@ -106,13 +104,13 @@ provide('isHandoutMode', computed(() => props.isHandoutMode))
 // 追蹤當前游標所在的節點類型
 const currentNodeType = ref(null)
 
-// 圖片選擇器狀態
-const imageSelectorOpen = ref(false)
+// 使用 Modal 管理 composable
+const { openModal, closeModal, isModalOpen, getModalOptions } = useModalManager()
+
+// 圖片選擇器相關狀態
 const currentPlaceholderNode = ref(null)
 const currentOnSelect = ref(null)
-const templateSelectorOpen = ref(false)
 const currentTemplateOnSelect = ref(null)
-
 
 // 使用編輯器事件系統
 const editorEvents = useEditorEvents()
@@ -121,13 +119,13 @@ const editorEvents = useEditorEvents()
 const handleOpenImageSelector = (options) => {
   currentPlaceholderNode.value = options.placeholderNode
   currentOnSelect.value = options.onSelect
-  imageSelectorOpen.value = true
+  openModal('imageSelector', { placeholderNode: options.placeholderNode })
 }
 
 // 監聽模板選擇器打開事件
 const handleOpenTemplateSelector = (options) => {
   currentTemplateOnSelect.value = options.onSelect
-  templateSelectorOpen.value = true
+  openModal('templateSelector')
 }
 
 // 註冊事件監聽器（新的事件系統）
@@ -162,47 +160,42 @@ const handleTemplateSelect = (templateId) => {
   if (currentTemplateOnSelect.value) {
     currentTemplateOnSelect.value(templateId)
     currentTemplateOnSelect.value = null
+    closeModal('templateSelector')
   }
 }
 
+// 處理圖片選擇
+const handleImageSelect = (url) => {
+  if (currentOnSelect.value) {
+    currentOnSelect.value(url)
+    currentOnSelect.value = null
+    currentPlaceholderNode.value = null
+    closeModal('imageSelector')
+  }
+}
+
+// 處理上傳新圖片
+const handleUploadNewImage = () => {
+  emit('request-upload')
+}
+
+const handleImageUploaded = (data) => {
+  // 通知父組件圖片已上傳，需要保存映射表
+  editorEvents.notifyImageMappingUpdated(data)
+}
+
+// 使用編輯器配置 composable
+const { getEditorOptions } = useEditorConfiguration({
+  isHandoutMode: props.isHandoutMode,
+  editable: !props.readonly
+})
+
 // 初始化編輯器
 const editor = useEditor({
-  extensions: [
-    StarterKit.configure({
-      history: {
-        depth: 100,
-      },
-    }),
-    Image.configure({
-      inline: false,
-      allowBase64: false,
-      HTMLAttributes: {
-        class: 'editor-image',
-      },
-    }),
-    LaTeXBlock,
-    InlineLatex,
-    ImagePlaceholder,
-    TemplateBlock,
-    Diagram2DBlock,
-    Diagram3DBlock,
-    CircuitBlock,
-    QuestionBlock,
-    SectionBlock,
-    PageBreakBlock,
-    SlashCommands.configure({
-      isHandoutMode: props.isHandoutMode,
-    }),
-    KeyboardShortcuts,
-    DragHandle,
-    Nesting,
-  ],
+  ...getEditorOptions(),
   content: convertToTiptapFormat(props.modelValue),
-  editable: !props.readonly,
   editorProps: {
-    attributes: {
-      class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl focus:outline-none',
-    },
+    ...getEditorOptions().editorProps,
     handlePaste: async (view, event, slice) => {
       const { handlePaste: pasteHandler } = useEditorPaste({
         editor: () => editor.value,
@@ -227,23 +220,6 @@ const editor = useEditor({
 
 // 節點圖標和標籤函數已從 constants/nodeTypes.js 導入
 
-// 圖片選擇器處理函數
-const handleImageSelect = (url) => {
-  if (currentOnSelect.value) {
-    currentOnSelect.value(url)
-    currentOnSelect.value = null
-    currentPlaceholderNode.value = null
-  }
-}
-
-const handleUploadNewImage = () => {
-  emit('request-upload')
-}
-
-const handleImageUploaded = (data) => {
-  // 通知父組件圖片已上傳，需要保存映射表
-  editorEvents.notifyImageMappingUpdated(data)
-}
 
 
 // 暴露 editor 實例給父組件
