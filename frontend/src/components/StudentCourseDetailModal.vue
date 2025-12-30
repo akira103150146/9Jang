@@ -144,6 +144,7 @@
 import { ref, watch, provide } from 'vue'
 import { learningResourceAPI } from '../services/api'
 import BlockEditor from './BlockEditor/BlockEditor.vue'
+import { useEditorEventsProvider } from '../composables/useEditorEvents'
 
 export default {
   name: 'StudentCourseDetailModal',
@@ -162,6 +163,9 @@ export default {
   },
   emits: ['close'],
   setup(props, { emit }) {
+    // 初始化編輯器事件提供者（BlockEditor 需要）
+    useEditorEventsProvider()
+    
     const loading = ref(false)
     const allResources = ref([])
     

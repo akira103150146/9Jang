@@ -39,7 +39,11 @@
 <script setup>
 import { ref, computed } from 'vue'
 import BlockEditor from '../BlockEditor/BlockEditor.vue'
+import { useEditorEventsProvider } from '../../composables/useEditorEvents'
 import { learningResourceAPI } from '../../services/api'
+
+// 初始化編輯器事件提供者（BlockEditor 需要）
+useEditorEventsProvider()
 
 const props = defineProps({
   resource: {

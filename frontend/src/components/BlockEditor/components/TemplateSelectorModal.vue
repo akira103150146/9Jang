@@ -1,6 +1,6 @@
 <template>
   <teleport to="body">
-    <div v-if="modelValue" class="modal-overlay" @click.self="close">
+    <div v-if="isOpen" class="modal-overlay" @click.self="close">
       <div class="modal-container">
         <div class="modal-header">
           <h2 class="modal-title">選擇模板</h2>
@@ -75,20 +75,28 @@ interface Template {
 
 interface Props {
   modelValue?: boolean
+  'is-open'?: boolean  // 支持 is-open 屬性（kebab-case）
   templates?: Template[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: false,
+  'is-open': false,
   templates: () => []
 })
 
 interface Emits {
   (e: 'update:modelValue', value: boolean): void
+  (e: 'close'): void  // 支持 close 事件
   (e: 'select', templateId: number): void
 }
 
 const emit = defineEmits<Emits>()
+
+// 計算實際的顯示狀態（支持兩種方式：v-model 或 is-open）
+const isOpen = computed(() => {
+  return props.modelValue || props['is-open']
+})
 
 const searchQuery: Ref<string> = ref('')
 const selectedTemplateId: Ref<number | null> = ref(null)
@@ -120,6 +128,7 @@ const confirm = (): void => {
 
 const close = (): void => {
   emit('update:modelValue', false)
+  emit('close')  // 同時發送 close 事件
   selectedTemplateId.value = null
   searchQuery.value = ''
 }

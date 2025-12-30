@@ -181,6 +181,15 @@ export function usePrintPreview(options: PrintPreviewOptions = {}): UsePrintPrev
         margin: 0.5rem 0 !important;
       }
       
+      /* 全局字體渲染優化 - 必須應用到 body 和所有元素 */
+      body,
+      .print-container,
+      .print-container * {
+        -webkit-font-smoothing: antialiased !important;
+        -moz-osx-font-smoothing: grayscale !important;
+        text-rendering: optimizeLegibility !important;
+      }
+      
       /* KaTeX 樣式 - 必須與編輯器中的 katex-vscode.css 完全一致 */
       .print-container .katex,
       .katex {
@@ -189,13 +198,21 @@ export function usePrintPreview(options: PrintPreviewOptions = {}): UsePrintPrev
         font-family: KaTeX_Main, "Times New Roman", serif !important;
         line-height: normal !important;
         text-indent: 0;
-        text-rendering: auto;
+        text-rendering: optimizeLegibility !important;
         display: inline-block !important;
         vertical-align: baseline !important;
         font-weight: normal !important;
         font-style: normal !important;
         -webkit-font-smoothing: antialiased !important;
         -moz-osx-font-smoothing: grayscale !important;
+      }
+      
+      /* 確保 KaTeX 內部所有元素也應用字體渲染優化 */
+      .print-container .katex *,
+      .katex * {
+        -webkit-font-smoothing: antialiased !important;
+        -moz-osx-font-smoothing: grayscale !important;
+        text-rendering: optimizeLegibility !important;
       }
       
       /* 行內公式樣式（與編輯器一致） */
@@ -280,6 +297,12 @@ export function usePrintPreview(options: PrintPreviewOptions = {}): UsePrintPrev
         color: black !important;
       }
       
+      /* 當分數分子包含根號時，增加額外的 padding-top 以避免分數線切到根號 */
+      .print-container .katex .mfrac:has(.sqrt),
+      .katex .mfrac:has(.sqrt) {
+        padding-top: 0.25em !important;
+      }
+      
       /* 分數線 - 完全使用編輯器中的 katex-vscode.css 設置 */
       .print-container .katex .mfrac > .frac-line,
       .print-container .katex .frac-line,
@@ -297,6 +320,12 @@ export function usePrintPreview(options: PrintPreviewOptions = {}): UsePrintPrev
         background: transparent !important;
       }
       
+      /* 當分數分子包含根號時，增加分數線的 margin-top 以避免切到根號 */
+      .print-container .katex .mfrac:has(.sqrt) > .frac-line,
+      .katex .mfrac:has(.sqrt) > .frac-line {
+        margin-top: 0.25em !important;
+      }
+      
       /* 根號樣式 - 必須與編輯器中的 katex-vscode.css 完全一致 */
       .print-container .katex .sqrt,
       .katex .sqrt {
@@ -305,9 +334,24 @@ export function usePrintPreview(options: PrintPreviewOptions = {}): UsePrintPrev
         overflow: visible !important;
       }
       
+      /* 確保根號內的 SVG 正確渲染 */
+      .print-container .katex .sqrt svg,
+      .katex .sqrt svg {
+        display: inline-block !important;
+        vertical-align: baseline !important;
+        overflow: visible !important;
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+      }
+      
       .print-container .katex .sqrt > .vlist-t,
       .katex .sqrt > .vlist-t {
         border-left-width: 0.04em !important;
+        border-left-style: solid !important;
+        border-left-color: transparent !important;
         display: inline-table !important;
         table-layout: auto !important;
         overflow: visible !important;
@@ -324,6 +368,7 @@ export function usePrintPreview(options: PrintPreviewOptions = {}): UsePrintPrev
       .print-container .katex .sqrt .sqrt-sign,
       .katex .sqrt .sqrt-sign {
         position: relative !important;
+        overflow: visible !important;
       }
       
       .print-container .katex .sqrt > .root,
@@ -331,6 +376,24 @@ export function usePrintPreview(options: PrintPreviewOptions = {}): UsePrintPrev
         margin-left: 0.27777778em !important;
         margin-right: -0.55555556em !important;
         position: relative !important;
+      }
+      
+      /* 下標樣式 */
+      .print-container .katex .msub,
+      .katex .msub {
+        position: relative !important;
+        display: inline-block !important;
+        margin-right: 0.05em !important;
+      }
+      
+      .print-container .katex .msub .vlist,
+      .katex .msub .vlist {
+        position: relative !important;
+        top: 0.3em !important;
+        margin-right: 0.05em !important;
+        font-size: 0.75em !important;
+        vertical-align: baseline !important;
+        line-height: normal !important;
       }
       
       /* 次方（上標）樣式 */
@@ -363,6 +426,18 @@ export function usePrintPreview(options: PrintPreviewOptions = {}): UsePrintPrev
         display: inline-block !important;
         vertical-align: baseline !important;
         line-height: normal !important;
+        font-size: 0.85em !important;
+      }
+      
+      /* 下標部分（在 msupsub 中） */
+      .print-container .katex .msupsub .sub,
+      .katex .msupsub .sub {
+        display: inline-block !important;
+        vertical-align: baseline !important;
+        line-height: normal !important;
+        font-size: 0.75em !important;
+        position: relative !important;
+        top: 0.3em !important;
       }
     }
     `
@@ -442,6 +517,8 @@ export function usePrintPreview(options: PrintPreviewOptions = {}): UsePrintPrev
 
 .katex .sqrt > .vlist-t {
   border-left-width: 0.04em !important;
+  border-left-style: solid !important;
+  border-left-color: transparent !important;
   display: inline-table !important;
   table-layout: auto !important;
 }
@@ -458,6 +535,39 @@ export function usePrintPreview(options: PrintPreviewOptions = {}): UsePrintPrev
 .katex .sqrt > .root {
   margin-left: 0.27777778em !important;
   margin-right: -0.55555556em !important;
+}
+
+/* 下標樣式 */
+.katex .msub {
+  position: relative !important;
+  display: inline-block !important;
+  margin-right: 0.05em !important;
+}
+
+.katex .msub .vlist {
+  position: relative !important;
+  top: 0.3em !important;
+  margin-right: 0.05em !important;
+  font-size: 0.75em !important;
+  vertical-align: baseline !important;
+  line-height: normal !important;
+}
+
+/* 上標下標組合樣式 */
+.katex .msupsub {
+  text-align: left !important;
+}
+
+.katex .msupsub .sup {
+  font-size: 0.85em !important;
+  vertical-align: baseline !important;
+}
+
+.katex .msupsub .sub {
+  font-size: 0.75em !important;
+  position: relative !important;
+  top: 0.3em !important;
+  vertical-align: baseline !important;
 }
 
 /* 確保 KaTeX 內部元素的 line-height 正確 */
@@ -690,10 +800,15 @@ export function usePrintPreview(options: PrintPreviewOptions = {}): UsePrintPrev
 
     container.appendChild(clone)
 
+    // 添加到 iframe body（必須先添加到 DOM 中，才能查找 KaTeX 元素）
+    iframeDoc.body.innerHTML = ''
+    iframeDoc.body.appendChild(container)
+
     // 在 iframe 中查找並應用樣式（只應用一次，避免重複）
     await nextTick()
 
     // 【新架構】在 iframe 中直接重建根號和次方元素
+    // 注意：必須在 container 添加到 iframe body 之後調用，否則找不到 KaTeX 元素
     rebuildComplexKatexElementsInIframe(editorContainer, iframeDoc, iframeWindow)
 
     // 等待重建完成
@@ -717,10 +832,6 @@ export function usePrintPreview(options: PrintPreviewOptions = {}): UsePrintPrev
     iframeAnswerContents.forEach((content) => applyPrintStylesToContent(content as HTMLElement))
     iframeSolutionContents.forEach((content) => applyPrintStylesToContent(content as HTMLElement))
 
-    // 添加到 iframe body
-    iframeDoc.body.innerHTML = ''
-    iframeDoc.body.appendChild(container)
-
     // 添加浮水印
     addWatermark(iframeDoc)
 
@@ -728,7 +839,9 @@ export function usePrintPreview(options: PrintPreviewOptions = {}): UsePrintPrev
     await new Promise<void>((resolve) => {
       const checkKatexLoaded = (): boolean => {
         const katexCSSLink = iframeDoc.querySelector('link[href*="katex"]') as HTMLLinkElement | null
-        if (!katexCSSLink) return false
+        if (!katexCSSLink) {
+          return false
+        }
 
         // 使用容器內的元素來檢查，避免添加額外的測試元素
         const existingKatex = iframeDoc.querySelector('.katex')

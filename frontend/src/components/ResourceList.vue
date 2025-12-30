@@ -173,7 +173,11 @@ import { ref, reactive, onMounted, watch, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { learningResourceAPI } from '../services/api'
 import BlockEditor from './BlockEditor/BlockEditor.vue'
+import { useEditorEventsProvider } from '../composables/useEditorEvents'
 import type { LearningResource, TiptapDocument } from '@9jang/shared'
+
+// 初始化編輯器事件提供者（BlockEditor 需要）
+useEditorEventsProvider()
 
 type ResourceMode = 'HANDOUT' | 'ONLINE_QUIZ' | 'LEETCODE' | 'LISTENING_TEST' | 'FLASHCARD'
 

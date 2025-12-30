@@ -159,7 +159,11 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import BlockEditor from '../BlockEditor/BlockEditor.vue'
+import { useEditorEventsProvider } from '../../composables/useEditorEvents'
 import { learningResourceAPI, questionBankAPI } from '../../services/api'
+
+// 初始化編輯器事件提供者（BlockEditor 需要）
+useEditorEventsProvider()
 
 const props = defineProps({
   resource: {

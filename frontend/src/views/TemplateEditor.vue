@@ -124,9 +124,14 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { contentTemplateAPI, hashtagAPI } from '../services/api'
 import BlockEditor from '../components/BlockEditor/BlockEditor.vue'
+import { useEditorEventsProvider } from '../composables/useEditorEvents'
 
 const route = useRoute()
 const router = useRouter()
+
+// 初始化編輯器事件提供者（BlockEditor 需要）
+useEditorEventsProvider()
+
 const isEdit = computed(() => !!route.params.id)
 const saving = ref(false)
 const hashtags = ref([])

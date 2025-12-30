@@ -120,6 +120,8 @@ export function usePrintKatexRepair() {
     }
 
     let rebuiltCount = 0
+    let fractionCount = 0
+    let fractionWithMissingDenom = 0
 
     originalKatexElements.forEach((originalKatex, index) => {
       const iframeKatex = iframeKatexElements[index] as HTMLElement | null
@@ -127,9 +129,25 @@ export function usePrintKatexRepair() {
 
       const hasSqrt = originalKatex.querySelector('.sqrt')
       const hasMsupsub = originalKatex.querySelector('.msupsub')
+      const hasMfrac = originalKatex.querySelector('.mfrac')
 
-      // 如果包含根號或次方，直接從原始元素重新克隆到 iframe
-      if (hasSqrt || hasMsupsub) {
+      if (hasMfrac) {
+        fractionCount++
+        // KaTeX 分數使用 .vlist-t 結構，不是 .num/.denom
+        const originalVlistT = originalKatex.querySelector('.mfrac .vlist-t')
+        const iframeVlistT = iframeKatex.querySelector('.mfrac .vlist-t')
+        const originalVlistChildren = originalVlistT ? originalVlistT.querySelectorAll('.vlist-r') : []
+        const iframeVlistChildren = iframeVlistT ? iframeVlistT.querySelectorAll('.vlist-r') : []
+        // 檢查 vlist 結構是否完整
+        if (originalVlistT && !iframeVlistT) {
+          fractionWithMissingDenom++
+        } else if (originalVlistT && iframeVlistT && originalVlistChildren.length !== iframeVlistChildren.length) {
+          fractionWithMissingDenom++
+        }
+      }
+
+      // 如果包含根號、次方或分數，直接從原始元素重新克隆到 iframe
+      if (hasSqrt || hasMsupsub || hasMfrac) {
         try {
           // 從原始元素深層克隆
           const newKatex = originalKatex.cloneNode(true) as HTMLElement
@@ -140,6 +158,12 @@ export function usePrintKatexRepair() {
             const newSqrt = newKatex.querySelector('.sqrt')
             const originalSvg = originalSqrt?.querySelector('svg') as SVGElement | null
             const newSvg = newSqrt?.querySelector('svg') as SVGElement | null
+            const originalVlistT = originalSqrt?.querySelector('.vlist-t')
+            const newVlistT = newSqrt?.querySelector('.vlist-t')
+            const originalRoot = originalSqrt?.querySelector('.root')
+            const newRoot = newSqrt?.querySelector('.root')
+            const originalSqrtSign = originalSqrt?.querySelector('.sqrt-sign')
+            const newSqrtSign = newSqrt?.querySelector('.sqrt-sign')
 
             // 如果 SVG 缺失，說明克隆失敗，跳過
             if (originalSvg && !newSvg) {
@@ -149,13 +173,42 @@ export function usePrintKatexRepair() {
 
             // 驗證 SVG 結構完整性
             if (originalSvg && newSvg) {
-              const originalViewBox = (originalSvg as SqrtSvgElement).getAttribute('viewBox')
-              const newViewBox = (newSvg as SqrtSvgElement).getAttribute('viewBox')
-
+              const originalViewBox = originalSvg.getAttribute('viewBox')
+              const newViewBox = newSvg.getAttribute('viewBox')
+              const originalSvgWidth = originalSvg.getAttribute('width')
+              const originalSvgHeight = originalSvg.getAttribute('height')
+              const newSvgWidth = newSvg.getAttribute('width')
+              const newSvgHeight = newSvg.getAttribute('height')
+              
+              // 修復 viewBox
               if (originalViewBox && newViewBox !== originalViewBox) {
-                // 修復 viewBox
                 newSvg.setAttribute('viewBox', originalViewBox)
               }
+              
+              // 修復 width 和 height
+              if (originalSvgWidth && newSvgWidth !== originalSvgWidth) {
+                newSvg.setAttribute('width', originalSvgWidth)
+              }
+              if (originalSvgHeight && newSvgHeight !== originalSvgHeight) {
+                newSvg.setAttribute('height', originalSvgHeight)
+              }
+              
+              // 確保 SVG 的 preserveAspectRatio 正確
+              const originalPreserveAspectRatio = originalSvg.getAttribute('preserveAspectRatio')
+              const newPreserveAspectRatio = newSvg.getAttribute('preserveAspectRatio')
+              if (originalPreserveAspectRatio && newPreserveAspectRatio !== originalPreserveAspectRatio) {
+                newSvg.setAttribute('preserveAspectRatio', originalPreserveAspectRatio)
+              }
+            }
+            
+            // 驗證其他關鍵元素
+            if (originalVlistT && !newVlistT) {
+              logger.warn(`根號 vlist-t 克隆失敗（索引 ${index}），跳過重建`)
+              return
+            }
+            if (originalRoot && !newRoot) {
+              logger.warn(`根號 root 克隆失敗（索引 ${index}），跳過重建`)
+              return
             }
           }
 
@@ -166,6 +219,34 @@ export function usePrintKatexRepair() {
 
             if (originalMsupsub && !newMsupsub) {
               logger.warn(`次方元素克隆失敗（索引 ${index}），跳過重建`)
+              return
+            }
+          }
+
+          // 驗證分數元素 - KaTeX 使用 .vlist-t 結構
+          if (hasMfrac) {
+            const originalVlistT = originalKatex.querySelector('.mfrac .vlist-t')
+            const originalFracLine = originalKatex.querySelector('.mfrac .frac-line')
+            const newVlistT = newKatex.querySelector('.mfrac .vlist-t')
+            const newFracLine = newKatex.querySelector('.mfrac .frac-line')
+            const originalVlistChildren = originalVlistT ? originalVlistT.querySelectorAll('.vlist-r') : []
+            const newVlistChildren = newVlistT ? newVlistT.querySelectorAll('.vlist-r') : []
+            
+            // 如果 vlist-t 結構缺失，說明克隆失敗，跳過
+            if (originalVlistT && !newVlistT) {
+              logger.warn(`分數 vlist-t 結構克隆失敗（索引 ${index}），跳過重建`)
+              return
+            }
+            
+            // 如果 vlist-r 子元素數量不匹配，說明結構不完整
+            if (originalVlistT && newVlistT && originalVlistChildren.length !== newVlistChildren.length) {
+              logger.warn(`分數 vlist-r 子元素數量不匹配（索引 ${index}），原始: ${originalVlistChildren.length}, 克隆: ${newVlistChildren.length}`)
+              return
+            }
+            
+            // 如果分數線缺失，也可能導致渲染問題
+            if (originalFracLine && !newFracLine) {
+              logger.warn(`分數線克隆失敗（索引 ${index}），跳過重建`)
               return
             }
           }

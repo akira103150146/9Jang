@@ -305,6 +305,55 @@ function validateResponse<T>(
 }
 
 /**
+ * 將後端返回的日期時間字符串轉換為符合 Zod datetime() 驗證的格式
+ * Django REST Framework 可能返回的格式：
+ * - ISO 8601 格式（符合要求）
+ * - 沒有時區信息的格式（需要轉換）
+ * - null（轉換為 undefined）
+ * 
+ * Zod 的 datetime() 驗證要求 RFC 3339 格式（ISO 8601 的子集）
+ * 格式：YYYY-MM-DDTHH:mm:ss[.sss]Z 或 YYYY-MM-DDTHH:mm:ss[.sss][+-]HH:mm
+ */
+function normalizeDateTime(value: string | null | undefined): string | undefined {
+  if (!value || value === null) {
+    return undefined
+  }
+  
+  const str = String(value).trim()
+  if (!str || str === 'null' || str === 'undefined') {
+    return undefined
+  }
+  
+  // 嘗試解析日期
+  try {
+    const date = new Date(str)
+    // 檢查是否為有效日期
+    if (isNaN(date.getTime())) {
+      logger.warn(`Invalid date string: ${str}`)
+      return undefined
+    }
+    
+    // 轉換為 ISO 8601 格式（RFC 3339）
+    // toISOString() 返回格式：YYYY-MM-DDTHH:mm:ss.sssZ
+    const isoString = date.toISOString()
+    
+    // 驗證是否符合 RFC 3339 格式（Zod datetime() 的要求）
+    // RFC 3339 格式：YYYY-MM-DDTHH:mm:ss[.sss]Z 或 YYYY-MM-DDTHH:mm:ss[.sss][+-]HH:mm
+    const rfc3339Regex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?(Z|[+-]\d{2}:\d{2})$/
+    if (rfc3339Regex.test(isoString)) {
+      return isoString
+    }
+    
+    // 如果不符合，嘗試手動格式化
+    logger.warn(`Date string does not match RFC 3339 format: ${str}, converted to: ${isoString}`)
+    return isoString
+  } catch (error) {
+    logger.warn(`Failed to parse date string: ${str}`, error)
+    return undefined
+  }
+}
+
+/**
  * Student API
  */
 /**
@@ -668,7 +717,119 @@ export const courseAPI = {
 
 /**
  * QuestionBank API
+ * 
+ * 數據預處理函數：處理後端返回格式與前端 schema 不一致的問題
  */
+/**
+ * 將選項轉換為 Tiptap 文檔格式
+ * 如果選項已經是完整的 Tiptap 文檔（type: 'doc'），則直接返回
+ * 否則，將選項包裝在段落中，然後包裝在文檔中
+ */
+function normalizeOptionToTiptapDoc(option: unknown): { type: 'doc'; content: unknown[] } {
+  if (!option) {
+    return { type: 'doc', content: [] }
+  }
+  
+  // 如果已經是完整的 Tiptap 文檔格式
+  if (typeof option === 'object' && option !== null && 'type' in option) {
+    const opt = option as { type: string; [key: string]: unknown }
+    if (opt.type === 'doc') {
+      return opt as { type: 'doc'; content: unknown[] }
+    }
+    // 如果是一個節點（如 paragraph），包裝在 doc 中
+    if (opt.type && opt.type !== 'doc') {
+      return { type: 'doc', content: [option] }
+    }
+  }
+  
+  // 如果是字符串，轉換為段落
+  if (typeof option === 'string') {
+    return {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: option ? [{ type: 'text', text: option }] : []
+        }
+      ]
+    }
+  }
+  
+  // 其他情況，返回空文檔
+  return { type: 'doc', content: [] }
+}
+
+const normalizeQuestionResponse = (item: unknown): Question => {
+  const rawItem = item as {
+    subject?: number | { subject_id?: number; id?: number } | null  // DRF 序列化 ForeignKey 為數字或對象
+    subject_id?: number | null
+    options?: unknown[] | null
+    created_at?: string | null
+    updated_at?: string | null
+    [key: string]: unknown
+  }
+  
+  // 處理 subject_id：DRF 可能返回 subject（數字 ID）或 subject 對象
+  let subjectId = rawItem.subject_id
+  if (!subjectId && subjectId !== 0) {
+    if (typeof rawItem.subject === 'number') {
+      subjectId = rawItem.subject
+    } else if (rawItem.subject && typeof rawItem.subject === 'object') {
+      subjectId = (rawItem.subject as { subject_id?: number; id?: number }).subject_id 
+        ?? (rawItem.subject as { subject_id?: number; id?: number }).id
+        ?? undefined
+    }
+  }
+  
+  // 如果仍然沒有 subject_id，記錄錯誤（這不應該發生，後端應該總是返回 subject）
+  if (!subjectId && subjectId !== 0) {
+    logger.errorWithContext(
+      'api.normalizeQuestionResponse',
+      new Error('Question missing subject_id'),
+      { item: rawItem }
+    )
+    // 不設置默認值，讓 Zod 驗證失敗，這樣我們可以知道問題所在
+  }
+  
+  // 處理 options 字段：將每個選項轉換為 Tiptap 文檔格式
+  let normalizedOptions: unknown[] | undefined = undefined
+  if (rawItem.options) {
+    if (Array.isArray(rawItem.options)) {
+      normalizedOptions = rawItem.options.map(opt => normalizeOptionToTiptapDoc(opt))
+    }
+  }
+  
+  // 處理 datetime 字段：將 null 轉換為 undefined，確保格式正確
+  const processedItem = {
+    ...item,
+    subject_id: subjectId,
+    options: normalizedOptions,
+    created_at: normalizeDateTime(rawItem.created_at),
+    updated_at: normalizeDateTime(rawItem.updated_at)
+  }
+  // 如果原始數據有 subject 字段，移除它，因為我們已經轉換為 subject_id
+  if ('subject' in processedItem && !('subject_id' in rawItem)) {
+    delete (processedItem as { subject?: unknown }).subject
+  }
+  
+  try {
+    return QuestionSchema.parse(processedItem)
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      logger.errorWithContext(
+        'api.normalizeQuestionResponse',
+        error,
+        { 
+          rawItem,
+          processedItem,
+          errors: error.errors 
+        }
+      )
+    }
+    throw error
+  }
+}
+
 export const questionBankAPI = {
   getAll: async (config: { params?: QuestionQuery } = {}): Promise<AxiosResponse<PaginatedResponse<Question> | Question[]>> => {
     let response: AxiosResponse<unknown>
@@ -689,10 +850,10 @@ export const questionBankAPI = {
     
     // 驗證響應數據
     if (Array.isArray(response.data)) {
-      response.data = (response.data as unknown[]).map((item) => QuestionSchema.parse(item))
+      response.data = (response.data as unknown[]).map((item) => normalizeQuestionResponse(item))
     } else if (response.data && typeof response.data === 'object' && 'results' in response.data) {
       const paginated = response.data as PaginatedResponse<unknown>
-      paginated.results = paginated.results.map((item: unknown) => QuestionSchema.parse(item))
+      paginated.results = paginated.results.map((item: unknown) => normalizeQuestionResponse(item))
     }
     
     return response as AxiosResponse<PaginatedResponse<Question> | Question[]>
@@ -702,7 +863,7 @@ export const questionBankAPI = {
     const response = await api.get(`/cramschool/questions/${id}/`)
     return {
       ...response,
-      data: QuestionSchema.parse(response.data)
+      data: normalizeQuestionResponse(response.data)
     }
   },
 
@@ -710,7 +871,7 @@ export const questionBankAPI = {
     const response = await api.post('/cramschool/questions/', data)
     return {
       ...response,
-      data: QuestionSchema.parse(response.data)
+      data: normalizeQuestionResponse(response.data)
     }
   },
 
@@ -718,7 +879,7 @@ export const questionBankAPI = {
     const response = await api.put(`/cramschool/questions/${id}/`, data)
     return {
       ...response,
-      data: QuestionSchema.parse(response.data)
+      data: normalizeQuestionResponse(response.data)
     }
   },
 
@@ -772,7 +933,45 @@ export const questionBankAPI = {
 
 /**
  * LearningResource API
+ * 
+ * 數據預處理函數：處理後端返回格式與前端 schema 不一致的問題
  */
+const normalizeLearningResourceResponse = (item: unknown): LearningResource => {
+  const rawItem = item as {
+    created_at?: string | null
+    updated_at?: string | null
+    available_from?: string | null
+    available_until?: string | null
+    [key: string]: unknown
+  }
+  
+  // 處理 datetime 字段：將 null 轉換為 undefined，確保格式正確
+  const processedItem = {
+    ...item,
+    created_at: normalizeDateTime(rawItem.created_at),
+    updated_at: normalizeDateTime(rawItem.updated_at),
+    available_from: normalizeDateTime(rawItem.available_from),
+    available_until: normalizeDateTime(rawItem.available_until)
+  }
+  
+  try {
+    return LearningResourceSchema.parse(processedItem)
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      logger.errorWithContext(
+        'api.normalizeLearningResourceResponse',
+        error,
+        { 
+          rawItem,
+          processedItem,
+          errors: error.errors 
+        }
+      )
+    }
+    throw error
+  }
+}
+
 export const learningResourceAPI = {
   getAll: async (params: Record<string, unknown> = {}): Promise<AxiosResponse<PaginatedResponse<LearningResource> | LearningResource[]>> => {
     const query = new URLSearchParams()
@@ -785,10 +984,10 @@ export const learningResourceAPI = {
     
     // 驗證響應數據
     if (Array.isArray(response.data)) {
-      response.data = (response.data as unknown[]).map((item) => LearningResourceSchema.parse(item))
+      response.data = (response.data as unknown[]).map((item) => normalizeLearningResourceResponse(item))
     } else if (response.data && typeof response.data === 'object' && 'results' in response.data) {
       const paginated = response.data as PaginatedResponse<unknown>
-      paginated.results = paginated.results.map((item: unknown) => LearningResourceSchema.parse(item))
+      paginated.results = paginated.results.map((item: unknown) => normalizeLearningResourceResponse(item))
     }
     
     return response as AxiosResponse<PaginatedResponse<LearningResource> | LearningResource[]>
@@ -798,7 +997,7 @@ export const learningResourceAPI = {
     const response = await api.get(`/cramschool/resources/${id}/`)
     return {
       ...response,
-      data: LearningResourceSchema.parse(response.data)
+      data: normalizeLearningResourceResponse(response.data)
     }
   },
 
@@ -806,7 +1005,7 @@ export const learningResourceAPI = {
     const response = await api.post('/cramschool/resources/', data)
     return {
       ...response,
-      data: LearningResourceSchema.parse(response.data)
+      data: normalizeLearningResourceResponse(response.data)
     }
   },
 
@@ -814,7 +1013,7 @@ export const learningResourceAPI = {
     const response = await api.put(`/cramschool/resources/${id}/`, data)
     return {
       ...response,
-      data: LearningResourceSchema.parse(response.data)
+      data: normalizeLearningResourceResponse(response.data)
     }
   },
 
@@ -837,7 +1036,41 @@ export const learningResourceAPI = {
 
 /**
  * ContentTemplate API
+ * 
+ * 數據預處理函數：處理後端返回格式與前端 schema 不一致的問題
  */
+const normalizeContentTemplateResponse = (item: unknown): ContentTemplate => {
+  const rawItem = item as {
+    created_at?: string | null
+    updated_at?: string | null
+    [key: string]: unknown
+  }
+  
+  // 處理 datetime 字段：將 null 轉換為 undefined，確保格式正確
+  const processedItem = {
+    ...item,
+    created_at: normalizeDateTime(rawItem.created_at),
+    updated_at: normalizeDateTime(rawItem.updated_at)
+  }
+  
+  try {
+    return ContentTemplateSchema.parse(processedItem)
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      logger.errorWithContext(
+        'api.normalizeContentTemplateResponse',
+        error,
+        { 
+          rawItem,
+          processedItem,
+          errors: error.errors 
+        }
+      )
+    }
+    throw error
+  }
+}
+
 export const contentTemplateAPI = {
   getAll: async (params: Record<string, unknown> = {}): Promise<AxiosResponse<PaginatedResponse<ContentTemplate> | ContentTemplate[]>> => {
     const query = new URLSearchParams()
@@ -850,10 +1083,10 @@ export const contentTemplateAPI = {
     
     // 驗證響應數據
     if (Array.isArray(response.data)) {
-      response.data = (response.data as unknown[]).map((item) => ContentTemplateSchema.parse(item))
+      response.data = (response.data as unknown[]).map((item) => normalizeContentTemplateResponse(item))
     } else if (response.data && typeof response.data === 'object' && 'results' in response.data) {
       const paginated = response.data as PaginatedResponse<unknown>
-      paginated.results = paginated.results.map((item: unknown) => ContentTemplateSchema.parse(item))
+      paginated.results = paginated.results.map((item: unknown) => normalizeContentTemplateResponse(item))
     }
     
     return response as AxiosResponse<PaginatedResponse<ContentTemplate> | ContentTemplate[]>
@@ -863,7 +1096,7 @@ export const contentTemplateAPI = {
     const response = await api.get(`/cramschool/templates/${id}/`)
     return {
       ...response,
-      data: ContentTemplateSchema.parse(response.data)
+      data: normalizeContentTemplateResponse(response.data)
     }
   },
 
@@ -871,7 +1104,7 @@ export const contentTemplateAPI = {
     const response = await api.post('/cramschool/templates/', data)
     return {
       ...response,
-      data: ContentTemplateSchema.parse(response.data)
+      data: normalizeContentTemplateResponse(response.data)
     }
   },
 
@@ -879,7 +1112,7 @@ export const contentTemplateAPI = {
     const response = await api.put(`/cramschool/templates/${id}/`, data)
     return {
       ...response,
-      data: ContentTemplateSchema.parse(response.data)
+      data: normalizeContentTemplateResponse(response.data)
     }
   },
 

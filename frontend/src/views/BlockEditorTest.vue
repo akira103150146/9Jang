@@ -54,6 +54,10 @@
 import { ref, onMounted } from 'vue'
 import BlockEditor from '../components/BlockEditor/BlockEditor.vue'
 import { contentTemplateAPI, questionBankAPI } from '../services/api'
+import { useEditorEventsProvider } from '../composables/useEditorEvents'
+
+// 初始化編輯器事件提供者（BlockEditor 需要）
+useEditorEventsProvider()
 
 const content = ref({
   type: 'doc',
