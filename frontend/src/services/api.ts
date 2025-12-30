@@ -318,12 +318,20 @@ const normalizeStudentResponse = (item: unknown): Student => {
     user_id?: number | null
     enrollments?: unknown[]  // 報名課程列表（後端返回但不在 StudentSchema 中）
     student_groups?: unknown[]  // 標籤列表（後端返回但不在 StudentSchema 中）
+    has_tuition_needed?: boolean  // 是否需要生成學費（後端返回但不在 StudentSchema 中）
+    total_fees?: number  // 總費用（後端返回但不在 StudentSchema 中）
+    unpaid_fees?: number  // 待繳費用（後端返回但不在 StudentSchema 中）
+    enrollments_count?: number  // 報名課程數量（後端返回但不在 StudentSchema 中）
     [key: string]: unknown
   }
   
-  // 保存 enrollments 和 student_groups（這些字段不在 StudentSchema 中，會被 parse 移除）
+  // 保存不在 StudentSchema 中的字段（會被 parse 移除）
   const enrollments = rawItem.enrollments
   const student_groups = rawItem.student_groups
+  const has_tuition_needed = rawItem.has_tuition_needed
+  const total_fees = rawItem.total_fees
+  const unpaid_fees = rawItem.unpaid_fees
+  const enrollments_count = rawItem.enrollments_count
   
   const processedItem = {
     ...item,
@@ -335,15 +343,26 @@ const normalizeStudentResponse = (item: unknown): Student => {
     delete (processedItem as { user?: unknown }).user
   }
   
-  // 解析基本學生數據（會移除 enrollments 和 student_groups）
+  // 解析基本學生數據（會移除所有不在 StudentSchema 中的字段）
   const parsed = StudentSchema.parse(processedItem)
   
-  // 將 enrollments 和 student_groups 添加回去
+  // 將所有額外字段添加回去（這些字段會被 normalizeStudent 使用）
   return {
     ...parsed,
     enrollments: enrollments || [],
-    student_groups: student_groups || []
-  } as Student & { enrollments: unknown[], student_groups: unknown[] }
+    student_groups: student_groups || [],
+    has_tuition_needed,
+    total_fees,
+    unpaid_fees,
+    enrollments_count
+  } as Student & { 
+    enrollments: unknown[]
+    student_groups: unknown[]
+    has_tuition_needed?: boolean
+    total_fees?: number
+    unpaid_fees?: number
+    enrollments_count?: number
+  }
 }
 
 export const studentAPI = {
