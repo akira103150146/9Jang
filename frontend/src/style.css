@@ -10,3 +10,28 @@
 body {
   font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif;
 }
+
+@layer base {
+  /* 確保輸入框和表單元素有明確的文字顏色和背景色，避免在深色主題下文字不可見 */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="search"],
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  textarea,
+  select {
+    color: rgb(15 23 42); /* slate-900 - 深色文字 */
+    background-color: rgb(255 255 255); /* white - 白色背景 */
+  }
+  
+  /* 輸入框 placeholder 文字顏色 */
+  input::placeholder,
+  textarea::placeholder {
+    color: rgb(148 163 184); /* slate-400 */
+  }
+}

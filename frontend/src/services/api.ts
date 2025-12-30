@@ -450,9 +450,13 @@ export const studentAPI = {
 export const teacherAPI = {
   getAll: async (): Promise<AxiosResponse<Teacher[]>> => {
     const response = await api.get('/cramschool/teachers/')
+    // 處理分頁響應格式或直接數組格式
+    const dataArray = Array.isArray(response.data)
+      ? response.data
+      : (response.data as { results?: unknown[] }).results || []
     return {
       ...response,
-      data: (response.data as unknown[]).map((item) => TeacherSchema.parse(item))
+      data: dataArray.map((item) => TeacherSchema.parse(item))
     }
   },
 
@@ -491,9 +495,44 @@ export const teacherAPI = {
 export const courseAPI = {
   getAll: async (): Promise<AxiosResponse<Course[]>> => {
     const response = await api.get('/cramschool/courses/')
+    // 處理分頁響應格式或直接數組格式
+    const dataArray = Array.isArray(response.data)
+      ? response.data
+      : (response.data as { results?: unknown[] }).results || []
     return {
       ...response,
-      data: (response.data as unknown[]).map((item) => CourseSchema.parse(item))
+      data: dataArray.map((item) => {
+        // 預處理數據以處理後端數據格式不一致的問題
+        const rawItem = item as {
+          fee_per_session?: string | number
+          teacher_id?: number
+          teacher?: { teacher_id?: number; id?: number }
+          [key: string]: unknown
+        }
+        
+        // 處理 fee_per_session：如果是字符串，轉換為數字
+        let feePerSession = 0
+        if (typeof rawItem.fee_per_session === 'string') {
+          feePerSession = parseFloat(rawItem.fee_per_session) || 0
+        } else if (typeof rawItem.fee_per_session === 'number') {
+          feePerSession = rawItem.fee_per_session
+        }
+        
+        // 處理 teacher_id：優先使用直接的 teacher_id，否則從 teacher 對象中提取，最後使用默認值 1
+        let teacherId = rawItem.teacher_id
+        if (!teacherId && rawItem.teacher) {
+          teacherId = (rawItem.teacher as { teacher_id?: number; id?: number }).teacher_id 
+            ?? (rawItem.teacher as { teacher_id?: number; id?: number }).id
+        }
+        teacherId = teacherId || 1 // 如果都沒有，使用默認值 1（符合 positive() 要求）
+        
+        const processedItem = {
+          ...item,
+          fee_per_session: feePerSession,
+          teacher_id: teacherId
+        }
+        return CourseSchema.parse(processedItem)
+      })
     }
   },
 

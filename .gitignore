@@ -3,6 +3,11 @@ db.sqlite3
 venv
 media
 
+# Node.js
+node_modules
+package-lock.json
+yarn.lock
+
 # 環境變數文件
 .env
 .env.local

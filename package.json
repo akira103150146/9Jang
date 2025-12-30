@@ -4,11 +4,11 @@
   "private": true,
   "description": "9Jang Cram School Management System - Monorepo",
   "scripts": {
-    "dev": "pnpm --filter @9jang/frontend dev",
+    "dev": "pnpm --filter 9jang-frontend dev",
     "dev:backend": "pnpm --filter @9jang/backend start:dev",
     "build": "pnpm -r build",
     "build:shared": "pnpm --filter @9jang/shared build",
-    "build:frontend": "pnpm --filter @9jang/frontend build",
+    "build:frontend": "pnpm --filter 9jang-frontend build",
     "build:backend": "pnpm --filter @9jang/backend build",
     "clean": "pnpm -r clean",
     "type-check": "pnpm -r type-check"

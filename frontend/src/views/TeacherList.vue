@@ -126,8 +126,10 @@ const fetchTeachers = async (): Promise<void> => {
   loading.value = true
   try {
     const response = await teacherAPI.getAll()
-    const data = ((response.data as { results?: unknown[] }) | unknown[]).results || (response.data as unknown[])
-    teachers.value = (data as unknown[]).map((item) => normalizeTeacher(item))
+    const data = Array.isArray(response.data) 
+      ? response.data 
+      : (response.data as { results?: unknown[] }).results || []
+    teachers.value = data.map((item) => normalizeTeacher(item))
     usingMock.value = false
   } catch (error) {
     console.warn('獲取老師資料失敗，使用 mock 資料：', error)

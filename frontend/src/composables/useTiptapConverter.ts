@@ -134,3 +134,24 @@ export function tiptapToMarkdown(node: unknown): string {
 
   return markdown
 }
+
+/**
+ * TipTap 轉換器 Composable
+ * 提供將 TipTap JSON 轉換為 Markdown 的方法
+ */
+export function useTiptapConverter() {
+  /**
+   * 將 TipTap 內容轉換為 Markdown 字串
+   * @param content - TipTap JSON 文檔或節點
+   * @returns Markdown 字串
+   */
+  const contentToMarkdown = (content: unknown): string => {
+    return tiptapToMarkdown(content)
+  }
+
+  return {
+    contentToMarkdown,
+    tiptapToMarkdown,
+    extractTextFromTiptapJSON
+  }
+}

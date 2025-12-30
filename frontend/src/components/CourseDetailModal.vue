@@ -274,7 +274,9 @@ const fetchAvailableResources = async (): Promise<void> => {
   try {
     // 獲取所有自己的教學資源（不限定課程）
     const res = await learningResourceAPI.getAll()
-    const allResources = ((res.data as { results?: Resource[] }) | Resource[]).results || (res.data as Resource[])
+    const allResources = Array.isArray(res.data)
+      ? res.data
+      : (res.data as { results?: Resource[] }).results || []
 
     // 過濾出未綁定到當前課程的資源
     const courseId = (props.course.course_id || props.course.id) as number

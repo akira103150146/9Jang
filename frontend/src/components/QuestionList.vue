@@ -660,7 +660,9 @@ const fetchQuestions = async (): Promise<void> => {
     params.page = pagination.currentPage
 
     const response = await questionBankAPI.getAll({ params })
-    const questionsData = ((response.data as { results?: QuestionWithExtras[] }) | QuestionWithExtras[]).results || (response.data as QuestionWithExtras[]) || []
+    const questionsData = Array.isArray(response.data)
+      ? response.data
+      : (response.data as { results?: QuestionWithExtras[] }).results || []
 
     // 更新分頁資訊
     const data = response.data as { count?: number }
@@ -712,7 +714,9 @@ const fetchQuestions = async (): Promise<void> => {
 const fetchSubjects = async (): Promise<void> => {
   try {
     const response = await subjectAPI.getAll()
-    subjects.value = ((response.data as { results?: Subject[] }) | Subject[]).results || (response.data as Subject[]) || []
+    subjects.value = Array.isArray(response.data)
+      ? response.data
+      : (response.data as { results?: Subject[] }).results || []
   } catch (error) {
     console.warn('獲取科目失敗：', error)
     subjects.value = []
@@ -722,7 +726,9 @@ const fetchSubjects = async (): Promise<void> => {
 const fetchTags = async (): Promise<void> => {
   try {
     const response = await hashtagAPI.getAll()
-    tags.value = ((response.data as { results?: Tag[] }) | Tag[]).results || (response.data as Tag[]) || []
+    tags.value = Array.isArray(response.data)
+      ? response.data
+      : (response.data as { results?: Tag[] }).results || []
   } catch (error) {
     console.warn('獲取標籤失敗：', error)
     tags.value = []

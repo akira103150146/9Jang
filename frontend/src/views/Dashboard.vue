@@ -491,7 +491,9 @@ const fetchCourses = async (): Promise<void> => {
   loadingCourses.value = true
   try {
     const response = await courseAPI.getAll()
-    const data = (response.data as { results?: Course[] } | Course[]).results || (response.data as Course[])
+    const data = Array.isArray(response.data)
+      ? response.data
+      : (response.data as { results?: Course[] }).results || []
     courses.value = data as Course[]
   } catch (error) {
     console.warn('獲取課程資料失敗，使用 mock 資料：', error)

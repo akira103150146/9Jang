@@ -256,8 +256,10 @@ const fetchCourses = async (): Promise<void> => {
   loading.value = true
   try {
     const response = await courseAPI.getAll()
-    const data = ((response.data as { results?: unknown[] }) | unknown[]).results || (response.data as unknown[])
-    const normalizedCourses = (data as unknown[]).map((item) => normalizeCourse(item))
+    const data = Array.isArray(response.data) 
+      ? response.data 
+      : (response.data as { results?: unknown[] }).results || []
+    const normalizedCourses = data.map((item) => normalizeCourse(item))
 
     // 如果是老師或管理員，獲取每個課程的學生狀態統計
     if (currentUser.value && (currentUser.value.role === 'TEACHER' || currentUser.value.role === 'ADMIN')) {

@@ -237,7 +237,9 @@ const fetchResources = async (): Promise<void> => {
     if (filters.resource_type) params.resource_type = filters.resource_type
 
     const response = await learningResourceAPI.getAll(params)
-    resources.value = ((response.data as { results?: Resource[] }) | Resource[]).results || (response.data as Resource[])
+    resources.value = Array.isArray(response.data)
+      ? response.data
+      : (response.data as { results?: Resource[] }).results || []
   } catch (error) {
     console.error('Fetch resources failed', error)
   } finally {

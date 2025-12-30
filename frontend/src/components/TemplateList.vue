@@ -90,7 +90,9 @@ const fetchTemplates = async (): Promise<void> => {
   try {
     // 暫時沒有後端搜尋 API，先前端過濾 (如果有的話)
     const response = await contentTemplateAPI.getAll()
-    const allTemplates = ((response.data as { results?: ContentTemplate[] }) | ContentTemplate[]).results || (response.data as ContentTemplate[])
+    const allTemplates = Array.isArray(response.data) 
+      ? response.data 
+      : (response.data as { results?: ContentTemplate[] }).results || []
 
     if (search.value) {
       templates.value = allTemplates.filter((t) => t.title.toLowerCase().includes(search.value.toLowerCase()))
