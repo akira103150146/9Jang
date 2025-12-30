@@ -1306,58 +1306,25 @@ watch(() => formData.value.correct_answer, (newAnswer) => {
 
 // 獲取所有題目列表（用於 BlockEditor 的題目選擇器）
 const fetchAllQuestions = async () => {
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionForm.vue:fetchAllQuestions:start',message:'fetchAllQuestions called',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'F'})}).catch(()=>{});
-  // #endregion
-  
   try {
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionForm.vue:fetchAllQuestions:beforeAPI',message:'calling questionBankAPI.getAll',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'F,G'})}).catch(()=>{});
-    // #endregion
-    
     const response = await questionBankAPI.getAll()
-    
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionForm.vue:fetchAllQuestions:afterAPI',message:'questionBankAPI.getAll response',data:{hasData:!!response.data,dataLength:response.data?.length,responseKeys:Object.keys(response)},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'G,H'})}).catch(()=>{});
-    // #endregion
-    
     allQuestions.value = response.data || []
-    
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionForm.vue:fetchAllQuestions:success',message:'fetched all questions',data:{totalQuestions:allQuestions.value.length,firstQuestion:allQuestions.value[0]},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'F,G,H'})}).catch(()=>{});
-    // #endregion
   } catch (error) {
     console.error('獲取題目列表失敗：', error)
-    
-    // #region agent log
-    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionForm.vue:fetchAllQuestions:error',message:'failed to fetch questions',data:{errorMessage:error.message,errorStack:error.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'G'})}).catch(()=>{});
-    // #endregion
   }
 }
 
 onMounted(async () => {
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionForm.vue:onMounted:start',message:'onMounted called',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'F'})}).catch(()=>{});
-  // #endregion
-  
   await Promise.all([
     fetchSubjects(),
     fetchHashtags(),
     fetchAllQuestions() // 獲取所有題目
   ])
   
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionForm.vue:onMounted:afterFetch',message:'after fetching subjects, hashtags, questions',data:{allQuestionsLength:allQuestions.value.length},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'F,H'})}).catch(()=>{});
-  // #endregion
-  
   // 載入完成標籤後再載入題目（因為需要標籤來映射 tag_ids）
   await fetchQuestion()
   // 標記題目已載入，啟用自動提取功能（新增模式也需要啟用）
   isQuestionLoaded.value = true
-  
-  // #region agent log
-  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionForm.vue:onMounted:complete',message:'onMounted complete',data:{allQuestionsLength:allQuestions.value.length},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'F,H'})}).catch(()=>{});
-  // #endregion
 })
 </script>
 
