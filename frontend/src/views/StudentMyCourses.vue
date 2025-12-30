@@ -96,6 +96,9 @@ const formatTime = (time) => {
 }
 
 const openCourseModal = (course) => {
+  // #region agent log
+  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'StudentMyCourses.vue:openCourseModal',message:'Opening course modal',data:{courseId:course.course_id,courseName:course.course_name},timestamp:Date.now(),sessionId:'debug-session',runId:'student-view',hypothesisId:'F,J'})}).catch(()=>{});
+  // #endregion
   selectedCourse.value = course
   isModalOpen.value = true
 }

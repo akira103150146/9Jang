@@ -242,6 +242,20 @@ export const commandItems = [
     keywords: ['question', '題目', 'q']
   },
   {
+    title: '大題標題',
+    icon: '📋',
+    description: '插入大題分組標題',
+    command: ({ editor, range }) => {
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertSectionBlock()
+        .run()
+    },
+    keywords: ['section', '大題', '標題', '分組', 'group']
+  },
+  {
     title: '圖片',
     icon: '🖼️',
     description: '插入圖片',

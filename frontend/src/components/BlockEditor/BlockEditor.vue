@@ -1,7 +1,7 @@
 <template>
-  <div class="block-editor-container">
-    <!-- 游標位置指示器 -->
-    <div v-if="editor && currentNodeType" class="cursor-indicator">
+  <div class="block-editor-container" :class="{ 'readonly-mode': readonly }">
+    <!-- 游標位置指示器 (僅在編輯模式顯示) -->
+    <div v-if="!readonly && editor && currentNodeType" class="cursor-indicator">
       <span class="indicator-icon">{{ getNodeIcon(currentNodeType) }}</span>
       <span class="indicator-text">{{ getNodeLabel(currentNodeType) }}</span>
     </div>
@@ -11,8 +11,9 @@
       <editor-content :editor="editor" class="editor-content" />
     </div>
     
-    <!-- 圖片選擇器 Modal -->
+    <!-- 圖片選擇器 Modal (僅在編輯模式顯示) -->
     <ImageSelectorModal
+      v-if="!readonly"
       :is-open="imageSelectorOpen"
       @close="imageSelectorOpen = false"
       @select="handleImageSelect"
@@ -20,8 +21,9 @@
       @image-uploaded="handleImageUploaded"
     />
     
-    <!-- 模板選擇器 Modal -->
+    <!-- 模板選擇器 Modal (僅在編輯模式顯示) -->
     <TemplateSelectorModal
+      v-if="!readonly"
       v-model="templateSelectorOpen"
       :templates="templates"
       @select="handleTemplateSelect"
@@ -34,7 +36,7 @@ import { ref, watch, onMounted, onBeforeUnmount, provide, computed } from 'vue'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
-import { LaTeXBlock, InlineLatex, ImagePlaceholder, TemplateBlock, Diagram2DBlock, Diagram3DBlock, CircuitBlock, QuestionBlock, PageBreakBlock } from './extensions'
+import { LaTeXBlock, InlineLatex, ImagePlaceholder, TemplateBlock, Diagram2DBlock, Diagram3DBlock, CircuitBlock, QuestionBlock, PageBreakBlock, SectionBlock } from './extensions'
 import ImageSelectorModal from './components/ImageSelectorModal.vue'
 import TemplateSelectorModal from './components/TemplateSelectorModal.vue'
 import { SlashCommands } from './extensions/SlashCommands'
@@ -163,6 +165,7 @@ const editor = useEditor({
     Diagram3DBlock,
     CircuitBlock,
     QuestionBlock,
+    SectionBlock,
     PageBreakBlock,
     SlashCommands.configure({
       isHandoutMode: props.isHandoutMode,

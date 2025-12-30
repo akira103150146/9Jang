@@ -520,29 +520,29 @@ const fetchQuestion = async () => {
     // 輔助函式：確保 Tiptap JSON 格式正確
     // 後端會自動轉換舊格式，這裡只需要處理空值或確保格式正確
     // 處理換行符號：將文字中的 `\\` 或行尾的 `\` 轉換為 hardBreak 節點
+    // 注意：必須排除 LaTeX 命令中的反斜線
     const parseLineBreaks = (text) => {
       if (!text) return []
       
+      // 檢查文字中是否包含 LaTeX 公式（有 $ 符號）
+      const hasLatex = text.includes('$')
+      
+      // 如果包含 LaTeX，不處理換行符號，避免誤判 LaTeX 命令中的反斜線
+      // LaTeX 中的換行應該使用 \\ 或 \newline，這些會被 LaTeX 渲染器正確處理
+      if (hasLatex) {
+        return [{ type: 'text', text }]
+      }
+      
       const parts = []
       let lastIndex = 0
-      // 匹配文字中的 `\\` 或行尾的 `\`（可能跟著空格）
-      // 但要排除 LaTeX 命令中的反斜線（如 \sin, \frac 等）
-      const lineBreakRegex = /\\+\s*$/gm
+      // 只在沒有 LaTeX 的情況下處理換行符號
+      // 匹配行尾的 `\\`（兩個反斜線）作為換行符號
+      const lineBreakRegex = /\\\\\s*$/gm
       const lineBreakPositions = []
       let match
       
       // 找出所有換行符號的位置
       while ((match = lineBreakRegex.exec(text)) !== null) {
-        // 檢查是否在 LaTeX 區塊內（檢查前後字符）
-        const beforeChar = match.index > 0 ? text[match.index - 1] : ''
-        const afterChar = match.index + match[0].length < text.length ? text[match.index + match[0].length] : ''
-        
-        // 如果前後有 $，可能是 LaTeX 的一部分，跳過
-        // 如果前面是字母或數字，可能是 LaTeX 命令的一部分，跳過
-        if (beforeChar === '$' || afterChar === '$' || /[a-zA-Z0-9]/.test(beforeChar)) {
-          continue
-        }
-        
         lineBreakPositions.push({
           start: match.index,
           end: match.index + match[0].length

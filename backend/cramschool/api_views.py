@@ -1547,19 +1547,30 @@ class QuestionBankViewSet(viewsets.ModelViewSet):
     """
     提供 QuestionBank 模型 CRUD 操作的 API 視圖集
     支援多條件篩選：科目、年級、章節、難度、標籤、來源
+    老師可以完全訪問，學生只能檢視個別題目（用於學習資源）
     """
     queryset = QuestionBank.objects.select_related('subject', 'created_by', 'imported_from_error_log').prefetch_related('tags__tag', 'imported_from_error_log__images').all()
     serializer_class = QuestionBankSerializer
     permission_classes = [IsAuthenticated]
     
+    def get_permissions(self):
+        """
+        學生只能讀取（retrieve），不能寫入
+        """
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            # 寫入操作：只有老師可以
+            return [IsAuthenticated()]
+        # 讀取操作：已認證用戶都可以（但 get_queryset 會進一步限制）
+        return [IsAuthenticated()]
+    
     def get_queryset(self):
         """
         根據查詢參數進行多條件篩選
-        只有老師可以訪問（管理員需要先模擬老師身分）
+        老師可以完全訪問，學生只能檢視個別題目（用於學習資源）
         """
         queryset = super().get_queryset()
 
-        # 題庫：只有老師可以訪問
+        # 題庫：老師完全訪問，學生只能檢視個別題目
         user = self.request.user
         if not user.is_authenticated:
             return queryset.none()
@@ -1568,11 +1579,19 @@ class QuestionBankViewSet(viewsets.ModelViewSet):
         if user.is_admin():
             return queryset.none()
         
-        # 學生和會計不可用
-        if user.is_student() or user.is_accountant():
+        # 會計不可用
+        if user.is_accountant():
             return queryset.none()
         
-        # 只有老師可以訪問
+        # 學生只能檢視個別題目（retrieve action），不能列表或搜尋
+        if user.is_student():
+            # 如果是 retrieve action（檢視單一題目），允許訪問
+            if self.action == 'retrieve':
+                return queryset
+            # 其他 action（list, create, update, delete 等）不允許
+            return queryset.none()
+        
+        # 只有老師可以完全訪問
         if not user.is_teacher():
             return queryset.none()
         
@@ -1632,6 +1651,42 @@ class QuestionBankViewSet(viewsets.ModelViewSet):
             queryset = queryset.order_by('-created_at', '-question_id')
         
         return queryset
+    
+    def create(self, request, *args, **kwargs):
+        """
+        創建題目：只有老師可以
+        """
+        user = request.user
+        if not user.is_teacher():
+            return Response(
+                {'error': '只有老師可以創建題目'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().create(request, *args, **kwargs)
+    
+    def update(self, request, *args, **kwargs):
+        """
+        更新題目：只有老師可以
+        """
+        user = request.user
+        if not user.is_teacher():
+            return Response(
+                {'error': '只有老師可以更新題目'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().update(request, *args, **kwargs)
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        刪除題目：只有老師可以
+        """
+        user = request.user
+        if not user.is_teacher():
+            return Response(
+                {'error': '只有老師可以刪除題目'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().destroy(request, *args, **kwargs)
     
     @action(detail=False, methods=['get'])
     def search_chapters(self, request):

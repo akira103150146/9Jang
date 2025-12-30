@@ -1,15 +1,29 @@
 <template>
   <node-view-wrapper class="question-block-wrapper">
-    <div class="question-block">
-      <div class="question-header">
+    <div 
+      class="question-block"
+      :class="{ 'is-hovered': isHovered && !isReadonly }"
+      @mouseenter="!isReadonly && (isHovered = true)"
+      @mouseleave="isHovered = false"
+    >
+      <!-- 懸停時顯示的操作選單 (僅在編輯模式) -->
+      <div v-if="!isReadonly && isHovered" class="question-toolbar">
         <div class="question-badge">❓ 題目</div>
         <button @click="handleSelectQuestion" class="btn-select">
           {{ node.attrs.questionId ? '更換題目' : '選擇題目' }}
         </button>
+        <button @click="handleDelete" class="btn-delete">
+          🗑️ 刪除
+        </button>
       </div>
       
+      <!-- 題目內容（純白背景） -->
       <div v-if="node.attrs.questionId" class="question-content">
-        <QuestionBlock :question-id="node.attrs.questionId" />
+        <QuestionBlock 
+          :question-id="node.attrs.questionId" 
+          :show-metadata="false"
+          :question-number="questionNumber"
+        />
       </div>
       
       <div v-else class="question-placeholder">
@@ -29,7 +43,7 @@
 </template>
 
 <script setup>
-import { ref, inject, onMounted } from 'vue'
+import { ref, inject, computed } from 'vue'
 import { NodeViewWrapper, NodeViewContent, nodeViewProps } from '@tiptap/vue-3'
 import QuestionBlock from '../../QuestionBlock.vue'
 import QuestionSelectorModal from './QuestionSelectorModal.vue'
@@ -38,13 +52,59 @@ const props = defineProps(nodeViewProps)
 
 // 從父組件注入可用的題目列表
 const availableQuestions = inject('questions', [])
-
+// 注入 readonly 狀態
+const isReadonly = computed(() => !props.editor.isEditable)
 
 const showSelector = ref(false)
+const isHovered = ref(false)
+
+// 計算題號：根據最近的 SectionBlock（大題標題）來編號
+const questionNumber = computed(() => {
+  try {
+    const editor = props.editor
+    if (!editor || !props.node.attrs.questionId) return null
+    
+    const currentPos = props.getPos()
+    if (currentPos === undefined || currentPos === null) return null
+    
+    let count = 0
+    let lastSectionPos = -1
+    
+    // 遍歷文檔，找到當前題目之前最近的 SectionBlock
+    editor.state.doc.descendants((node, pos) => {
+      // 如果遇到 SectionBlock 且在當前節點之前，記錄其位置
+      if (node.type.name === 'sectionBlock' && pos < currentPos) {
+        lastSectionPos = pos
+        count = 0 // 重置計數
+      }
+      
+      // 如果是題目區塊且有 questionId
+      if (node.type.name === 'questionBlock' && node.attrs.questionId) {
+        // 只計算在最近的 SectionBlock 之後的題目
+        if (pos > lastSectionPos && pos <= currentPos) {
+          count++
+        }
+      }
+    })
+    
+    return count > 0 ? count : null
+  } catch (error) {
+    console.error('計算題號時出錯:', error)
+    return null
+  }
+})
 
 const handleSelectQuestion = () => {
   // 打開題目選擇器
   showSelector.value = true
+}
+
+const handleDelete = () => {
+  const pos = props.getPos()
+  props.editor.chain().focus().deleteRange({ 
+    from: pos, 
+    to: pos + props.node.nodeSize 
+  }).run()
 }
 
 const onQuestionSelected = async (questionIds) => {
@@ -223,30 +283,39 @@ const onQuestionSelected = async (questionIds) => {
 <style scoped>
 .question-block-wrapper {
   margin: 1rem 0;
+  position: relative;
 }
 
 .question-block {
   position: relative;
   padding: 1rem;
-  border: 2px solid rgb(34, 197, 94);
+  background: white;
+  border: 2px solid transparent;
   border-radius: 0.5rem;
-  background: rgb(240, 253, 244);
   transition: all 0.2s;
 }
 
-/* 當區塊被選中或有焦點時的樣式 */
-.question-block-wrapper.ProseMirror-selectednode .question-block,
-.question-block-wrapper:has(.ProseMirror-focused) .question-block {
-  border-color: rgb(22, 163, 74);
-  background: rgb(220, 252, 231);
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+/* 懸停時顯示綠色邊框 */
+.question-block.is-hovered {
+  border-color: rgb(34, 197, 94);
+  background: rgb(240, 253, 244);
 }
 
-.question-header {
+/* 操作工具列 - 只在懸停時顯示 */
+.question-toolbar {
+  position: absolute;
+  top: -12px;
+  right: 1rem;
   display: flex;
-  justify-content: space-between;
+  gap: 0.5rem;
   align-items: center;
-  margin-bottom: 1rem;
+  z-index: 10;
+  animation: fadeIn 0.2s;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .question-badge {
@@ -256,28 +325,37 @@ const onQuestionSelected = async (questionIds) => {
   background: rgb(34, 197, 94);
   color: white;
   border-radius: 9999px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.btn-select {
-  padding: 0.5rem 1rem;
+.btn-select,
+.btn-delete {
+  padding: 0.375rem 0.75rem;
   border-radius: 0.375rem;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
   background: white;
   border: 1px solid rgb(226, 232, 240);
   color: rgb(51, 65, 85);
   transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .btn-select:hover {
   background: rgb(241, 245, 249);
+  border-color: rgb(99, 102, 241);
+}
+
+.btn-delete:hover {
+  background: rgb(254, 242, 242);
+  border-color: rgb(239, 68, 68);
+  color: rgb(220, 38, 38);
 }
 
 .question-content {
   background: white;
   border-radius: 0.5rem;
-  padding: 1rem;
 }
 
 .question-placeholder {
@@ -294,5 +372,22 @@ const onQuestionSelected = async (questionIds) => {
   margin-top: 1rem;
   padding-left: 1.5rem;
   border-left: 3px solid rgb(187, 247, 208);
+}
+
+/* 列印時隱藏工具列和邊框 */
+@media print {
+  .question-toolbar {
+    display: none !important;
+  }
+  
+  .question-block {
+    border: none !important;
+    background: white !important;
+    padding: 0.5rem 0 !important;
+  }
+  
+  .content {
+    display: none !important;
+  }
 }
 </style>

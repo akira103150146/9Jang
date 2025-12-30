@@ -39,6 +39,7 @@ export function tiptapToMarkdown(node) {
   // 處理文字節點
   if (node.type === 'text') {
     let text = node.text || ''
+    
     // 處理文字標記
     if (node.marks) {
       for (const mark of node.marks) {
@@ -51,6 +52,7 @@ export function tiptapToMarkdown(node) {
         }
       }
     }
+    
     return text
   }
   

@@ -34,14 +34,6 @@
             </select>
           </div>
 
-          <!-- 模式特定設定（動態載入） -->
-          <component
-            :is="modeEditorComponent"
-            v-if="modeEditorComponent"
-            :settings="resource.settings"
-            @update:settings="updateSettings"
-          />
-
           <!-- 課程綁定（多選） -->
           <div class="space-y-3">
             <label class="block text-sm font-medium text-slate-700">綁定課程（可多選）</label>
@@ -136,6 +128,75 @@
             />
           </div>
 
+          <!-- 列印浮水印設定 -->
+          <div class="space-y-3">
+            <label class="block text-sm font-medium text-slate-700">列印浮水印</label>
+            <div class="space-y-2">
+              <!-- 啟用浮水印 -->
+              <div class="flex items-center">
+                <input
+                  type="checkbox"
+                  id="enable-watermark"
+                  v-model="watermarkEnabled"
+                  :disabled="viewMode"
+                  class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                <label for="enable-watermark" class="ml-2 text-sm text-slate-700">
+                  啟用浮水印
+                </label>
+              </div>
+              
+              <!-- 浮水印圖片上傳 -->
+              <div v-if="watermarkEnabled">
+                <button 
+                  @click="openWatermarkUpload" 
+                  class="w-full px-4 py-2 bg-slate-600 text-white rounded-md hover:bg-slate-700 disabled:bg-slate-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  :disabled="viewMode"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  {{ watermarkImage ? '更換浮水印' : '上傳浮水印圖片' }}
+                </button>
+                <input
+                  ref="watermarkInput"
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,image/svg+xml"
+                  @change="handleWatermarkUpload"
+                  style="display: none"
+                />
+                
+                <!-- 浮水印預覽 -->
+                <div v-if="watermarkImage" class="mt-2 p-2 bg-slate-50 rounded border border-slate-200">
+                  <img :src="watermarkImage" alt="浮水印預覽" class="max-h-20 mx-auto opacity-30">
+                  <button 
+                    @click="removeWatermark" 
+                    class="mt-2 w-full px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
+                    :disabled="viewMode"
+                  >
+                    移除浮水印
+                  </button>
+                </div>
+                
+                <!-- 浮水印不透明度 -->
+                <div class="mt-2">
+                  <label class="block text-xs text-slate-600 mb-1">
+                    不透明度: {{ watermarkOpacity }}%
+                  </label>
+                  <input
+                    type="range"
+                    v-model.number="watermarkOpacity"
+                    min="5"
+                    max="30"
+                    step="5"
+                    :disabled="viewMode || !watermarkImage"
+                    class="w-full"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- 標籤 -->
           <div class="space-y-3">
             <label class="block text-sm font-medium text-slate-700">標籤</label>
@@ -200,11 +261,27 @@
         </div>
 
         <div class="flex items-center gap-3">
-          <button @click="print" class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+          <!-- 顯示模式選擇 -->
+          <select 
+            v-model="printModeSelection" 
+            :disabled="isPreparingPrint"
+            class="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <option value="question-only">純題目</option>
+            <option value="with-answer">題目+答案</option>
+            <option value="with-solution">題目+詳解</option>
+            <option value="with-all">題目+答案+詳解</option>
+          </select>
+          
+          <button 
+            @click="print" 
+            :disabled="isPreparingPrint"
+            class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
             </svg>
-            列印 / 預覽 PDF
+            {{ isPreparingPrint ? '準備中...' : '列印 / 預覽 PDF' }}
           </button>
           <button v-if="!viewMode" @click="saveResource(true)" class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -219,53 +296,11 @@
       <div 
         class="flex-1 overflow-auto relative bg-slate-100"
       >
-        <!-- 編輯區域 -->
-        <!-- 講義模式：多個獨立紙張容器 -->
-          <div v-if="resource.mode === 'HANDOUT'" class="p-8" ref="handoutContainerRef">
-          <div 
-            v-for="(pageContent, pageIndex) in handoutPages" 
-            :key="`page-${pageIndex}`"
-            class="paper-container mx-auto bg-white shadow-md mb-8 relative"
-            :class="[
-              (resource.settings?.handout?.paperSize === 'A4' || resource.settings?.paperSize === 'A4') ? 'w-[210mm]' : 'w-[250mm]'
-            ]"
-            :style="{
-              height: (resource.settings?.handout?.paperSize === 'A4' || resource.settings?.paperSize === 'A4') ? '297mm' : '353mm',
-              padding: '20mm',
-              overflow: 'hidden'
-            }"
-          >
-            <!-- 頁碼顯示 -->
-            <div class="page-number-display absolute top-4 right-4 bg-white/90 px-3 py-1 rounded text-sm font-semibold text-gray-600 shadow-sm border border-gray-200">
-              第 {{ pageIndex + 1 }} 頁
-            </div>
-            
-            <!-- 該頁的 BlockEditor（可編輯） -->
-            <BlockEditor
-              :ref="el => { if (el) pageEditorRefs[pageIndex] = el }"
-              :model-value="{ type: 'doc', content: pageContent }"
-              @update:model-value="(newContent) => handlePageEditorUpdate(pageIndex, newContent.content || [])"
-              :templates="templates"
-              :questions="questions"
-              :questions-pagination="questionsPagination"
-              @load-more-questions="loadMoreQuestions"
-              :image-mappings="imageMappings"
-              :readonly="false"
-              :ignore-external-updates="isUpdatingFromPageEditor"
-              :is-handout-mode="true"
-              @request-upload="openImageFolderUpload"
-            />
-          </div>
-        </div>
-        
-        <!-- 其他模式：單一編輯器 -->
-        <div v-else class="relative print:shadow-none print-paper mx-auto bg-white shadow-sm my-8"
-          :class="[
-            resource.settings?.handout?.paperSize === 'A4' || resource.settings?.paperSize === 'A4' ? 'w-[210mm]' : 'w-[250mm]'
-          ]"
+        <!-- 編輯區域 - 統一使用單一連續編輯器 -->
+        <div class="relative print:shadow-none continuous-editor mx-auto bg-white shadow-sm my-8 max-w-4xl"
           :style="{
-            padding: '20mm',
-            minHeight: (resource.settings?.handout?.paperSize === 'A4' || resource.settings?.paperSize === 'A4') ? '297mm' : '353mm'
+            padding: '40px',
+            minHeight: '100vh'
           }"
         >
           <BlockEditor
@@ -282,16 +317,32 @@
         </div>
       </div>
     </main>
+    
+    <!-- 列印準備 Loading Modal -->
+    <div 
+      v-if="isPreparingPrint" 
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+      @click.stop
+    >
+      <div class="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+        <div class="flex flex-col items-center space-y-4">
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+          <div class="text-center">
+            <h3 class="text-lg font-medium text-gray-900 mb-2">準備列印預覽</h3>
+            <p class="text-sm text-gray-500">{{ printPreparationMessage }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted, watch, computed, nextTick, shallowRef } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, watch, computed, nextTick, shallowRef, provide } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { learningResourceAPI, courseAPI, studentGroupAPI, hashtagAPI, contentTemplateAPI, uploadImageAPI, questionBankAPI } from '../services/api'
 import BlockEditor from '../components/BlockEditor/BlockEditor.vue'
 import { useMarkdownRenderer } from '../composables/useMarkdownRenderer'
-import { getModeConfig } from '../config/resourceModes'
 
 const props = defineProps({
   id: {
@@ -357,12 +408,7 @@ const resource = reactive({
   course_ids: [],
   student_group_ids: [],
   tag_ids: [],
-  settings: {
-    handout: {
-      paperSize: 'A4',
-      orientation: 'portrait'
-    }
-  }
+  settings: {}
 })
 
 const showJson = ref(false) // 預設隱藏 JSON
@@ -380,6 +426,41 @@ const imageFolderInput = ref(null)
 const uploadingImages = ref(false)
 const replacingImages = ref(false)
 const blockEditorRef = ref(null)
+
+// 列印模式選擇
+const printModeSelection = ref('question-only')
+
+// 追蹤模式切換歷史
+const printModeHistory = ref([])
+
+// 列印準備狀態
+const isPreparingPrint = ref(false)
+const printPreparationMessage = ref('正在準備列印內容...')
+
+// 浮水印設定
+const watermarkEnabled = ref(false)
+const watermarkImage = ref(null)
+const watermarkOpacity = ref(10) // 預設 10%
+const watermarkInput = ref(null)
+
+// 提供給子組件使用
+provide('printMode', printModeSelection)
+
+// 監聽模式切換
+watch(printModeSelection, (newMode, oldMode) => {
+  printModeHistory.value.push({
+    from: oldMode,
+    to: newMode,
+    timestamp: Date.now()
+  })
+  // 只保留最近 5 次切換記錄
+  if (printModeHistory.value.length > 5) {
+    printModeHistory.value.shift()
+  }
+  // #region agent log
+  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:printModeSelection:watch',message:'Print mode changed',data:{from:oldMode,to:newMode,history:printModeHistory.value},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-2',hypothesisId:'F'})}).catch(()=>{});
+  // #endregion
+})
 
 // 獲取當前資源的映射表 key
 const getImageMappingKey = () => {
@@ -476,245 +557,9 @@ function estimateNodeHeight(node) {
   return baseHeights[node.type] || 60
 }
 
-// 存儲每個頁面的編輯器實例引用（用於跨頁編輯同步）
-const pageEditorRefs = ref([])
-// 防止循環更新的標誌
-const isUpdatingFromPageEditor = ref(false)
-// 講義容器引用（用於檢查滾動）
-const handoutContainerRef = ref(null)
-// 畫布容器引用
-const canvasContainerRef = ref(null)
+// 移除舊的分頁邏輯 - 現在使用單一連續編輯器
 
-// 計算講義模式的頁面分割
-// 講義模式只依賴紙張大小自動分頁，完全忽略分頁符號
-// 設計原則：講義模式 = 固定紙張大小 + 自動分頁，不支援手動分頁符號
-const handoutPages = computed(() => {
-  if (resource.mode !== 'HANDOUT') return []
-  
-  const paperSize = resource.settings?.handout?.paperSize || resource.settings?.paperSize || 'A4'
-  const pageHeightPx = paperSize === 'A4' ? 971 : 1183 // A4: 257mm * 3.7795, B4: 313mm * 3.7795
-  const pages = []
-  let currentPage = []
-  let currentHeight = 0
-  
-  // 取得 Tiptap 結構的內容
-  const content = tiptapStructureRef.value?.content || []
-  
-  // 遍歷所有頂層節點，只依賴紙張大小計算分頁
-  content.forEach((node) => {
-    // 講義模式完全忽略分頁符號，只依賴紙張大小自動分頁
-    if (node.type === 'pageBreak') {
-      return // 跳過分頁符號節點（講義模式不支援手動分頁符號）
-    }
-    
-    // 估算節點高度
-    const estimatedHeight = estimateNodeHeight(node)
-    
-    // 如果加入此節點會超過頁面高度，且當前頁已有內容
-    if (currentHeight + estimatedHeight > pageHeightPx && currentPage.length > 0) {
-      // 完整節點移到下一頁（不分割）
-      pages.push([...currentPage])
-      currentPage = [node]
-      currentHeight = estimatedHeight
-    } else {
-      // 節點可以放在當前頁
-      currentPage.push(node)
-      currentHeight += estimatedHeight
-    }
-  })
-  
-  // 加入最後一頁
-  if (currentPage.length > 0) {
-    pages.push(currentPage)
-  }
-  
-  // 如果沒有任何內容，至少返回一頁空頁
-  if (pages.length === 0) {
-    pages.push([])
-  }
-  
-  return pages
-})
-
-// 檢查頁面內容是否超過頁面高度，如果超過則自動分割
-const checkAndSplitPage = async (pageIndex, pageContent) => {
-  const paperSize = resource.settings?.handout?.paperSize || resource.settings?.paperSize || 'A4'
-  const pageHeightPx = paperSize === 'A4' ? 971 : 1183
-  
-  // 等待 DOM 更新
-  await nextTick()
-  
-  // 嘗試獲取實際 DOM 高度
-  const editorRef = pageEditorRefs.value[pageIndex]
-  let actualHeight = 0
-  
-  if (editorRef && editorRef.editor && editorRef.editor.view) {
-    const editorDOM = editorRef.editor.view.dom
-    if (editorDOM) {
-      // 獲取游標提示方塊的高度
-      const cursorIndicator = document.querySelector('.cursor-indicator')
-      let cursorIndicatorHeight = 0
-      if (cursorIndicator) {
-        cursorIndicatorHeight = cursorIndicator.offsetHeight
-        const marginBottom = parseFloat(window.getComputedStyle(cursorIndicator).marginBottom) || 0
-        cursorIndicatorHeight += marginBottom
-      }
-      
-      // 實際內容高度 = scrollHeight - cursorIndicatorHeight
-      actualHeight = editorDOM.scrollHeight - cursorIndicatorHeight
-    }
-  }
-  
-  // 如果無法獲取實際高度，使用估算高度
-  if (actualHeight === 0) {
-    pageContent.forEach((node) => {
-      actualHeight += estimateNodeHeight(node)
-    })
-  }
-  
-  // 如果內容超過頁面高度，需要分割
-  if (actualHeight > pageHeightPx && pageContent.length > 0) {
-    const currentPage = []
-    const nextPage = []
-    let currentHeight = 0
-    
-    // 將節點分配到當前頁和下一頁
-    pageContent.forEach((node) => {
-      const nodeHeight = estimateNodeHeight(node)
-      
-      // 如果加入此節點會超過頁面，且當前頁已有內容
-      if (currentHeight + nodeHeight > pageHeightPx && currentPage.length > 0) {
-        // 完整節點移到下一頁（不分割）
-        nextPage.push(node)
-      } else {
-        currentPage.push(node)
-        currentHeight += nodeHeight
-      }
-    })
-    
-    return { currentPage, nextPage, needsNewPage: nextPage.length > 0 }
-  }
-  
-  return { currentPage: pageContent, nextPage: [], needsNewPage: false }
-}
-
-// 處理單頁編輯器更新（跨頁編輯同步）
-const handlePageEditorUpdate = async (pageIndex, pageContent) => {
-  
-  // 防止循環更新
-  if (isUpdatingFromPageEditor.value) {
-    return
-  }
-  
-  isUpdatingFromPageEditor.value = true
-  
-  try {
-    // 從所有頁面的編輯器實例獲取內容並合併成連續流
-    // 講義模式不插入分頁符號，完全依賴 handoutPages computed 根據紙張大小自動分頁
-    const newContent = []
-    
-    
-    // 只從編輯器實例獲取內容，不使用 currentPages（避免使用舊的分頁結果）
-    for (let idx = 0; idx < pageEditorRefs.value.length; idx++) {
-      const editorRef = pageEditorRefs.value[idx]
-      
-      if (idx === pageIndex) {
-        // 使用更新後的頁面內容
-        if (pageContent && pageContent.length > 0) {
-          newContent.push(...pageContent)
-        }
-      } else if (editorRef && editorRef.editor) {
-        // 從其他頁面的編輯器實例獲取當前內容
-        const pageJson = editorRef.editor.getJSON()
-        if (pageJson?.content && pageJson.content.length > 0) {
-          newContent.push(...pageJson.content)
-        }
-      }
-      // 如果編輯器實例不存在，跳過（不添加任何內容）
-      // 這樣可以避免使用舊的 currentPages 導致內容重複
-      // 注意：講義模式不插入 pageBreak，完全由 handoutPages 根據紙張大小自動計算分頁
-    }
-    
-    
-    // 過濾無效節點（空的 paragraph 節點會被 Tiptap 過濾掉，所以我們先過濾掉）
-    const validContent = newContent.filter(n => {
-      if (!n || !n.type) return false
-      // 空的 paragraph 節點會被 Tiptap 過濾，但我們保留它們，因為它們可能是有意義的空白
-      // 實際上，Tiptap 會自動處理這些，所以我們不需要過濾
-      return true
-    })
-    
-    
-    // 更新主 tiptapStructure
-    tiptapStructureRef.value = {
-      type: 'doc',
-      content: validContent
-    }
-    
-    // 等待響應式更新完成，確保 handoutPages 能正確重新計算
-    await nextTick()
-    // 再次等待，確保所有 computed 屬性都重新計算完成
-    await nextTick()
-  } finally {
-    // 延遲重置標誌，確保所有響應式更新完成
-    setTimeout(() => {
-      isUpdatingFromPageEditor.value = false
-    }, 150)
-  }
-}
-
-// 模式編輯器組件（動態載入）
-const modeEditorComponent = shallowRef(null)
-
-// 載入模式編輯器
-const loadModeEditor = async () => {
-  // 在 viewMode 下不載入編輯器組件，避免響應式循環
-  if (props.viewMode) {
-    modeEditorComponent.value = null
-    return
-  }
-  
-  const modeConfig = getModeConfig(resource.mode)
-  if (modeConfig && modeConfig.editor) {
-    try {
-      const editorModule = await modeConfig.editor()
-      modeEditorComponent.value = editorModule.default || editorModule
-    } catch (error) {
-      console.error('載入模式編輯器失敗：', error)
-      modeEditorComponent.value = null
-    }
-  } else {
-    modeEditorComponent.value = null
-  }
-}
-
-// 更新設定（避免在初始化期間觸發不必要的更新）
-const updateSettings = (newSettings) => {
-  if (isInitializing.value) return
-  resource.settings = { ...resource.settings, ...newSettings }
-}
-
-// 監聽模式變化，重新載入編輯器
-// 監聽 handoutPages 長度變化，重置 pageEditorRefs
-watch(() => handoutPages.value.length, (newLength) => {
-  if (pageEditorRefs.value.length !== newLength) {
-    pageEditorRefs.value = new Array(newLength).fill(null)
-  }
-}, { immediate: true })
-
-watch(() => resource.mode, () => {
-  loadModeEditor()
-  // 根據模式初始化設定（在 viewMode 或初始化期間不修改 settings）
-  if (!props.viewMode && !isInitializing.value) {
-    const modeConfig = getModeConfig(resource.mode)
-    if (modeConfig && modeConfig.defaultSettings) {
-      resource.settings = {
-        ...resource.settings,
-        ...modeConfig.defaultSettings
-      }
-    }
-  }
-}, { immediate: true })
+// 移除模式編輯器相關邏輯（已不需要）
 
 // Refs (保留用於未來可能的功能)
 const canvasContainer = ref(null)
@@ -930,29 +775,10 @@ const fetchInitialData = async () => {
       resource.title = data.title
       resource.mode = data.mode || 'HANDOUT'
       resource.course_ids = data.courses?.map(c => c.course_id) || []
-      // 載入對應的模式編輯器
-      await loadModeEditor()
       resource.student_group_ids = data.student_group_ids || []
       resource.tag_ids = data.tag_ids || []
-      // 確保 settings 有完整的默認值
-      const defaultSettings = {
-        handout: {
-          paperSize: 'A4',
-          orientation: 'portrait',
-          outputFormats: ['question_only'],
-          margins: { top: 20, right: 20, bottom: 20, left: 20 },
-          fontSize: 12,
-          lineHeight: 1.5
-        }
-      }
-      resource.settings = data.settings ? {
-        ...defaultSettings,
-        ...data.settings,
-        handout: {
-          ...defaultSettings.handout,
-          ...(data.settings.handout || {})
-        }
-      } : defaultSettings
+      // 簡化 settings（移除不必要的講義設定）
+      resource.settings = data.settings || {}
       // 統一使用 tiptap_structure
       if (data.tiptap_structure && data.tiptap_structure.type === 'doc') {
         tiptapStructureRef.value = data.tiptap_structure
@@ -1037,17 +863,48 @@ const saveResource = async (manual = false) => {
   
   isSaving.value = true
   
+  // #region agent log
+  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:saveResource:before_payload',message:'Resource data before payload creation',data:{resource:JSON.parse(JSON.stringify(resource)),tiptapStructureType:typeof tiptapStructureRef.value,hasTiptapStructure:!!tiptapStructureRef.value},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A,B,C,D'})}).catch(()=>{});
+  // #endregion
+  
+  // 過濾掉 course_ids 中的 null 值
+  const cleanedCourseIds = (resource.course_ids || []).filter(id => id !== null && id !== undefined)
+  
+  // #region agent log
+  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:saveResource:after_filter',message:'Filtered null values from course_ids',data:{originalCourseIds:resource.course_ids,cleanedCourseIds:cleanedCourseIds},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'B'})}).catch(()=>{});
+  // #endregion
+  
   const payload = {
     ...resource,
+    course_ids: cleanedCourseIds,
     tiptap_structure: tiptapStructureRef.value,
     tag_ids_input: resource.tag_ids,
     student_group_ids: resource.student_group_ids
   }
   
+  // #region agent log
+  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:saveResource:payload_created',message:'Payload created',data:{payloadKeys:Object.keys(payload),courseIds:payload.course_ids,studentGroupIds:payload.student_group_ids,mode:payload.mode,title:payload.title,tagIdsInput:payload.tag_ids_input,hasTiptapStructure:!!payload.tiptap_structure},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'B,C,D'})}).catch(()=>{});
+  // #endregion
+  
+  // #region agent log
+  try {
+    const payloadStr = JSON.stringify(payload);
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:saveResource:payload_serialized',message:'Payload serialization successful',data:{payloadLength:payloadStr.length,payloadPreview:payloadStr.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
+  } catch (serError) {
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:saveResource:payload_serialization_error',message:'Payload serialization FAILED',data:{error:serError.message},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
+  }
+  // #endregion
+  
   try {
     let response
     if (route.params.id) {
+      // #region agent log
+      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:saveResource:before_update',message:'About to call API update',data:{resourceId:route.params.id},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'E'})}).catch(()=>{});
+      // #endregion
       response = await learningResourceAPI.update(route.params.id, payload)
+      // #region agent log
+      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:saveResource:after_update',message:'API update successful',data:{responseStatus:response.status},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'E'})}).catch(()=>{});
+      // #endregion
     } else {
       response = await learningResourceAPI.create(payload)
       // Redirect to edit mode if created
@@ -1068,6 +925,9 @@ const saveResource = async (manual = false) => {
     }
     lastSaved.value = new Date()
   } catch (error) {
+    // #region agent log
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:saveResource:api_error',message:'API call failed',data:{errorMessage:error.message,errorResponse:error.response?.data,errorStatus:error.response?.status,errorStatusText:error.response?.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'E'})}).catch(()=>{});
+    // #endregion
     console.error('Save failed', error)
     if (manual) {
       const errorMsg = error.response?.data?.detail || '儲存失敗，請稍後再試'
@@ -1109,32 +969,40 @@ if (!props.viewMode) {
 
 // 生成預覽內容的通用函數
 const generatePrintPreview = async (iframeDoc, iframeWindow, triggerPrint = false) => {
-  // 使用 iframe 隔離列印內容，確保樣式不受影響
-  await nextTick() // 確保 DOM 已更新
+  // #region agent log
+  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:generatePrintPreview:start',message:'generatePrintPreview called',data:{printModeSelection:printModeSelection.value,triggerPrint:triggerPrint,iframeBodyContent:iframeDoc.body ? iframeDoc.body.innerHTML.substring(0, 200) : 'no body'},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-2',hypothesisId:'F'})}).catch(()=>{});
+  // #endregion
   
-  // 獲取紙張大小設定
-  const paperSize = resource.settings?.handout?.paperSize || resource.settings?.paperSize || 'A4'
-  const paperWidth = paperSize === 'A4' ? '210mm' : '250mm'
-  const paperHeight = paperSize === 'A4' ? '297mm' : '353mm'
+  // 等待 Vue 響應式更新完成（模式切換後需要時間讓子組件重新渲染）
+  await nextTick()
+  // 額外等待一小段時間確保所有組件都已完成更新
+  await new Promise(resolve => setTimeout(resolve, 100))
   
-  // 獲取所有有內容的頁面 - 支持 .print-paper 和 .paper-container
-  const printPaperElements = document.querySelectorAll('.print-paper')
-  const paperContainerElements = document.querySelectorAll('.paper-container')
-  const allPaperElements = [...printPaperElements, ...paperContainerElements]
+  // 固定使用 A4 紙張大小
+  const paperSize = 'A4'
+  const paperWidth = '210mm'
+  const paperHeight = '297mm'
   
+  // 獲取編輯器容器（連續編輯模式）
+  const editorContainer = document.querySelector('.continuous-editor') || 
+                          document.querySelector('.block-editor-container') ||
+                          document.querySelector('.ProseMirror')
   
-  const pagesWithContent = Array.from(allPaperElements).filter(page => {
-    // 檢查頁面是否有實際內容（排除空白頁）
-    const hasBlocks = page.querySelector('[data-block-id]')
-    const hasText = page.textContent.trim().length > 0
-    const hasProseMirror = page.querySelector('.ProseMirror')
-    
-    
-    return hasBlocks || hasText || hasProseMirror
-  })
+  // 檢查是否有內容
+  if (!editorContainer) {
+    if (triggerPrint) {
+      alert('沒有可列印的內容')
+      return null
+    }
+    return null
+  }
   
+  // 檢查編輯器是否有實際內容
+  const hasText = editorContainer.textContent.trim().length > 0
+  const hasProseMirror = editorContainer.querySelector('.ProseMirror')
+  const hasContent = hasText || hasProseMirror
   
-  if (pagesWithContent.length === 0) {
+  if (!hasContent) {
     if (triggerPrint) {
       alert('沒有可列印的內容')
       return null
@@ -1195,72 +1063,529 @@ const generatePrintPreview = async (iframeDoc, iframeWindow, triggerPrint = fals
   const styleEl = iframeDoc.createElement('style')
   
   styleEl.textContent = styleContent + `
-    @page {
-      size: ${paperSize};
-      margin: 0;
-    }
+    /* 基本樣式（用於預覽） */
     body {
       margin: 0;
       padding: 0;
       background: white;
     }
-    .print-paper, .paper-container {
-      width: ${paperWidth};
-      min-height: ${paperHeight};
-      padding: 20mm;
+    
+    .print-container {
+      width: 100%;
+      max-width: ${paperWidth};
       margin: 0 auto;
       background: white;
       box-sizing: border-box;
-      page-break-after: always;
-      break-after: page;
+      position: relative;
     }
-    .print-paper:last-child, .paper-container:last-child {
-      page-break-after: auto;
-      break-after: auto;
+    
+    /* 浮水印容器 */
+    .watermark {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      opacity: 0.1;
+      z-index: -1;
+      pointer-events: none;
     }
-    /* 修復根號線拉長問題：限制根號內部元素的最大高度 */
-    .katex .sqrt .vlist-t {
-      max-height: 1.2em !important;
-      overflow: hidden !important;
+    
+    .watermark img {
+      max-width: 300px;
+      max-height: 300px;
     }
-    /* 確保 SVG 根號線不會被裁剪 */
-    .katex .sqrt .svg-align {
-      overflow: visible !important;
+    
+    /* 列印專用樣式 */
+    @page {
+      size: ${paperSize};
+      margin: 0;
     }
-    /* 隱藏可能產生垂直線的 vlist-t2 邊框 */
-    .katex .sqrt .vlist-t2 {
-      border-left: none !important;
-    }
-    /* 修復分數線位置：使分數線在分子和分母中間 */
-    .katex .mfrac > .frac-line,
-    .katex .frac-line {
-      border-bottom-width: 0.04em !important;
-      min-height: 0.04em !important;
-      margin-top: 0.188em !important;
-      margin-bottom: 0.092em !important;
-    }
-    /* 分數容器 */
-    .katex .mfrac {
-      padding-top: 0.158em !important;
-      padding-bottom: 0.082em !important;
+    
+    @media print {
+      /* 移除瀏覽器預設的頁首頁尾 - 注意：瀏覽器的頁首頁尾無法完全通過 CSS 移除，
+         但可以通過設置 margin: 0 來減少它們的空間。用戶需要在瀏覽器的列印設置中
+         手動關閉頁首頁尾（在 Chrome/Edge 中：更多設置 > 選項 > 頁首和頁尾） */
+      body::before,
+      body::after {
+        display: none !important;
+      }
+      
+      /* 確保內容區域有適當的內邊距，因為 @page margin 設為 0 */
+      .print-container {
+        padding: 20mm !important;
+      }
+      
+      /* 題目區塊避免分頁 */
+      .question-display {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        margin-bottom: 1.5rem !important;
+      }
+      
+      /* 大題標題避免分頁 */
+      .section-block {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+      
+      /* 答案和詳解區域的列印樣式 - 使用更高特異性確保覆蓋 scoped 樣式 */
+      .print-container .answer-section,
+      .print-container .solution-section,
+      .answer-section,
+      .solution-section {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        background: white !important;
+        border: none !important;
+        border-left: none !important;
+        padding: 0.75rem 0 !important;
+        margin-top: 0.75rem !important;
+        margin-bottom: 0.5rem !important;
+      }
+      
+      .print-container .answer-label,
+      .print-container .solution-label,
+      .answer-label,
+      .solution-label {
+        font-size: 0.875rem !important;
+        font-weight: 700 !important;
+        color: black !important;
+        margin-bottom: 0.5rem !important;
+        display: block !important;
+      }
+      
+      .print-container .answer-content,
+      .print-container .solution-content,
+      .answer-content,
+      .solution-content {
+        font-size: 0.875rem !important;
+        color: black !important;
+        line-height: 1.6 !important;
+        margin-top: 0.25rem !important;
+      }
+      
+      /* 確保題目內容有適當間距 */
+      .print-container .question-text,
+      .question-text {
+        margin-bottom: 0.5rem !important;
+        line-height: 1.6 !important;
+        color: black !important;
+      }
+      
+      .print-container .question-content,
+      .question-content {
+        line-height: 1.6 !important;
+        color: black !important;
+      }
+      
+      /* 確保所有文字顏色為黑色 */
+      * {
+        color: black !important;
+      }
+      
+      /* 確保圖片不會太大 */
+      .print-container img,
+      img {
+        max-width: 100% !important;
+        height: auto !important;
+        page-break-inside: avoid !important;
+        display: block !important;
+        margin: 0.5rem 0 !important;
+      }
+      
+      /* KaTeX 樣式 - 確保在列印時正確顯示 */
+      .print-container .katex,
+      .katex {
+        color: black !important;
+        font-size: 1.1em !important;
+        line-height: 1.6 !important;
+      }
+      
+      .print-container .katex *,
+      .katex * {
+        color: black !important;
+      }
+      
+      /* 修復根號線拉長問題：限制根號內部元素的最大高度 */
+      .print-container .katex .sqrt .vlist-t,
+      .katex .sqrt .vlist-t {
+        max-height: 1.2em !important;
+        overflow: hidden !important;
+      }
+      
+      /* 確保 SVG 根號線不會被裁剪 */
+      .print-container .katex .sqrt .svg-align,
+      .katex .sqrt .svg-align {
+        overflow: visible !important;
+      }
+      
+      /* 隱藏可能產生垂直線的 vlist-t2 邊框 */
+      .print-container .katex .sqrt .vlist-t2,
+      .katex .sqrt .vlist-t2 {
+        border-left: none !important;
+      }
+      
+      /* 修復分數線位置：使分數線在分子和分母中間 */
+      .print-container .katex .mfrac > .frac-line,
+      .print-container .katex .frac-line,
+      .katex .mfrac > .frac-line,
+      .katex .frac-line {
+        border-bottom-width: 0.04em !important;
+        min-height: 0.04em !important;
+        margin-top: 0.188em !important;
+        margin-bottom: 0.092em !important;
+      }
+      
+      /* 分數容器 */
+      .print-container .katex .mfrac,
+      .katex .mfrac {
+        padding-top: 0.158em !important;
+        padding-bottom: 0.082em !important;
+      }
     }
   `
   iframeDoc.head.appendChild(styleEl)
   
-  // 複製頁面內容到 iframe
+  // 複製編輯器內容到 iframe
   const container = iframeDoc.createElement('div')
+  container.className = 'print-container'
   container.style.background = 'white'
   
-  pagesWithContent.forEach((page, index) => {
-    const clone = page.cloneNode(true)
-    
-    // 確保所有樣式都被複製
-    const computedStyle = window.getComputedStyle(page)
-    clone.style.cssText = computedStyle.cssText
-    clone.style.margin = '0'
-    clone.style.marginBottom = index < pagesWithContent.length - 1 ? '20mm' : '0'
-    container.appendChild(clone)
+  // 檢查原始 DOM 中答案和詳解的顯示狀態
+  const originalAnswerSections = editorContainer.querySelectorAll('.answer-section')
+  const originalSolutionSections = editorContainer.querySelectorAll('.solution-section')
+  const originalVisibleAnswers = Array.from(originalAnswerSections).filter(el => {
+    const style = window.getComputedStyle(el)
+    return style.display !== 'none' && style.visibility !== 'hidden'
   })
+  const originalVisibleSolutions = Array.from(originalSolutionSections).filter(el => {
+    const style = window.getComputedStyle(el)
+    return style.display !== 'none' && style.visibility !== 'hidden'
+  })
+  
+  // #region agent log
+  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:generatePrintPreview:beforeClone',message:'Before cloning editor content',data:{printMode:printModeSelection.value,originalAnswerSectionsCount:originalAnswerSections.length,originalSolutionSectionsCount:originalSolutionSections.length,originalVisibleAnswersCount:originalVisibleAnswers.length,originalVisibleSolutionsCount:originalVisibleSolutions.length},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-2',hypothesisId:'A,B,C'})}).catch(()=>{});
+  // #endregion
+  
+  // 複製編輯器內容
+  const clone = editorContainer.cloneNode(true)
+  
+  // 檢查克隆後的 DOM 中答案和詳解的狀態
+  const clonedAnswerSections = clone.querySelectorAll('.answer-section')
+  const clonedSolutionSections = clone.querySelectorAll('.solution-section')
+  const clonedVisibleAnswers = Array.from(clonedAnswerSections).filter(el => {
+    const style = window.getComputedStyle(el)
+    return style.display !== 'none' && style.visibility !== 'hidden'
+  })
+  const clonedVisibleSolutions = Array.from(clonedSolutionSections).filter(el => {
+    const style = window.getComputedStyle(el)
+    return style.display !== 'none' && style.visibility !== 'hidden'
+  })
+  
+  // #region agent log
+  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:generatePrintPreview:afterClone',message:'After cloning editor content',data:{clonedAnswerSectionsCount:clonedAnswerSections.length,clonedSolutionSectionsCount:clonedSolutionSections.length,clonedVisibleAnswersCount:clonedVisibleAnswers.length,clonedVisibleSolutionsCount:clonedVisibleSolutions.length,cloneChildrenCount:clone.children.length,cloneTextLength:clone.textContent.length,hasQuestionBlocks:clone.querySelectorAll('.question-display').length,hasSectionBlocks:clone.querySelectorAll('.section-block').length},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-2',hypothesisId:'C,D,E'})}).catch(()=>{});
+  // #endregion
+  
+  // 移除編輯器特定的類別和屬性
+  clone.classList.remove('continuous-editor')
+  clone.removeAttribute('contenteditable')
+  
+  // 移除所有編輯相關的元素（如工具列、選單等）
+  const editableElements = clone.querySelectorAll('[contenteditable]')
+  editableElements.forEach(el => el.removeAttribute('contenteditable'))
+  
+  // 移除懸停工具列
+  const toolbars = clone.querySelectorAll('.question-toolbar, .section-toolbar')
+  toolbars.forEach(toolbar => toolbar.remove())
+  
+  // 直接移除答案和詳解區域的 scoped 樣式屬性（data-v-xxx），並添加內聯樣式覆蓋
+  const answerSections = clone.querySelectorAll('.answer-section')
+  const solutionSections = clone.querySelectorAll('.solution-section')
+  
+  answerSections.forEach(section => {
+    // 移除所有 scoped 屬性
+    Array.from(section.attributes).forEach(attr => {
+      if (attr.name.startsWith('data-v-')) {
+        section.removeAttribute(attr.name)
+      }
+    })
+    // 添加內聯樣式確保列印時正確顯示
+    section.style.cssText = 'break-inside: avoid !important; page-break-inside: avoid !important; background: white !important; border: none !important; border-left: none !important; padding: 0.75rem 0 !important; margin-top: 0.75rem !important; margin-bottom: 0.5rem !important;'
+  })
+  
+  solutionSections.forEach(section => {
+    // 移除所有 scoped 屬性
+    Array.from(section.attributes).forEach(attr => {
+      if (attr.name.startsWith('data-v-')) {
+        section.removeAttribute(attr.name)
+      }
+    })
+    // 添加內聯樣式確保列印時正確顯示
+    section.style.cssText = 'break-inside: avoid !important; page-break-inside: avoid !important; background: white !important; border: none !important; border-left: none !important; padding: 0.75rem 0 !important; margin-top: 0.75rem !important; margin-bottom: 0.5rem !important;'
+  })
+  
+  // 同樣處理標籤和內容
+  const answerLabels = clone.querySelectorAll('.answer-label')
+  const solutionLabels = clone.querySelectorAll('.solution-label')
+  const answerContents = clone.querySelectorAll('.answer-content')
+  const solutionContents = clone.querySelectorAll('.solution-content')
+  
+  answerLabels.forEach(label => {
+    Array.from(label.attributes).forEach(attr => {
+      if (attr.name.startsWith('data-v-')) {
+        label.removeAttribute(attr.name)
+      }
+    })
+    label.style.cssText = 'font-size: 0.875rem !important; font-weight: 700 !important; color: black !important; margin-bottom: 0.5rem !important; display: block !important;'
+  })
+  
+  solutionLabels.forEach(label => {
+    Array.from(label.attributes).forEach(attr => {
+      if (attr.name.startsWith('data-v-')) {
+        label.removeAttribute(attr.name)
+      }
+    })
+    label.style.cssText = 'font-size: 0.875rem !important; font-weight: 700 !important; color: black !important; margin-bottom: 0.5rem !important; display: block !important;'
+  })
+  
+  answerContents.forEach(content => {
+    Array.from(content.attributes).forEach(attr => {
+      if (attr.name.startsWith('data-v-')) {
+        content.removeAttribute(attr.name)
+      }
+    })
+    content.style.cssText = 'font-size: 0.875rem !important; color: black !important; line-height: 1.6 !important; margin-top: 0.25rem !important;'
+  })
+  
+  solutionContents.forEach(content => {
+    Array.from(content.attributes).forEach(attr => {
+      if (attr.name.startsWith('data-v-')) {
+        content.removeAttribute(attr.name)
+      }
+    })
+    content.style.cssText = 'font-size: 0.875rem !important; color: black !important; line-height: 1.6 !important; margin-top: 0.25rem !important;'
+  })
+  
+  // #region agent log
+  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:generatePrintPreview:cleaned',message:'Content cleaned for print',data:{questionDisplays:clone.querySelectorAll('.question-display').length,answerSections:clone.querySelectorAll('.answer-section').length,solutionSections:clone.querySelectorAll('.solution-section').length,answerSectionsWithContent:Array.from(clone.querySelectorAll('.answer-section')).filter(el=>el.textContent.trim().length>0).length,solutionSectionsWithContent:Array.from(clone.querySelectorAll('.solution-section')).filter(el=>el.textContent.trim().length>0).length,answerSectionsWithInlineStyles:Array.from(clone.querySelectorAll('.answer-section')).filter(el=>el.style.cssText.includes('background: white')).length,solutionSectionsWithInlineStyles:Array.from(clone.querySelectorAll('.solution-section')).filter(el=>el.style.cssText.includes('background: white')).length},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-3',hypothesisId:'H'})}).catch(()=>{});
+  // #endregion
+  
+  container.appendChild(clone)
+  
+  // 在 iframe 中再次強制應用內聯樣式，確保覆蓋所有樣式表規則
+  // 這需要在 clone 添加到 iframe 之後執行，因為樣式表可能會覆蓋之前的內聯樣式
+  await nextTick()
+  
+  // 在 iframe 中查找所有答案和詳解區域，強制應用內聯樣式
+  const iframeAnswerSectionsAfterAppend = iframeDoc.querySelectorAll('.answer-section')
+  const iframeSolutionSectionsAfterAppend = iframeDoc.querySelectorAll('.solution-section')
+  
+  iframeAnswerSectionsAfterAppend.forEach(section => {
+    // 移除所有 scoped 屬性
+    Array.from(section.attributes).forEach(attr => {
+      if (attr.name.startsWith('data-v-')) {
+        section.removeAttribute(attr.name)
+      }
+    })
+    // 強制應用內聯樣式，使用 setProperty 確保 !important 生效
+    section.style.setProperty('background', 'white', 'important')
+    section.style.setProperty('border', 'none', 'important')
+    section.style.setProperty('border-left', 'none', 'important')
+    section.style.setProperty('padding', '0.75rem 0', 'important')
+    section.style.setProperty('margin-top', '0.75rem', 'important')
+    section.style.setProperty('margin-bottom', '0.5rem', 'important')
+    section.style.setProperty('break-inside', 'avoid', 'important')
+    section.style.setProperty('page-break-inside', 'avoid', 'important')
+  })
+  
+  iframeSolutionSectionsAfterAppend.forEach(section => {
+    // 移除所有 scoped 屬性
+    Array.from(section.attributes).forEach(attr => {
+      if (attr.name.startsWith('data-v-')) {
+        section.removeAttribute(attr.name)
+      }
+    })
+    // 強制應用內聯樣式，使用 setProperty 確保 !important 生效
+    section.style.setProperty('background', 'white', 'important')
+    section.style.setProperty('border', 'none', 'important')
+    section.style.setProperty('border-left', 'none', 'important')
+    section.style.setProperty('padding', '0.75rem 0', 'important')
+    section.style.setProperty('margin-top', '0.75rem', 'important')
+    section.style.setProperty('margin-bottom', '0.5rem', 'important')
+    section.style.setProperty('break-inside', 'avoid', 'important')
+    section.style.setProperty('page-break-inside', 'avoid', 'important')
+  })
+  
+  // 同樣處理標籤和內容
+  const iframeAnswerLabels = iframeDoc.querySelectorAll('.answer-label')
+  const iframeSolutionLabels = iframeDoc.querySelectorAll('.solution-label')
+  const iframeAnswerContents = iframeDoc.querySelectorAll('.answer-content')
+  const iframeSolutionContents = iframeDoc.querySelectorAll('.solution-content')
+  
+  iframeAnswerLabels.forEach(label => {
+    Array.from(label.attributes).forEach(attr => {
+      if (attr.name.startsWith('data-v-')) {
+        label.removeAttribute(attr.name)
+      }
+    })
+    label.style.setProperty('font-size', '0.875rem', 'important')
+    label.style.setProperty('font-weight', '700', 'important')
+    label.style.setProperty('color', 'black', 'important')
+    label.style.setProperty('margin-bottom', '0.5rem', 'important')
+    label.style.setProperty('display', 'block', 'important')
+  })
+  
+  iframeSolutionLabels.forEach(label => {
+    Array.from(label.attributes).forEach(attr => {
+      if (attr.name.startsWith('data-v-')) {
+        label.removeAttribute(attr.name)
+      }
+    })
+    label.style.setProperty('font-size', '0.875rem', 'important')
+    label.style.setProperty('font-weight', '700', 'important')
+    label.style.setProperty('color', 'black', 'important')
+    label.style.setProperty('margin-bottom', '0.5rem', 'important')
+    label.style.setProperty('display', 'block', 'important')
+  })
+  
+  iframeAnswerContents.forEach(content => {
+    Array.from(content.attributes).forEach(attr => {
+      if (attr.name.startsWith('data-v-')) {
+        content.removeAttribute(attr.name)
+      }
+    })
+    content.style.setProperty('font-size', '0.875rem', 'important')
+    content.style.setProperty('color', 'black', 'important')
+    content.style.setProperty('line-height', '1.6', 'important')
+    content.style.setProperty('margin-top', '0.25rem', 'important')
+  })
+  
+  iframeSolutionContents.forEach(content => {
+    Array.from(content.attributes).forEach(attr => {
+      if (attr.name.startsWith('data-v-')) {
+        content.removeAttribute(attr.name)
+      }
+    })
+    content.style.setProperty('font-size', '0.875rem', 'important')
+    content.style.setProperty('color', 'black', 'important')
+    content.style.setProperty('line-height', '1.6', 'important')
+    content.style.setProperty('margin-top', '0.25rem', 'important')
+  })
+  
+  // #region agent log
+  fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:generatePrintPreview:afterForceStyles',message:'After forcing inline styles in iframe',data:{iframeAnswerSectionsCount:iframeAnswerSectionsAfterAppend.length,iframeSolutionSectionsCount:iframeSolutionSectionsAfterAppend.length,firstAnswerSectionStyle:iframeAnswerSectionsAfterAppend[0]?iframeAnswerSectionsAfterAppend[0].style.cssText:'',firstSolutionSectionStyle:iframeSolutionSectionsAfterAppend[0]?iframeSolutionSectionsAfterAppend[0].style.cssText:''},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-3',hypothesisId:'H'})}).catch(()=>{});
+  // #endregion
+  
+  // 等待 DOM 更新後檢查 iframe 中的樣式
+  setTimeout(() => {
+    const iframeAnswerSections = iframeDoc.querySelectorAll('.answer-section')
+    const iframeSolutionSections = iframeDoc.querySelectorAll('.solution-section')
+    const iframeAnswerStyles = Array.from(iframeAnswerSections).slice(0, 1).map(el => {
+      const style = iframeWindow.getComputedStyle(el)
+      return {
+        display: style.display,
+        visibility: style.visibility,
+        padding: style.padding,
+        margin: style.margin,
+        backgroundColor: style.backgroundColor,
+        borderLeft: style.borderLeft,
+        color: style.color,
+        fontSize: style.fontSize,
+        lineHeight: style.lineHeight,
+        fontFamily: style.fontFamily,
+        textAlign: style.textAlign,
+        position: style.position,
+        top: style.top,
+        left: style.left,
+        transform: style.transform
+      }
+    })
+    const iframeSolutionStyles = Array.from(iframeSolutionSections).slice(0, 1).map(el => {
+      const style = iframeWindow.getComputedStyle(el)
+      return {
+        display: style.display,
+        visibility: style.visibility,
+        padding: style.padding,
+        margin: style.margin,
+        backgroundColor: style.backgroundColor,
+        borderLeft: style.borderLeft,
+        color: style.color,
+        fontSize: style.fontSize,
+        lineHeight: style.lineHeight,
+        fontFamily: style.fontFamily,
+        textAlign: style.textAlign,
+        position: style.position,
+        top: style.top,
+        left: style.left,
+        transform: style.transform
+      }
+    })
+    
+    // 檢查文字內容的樣式
+    const iframeTextElements = iframeDoc.querySelectorAll('.answer-content, .solution-content, .question-text, .question-content, p')
+    const iframeTextStyles = Array.from(iframeTextElements).slice(0, 3).map(el => {
+      const style = iframeWindow.getComputedStyle(el)
+      return {
+        fontSize: style.fontSize,
+        lineHeight: style.lineHeight,
+        color: style.color,
+        fontFamily: style.fontFamily,
+        textAlign: style.textAlign,
+        position: style.position,
+        top: style.top,
+        left: style.left,
+        transform: style.transform,
+        margin: style.margin,
+        padding: style.padding,
+        width: style.width,
+        maxWidth: style.maxWidth,
+        wordWrap: style.wordWrap,
+        overflow: style.overflow,
+        textContent: el.textContent.substring(0, 50)
+      }
+    })
+    
+    const katexElements = iframeDoc.querySelectorAll('.katex')
+    const katexStyles = Array.from(katexElements).slice(0, 1).map(el => {
+      const style = iframeWindow.getComputedStyle(el)
+      return {
+        color: style.color,
+        fontSize: style.fontSize,
+        lineHeight: style.lineHeight,
+        position: style.position,
+        transform: style.transform
+      }
+    })
+    
+    // 檢查樣式表中是否有 @media print
+    const styleSheets = Array.from(iframeDoc.styleSheets)
+    const hasPrintMedia = styleSheets.some(sheet => {
+      try {
+        const rules = Array.from(sheet.cssRules || [])
+        return rules.some(rule => rule.type === CSSRule.MEDIA_RULE && rule.media.mediaText.includes('print'))
+      } catch (e) {
+        return false
+      }
+    })
+    
+    // #region agent log
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:generatePrintPreview:iframeStyles',message:'Styles in iframe after append',data:{iframeAnswerSectionsCount:iframeAnswerSections.length,iframeSolutionSectionsCount:iframeSolutionSections.length,iframeAnswerStyles:iframeAnswerStyles,iframeSolutionStyles:iframeSolutionStyles,iframeTextStyles:iframeTextStyles,iframeTextElementsCount:iframeTextElements.length,katexElementsCount:katexElements.length,katexStyles:katexStyles,hasPrintMedia:hasPrintMedia,styleSheetsCount:styleSheets.length},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-4',hypothesisId:'J'})}).catch(()=>{});
+    // #endregion
+  }, 200)
+  
+  // 添加浮水印（如果啟用）
+  if (watermarkEnabled.value && watermarkImage.value) {
+    const watermark = iframeDoc.createElement('div')
+    watermark.className = 'watermark'
+    watermark.style.opacity = (watermarkOpacity.value / 100).toString()
+    
+    const img = iframeDoc.createElement('img')
+    img.src = watermarkImage.value
+    img.alt = '浮水印'
+    
+    watermark.appendChild(img)
+    iframeDoc.body.appendChild(watermark)
+  }
   
   iframeDoc.body.appendChild(container)
   
@@ -1278,35 +1603,164 @@ const generatePrintPreview = async (iframeDoc, iframeWindow, triggerPrint = fals
   return container
 }
 
+// 追蹤現有的 iframe（用於檢測殘留）
+let existingPrintFrames = []
+
 // 簡化後的 print() 函數
 const print = async () => {
+  // 如果正在準備，直接返回
+  if (isPreparingPrint.value) {
+    return
+  }
   
-  // 創建臨時 iframe 用於列印
-  const printFrame = document.createElement('iframe')
-  printFrame.style.position = 'fixed'
-  printFrame.style.right = '0'
-  printFrame.style.bottom = '0'
-  printFrame.style.width = '0'
-  printFrame.style.height = '0'
-  printFrame.style.border = '0'
-  document.body.appendChild(printFrame)
+  // 設置準備狀態
+  isPreparingPrint.value = true
+  printPreparationMessage.value = '正在等待組件更新...'
   
-  // 等待 iframe 載入
-  await new Promise(resolve => {
-    printFrame.onload = resolve
-    printFrame.src = 'about:blank'
-  })
-  
-  const iframeDoc = printFrame.contentDocument || printFrame.contentWindow.document
-  const iframeWindow = printFrame.contentWindow
-  
-  // 生成預覽並觸發列印
-  await generatePrintPreview(iframeDoc, iframeWindow, true)
-  
-  // 列印完成後清理
-  setTimeout(() => {
-    document.body.removeChild(printFrame)
-  }, 1000)
+  try {
+    // #region agent log
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:start',message:'Print function called',data:{printModeSelection:printModeSelection.value,resourceMode:resource.mode,printModeType:typeof printModeSelection.value,printModeHistory:printModeHistory.value},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-3',hypothesisId:'G'})}).catch(()=>{});
+    // #endregion
+    
+    // 等待 Vue 響應式更新完成（模式切換後需要時間讓子組件重新渲染）
+    await nextTick()
+    printPreparationMessage.value = '正在更新組件狀態...'
+    
+    // 等待所有 QuestionBlock 組件完成更新
+    // 檢查 DOM 中是否有答案和詳解區域，並確認它們的顯示狀態符合當前模式
+    let retryCount = 0
+    const maxRetries = 20 // 最多等待 2 秒 (20 * 100ms)
+    let isReady = false
+    
+    while (retryCount < maxRetries && !isReady) {
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      const editorContainer = document.querySelector('.continuous-editor') || 
+                              document.querySelector('.block-editor-container') ||
+                              document.querySelector('.ProseMirror')
+      
+      if (editorContainer) {
+        const answerSections = editorContainer.querySelectorAll('.answer-section')
+        const solutionSections = editorContainer.querySelectorAll('.solution-section')
+        
+        // 根據當前模式檢查顯示狀態
+        const expectedAnswers = printModeSelection.value === 'with-answer' || printModeSelection.value === 'with-all'
+        const expectedSolutions = printModeSelection.value === 'with-solution' || printModeSelection.value === 'with-all'
+        
+        const visibleAnswers = Array.from(answerSections).filter(el => {
+          const style = window.getComputedStyle(el)
+          return style.display !== 'none' && style.visibility !== 'hidden'
+        })
+        const visibleSolutions = Array.from(solutionSections).filter(el => {
+          const style = window.getComputedStyle(el)
+          return style.display !== 'none' && style.visibility !== 'hidden'
+        })
+        
+        // 檢查是否符合預期（允許一些誤差，因為可能有些題目沒有答案或詳解）
+        const answerMatch = expectedAnswers ? visibleAnswers.length > 0 || answerSections.length === 0 : visibleAnswers.length === 0
+        const solutionMatch = expectedSolutions ? visibleSolutions.length > 0 || solutionSections.length === 0 : visibleSolutions.length === 0
+        
+        if (answerMatch && solutionMatch) {
+          isReady = true
+          // #region agent log
+          fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:componentsReady',message:'Components ready for print',data:{printModeSelection:printModeSelection.value,retryCount:retryCount,answerSectionsCount:answerSections.length,visibleAnswersCount:visibleAnswers.length,solutionSectionsCount:solutionSections.length,visibleSolutionsCount:visibleSolutions.length,expectedAnswers:expectedAnswers,expectedSolutions:expectedSolutions},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-3',hypothesisId:'G'})}).catch(()=>{});
+          // #endregion
+          break
+        }
+      }
+      
+      retryCount++
+      printPreparationMessage.value = `正在檢查組件狀態... (${retryCount}/${maxRetries})`
+    }
+    
+    if (!isReady) {
+      console.warn('組件可能未完全更新，但繼續列印流程')
+      // #region agent log
+      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:componentsNotReady',message:'Components may not be ready, but continuing',data:{printModeSelection:printModeSelection.value,retryCount:retryCount},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-3',hypothesisId:'G'})}).catch(()=>{});
+      // #endregion
+    }
+    
+    // 清理殘留的 iframe
+    const existingFrames = Array.from(document.querySelectorAll('iframe')).filter(iframe => {
+      const rect = iframe.getBoundingClientRect()
+      return rect.width === 0 && rect.height === 0 && iframe.style.position === 'fixed'
+    })
+    
+    existingFrames.forEach(frame => {
+      try {
+        if (frame.parentNode) {
+          frame.parentNode.removeChild(frame)
+        }
+      } catch (e) {
+        console.warn('Failed to remove existing frame:', e)
+      }
+    })
+    
+    printPreparationMessage.value = '正在創建列印預覽...'
+    
+    // 創建臨時 iframe 用於列印
+    const printFrame = document.createElement('iframe')
+    printFrame.style.position = 'fixed'
+    printFrame.style.right = '0'
+    printFrame.style.bottom = '0'
+    printFrame.style.width = '0'
+    printFrame.style.height = '0'
+    printFrame.style.border = '0'
+    document.body.appendChild(printFrame)
+    
+    // #region agent log
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:iframeCreated',message:'Print iframe created',data:{printModeSelection:printModeSelection.value},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-3',hypothesisId:'G'})}).catch(()=>{});
+    // #endregion
+    
+    // 等待 iframe 載入
+    await new Promise(resolve => {
+      printFrame.onload = resolve
+      printFrame.src = 'about:blank'
+    })
+    
+    const iframeDoc = printFrame.contentDocument || printFrame.contentWindow.document
+    const iframeWindow = printFrame.contentWindow
+    
+    // #region agent log
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:beforeGenerate',message:'Before generatePrintPreview',data:{iframeDocReady:!!iframeDoc,iframeWindowReady:!!iframeWindow,printModeSelection:printModeSelection.value,iframeBodyEmpty:!iframeDoc.body || iframeDoc.body.innerHTML.trim().length === 0},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-3',hypothesisId:'G'})}).catch(()=>{});
+    // #endregion
+    
+    // 確保 iframe 內容已清空（防止殘留）
+    if (iframeDoc.body) {
+      iframeDoc.body.innerHTML = ''
+    }
+    if (iframeDoc.head) {
+      iframeDoc.head.innerHTML = ''
+    }
+    
+    printPreparationMessage.value = '正在生成列印內容...'
+    
+    // 生成預覽並觸發列印
+    await generatePrintPreview(iframeDoc, iframeWindow, true)
+    
+    printPreparationMessage.value = '列印預覽已準備完成'
+    
+    // 列印完成後清理
+    setTimeout(() => {
+      try {
+        if (printFrame.parentNode) {
+          printFrame.parentNode.removeChild(printFrame)
+        }
+      } catch (e) {
+        console.warn('Failed to remove print frame:', e)
+      }
+    }, 1000)
+  } catch (error) {
+    console.error('Print error:', error)
+    alert('列印預覽時發生錯誤：' + (error.message || '未知錯誤'))
+    // #region agent log
+    fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ResourceEditor.vue:print:error',message:'Print error occurred',data:{error:error.message,stack:error.stack,printModeSelection:printModeSelection.value},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug-3',hypothesisId:'G'})}).catch(()=>{});
+    // #endregion
+  } finally {
+    // 清除準備狀態
+    isPreparingPrint.value = false
+    printPreparationMessage.value = '正在準備列印內容...'
+  }
 }
 
 // 預覽函數
@@ -1453,6 +1907,38 @@ const handleKeyboardShortcuts = (event) => {
 // 打開圖片資料夾上傳
 const openImageFolderUpload = () => {
   imageFolderInput.value?.click()
+}
+
+// 浮水印上傳
+const openWatermarkUpload = () => {
+  watermarkInput.value?.click()
+}
+
+const handleWatermarkUpload = async (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+  
+  // 檢查檔案類型
+  if (!file.type.startsWith('image/')) {
+    alert('請上傳圖片檔案')
+    event.target.value = ''
+    return
+  }
+  
+  // 讀取圖片為 Base64
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    watermarkImage.value = e.target.result
+  }
+  reader.readAsDataURL(file)
+  
+  // 清空 input
+  event.target.value = ''
+}
+
+const removeWatermark = () => {
+  watermarkImage.value = null
+  watermarkEnabled.value = false
 }
 
 // 處理圖片資料夾上傳
@@ -1905,18 +2391,6 @@ onUnmounted(() => {
     margin: 0 !important;
   }
   
-  /* 多紙張容器列印樣式 */
-  .paper-container {
-    page-break-after: always;
-    break-after: page;
-    margin-bottom: 0 !important;
-    box-shadow: none !important;
-  }
-  
-  .paper-container:last-child {
-    page-break-after: auto;
-    break-after: auto;
-  }
   
   .break-after-page {
     page-break-after: always;
@@ -1963,38 +2437,12 @@ onUnmounted(() => {
   }
 }
 
-/* 講義模式：多紙張容器樣式 */
-.paper-container {
+/* 連續編輯器樣式 */
+.continuous-editor {
   position: relative;
   box-sizing: border-box;
 }
 
-.page-number-display {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  background: rgba(255, 255, 255, 0.95);
-  padding: 0.375rem 0.875rem;
-  border-radius: 0.375rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #6b7280;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
-  z-index: 10;
-  pointer-events: none;
-}
-
-/* 列印時的頁碼樣式 */
-@media print {
-  .page-number-display {
-    background: transparent;
-    box-shadow: none;
-    border: none;
-    color: #9ca3af;
-    font-size: 10pt;
-  }
-}
 
 </style>
 

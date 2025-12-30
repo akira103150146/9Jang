@@ -150,7 +150,7 @@ const questionsPagination = inject('questionsPagination', ref({
 const loadMoreQuestions = inject('loadMoreQuestions', () => {})
 
 const { renderMarkdownWithLatex } = useMarkdownRenderer()
-const { extractTextFromTiptapJSON } = useTiptapConverter()
+const { contentToMarkdown } = useTiptapConverter()
 
 const filters = ref({
   subject: '',
@@ -191,21 +191,21 @@ const filteredQuestions = computed(() => {
 const renderPreview = (content) => {
   if (!content) return ''
   
-  // 處理 TipTap JSON 格式
-  let textContent = ''
+  // 處理 TipTap JSON 格式，保留 LaTeX 標記
+  let markdownContent = ''
   if (typeof content === 'object' && content.type === 'doc') {
-    // 使用 composable 提取文字
-    textContent = extractTextFromTiptapJSON(content)
+    // 使用 contentToMarkdown 保留 LaTeX 標記
+    markdownContent = contentToMarkdown(content)
   } else if (typeof content === 'string') {
-    textContent = content
+    markdownContent = content
   } else {
-    textContent = String(content)
+    markdownContent = String(content)
   }
   
-  // 只顯示前100個字元
-  const text = textContent.replace(/[#*>\[\]!]/g, '').substring(0, 100)
+  // 只顯示前 200 個字元（因為包含 LaTeX 標記會比較長）
+  const text = markdownContent.substring(0, 200)
   
-  return renderMarkdownWithLatex(text + (textContent.length > 100 ? '...' : ''))
+  return renderMarkdownWithLatex(text + (markdownContent.length > 200 ? '...' : ''))
 }
 
 const toggleQuestion = (questionId) => {
