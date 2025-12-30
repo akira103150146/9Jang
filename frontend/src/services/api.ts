@@ -307,6 +307,45 @@ function validateResponse<T>(
 /**
  * Student API
  */
+/**
+ * Student API
+ * 
+ * 數據預處理函數：處理後端返回格式與前端 schema 不一致的問題
+ */
+const normalizeStudentResponse = (item: unknown): Student => {
+  const rawItem = item as {
+    user?: number | null  // DRF 序列化 ForeignKey 為數字或 null
+    user_id?: number | null
+    enrollments?: unknown[]  // 報名課程列表（後端返回但不在 StudentSchema 中）
+    student_groups?: unknown[]  // 標籤列表（後端返回但不在 StudentSchema 中）
+    [key: string]: unknown
+  }
+  
+  // 保存 enrollments 和 student_groups（這些字段不在 StudentSchema 中，會被 parse 移除）
+  const enrollments = rawItem.enrollments
+  const student_groups = rawItem.student_groups
+  
+  const processedItem = {
+    ...item,
+    // 處理 user_id：後端返回 user（數字 ID），前端期望 user_id
+    user_id: rawItem.user_id ?? (typeof rawItem.user === 'number' ? rawItem.user : null)
+  }
+  // 移除原始的 user 字段（如果存在且不是 user_id）
+  if ('user' in processedItem && typeof rawItem.user === 'number' && !rawItem.user_id) {
+    delete (processedItem as { user?: unknown }).user
+  }
+  
+  // 解析基本學生數據（會移除 enrollments 和 student_groups）
+  const parsed = StudentSchema.parse(processedItem)
+  
+  // 將 enrollments 和 student_groups 添加回去
+  return {
+    ...parsed,
+    enrollments: enrollments || [],
+    student_groups: student_groups || []
+  } as Student & { enrollments: unknown[], student_groups: unknown[] }
+}
+
 export const studentAPI = {
   /**
    * 獲取所有學生（支持查詢參數）
@@ -333,10 +372,10 @@ export const studentAPI = {
     
     // 驗證響應數據
     if (Array.isArray(response.data)) {
-      response.data = response.data.map((item: unknown) => StudentSchema.parse(item))
+      response.data = response.data.map((item: unknown) => normalizeStudentResponse(item))
     } else if (response.data && typeof response.data === 'object' && 'results' in response.data) {
       const paginated = response.data as PaginatedResponse<unknown>
-      paginated.results = paginated.results.map((item: unknown) => StudentSchema.parse(item))
+      paginated.results = paginated.results.map((item: unknown) => normalizeStudentResponse(item))
     }
     
     return response
@@ -349,7 +388,7 @@ export const studentAPI = {
     const response = await api.get(`/cramschool/students/${id}/`)
     return {
       ...response,
-      data: StudentSchema.parse(response.data)
+      data: normalizeStudentResponse(response.data)
     }
   },
 
@@ -360,7 +399,7 @@ export const studentAPI = {
     const response = await api.post('/cramschool/students/', data)
     return {
       ...response,
-      data: StudentSchema.parse(response.data)
+      data: normalizeStudentResponse(response.data)
     }
   },
 
@@ -371,7 +410,7 @@ export const studentAPI = {
     const response = await api.put(`/cramschool/students/${id}/`, data)
     return {
       ...response,
-      data: StudentSchema.parse(response.data)
+      data: normalizeStudentResponse(response.data)
     }
   },
 
@@ -439,14 +478,36 @@ export const studentAPI = {
     const response = await api.post(`/cramschool/students/${id}/restore/`)
     return {
       ...response,
-      data: StudentSchema.parse(response.data)
+      data: normalizeStudentResponse(response.data)
     }
   }
 }
 
 /**
  * Teacher API
+ * 
+ * 數據預處理函數：處理後端返回格式與前端 schema 不一致的問題
  */
+const normalizeTeacherResponse = (item: unknown): Teacher => {
+  const rawItem = item as {
+    user?: number | null  // DRF 序列化 ForeignKey 為數字或 null
+    user_id?: number | null
+    [key: string]: unknown
+  }
+  
+  const processedItem = {
+    ...item,
+    // 處理 user_id：後端返回 user（數字 ID），前端期望 user_id
+    user_id: rawItem.user_id ?? (typeof rawItem.user === 'number' ? rawItem.user : null)
+  }
+  // 移除原始的 user 字段（如果存在且不是 user_id）
+  if ('user' in processedItem && typeof rawItem.user === 'number' && !rawItem.user_id) {
+    delete (processedItem as { user?: unknown }).user
+  }
+  
+  return TeacherSchema.parse(processedItem)
+}
+
 export const teacherAPI = {
   getAll: async (): Promise<AxiosResponse<Teacher[]>> => {
     const response = await api.get('/cramschool/teachers/')
@@ -456,7 +517,7 @@ export const teacherAPI = {
       : (response.data as { results?: unknown[] }).results || []
     return {
       ...response,
-      data: dataArray.map((item) => TeacherSchema.parse(item))
+      data: dataArray.map((item) => normalizeTeacherResponse(item))
     }
   },
 
@@ -464,7 +525,7 @@ export const teacherAPI = {
     const response = await api.get(`/cramschool/teachers/${id}/`)
     return {
       ...response,
-      data: TeacherSchema.parse(response.data)
+      data: normalizeTeacherResponse(response.data)
     }
   },
 
@@ -472,7 +533,7 @@ export const teacherAPI = {
     const response = await api.post('/cramschool/teachers/', data)
     return {
       ...response,
-      data: TeacherSchema.parse(response.data)
+      data: normalizeTeacherResponse(response.data)
     }
   },
 
@@ -480,7 +541,7 @@ export const teacherAPI = {
     const response = await api.put(`/cramschool/teachers/${id}/`, data)
     return {
       ...response,
-      data: TeacherSchema.parse(response.data)
+      data: normalizeTeacherResponse(response.data)
     }
   },
 
@@ -491,7 +552,51 @@ export const teacherAPI = {
 
 /**
  * Course API
+ * 
+ * 數據預處理函數：處理後端返回格式與前端 schema 不一致的問題
  */
+const normalizeCourseResponse = (item: unknown): Course => {
+  const rawItem = item as {
+    fee_per_session?: string | number
+    teacher?: number | { teacher_id?: number; id?: number }  // DRF 序列化 ForeignKey 為數字或對象
+    teacher_id?: number
+    [key: string]: unknown
+  }
+  
+  // 處理 fee_per_session：如果是字符串，轉換為數字
+  let feePerSession = 0
+  if (typeof rawItem.fee_per_session === 'string') {
+    feePerSession = parseFloat(rawItem.fee_per_session) || 0
+  } else if (typeof rawItem.fee_per_session === 'number') {
+    feePerSession = rawItem.fee_per_session
+  }
+  
+  // 處理 teacher_id：DRF 可能返回 teacher（數字 ID）或 teacher 對象
+  let teacherId = rawItem.teacher_id
+  if (!teacherId) {
+    if (typeof rawItem.teacher === 'number') {
+      teacherId = rawItem.teacher
+    } else if (rawItem.teacher && typeof rawItem.teacher === 'object') {
+      teacherId = (rawItem.teacher as { teacher_id?: number; id?: number }).teacher_id 
+        ?? (rawItem.teacher as { teacher_id?: number; id?: number }).id
+    }
+  }
+  // 如果都沒有，使用默認值 1（符合 schema 的 positive() 要求）
+  teacherId = teacherId || 1
+  
+  const processedItem = {
+    ...item,
+    fee_per_session: feePerSession,
+    teacher_id: teacherId
+  }
+  // 如果原始數據有 teacher 字段，移除它，因為我們已經轉換為 teacher_id
+  if ('teacher' in processedItem && !('teacher_id' in rawItem)) {
+    delete (processedItem as { teacher?: unknown }).teacher
+  }
+  
+  return CourseSchema.parse(processedItem)
+}
+
 export const courseAPI = {
   getAll: async (): Promise<AxiosResponse<Course[]>> => {
     const response = await api.get('/cramschool/courses/')
@@ -501,38 +606,7 @@ export const courseAPI = {
       : (response.data as { results?: unknown[] }).results || []
     return {
       ...response,
-      data: dataArray.map((item) => {
-        // 預處理數據以處理後端數據格式不一致的問題
-        const rawItem = item as {
-          fee_per_session?: string | number
-          teacher_id?: number
-          teacher?: { teacher_id?: number; id?: number }
-          [key: string]: unknown
-        }
-        
-        // 處理 fee_per_session：如果是字符串，轉換為數字
-        let feePerSession = 0
-        if (typeof rawItem.fee_per_session === 'string') {
-          feePerSession = parseFloat(rawItem.fee_per_session) || 0
-        } else if (typeof rawItem.fee_per_session === 'number') {
-          feePerSession = rawItem.fee_per_session
-        }
-        
-        // 處理 teacher_id：優先使用直接的 teacher_id，否則從 teacher 對象中提取，最後使用默認值 1
-        let teacherId = rawItem.teacher_id
-        if (!teacherId && rawItem.teacher) {
-          teacherId = (rawItem.teacher as { teacher_id?: number; id?: number }).teacher_id 
-            ?? (rawItem.teacher as { teacher_id?: number; id?: number }).id
-        }
-        teacherId = teacherId || 1 // 如果都沒有，使用默認值 1（符合 positive() 要求）
-        
-        const processedItem = {
-          ...item,
-          fee_per_session: feePerSession,
-          teacher_id: teacherId
-        }
-        return CourseSchema.parse(processedItem)
-      })
+      data: dataArray.map((item) => normalizeCourseResponse(item))
     }
   },
 
@@ -540,7 +614,7 @@ export const courseAPI = {
     const response = await api.get(`/cramschool/courses/${id}/`)
     return {
       ...response,
-      data: CourseSchema.parse(response.data)
+      data: normalizeCourseResponse(response.data)
     }
   },
 
@@ -548,7 +622,7 @@ export const courseAPI = {
     const response = await api.post('/cramschool/courses/', data)
     return {
       ...response,
-      data: CourseSchema.parse(response.data)
+      data: normalizeCourseResponse(response.data)
     }
   },
 
@@ -556,7 +630,7 @@ export const courseAPI = {
     const response = await api.put(`/cramschool/courses/${id}/`, data)
     return {
       ...response,
-      data: CourseSchema.parse(response.data)
+      data: normalizeCourseResponse(response.data)
     }
   },
 

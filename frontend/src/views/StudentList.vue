@@ -1643,9 +1643,40 @@ const saveEnrollment = async () => {
       discount_rate: 0
     }
     
-    // 重新載入報名記錄
-    await openEnrollmentModal(selectedStudent.value)
-    fetchStudents() // 刷新學生列表
+    // 獲取該學生的最新數據（部分更新）
+    try {
+      const response = await studentAPI.getById(selectedStudent.value.id)
+      const updatedStudentData = normalizeStudent(response.data)
+      
+      // 更新 students 數組中對應的學生對象
+      const studentIndex = students.value.findIndex(s => s.id === selectedStudent.value.id)
+      if (studentIndex !== -1) {
+        // 使用 Object.assign 確保響應式更新
+        Object.assign(students.value[studentIndex], updatedStudentData)
+        Object.assign(selectedStudent.value, updatedStudentData)
+        // 重新載入報名記錄（使用更新後的學生數據）
+        await openEnrollmentModal(students.value[studentIndex])
+      } else {
+        // 如果找不到，則刷新整個列表
+        const queryString = new URLSearchParams(route.query).toString()
+        await fetchStudents(queryString)
+        const updatedStudent = students.value.find(s => s.id === selectedStudent.value.id)
+        if (updatedStudent) {
+          selectedStudent.value = updatedStudent
+          await openEnrollmentModal(updatedStudent)
+        }
+      }
+    } catch (fetchError) {
+      console.error('獲取學生最新數據失敗，嘗試刷新整個列表:', fetchError)
+      // 如果獲取失敗，則刷新整個列表
+      const queryString = new URLSearchParams(route.query).toString()
+      await fetchStudents(queryString)
+      const updatedStudent = students.value.find(s => s.id === selectedStudent.value.id)
+      if (updatedStudent) {
+        selectedStudent.value = updatedStudent
+        await openEnrollmentModal(updatedStudent)
+      }
+    }
   } catch (error) {
     console.error('報名失敗:', error)
     if (error.response?.data) {
@@ -1667,11 +1698,17 @@ const deleteEnrollment = async (enrollmentId, courseName) => {
   try {
     await enrollmentAPI.delete(enrollmentId)
     alert('刪除成功（已隱藏）')
-    // 重新載入報名記錄
+    
+    // 直接刷新整個學生列表以確保數據最新
     if (selectedStudent.value) {
-      await openEnrollmentModal(selectedStudent.value)
+      const queryString = new URLSearchParams(route.query).toString()
+      await fetchStudents(queryString)
+      const updatedStudent = students.value.find(s => s.id === selectedStudent.value.id)
+      if (updatedStudent) {
+        selectedStudent.value = updatedStudent
+        await openEnrollmentModal(updatedStudent)
+      }
     }
-    fetchStudents() // 刷新學生列表
   } catch (error) {
     console.error('刪除報名記錄失敗:', error)
     alert('刪除報名記錄失敗，請稍後再試')
@@ -1686,11 +1723,43 @@ const restoreEnrollment = async (enrollmentId, courseName) => {
   try {
     await enrollmentAPI.restore(enrollmentId)
     alert('恢復成功')
-    // 重新載入報名記錄
+    
+    // 獲取該學生的最新數據（部分更新）
     if (selectedStudent.value) {
-      await openEnrollmentModal(selectedStudent.value)
+      try {
+        const response = await studentAPI.getById(selectedStudent.value.id)
+        const updatedStudentData = normalizeStudent(response.data)
+        
+        // 更新 students 數組中對應的學生對象
+        const studentIndex = students.value.findIndex(s => s.id === selectedStudent.value.id)
+        if (studentIndex !== -1) {
+          // 使用 Object.assign 確保響應式更新
+          Object.assign(students.value[studentIndex], updatedStudentData)
+          Object.assign(selectedStudent.value, updatedStudentData)
+          // 重新載入報名記錄（使用更新後的學生數據）
+          await openEnrollmentModal(students.value[studentIndex])
+        } else {
+          // 如果找不到，則刷新整個列表
+          const queryString = new URLSearchParams(route.query).toString()
+          await fetchStudents(queryString)
+          const updatedStudent = students.value.find(s => s.id === selectedStudent.value.id)
+          if (updatedStudent) {
+            selectedStudent.value = updatedStudent
+            await openEnrollmentModal(updatedStudent)
+          }
+        }
+      } catch (fetchError) {
+        console.error('獲取學生最新數據失敗，嘗試刷新整個列表:', fetchError)
+        // 如果獲取失敗，則刷新整個列表
+        const queryString = new URLSearchParams(route.query).toString()
+        await fetchStudents(queryString)
+        const updatedStudent = students.value.find(s => s.id === selectedStudent.value.id)
+        if (updatedStudent) {
+          selectedStudent.value = updatedStudent
+          await openEnrollmentModal(updatedStudent)
+        }
+      }
     }
-    fetchStudents() // 刷新學生列表
   } catch (error) {
     console.error('恢復報名記錄失敗:', error)
     alert('恢復報名記錄失敗，請稍後再試')
@@ -1800,9 +1869,41 @@ const savePeriods = async () => {
     alert('儲存成功！')
     closePeriodModal()
     
-    // 重新載入報名記錄
+    // 獲取該學生的最新數據（部分更新）
     if (selectedStudent.value) {
-      await openEnrollmentModal(selectedStudent.value)
+      try {
+        const response = await studentAPI.getById(selectedStudent.value.id)
+        const updatedStudentData = normalizeStudent(response.data)
+        
+        // 更新 students 數組中對應的學生對象
+        const studentIndex = students.value.findIndex(s => s.id === selectedStudent.value.id)
+        if (studentIndex !== -1) {
+          // 使用 Object.assign 確保響應式更新
+          Object.assign(students.value[studentIndex], updatedStudentData)
+          Object.assign(selectedStudent.value, updatedStudentData)
+          // 重新載入報名記錄（使用更新後的學生數據）
+          await openEnrollmentModal(students.value[studentIndex])
+        } else {
+          // 如果找不到，則刷新整個列表
+          const queryString = new URLSearchParams(route.query).toString()
+          await fetchStudents(queryString)
+          const updatedStudent = students.value.find(s => s.id === selectedStudent.value.id)
+          if (updatedStudent) {
+            selectedStudent.value = updatedStudent
+            await openEnrollmentModal(updatedStudent)
+          }
+        }
+      } catch (fetchError) {
+        console.error('獲取學生最新數據失敗，嘗試刷新整個列表:', fetchError)
+        // 如果獲取失敗，則刷新整個列表
+        const queryString = new URLSearchParams(route.query).toString()
+        await fetchStudents(queryString)
+        const updatedStudent = students.value.find(s => s.id === selectedStudent.value.id)
+        if (updatedStudent) {
+          selectedStudent.value = updatedStudent
+          await openEnrollmentModal(updatedStudent)
+        }
+      }
     }
   } catch (error) {
     console.error('儲存期間失敗:', error)
@@ -2278,9 +2379,39 @@ const addTagToStudent = async (tag) => {
   try {
     await studentGroupAPI.addStudents(tag.group_id, [selectedStudentForTag.value.id])
     alert('標籤添加成功')
-    // 重新獲取學生列表以更新標籤
-    const queryString = new URLSearchParams(route.query).toString()
-    await fetchStudents(queryString)
+    
+    // 獲取該學生的最新數據（部分更新）
+    try {
+      const response = await studentAPI.getById(selectedStudentForTag.value.id)
+      const updatedStudentData = normalizeStudent(response.data)
+      
+      // 更新 students 數組中對應的學生對象
+      const studentIndex = students.value.findIndex(s => s.id === selectedStudentForTag.value.id)
+      if (studentIndex !== -1) {
+        // 使用 Object.assign 確保響應式更新
+        Object.assign(students.value[studentIndex], updatedStudentData)
+        // 更新 selectedStudentForTag 引用
+        Object.assign(selectedStudentForTag.value, updatedStudentData)
+      } else {
+        // 如果找不到，則刷新整個列表
+        const queryString = new URLSearchParams(route.query).toString()
+        await fetchStudents(queryString)
+        const updatedStudent = students.value.find(s => s.id === selectedStudentForTag.value.id)
+        if (updatedStudent) {
+          selectedStudentForTag.value = updatedStudent
+        }
+      }
+    } catch (fetchError) {
+      console.error('獲取學生最新數據失敗，嘗試刷新整個列表:', fetchError)
+      // 如果獲取失敗，則刷新整個列表
+      const queryString = new URLSearchParams(route.query).toString()
+      await fetchStudents(queryString)
+      const updatedStudent = students.value.find(s => s.id === selectedStudentForTag.value.id)
+      if (updatedStudent) {
+        selectedStudentForTag.value = updatedStudent
+      }
+    }
+    
     closeAddTagModal()
   } catch (error) {
     console.error('添加標籤失敗:', error)
@@ -2300,9 +2431,32 @@ const removeStudentFromTag = async (student, tag) => {
   try {
     await studentGroupAPI.removeStudents(tag.group_id, [student.id])
     alert('標籤移除成功')
-    // 重新獲取學生列表以更新標籤
-    const queryString = new URLSearchParams(route.query).toString()
-    await fetchStudents(queryString)
+    
+    // 獲取該學生的最新數據（部分更新）
+    try {
+      const response = await studentAPI.getById(student.id)
+      const updatedStudentData = normalizeStudent(response.data)
+      
+      // 更新 students 數組中對應的學生對象
+      const studentIndex = students.value.findIndex(s => s.id === student.id)
+      if (studentIndex !== -1) {
+        // 使用 Object.assign 確保響應式更新
+        Object.assign(students.value[studentIndex], updatedStudentData)
+        // 更新 selectedStudentForTag 引用（如果它正在顯示該學生）
+        if (selectedStudentForTag.value && selectedStudentForTag.value.id === student.id) {
+          Object.assign(selectedStudentForTag.value, updatedStudentData)
+        }
+      } else {
+        // 如果找不到，則刷新整個列表
+        const queryString = new URLSearchParams(route.query).toString()
+        await fetchStudents(queryString)
+      }
+    } catch (fetchError) {
+      console.error('獲取學生最新數據失敗，嘗試刷新整個列表:', fetchError)
+      // 如果獲取失敗，則刷新整個列表
+      const queryString = new URLSearchParams(route.query).toString()
+      await fetchStudents(queryString)
+    }
   } catch (error) {
     console.error('移除標籤失敗:', error)
     alert('移除標籤失敗，請稍後再試')

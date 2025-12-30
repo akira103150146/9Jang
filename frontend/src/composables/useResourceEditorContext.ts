@@ -5,7 +5,7 @@ import type { LearningResource, Tag } from '@9jang/shared'
  * Resource Editor 上下文類型
  */
 export interface ResourceEditorContext {
-  resource: LearningResource
+  resource: LearningResource | null | undefined
   viewMode?: boolean
   courses?: unknown[]
   studentGroups?: unknown[]

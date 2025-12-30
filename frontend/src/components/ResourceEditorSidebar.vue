@@ -16,7 +16,7 @@
 
     <div class="flex-1 overflow-y-auto p-4">
       <!-- 設定面板 -->
-      <div class="space-y-6">
+      <div v-if="resource" class="space-y-6">
         <!-- 基本資訊 -->
         <div class="space-y-3">
           <label class="block text-sm font-medium text-slate-700">標題</label>
@@ -201,7 +201,7 @@
         <div class="space-y-3">
           <label class="block text-sm font-medium text-slate-700">標籤</label>
           <div class="flex flex-wrap gap-2 mb-2">
-            <span v-for="tagId in resource.tag_ids" :key="tagId" class="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800">
+            <span v-for="tagId in resource?.tag_ids" :key="tagId" class="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800">
               #{{ getTagName(tagId) }}
               <button
                 v-if="!viewMode"

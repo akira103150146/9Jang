@@ -140,6 +140,7 @@ import { debounce } from '../utils/debounce'
 import { formatTime } from '../utils/dateFormat'
 import type { Editor } from '@tiptap/core'
 import type { PrintMode } from '../composables/usePrintPreview.types'
+import type { LearningResource } from '@9jang/shared'
 
 interface Props {
   id?: string | null
@@ -216,7 +217,7 @@ const {
     const id = route.params.id
     return typeof id === 'string' ? parseInt(id, 10) : null
   }),
-  resourceTitle: computed(() => resource.value?.title || 'untitled'),
+  resourceTitle: computed(() => resource.title || 'untitled'),
   blockEditorRef
 })
 
@@ -277,7 +278,7 @@ const {
 // 提供 Resource Editor 上下文給子組件（特別是 ResourceEditorSidebar）
 provideResourceEditorContext({
   // 資源相關
-  resource: resource.value,
+  resource: resource as LearningResource,
   viewMode: props.viewMode,
 
   // 元數據
