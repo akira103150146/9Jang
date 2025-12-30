@@ -43,9 +43,11 @@ import { SlashCommands } from './extensions/SlashCommands'
 import { KeyboardShortcuts } from './extensions/KeyboardShortcuts'
 import { DragHandle } from './extensions/DragHandle'
 import { Nesting } from './extensions/Nesting'
-import { parseSmartPaste } from './utils/smartPasteParser'
-import { createNodesFromTokens } from './utils/nodeConverter'
-import { uploadImageAPI } from '../../services/api'
+import { useEditorPaste } from '../../composables/useEditorPaste'
+import { useEditorSync } from '../../composables/useEditorSync'
+import { useEditorEvents } from '../../composables/useEditorEvents'
+import { convertToTiptapFormat } from '../../utils/tiptapConverter'
+import { getNodeIcon, getNodeLabel } from '../../constants/nodeTypes'
 
 const props = defineProps({
   modelValue: {
@@ -112,26 +114,47 @@ const templateSelectorOpen = ref(false)
 const currentTemplateOnSelect = ref(null)
 
 
+// 使用編輯器事件系統
+const editorEvents = useEditorEvents()
+
 // 監聽圖片選擇器打開事件
+const handleOpenImageSelector = (options) => {
+  currentPlaceholderNode.value = options.placeholderNode
+  currentOnSelect.value = options.onSelect
+  imageSelectorOpen.value = true
+}
+
+// 監聽模板選擇器打開事件
+const handleOpenTemplateSelector = (options) => {
+  currentTemplateOnSelect.value = options.onSelect
+  templateSelectorOpen.value = true
+}
+
+// 註冊事件監聽器（新的事件系統）
+const unregisterImageSelector = editorEvents.onImageSelectorOpen(handleOpenImageSelector)
+const unregisterTemplateSelector = editorEvents.onTemplateSelectorOpen(handleOpenTemplateSelector)
+
+// 橋接：保持向後兼容，監聽 window 事件並轉發到新系統
+// 這允許 commandItems.js 等純 JS 文件繼續使用 window 事件
+const bridgeWindowEvent = (event) => {
+  if (event.type === 'openImageSelector' && event.detail) {
+    handleOpenImageSelector(event.detail)
+  } else if (event.type === 'openTemplateSelector' && event.detail) {
+    handleOpenTemplateSelector(event.detail)
+  }
+}
+
 onMounted(() => {
-  const handleOpenImageSelector = (event) => {
-    currentPlaceholderNode.value = event.detail.placeholderNode
-    currentOnSelect.value = event.detail.onSelect
-    imageSelectorOpen.value = true
-  }
-  
-  const handleOpenTemplateSelector = (event) => {
-    currentTemplateOnSelect.value = event.detail.onSelect
-    templateSelectorOpen.value = true
-  }
-  
-  window.addEventListener('openImageSelector', handleOpenImageSelector)
-  window.addEventListener('openTemplateSelector', handleOpenTemplateSelector)
-  
-  onBeforeUnmount(() => {
-    window.removeEventListener('openImageSelector', handleOpenImageSelector)
-    window.removeEventListener('openTemplateSelector', handleOpenTemplateSelector)
-  })
+  // 監聽 window 事件作為後備（向後兼容）
+  window.addEventListener('openImageSelector', bridgeWindowEvent)
+  window.addEventListener('openTemplateSelector', bridgeWindowEvent)
+})
+
+onBeforeUnmount(() => {
+  unregisterImageSelector()
+  unregisterTemplateSelector()
+  window.removeEventListener('openImageSelector', bridgeWindowEvent)
+  window.removeEventListener('openTemplateSelector', bridgeWindowEvent)
 })
 
 // 處理模板選擇
@@ -181,107 +204,15 @@ const editor = useEditor({
       class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl focus:outline-none',
     },
     handlePaste: async (view, event, slice) => {
-      const clipboardData = event.clipboardData
-      if (!clipboardData) return false
-      
-      // 檢查是否有圖片
-      const items = Array.from(clipboardData.items)
-      const imageItem = items.find(item => item.type.startsWith('image/'))
-      
-      if (imageItem) {
-        // 處理圖片貼上
-        event.preventDefault()
-        
-        const file = imageItem.getAsFile()
-        if (!file) return true
-        
-        if (!editor.value) return true
-        
-        try {
-          // 先插入一個臨時的圖片佔位符（可選，提供視覺反饋）
-          // 或者直接上傳並插入
-          
-          // 上傳圖片
-          const response = await uploadImageAPI.upload(file)
-          const imageUrl = response.data.url || response.data.image_url || response.data.url
-          
-          if (imageUrl && editor.value) {
-            // 使用 insertContent 插入圖片節點，這比 setImage 更可靠
-            const imageNode = {
-              type: 'image',
-              attrs: {
-                src: imageUrl,
-                alt: file.name,
-                title: file.name
-              }
-            }
-            
-            editor.value.chain().focus().insertContent(imageNode).run()
-          }
-          
-          return true
-        } catch (error) {
-          console.error('圖片上傳失敗:', error)
-          alert('圖片上傳失敗，請稍後再試')
-          return true
-        }
-      }
-      
-      // 處理文字貼上
-      const text = clipboardData.getData('text/plain')
-      if (!text) return false
-      
-      try {
-        // 使用智能解析器解析內容
-        const tokens = parseSmartPaste(text)
-        
-        // 如果沒有特殊格式，使用預設行為
-        if (tokens.length === 1 && tokens[0].type === 'paragraph' && !tokens[0].hasInlineLatex) {
-          // 檢查是否包含 Markdown 格式
-          const hasMarkdown = /^#{1,6}\s+|^[-*+]\s+|^\d+\.\s+/.test(text)
-          if (!hasMarkdown) {
-            return false // 使用預設貼上行為
-          }
-        }
-        
-        // 防止預設貼上行為
-        event.preventDefault()
-        
-        // 創建節點，傳入圖片映射表
-        const nodes = createNodesFromTokens(tokens, editor.value, props.imageMappings)
-        
-        // 使用編輯器實例插入內容
-        // editor 在 handlePaste 執行時應該已經初始化
-        if (nodes.length > 0 && editor.value) {
-          editor.value.chain().focus().insertContent(nodes).run()
-        }
-        
-        return true
-      } catch (error) {
-        console.error('智能貼上處理失敗:', error)
-        // 發生錯誤時使用預設行為
-        return false
-      }
+      const { handlePaste: pasteHandler } = useEditorPaste({
+        editor: () => editor.value,
+        imageMappings: () => props.imageMappings
+      })
+      return await pasteHandler(view, event, slice)
     },
   },
-  onUpdate: ({ editor }) => {
-    const json = editor.getJSON()
-    const newContentJSON = JSON.stringify(json)
-    
-    // 檢查內容是否真的改變了
-    if (lastContentJSON === newContentJSON) {
-      return
-    }
-    
-    // 遞增序列號,標記這是來自編輯器的更新
-    updateSequence++
-    const currentSeq = updateSequence
-    
-    // 同步更新 lastContentJSON 和 lastAppliedSequence
-    lastContentJSON = newContentJSON
-    lastAppliedSequence = currentSeq
-    
-    emit('update:modelValue', json)
+  onUpdate: ({ editor: editorInstance }) => {
+    editorSync.handleEditorUpdate({ editor: editorInstance })
   },
   onSelectionUpdate: ({ editor }) => {
     // 更新當前節點類型
@@ -294,45 +225,7 @@ const editor = useEditor({
   },
 })
 
-// 取得節點圖標
-const getNodeIcon = (nodeType) => {
-  const icons = {
-    'questionBlock': '❓',
-    'templateBlock': '📄',
-    'latexBlock': '𝑓',
-    'diagram2DBlock': '📊',
-    'diagram3DBlock': '🎲',
-    'circuitBlock': '⚡',
-    'pageBreak': '📄',
-    'heading': '📝',
-    'paragraph': '¶',
-    'bulletList': '•',
-    'orderedList': '1.',
-    'codeBlock': '</>',
-    'blockquote': '"'
-  }
-  return icons[nodeType] || '📝'
-}
-
-// 取得節點標籤
-const getNodeLabel = (nodeType) => {
-  const labels = {
-    'questionBlock': '題目區塊',
-    'templateBlock': '模板區塊',
-    'latexBlock': 'LaTeX 區塊',
-    'diagram2DBlock': '2D 圖表',
-    'diagram3DBlock': '3D 圖表',
-    'circuitBlock': '電路圖',
-    'pageBreak': '換頁符',
-    'heading': '標題',
-    'paragraph': '段落',
-    'bulletList': '無序列表',
-    'orderedList': '有序列表',
-    'codeBlock': '程式碼',
-    'blockquote': '引用'
-  }
-  return labels[nodeType] || nodeType
-}
+// 節點圖標和標籤函數已從 constants/nodeTypes.js 導入
 
 // 圖片選擇器處理函數
 const handleImageSelect = (url) => {
@@ -349,8 +242,7 @@ const handleUploadNewImage = () => {
 
 const handleImageUploaded = (data) => {
   // 通知父組件圖片已上傳，需要保存映射表
-  // 通過 window 事件通知 ResourceEditor 保存映射表
-  window.dispatchEvent(new CustomEvent('imageMappingUpdated', { detail: data }))
+  editorEvents.notifyImageMappingUpdated(data)
 }
 
 
@@ -359,110 +251,18 @@ defineExpose({
   editor
 })
 
-// 將現有的 structure 格式轉換為 Tiptap 格式
-function convertToTiptapFormat(structure) {
-  if (!structure || (Array.isArray(structure) && structure.length === 0)) {
-    return {
-      type: 'doc',
-      content: [
-        {
-          type: 'paragraph',
-          content: []
-        }
-      ]
-    }
-  }
-  
-  // 如果已經是 Tiptap 格式
-  if (structure.type === 'doc') {
-    return structure
-  }
-  
-  // 如果是舊的線性陣列格式，轉換為 Tiptap 格式
-  if (Array.isArray(structure)) {
-    const content = structure.map(block => {
-      if (block.type === 'text') {
-        // 處理文字區塊 - 需要解析 Markdown 內容
-        const textContent = block.content || ''
-        // 簡單處理：將文字轉換為段落
-        // 實際應該解析 Markdown 並轉換為對應的節點
-        return {
-          type: 'paragraph',
-          content: textContent ? [{ type: 'text', text: textContent }] : []
-        }
-      } else if (block.type === 'question') {
-        return {
-          type: 'questionBlock',
-          attrs: {
-            id: block.id || `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            questionId: block.question_id || null
-          },
-          content: []
-        }
-      } else if (block.type === 'template') {
-        return {
-          type: 'templateBlock',
-          attrs: {
-            id: block.id || `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            templateId: block.template_id || null
-          },
-          content: []
-        }
-      } else if (block.type === 'page_break') {
-        return {
-          type: 'pageBreak',
-          content: []
-        }
-      }
-      // 未知類型轉換為段落
-      return {
-        type: 'paragraph',
-        content: [{ type: 'text', text: `[${block.type}]` }]
-      }
-    })
-    
-    return {
-      type: 'doc',
-      content: content.length > 0 ? content : [{ type: 'paragraph', content: [] }]
-    }
-  }
-  
-  return {
-    type: 'doc',
-    content: [{ type: 'paragraph', content: [] }]
-  }
-}
+// convertToTiptapFormat 已從 utils/tiptapConverter.js 導入
 
-// 監聽外部變更
-// 使用序列號機制而不是布爾標誌,避免時序競爭
-let updateSequence = 0 // 每次編輯器內部更新時遞增
-let lastAppliedSequence = -1 // watch 中最後應用的序列號
-let lastContentJSON = '' // 緩存內容,避免不必要的 JSON.stringify
-
-watch(() => props.modelValue, (newValue) => {
-  if (!editor.value || props.ignoreExternalUpdates) {
-    return
-  }
-
-  const newContent = convertToTiptapFormat(newValue)
-  const newContentJSON = JSON.stringify(newContent)
-
-  // 檢查內容是否與緩存相同 - 關鍵!這能防止回滾
-  if (lastContentJSON === newContentJSON) {
-    return
-  }
-  
-  // 新增檢查:如果新內容的長度小於緩存,且時間很近,很可能是舊的延遲更新,忽略它
-  if (newContentJSON.length < lastContentJSON.length && updateSequence > lastAppliedSequence) {
-    return
-  }
-  
-  // 內容確實不同且不是過期的更新,需要更新編輯器
-  lastContentJSON = newContentJSON
-  // 不更新 lastAppliedSequence,因為這是外部更新
-  
-  editor.value.commands.setContent(newContent, false)
-}, { deep: true, flush: 'sync' })
+// 使用編輯器同步 composable
+const editorSync = useEditorSync({
+  editor,
+  onUpdate: (json) => {
+    emit('update:modelValue', json)
+  },
+  ignoreExternalUpdates: props.ignoreExternalUpdates,
+  convertToTiptapFormat,
+  modelValue: () => props.modelValue
+})
 
 onBeforeUnmount(() => {
   if (editor.value) {

@@ -21,6 +21,7 @@
 <script setup>
 import { ref, computed, inject, nextTick } from 'vue'
 import { NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3'
+import { useEditorEvents } from '../../../composables/useEditorEvents'
 
 const props = defineProps(nodeViewProps)
 
@@ -29,41 +30,40 @@ const isHovering = ref(false)
 // 從父組件注入的映射表
 const imageMappings = inject('imageMappings', new Map())
 
+// 使用編輯器事件系統
+const editorEvents = useEditorEvents()
+
 const filename = computed(() => props.node.attrs.filename)
 const originalPath = computed(() => props.node.attrs.originalPath)
 
 // 打開圖片選擇器
 const openImageSelector = () => {
-  // 通過 emit 事件通知父組件
-  const event = new CustomEvent('openImageSelector', {
-    detail: {
-      placeholderNode: props.node,
-      placeholderNodeId: props.node.attrs.id, // 傳遞節點 ID 用於匹配
-      onSelect: (selectedUrl) => {
-        // 使用 getPos() 直接獲取節點位置（這是 Tiptap NodeView 提供的方法）
-        const pos = props.getPos()
+  editorEvents.openImageSelector({
+    placeholderNode: props.node,
+    placeholderNodeId: props.node.attrs.id, // 傳遞節點 ID 用於匹配
+    onSelect: (selectedUrl) => {
+      // 使用 getPos() 直接獲取節點位置（這是 Tiptap NodeView 提供的方法）
+      const pos = props.getPos()
+      
+      if (pos !== null && pos !== undefined) {
+        // 獲取節點大小，用於正確刪除整個 block 節點
+        const nodeSize = props.node.nodeSize
         
-        if (pos !== null && pos !== undefined) {
-          // 獲取節點大小，用於正確刪除整個 block 節點
-          const nodeSize = props.node.nodeSize
-          
-          // 替換為真實圖片節點 - 使用 replaceWith 直接替換節點
-          // 這是最可靠的方法，因為它會在同一個 transaction 中完成替換
-          const imageNode = props.editor.schema.nodes.image.create({
-            src: selectedUrl,
-            alt: props.node.attrs.alt || props.node.attrs.filename,
-            title: props.node.attrs.filename
-          })
-          
-          // 使用 replaceWith 替換節點
-          const tr = props.editor.state.tr
-          tr.replaceWith(pos, pos + nodeSize, imageNode)
-          props.editor.view.dispatch(tr)
-        }
+        // 替換為真實圖片節點 - 使用 replaceWith 直接替換節點
+        // 這是最可靠的方法，因為它會在同一個 transaction 中完成替換
+        const imageNode = props.editor.schema.nodes.image.create({
+          src: selectedUrl,
+          alt: props.node.attrs.alt || props.node.attrs.filename,
+          title: props.node.attrs.filename
+        })
+        
+        // 使用 replaceWith 替換節點
+        const tr = props.editor.state.tr
+        tr.replaceWith(pos, pos + nodeSize, imageNode)
+        props.editor.view.dispatch(tr)
       }
     }
   })
-  window.dispatchEvent(event)
 }
 </script>
 

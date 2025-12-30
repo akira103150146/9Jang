@@ -1,0 +1,212 @@
+/* 資源編輯器列印樣式 */
+
+@media print {
+  @page {
+    size: A4;
+    margin: 20mm;
+  }
+  
+  /* 確保內容可見和滾動條隱藏 */
+  * {
+    overflow: visible !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+  
+  *::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+  }
+  
+  /* 頁面背景 */
+  body,
+  html {
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+  
+  /* 隱藏側邊欄和工具列 */
+  aside,
+  aside *,
+  body > div > aside,
+  body > div > aside *,
+  .flex.h-screen > aside,
+  .flex.h-screen > aside * {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    position: absolute !important;
+    left: -9999px !important;
+  }
+  
+  header,
+  header *,
+  main > header,
+  main > header *,
+  main.flex-1 > header,
+  main.flex-1 > header * {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    position: absolute !important;
+    left: -9999px !important;
+  }
+  
+  /* 隱藏所有按鈕和操作元素 */
+  button,
+  .absolute.-left-6,
+  .absolute.-right-8,
+  .group-hover\:opacity-100,
+  .print\:hidden,
+  .absolute.-top-8,
+  .h-40.flex,
+  .h-8.flex.items-center {
+    display: none !important;
+    visibility: hidden !important;
+  }
+  
+  /* 容器樣式 */
+  .flex.h-screen {
+    display: block !important;
+    height: auto !important;
+    background: white !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  main.flex-1,
+  .flex-1.overflow-auto,
+  div[class*="overflow-auto"],
+  main .flex-1.overflow-auto {
+    display: block !important;
+    background: white !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    position: static !important;
+  }
+  
+  .bg-slate-100,
+  .block-editor-container {
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  /* 內容樣式 */
+  .question-content,
+  .prose {
+    visibility: visible !important;
+    color: black !important;
+  }
+  
+  .prose p,
+  .prose h1,
+  .prose h2,
+  .prose h3,
+  .prose h4,
+  .prose h5,
+  .prose h6,
+  .prose ul,
+  .prose ol,
+  .prose li,
+  .prose strong,
+  .prose em {
+    color: black !important;
+    visibility: visible !important;
+  }
+  
+  /* 分頁控制 */
+  .break-after-page {
+    page-break-after: always;
+    break-after: page;
+  }
+  
+  .break-inside-avoid,
+  .group {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  
+  /* KaTeX 數學公式樣式 */
+  .katex {
+    color: black !important;
+    visibility: visible !important;
+    font-family: KaTeX_Main, KaTeX_Math, KaTeX_Size1, KaTeX_Size2, KaTeX_Size3, KaTeX_Size4, "Times New Roman", serif !important;
+    line-height: normal !important;
+    font-size: 1em !important;
+  }
+  
+  .prose .katex,
+  .prose .katex * {
+    line-height: normal !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  .katex * {
+    color: black !important;
+    visibility: visible !important;
+    line-height: inherit !important;
+  }
+  
+  /* KaTeX 分數和上標修復 */
+  .katex .msupsub .mfrac {
+    padding-top: 0.15em !important;
+    padding-bottom: 0.15em !important;
+  }
+  
+  .katex .msupsub .mfrac .frac-line {
+    border-bottom-width: 0.06em !important;
+    min-height: 0.06em !important;
+    margin-top: 0.1em !important;
+    margin-bottom: 0.1em !important;
+  }
+  
+  .katex .msupsub .mfrac .vlist-t2 {
+    padding-top: 0.05em !important;
+    padding-bottom: 0.05em !important;
+  }
+  
+  .katex .msupsub {
+    vertical-align: 0.3em !important;
+    margin-left: 0.1em !important;
+  }
+  
+  .katex .msupsub .vlist-t {
+    margin-top: 0.05em !important;
+    margin-bottom: 0.05em !important;
+  }
+  
+  /* KaTeX 根號修復 */
+  .katex .sqrt > .vlist-t {
+    border-left-width: 0.04em !important;
+    display: inline-table !important;
+    table-layout: auto !important;
+  }
+  
+  .katex .sqrt .vlist-t .vlist-r .vlist .pstrut,
+  .katex .sqrt .vlist-t .vlist-s {
+    min-width: 0 !important;
+  }
+  
+  .katex .sqrt .sqrt-sign {
+    position: relative !important;
+  }
+  
+  .katex .sqrt > .root {
+    margin-left: 0.27777778em !important;
+    margin-right: -0.55555556em !important;
+  }
+  
+  .katex-mathml {
+    display: none !important;
+    visibility: hidden !important;
+  }
+}
