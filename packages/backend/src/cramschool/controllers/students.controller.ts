@@ -76,4 +76,44 @@ export class StudentsController {
   async deleteStudent(@Param('id', ParseIntPipe) id: number): Promise<void> {
     return this.studentsService.deleteStudent(id);
   }
+
+  @Post(':id/restore')
+  async restoreStudent(@Param('id', ParseIntPipe) id: number): Promise<Student> {
+    return this.studentsService.restoreStudent(id);
+  }
+
+  @Get(':id/tuition_status')
+  async getTuitionStatus(@Param('id', ParseIntPipe) id: number): Promise<any> {
+    return this.studentsService.getTuitionStatus(id);
+  }
+
+  @Post(':id/generate_tuition')
+  async generateTuition(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() data: { year: number; month: number; enrollment_id: number; weeks: number },
+  ): Promise<any> {
+    return this.studentsService.generateTuition(id, data);
+  }
+
+  @Post('batch-generate-tuitions')
+  async batchGenerateTuitions(
+    @Body() data: { student_ids?: number[]; weeks?: number },
+  ): Promise<any> {
+    const studentIds = data.student_ids || [];
+    const weeks = data.weeks || 4;
+    return this.studentsService.batchGenerateTuitions(studentIds, weeks);
+  }
+
+  @Post(':id/reset-password')
+  async resetPassword(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() data: { password: string },
+  ): Promise<any> {
+    return this.studentsService.resetPassword(id, data.password);
+  }
+
+  @Post(':id/toggle-account-status')
+  async toggleAccountStatus(@Param('id', ParseIntPipe) id: number): Promise<any> {
+    return this.studentsService.toggleAccountStatus(id);
+  }
 }

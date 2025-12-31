@@ -164,8 +164,8 @@ const handleSubmit = async () => {
   loading.value = true
   try {
     const submitData = {
-      student: parseInt(form.value.student),
-      course: parseInt(form.value.course),
+      student_id: parseInt(form.value.student),
+      course_id: parseInt(form.value.course),
       leave_date: form.value.leave_date,
       reason: form.value.reason,
       approval_status: form.value.approval_status

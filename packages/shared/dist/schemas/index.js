@@ -34,3 +34,9 @@ __exportStar(require("./question.schema"), exports);
 __exportStar(require("./resource.schema"), exports);
 // 報名
 __exportStar(require("./enrollment.schema"), exports);
+// 學生群組
+__exportStar(require("./student-group.schema"), exports);
+// 請假
+__exportStar(require("./leave.schema"), exports);
+// 費用
+__exportStar(require("./fee.schema"), exports);

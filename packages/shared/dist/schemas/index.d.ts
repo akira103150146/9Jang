@@ -10,3 +10,6 @@ export * from './course.schema';
 export * from './question.schema';
 export * from './resource.schema';
 export * from './enrollment.schema';
+export * from './student-group.schema';
+export * from './leave.schema';
+export * from './fee.schema';

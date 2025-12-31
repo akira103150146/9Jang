@@ -207,6 +207,19 @@ export class StudentsService {
           total_fees: Number(totalFees._sum.amount || 0),
           unpaid_fees: Number(unpaidFees._sum.amount || 0),
           enrollments_count: student.enrollments.length,
+          student_groups: student.studentGroups?.map((sg: any) => ({
+            group_id: sg.group.groupId,
+            name: sg.group.name,
+            description: sg.group.description,
+            group_type: sg.group.groupType,
+          })) || [],
+          enrollments: student.enrollments.map((e: any) => ({
+            enrollment_id: e.enrollmentId,
+            course_name: e.course.courseName,
+            enroll_date: e.enrollDate.toISOString().split('T')[0],
+            discount_rate: Number(e.discountRate),
+            is_active: e.isActive,
+          })),
         };
       }),
     );
@@ -214,7 +227,7 @@ export class StudentsService {
     return createPaginatedResponse(studentsWithStats, count, page, pageSize);
   }
 
-  async getStudent(id: number): Promise<Student> {
+  async getStudent(id: number): Promise<any> {
     const student = await this.prisma.cramschoolStudent.findUnique({
       where: { studentId: id },
       include: {
@@ -243,7 +256,22 @@ export class StudentsService {
       throw new NotFoundException(`Student with ID ${id} not found`);
     }
 
-    return this.toStudentDto(student);
+    return {
+      ...this.toStudentDto(student),
+      student_groups: student.studentGroups?.map((sg: any) => ({
+        group_id: sg.group.groupId,
+        name: sg.group.name,
+        description: sg.group.description,
+        group_type: sg.group.groupType,
+      })) || [],
+      enrollments: student.enrollments.map((e: any) => ({
+        enrollment_id: e.enrollmentId,
+        course_name: e.course.courseName,
+        enroll_date: e.enrollDate.toISOString().split('T')[0],
+        discount_rate: Number(e.discountRate),
+        is_active: e.isActive,
+      })),
+    };
   }
 
   async createStudent(createDto: CreateStudentDto, userId: number, userRole: string): Promise<Student> {
@@ -355,6 +383,271 @@ export class StudentsService {
         data: { isDeleted: true, deletedAt: new Date() },
       }),
     ]);
+  }
+
+  async restoreStudent(id: number): Promise<Student> {
+    const student = await this.prisma.cramschoolStudent.findUnique({
+      where: { studentId: id },
+    });
+
+    if (!student) {
+      throw new NotFoundException(`Student with ID ${id} not found`);
+    }
+
+    // 恢復學生
+    await this.prisma.cramschoolStudent.update({
+      where: { studentId: id },
+      data: {
+        isDeleted: false,
+        deletedAt: null,
+      },
+    });
+
+    return this.getStudent(id);
+  }
+
+  async getTuitionStatus(id: number): Promise<any> {
+    const student = await this.prisma.cramschoolStudent.findUnique({
+      where: { studentId: id },
+      include: {
+        enrollments: {
+          where: { isDeleted: false, isActive: true },
+          include: {
+            course: true,
+            periods: {
+              where: { isActive: true },
+              orderBy: { startDate: 'asc' },
+            },
+          },
+        },
+        extraFees: {
+          where: { isDeleted: false },
+        },
+      },
+    });
+
+    if (!student) {
+      throw new NotFoundException(`Student with ID ${id} not found`);
+    }
+
+    // 計算總費用和未繳費用
+    const [totalFees, unpaidFees] = await Promise.all([
+      this.prisma.cramschoolExtraFee.aggregate({
+        where: {
+          studentId: id,
+          isDeleted: false,
+        },
+        _sum: { amount: true },
+      }),
+      this.prisma.cramschoolExtraFee.aggregate({
+        where: {
+          studentId: id,
+          isDeleted: false,
+          paymentStatus: 'Unpaid',
+        },
+        _sum: { amount: true },
+      }),
+    ]);
+
+    // 生成學費月份列表（基於報名期間）
+    const tuitionMonths: any[] = [];
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth() + 1;
+
+    for (const enrollment of student.enrollments) {
+      for (const period of enrollment.periods) {
+        const startDate = new Date(period.startDate);
+        const endDate = period.endDate ? new Date(period.endDate) : new Date(currentYear + 1, 11, 31);
+        
+        // 生成該期間內每個月的學費項目
+        let date = new Date(startDate);
+        while (date <= endDate) {
+          const year = date.getFullYear();
+          const month = date.getMonth() + 1;
+          
+          // 檢查該月份是否已經有費用記錄
+          const existingFee = student.extraFees.find(
+            (fee) =>
+              fee.feeDate.getFullYear() === year &&
+              fee.feeDate.getMonth() + 1 === month &&
+              fee.item.includes(enrollment.course.courseName)
+          );
+
+          if (!existingFee) {
+            tuitionMonths.push({
+              year,
+              month,
+              enrollment_id: enrollment.enrollmentId,
+              course_name: enrollment.course.courseName,
+              has_fee: false,
+              weeks: 4, // 預設4週
+            });
+          }
+
+          // 移到下個月
+          date = new Date(year, month, 1);
+        }
+      }
+    }
+
+    return {
+      student_id: id,
+      total_unpaid: Number(unpaidFees._sum.amount || 0),
+      total_paid: Number(totalFees._sum.amount || 0) - Number(unpaidFees._sum.amount || 0),
+      tuition_months: tuitionMonths,
+    };
+  }
+
+  async generateTuition(id: number, data: { year: number; month: number; enrollment_id: number; weeks: number }): Promise<any> {
+    const student = await this.prisma.cramschoolStudent.findUnique({
+      where: { studentId: id },
+      include: {
+        enrollments: {
+          where: { enrollmentId: data.enrollment_id, isDeleted: false },
+          include: {
+            course: true,
+          },
+        },
+      },
+    });
+
+    if (!student) {
+      throw new NotFoundException(`Student with ID ${id} not found`);
+    }
+
+    const enrollment = student.enrollments[0];
+    if (!enrollment) {
+      throw new NotFoundException(`Enrollment with ID ${data.enrollment_id} not found`);
+    }
+
+    // 計算費用（基於課程費用和週數）
+    const weeklyFee = Number(enrollment.course.feePerSession) || 0;
+    const totalAmount = weeklyFee * data.weeks;
+
+    // 創建費用記錄
+    const feeDate = new Date(data.year, data.month - 1, 1);
+    const fee = await this.prisma.cramschoolExtraFee.create({
+      data: {
+        studentId: id,
+        item: `${enrollment.course.courseName} - ${data.year}年${data.month}月學費`,
+        amount: totalAmount,
+        feeDate,
+        paymentStatus: 'Unpaid',
+        notes: `自動生成 - ${data.weeks}週`,
+      },
+    });
+
+    return fee;
+  }
+
+  async batchGenerateTuitions(studentIds: number[], weeks: number = 4): Promise<any> {
+    let totalStudents = 0;
+    let successCount = 0;
+    let failCount = 0;
+    let totalFeesGenerated = 0;
+    const errors: any[] = [];
+
+    for (const studentId of studentIds) {
+      totalStudents++;
+      try {
+        const tuitionStatus = await this.getTuitionStatus(studentId);
+        const months = tuitionStatus.tuition_months || [];
+
+        for (const month of months) {
+          try {
+            await this.generateTuition(studentId, {
+              year: month.year,
+              month: month.month,
+              enrollment_id: month.enrollment_id,
+              weeks,
+            });
+            totalFeesGenerated++;
+          } catch (error: any) {
+            errors.push({
+              student_id: studentId,
+              year: month.year,
+              month: month.month,
+              error: error.message,
+            });
+          }
+        }
+        successCount++;
+      } catch (error: any) {
+        failCount++;
+        errors.push({
+          student_id: studentId,
+          error: error.message,
+        });
+      }
+    }
+
+    return {
+      total_students: totalStudents,
+      success_count: successCount,
+      fail_count: failCount,
+      total_fees_generated: totalFeesGenerated,
+      errors,
+    };
+  }
+
+  async resetPassword(id: number, password: string): Promise<any> {
+    const student = await this.prisma.cramschoolStudent.findUnique({
+      where: { studentId: id },
+      include: { user: true },
+    });
+
+    if (!student) {
+      throw new NotFoundException(`Student with ID ${id} not found`);
+    }
+
+    if (!student.userId) {
+      throw new NotFoundException(`Student with ID ${id} does not have a user account`);
+    }
+
+    const hashedPassword = await require('bcrypt').hash(password, 10);
+    await this.prisma.accountCustomUser.update({
+      where: { id: student.userId },
+      data: { password: hashedPassword },
+    });
+
+    return {
+      password, // 返回明文密碼（前端需要顯示）
+    };
+  }
+
+  async toggleAccountStatus(id: number): Promise<any> {
+    const student = await this.prisma.cramschoolStudent.findUnique({
+      where: { studentId: id },
+      include: { user: true },
+    });
+
+    if (!student) {
+      throw new NotFoundException(`Student with ID ${id} not found`);
+    }
+
+    if (!student.userId) {
+      throw new NotFoundException(`Student with ID ${id} does not have a user account`);
+    }
+
+    const user = await this.prisma.accountCustomUser.findUnique({
+      where: { id: student.userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${student.userId} not found`);
+    }
+
+    const updated = await this.prisma.accountCustomUser.update({
+      where: { id: student.userId },
+      data: {
+        isActive: !user.isActive,
+      },
+    });
+
+    return {
+      is_active: updated.isActive,
+    };
   }
 
   private toStudentDto(student: any): Student {

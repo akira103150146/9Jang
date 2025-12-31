@@ -26,3 +26,12 @@ export * from './resource.schema'
 
 // 報名
 export * from './enrollment.schema'
+
+// 學生群組
+export * from './student-group.schema'
+
+// 請假
+export * from './leave.schema'
+
+// 費用
+export * from './fee.schema'

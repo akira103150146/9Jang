@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   CreateStudentEnrollmentDto,
@@ -62,11 +62,18 @@ export class EnrollmentsService {
   }
 
   async createEnrollment(createDto: CreateStudentEnrollmentDto): Promise<StudentEnrollment> {
+    let enrollDate = createDto.enroll_date;
+    
+    // 處理日期格式：將 YYYY/MM/DD 轉換為 YYYY-MM-DD
+    if (typeof enrollDate === 'string' && enrollDate.includes('/')) {
+      enrollDate = enrollDate.replace(/\//g, '-');
+    }
+
     const enrollment = await this.prisma.cramschoolStudentEnrollment.create({
       data: {
         studentId: createDto.student_id,
         courseId: createDto.course_id,
-        enrollDate: new Date(createDto.enroll_date),
+        enrollDate: new Date(enrollDate),
         discountRate: createDto.discount_rate || 0,
         isActive: createDto.is_active !== undefined ? createDto.is_active : true,
       },
@@ -128,6 +135,8 @@ export class EnrollmentsService {
       is_active: enrollment.isActive,
       is_deleted: enrollment.isDeleted,
       deleted_at: enrollment.deletedAt?.toISOString() || null,
+      course_name: enrollment.course?.courseName || undefined,
+      student_name: enrollment.student?.name || undefined,
     };
   }
 }

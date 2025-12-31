@@ -59,6 +59,13 @@ export class AccountController {
     return this.accountService.getCurrentUser(req.user.id);
   }
 
+  @Get('current-role')
+  @UseGuards(JwtAuthGuard)
+  async getCurrentRole(@Request() req): Promise<{ role: string }> {
+    const user = await this.accountService.getCurrentUser(req.user.id);
+    return { role: user.role };
+  }
+
   @Post('change-password')
   @UseGuards(JwtAuthGuard)
   async changePassword(

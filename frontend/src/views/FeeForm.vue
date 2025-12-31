@@ -154,9 +154,9 @@ const handleSubmit = async () => {
       payment_status: form.value.payment_status
     }
     
-    // 只有在新增時才包含 student 欄位
+    // 只有在新增時才包含 student_id 欄位
     if (!isEdit.value) {
-      submitData.student = parseInt(form.value.student)
+      submitData.student_id = parseInt(form.value.student)
     }
     
     if (isEdit.value) {

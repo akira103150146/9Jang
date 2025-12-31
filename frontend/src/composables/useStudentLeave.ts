@@ -168,8 +168,8 @@ export function useStudentLeave(
     savingLeave.value = true
     try {
       const submitData = {
-        student: selectedStudent.value.id,
-        course: parseInt(String(leaveForm.value.course)),
+        student_id: selectedStudent.value.id,
+        course_id: parseInt(String(leaveForm.value.course)),
         leave_date: leaveForm.value.leave_date,
         reason: trimmedReason,
         approval_status: leaveForm.value.approval_status,

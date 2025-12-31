@@ -144,8 +144,8 @@ export function useStudentEnrollment(
     savingEnrollment.value = true
     try {
       const submitData = {
-        student: selectedStudent.value.id,
-        course: parseInt(enrollmentForm.value.course),
+        student_id: selectedStudent.value.id,
+        course_id: parseInt(enrollmentForm.value.course),
         enroll_date: enrollmentForm.value.enroll_date,
         discount_rate: parseFloat(String(enrollmentForm.value.discount_rate)) || 0,
       }
@@ -297,7 +297,7 @@ export function useStudentEnrollment(
       // 保存或更新期間
       for (const period of periods.value) {
         const periodData = {
-          enrollment: enrollmentId,
+          enrollment_id: enrollmentId,
           start_date: period.start_date,
           end_date: period.end_date || null,
           is_active: period.is_active,

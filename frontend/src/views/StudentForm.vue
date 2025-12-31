@@ -266,8 +266,8 @@ const handleSubmit = async () => {
           for (const enrollment of validEnrollments) {
             try {
               await enrollmentAPI.create({
-                student: studentId,
-                course: parseInt(enrollment.course),
+                student_id: studentId,
+                course_id: parseInt(enrollment.course),
                 enroll_date: enrollment.enroll_date,
                 discount_rate: parseFloat(enrollment.discount_rate) || 0
               })

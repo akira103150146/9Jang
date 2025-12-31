@@ -513,7 +513,7 @@ const submitOrder = async () => {
     // 創建訂單
     const orderResponse = await orderAPI.create({
       group_order: groupOrder.value.group_order_id,
-      student: orderForm.value.student,
+      student_id: orderForm.value.student,
       status: 'Pending',
       total_amount: totalAmount.value,
       notes: orderForm.value.notes || null

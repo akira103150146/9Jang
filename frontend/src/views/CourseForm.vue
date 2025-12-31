@@ -191,7 +191,7 @@ const handleSubmit = async () => {
     
     const submitData = {
       course_name: form.value.course_name.trim(),
-      teacher: teacherId,
+      teacher_id: teacherId,
       day_of_week: form.value.day_of_week,
       start_time: formatTime(form.value.start_time),
       end_time: formatTime(form.value.end_time),

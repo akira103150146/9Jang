@@ -12,6 +12,8 @@ export declare const StudentEnrollmentSchema: z.ZodObject<{
     is_active: z.ZodDefault<z.ZodBoolean>;
     is_deleted: z.ZodDefault<z.ZodBoolean>;
     deleted_at: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    course_name: z.ZodOptional<z.ZodString>;
+    student_name: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     is_active: boolean;
     student_id: number;
@@ -21,6 +23,8 @@ export declare const StudentEnrollmentSchema: z.ZodObject<{
     enroll_date: string;
     discount_rate: number;
     deleted_at?: string | null | undefined;
+    course_name?: string | undefined;
+    student_name?: string | undefined;
 }, {
     student_id: number;
     course_id: number;
@@ -29,33 +33,39 @@ export declare const StudentEnrollmentSchema: z.ZodObject<{
     is_active?: boolean | undefined;
     is_deleted?: boolean | undefined;
     deleted_at?: string | null | undefined;
+    course_name?: string | undefined;
     discount_rate?: number | undefined;
+    student_name?: string | undefined;
 }>;
 export type StudentEnrollment = z.infer<typeof StudentEnrollmentSchema>;
 /**
  * 創建學生報名 DTO Schema
  */
-export declare const CreateStudentEnrollmentSchema: z.ZodObject<Omit<{
-    enrollment_id: z.ZodNumber;
+export declare const CreateStudentEnrollmentSchema: z.ZodObject<{
+    is_active: z.ZodDefault<z.ZodBoolean>;
     student_id: z.ZodNumber;
     course_id: z.ZodNumber;
-    enroll_date: z.ZodString;
+    course_name: z.ZodOptional<z.ZodString>;
     discount_rate: z.ZodDefault<z.ZodNumber>;
-    is_active: z.ZodDefault<z.ZodBoolean>;
-    is_deleted: z.ZodDefault<z.ZodBoolean>;
-    deleted_at: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-}, "is_deleted" | "deleted_at" | "enrollment_id">, "strip", z.ZodTypeAny, {
+    student_name: z.ZodOptional<z.ZodString>;
+} & {
+    enroll_date: z.ZodEffects<z.ZodString, string, string>;
+}, "strip", z.ZodTypeAny, {
     is_active: boolean;
     student_id: number;
     course_id: number;
     enroll_date: string;
     discount_rate: number;
+    course_name?: string | undefined;
+    student_name?: string | undefined;
 }, {
     student_id: number;
     course_id: number;
     enroll_date: string;
     is_active?: boolean | undefined;
+    course_name?: string | undefined;
     discount_rate?: number | undefined;
+    student_name?: string | undefined;
 }>;
 export type CreateStudentEnrollmentDto = z.infer<typeof CreateStudentEnrollmentSchema>;
 /**
