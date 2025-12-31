@@ -29,9 +29,10 @@ export type User = z.infer<typeof UserSchema>
 
 /**
  * 登入請求 DTO Schema
+ * email 字段實際上可以是 email 或 username
  */
 export const LoginRequestSchema = z.object({
-  email: z.string().email(),
+  email: z.string().min(1), // 允許 email 或 username
   password: z.string().min(1)
 })
 export type LoginRequestDto = z.infer<typeof LoginRequestSchema>

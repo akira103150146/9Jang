@@ -53,6 +53,7 @@ export declare const UserSchema: z.ZodObject<{
 export type User = z.infer<typeof UserSchema>;
 /**
  * 登入請求 DTO Schema
+ * email 字段實際上可以是 email 或 username
  */
 export declare const LoginRequestSchema: z.ZodObject<{
     email: z.ZodString;

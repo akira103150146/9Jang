@@ -1,0 +1,563 @@
+// Prisma Schema - 從現有 Django 資料庫映射
+// 使用 prisma db pull 生成基礎結構，然後手動調整
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Account 模組模型
+
+model AccountCustomUser {
+  id                Int       @id @default(autoincrement()) @map("id")
+  password          String    @map("password")
+  lastLogin         DateTime? @map("last_login")
+  isSuperuser       Boolean   @default(false) @map("is_superuser")
+  username          String    @unique @map("username")
+  firstName         String?   @map("first_name")
+  lastName          String?   @map("last_name")
+  email             String?   @map("email")
+  isStaff           Boolean   @default(false) @map("is_staff")
+  isActive          Boolean   @default(true) @map("is_active")
+  dateJoined        DateTime  @default(now()) @map("date_joined")
+  role              String    @default("STUDENT") @map("role")
+  customRoleId      Int?      @map("custom_role_id")
+  mustChangePassword Boolean  @default(false) @map("must_change_password")
+
+  customRole        AccountRole? @relation(fields: [customRoleId], references: [id], onDelete: SetNull)
+  studentProfile    CramschoolStudent?
+  teacherProfile    CramschoolTeacher?
+  createdQuestions  CramschoolQuestionBank[]
+
+  @@map("account_customuser")
+}
+
+model AccountRole {
+  id          Int      @id @default(autoincrement()) @map("id")
+  code        String?  @unique @map("code")
+  name        String   @unique @map("name")
+  description String   @default("") @map("description")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  users       AccountCustomUser[]
+  permissions AccountRolePermission[]
+
+  @@map("account_role")
+}
+
+model AccountRolePermission {
+  id            Int      @id @default(autoincrement()) @map("id")
+  roleId        Int      @map("role_id")
+  permissionType String  @map("permission_type") // 'page' | 'api'
+  resource      String  @map("resource")
+  method        String? @map("method")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  role          AccountRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionType, resource, method])
+  @@map("account_rolepermission")
+}
+
+model AccountAuditLog {
+  id            Int      @id @default(autoincrement()) @map("id")
+  userId        Int?     @map("user_id")
+  roleId        Int?     @map("role_id")
+  impersonatedById Int?  @map("impersonated_by_id")
+  actionType    String   @map("action_type")
+  resourceType  String   @map("resource_type")
+  resourceId    String?  @map("resource_id")
+  resourceName  String?  @map("resource_name")
+  description   String   @default("") @map("description")
+  ipAddress     String?  @map("ip_address")
+  userAgent     String?  @map("user_agent")
+  requestData   Json     @default("{}") @map("request_data")
+  responseStatus Int?    @map("response_status")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("account_auditlog")
+}
+
+// Cramschool 模組模型
+
+model CramschoolStudent {
+  studentId            Int       @id @default(autoincrement()) @map("student_id")
+  name                String    @map("name")
+  school              String    @map("school")
+  grade               String    @map("grade")
+  phone               String?   @map("phone")
+  emergencyContactName String?   @map("emergency_contact_name")
+  emergencyContactPhone String?  @map("emergency_contact_phone")
+  notes               String?   @map("notes")
+  isDeleted           Boolean   @default(false) @map("is_deleted")
+  deletedAt           DateTime? @map("deleted_at")
+  userId              Int?      @unique @map("user_id")
+  initialPassword     String?   @map("initial_password")
+
+  user                AccountCustomUser? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  enrollments         CramschoolStudentEnrollment[]
+  extraFees           CramschoolExtraFee[]
+  attendances         CramschoolAttendance[]
+  leaves              CramschoolLeave[]
+  answers             CramschoolStudentAnswer[]
+  errorLogs           CramschoolErrorLog[]
+  importedQuestions   CramschoolQuestionBank[]
+  orders              CramschoolOrder[]
+  mistakeNotes        CramschoolStudentMistakeNote[]
+  studentGroups       CramschoolStudentGroupStudent[]
+
+  @@map("cramschool_student")
+}
+
+model CramschoolTeacher {
+  teacherId      Int       @id @default(autoincrement()) @map("teacher_id")
+  name          String    @map("name")
+  permissionLevel String  @default("Teacher") @map("permission_level")
+  phone         String?   @map("phone")
+  hireDate      DateTime? @map("hire_date")
+  userId        Int?      @unique @map("user_id")
+
+  user          AccountCustomUser? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  courses       CramschoolCourse[]
+  createdTags   CramschoolHashtag[]
+
+  @@map("cramschool_teacher")
+}
+
+model CramschoolCourse {
+  courseId      Int       @id @default(autoincrement()) @map("course_id")
+  courseName    String    @map("course_name")
+  teacherId     Int       @map("teacher_id")
+  startTime     String    @map("start_time") // Time as string
+  endTime       String    @map("end_time") // Time as string
+  dayOfWeek     String    @map("day_of_week") // 'Mon', 'Tue', etc.
+  feePerSession Decimal   @db.Decimal(10, 2) @map("fee_per_session")
+  status        String    @default("Active") @map("status")
+
+  teacher       CramschoolTeacher @relation(fields: [teacherId], references: [teacherId], onDelete: Restrict)
+  enrollments  CramschoolStudentEnrollment[]
+  sessions      CramschoolSessionRecord[]
+  leaves        CramschoolLeave[]
+  learningResources CramschoolLearningResourceCourse[]
+
+  @@map("cramschool_course")
+}
+
+model CramschoolStudentEnrollment {
+  enrollmentId  Int       @id @default(autoincrement()) @map("enrollment_id")
+  studentId    Int       @map("student_id")
+  courseId     Int       @map("course_id")
+  enrollDate   DateTime  @map("enroll_date")
+  discountRate Decimal   @default(0) @db.Decimal(5, 2) @map("discount_rate")
+  isActive     Boolean   @default(true) @map("is_active")
+  isDeleted    Boolean   @default(false) @map("is_deleted")
+  deletedAt    DateTime? @map("deleted_at")
+
+  student      CramschoolStudent @relation(fields: [studentId], references: [studentId], onDelete: Cascade)
+  course       CramschoolCourse @relation(fields: [courseId], references: [courseId], onDelete: Cascade)
+  periods      CramschoolEnrollmentPeriod[]
+
+  @@unique([studentId, courseId])
+  @@map("cramschool_studentenrollment")
+}
+
+model CramschoolEnrollmentPeriod {
+  periodId     Int       @id @default(autoincrement()) @map("period_id")
+  enrollmentId Int      @map("enrollment_id")
+  startDate   DateTime  @map("start_date")
+  endDate     DateTime? @map("end_date")
+  isActive    Boolean   @default(true) @map("is_active")
+  notes       String?   @map("notes")
+
+  enrollment  CramschoolStudentEnrollment @relation(fields: [enrollmentId], references: [enrollmentId], onDelete: Cascade)
+
+  @@map("cramschool_enrollmentperiod")
+}
+
+model CramschoolExtraFee {
+  feeId          Int       @id @default(autoincrement()) @map("fee_id")
+  studentId      Int       @map("student_id")
+  item           String    @map("item")
+  amount         Decimal   @db.Decimal(10, 2) @map("amount")
+  feeDate        DateTime  @map("fee_date")
+  paymentStatus  String    @default("Unpaid") @map("payment_status")
+  notes          String?   @map("notes")
+  paidAt         DateTime? @map("paid_at")
+  isDeleted      Boolean   @default(false) @map("is_deleted")
+  deletedAt      DateTime? @map("deleted_at")
+
+  student        CramschoolStudent @relation(fields: [studentId], references: [studentId], onDelete: Cascade)
+
+  @@map("cramschool_extrafee")
+}
+
+model CramschoolSessionRecord {
+  sessionId   Int       @id @default(autoincrement()) @map("session_id")
+  courseId    Int       @map("course_id")
+  sessionDate DateTime  @map("session_date")
+
+  course      CramschoolCourse @relation(fields: [courseId], references: [courseId], onDelete: Cascade)
+  attendances CramschoolAttendance[]
+
+  @@unique([courseId, sessionDate])
+  @@map("cramschool_sessionrecord")
+}
+
+model CramschoolAttendance {
+  attendanceId Int       @id @default(autoincrement()) @map("attendance_id")
+  sessionId    Int       @map("session_id")
+  studentId    Int       @map("student_id")
+  status       String    @default("Absent") @map("status")
+  isDeleted    Boolean   @default(false) @map("is_deleted")
+  deletedAt    DateTime? @map("deleted_at")
+
+  session      CramschoolSessionRecord @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+  student      CramschoolStudent @relation(fields: [studentId], references: [studentId], onDelete: Cascade)
+
+  @@unique([sessionId, studentId])
+  @@map("cramschool_attendance")
+}
+
+model CramschoolLeave {
+  leaveId        Int       @id @default(autoincrement()) @map("leave_id")
+  studentId      Int       @map("student_id")
+  courseId       Int       @map("course_id")
+  leaveDate      DateTime  @map("leave_date")
+  reason         String    @map("reason")
+  approvalStatus String    @default("Pending") @map("approval_status")
+  isDeleted      Boolean   @default(false) @map("is_deleted")
+  deletedAt      DateTime? @map("deleted_at")
+
+  student        CramschoolStudent @relation(fields: [studentId], references: [studentId], onDelete: Cascade)
+  course         CramschoolCourse @relation(fields: [courseId], references: [courseId], onDelete: Cascade)
+
+  @@map("cramschool_leave")
+}
+
+model CramschoolSubject {
+  subjectId   Int       @id @default(autoincrement()) @map("subject_id")
+  name        String    @unique @map("name")
+  code        String?   @unique @map("code")
+  description String?   @map("description")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  questions   CramschoolQuestionBank[]
+
+  @@map("cramschool_subject")
+}
+
+model CramschoolQuestionBank {
+  questionId            Int       @id @default(autoincrement()) @map("question_id")
+  subjectId             Int       @map("subject_id")
+  level                 String    @map("level")
+  chapter               String    @map("chapter")
+  content               Json      @default("{}") @map("content")
+  imagePath             String?   @map("image_path")
+  correctAnswer         Json      @default("{}") @map("correct_answer")
+  difficulty            Int       @default(1) @map("difficulty")
+  questionType          String    @default("SINGLE_CHOICE") @map("question_type")
+  options               Json?     @map("options")
+  metadata              Json?     @map("metadata")
+  questionNumber        String?   @map("question_number")
+  origin                String?   @map("origin")
+  originDetail          String?   @map("origin_detail")
+  source                String?   @default("九章自命題") @map("source")
+  createdById           Int?      @map("created_by_id")
+  importedFromErrorLogId Int?    @map("imported_from_error_log_id")
+  importedStudentId    Int?      @map("imported_student_id")
+  solutionContent      Json?     @map("solution_content")
+  searchTextContent     String?  @map("search_text_content")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  subject               CramschoolSubject @relation(fields: [subjectId], references: [subjectId], onDelete: Restrict)
+  createdBy             AccountCustomUser? @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  importedFromErrorLog  CramschoolErrorLog? @relation("ImportedFromErrorLog", fields: [importedFromErrorLogId], references: [errorLogId], onDelete: SetNull)
+  importedStudent       CramschoolStudent? @relation(fields: [importedStudentId], references: [studentId], onDelete: SetNull)
+  tags                  CramschoolQuestionTag[]
+  studentAnswers        CramschoolStudentAnswer[]
+  errorLogs             CramschoolErrorLog[]
+
+  @@map("cramschool_questionbank")
+}
+
+model CramschoolHashtag {
+  tagId     Int       @id @default(autoincrement()) @map("tag_id")
+  tagName   String    @unique @map("tag_name")
+  creatorId Int?      @map("creator_id")
+
+  creator   CramschoolTeacher? @relation(fields: [creatorId], references: [teacherId], onDelete: SetNull)
+  questions CramschoolQuestionTag[]
+  templates CramschoolContentTemplateTag[]
+  resources CramschoolLearningResourceTag[]
+
+  @@map("cramschool_hashtag")
+}
+
+model CramschoolQuestionTag {
+  questionTagId Int @id @default(autoincrement()) @map("question_tag_id")
+  questionId    Int @map("question_id")
+  tagId         Int @map("tag_id")
+
+  question      CramschoolQuestionBank @relation(fields: [questionId], references: [questionId], onDelete: Cascade)
+  tag           CramschoolHashtag @relation(fields: [tagId], references: [tagId], onDelete: Cascade)
+
+  @@unique([questionId, tagId])
+  @@map("cramschool_questiontag")
+}
+
+model CramschoolStudentAnswer {
+  answerId      Int       @id @default(autoincrement()) @map("answer_id")
+  studentId     Int       @map("student_id")
+  questionId    Int       @map("question_id")
+  testName      String    @map("test_name")
+  submissionId  Int?      @map("submission_id")
+  isCorrect     Boolean   @default(false) @map("is_correct")
+  scannedFilePath String? @map("scanned_file_path")
+  isDeleted     Boolean   @default(false) @map("is_deleted")
+  deletedAt     DateTime? @map("deleted_at")
+
+  student       CramschoolStudent @relation(fields: [studentId], references: [studentId], onDelete: Cascade)
+  question      CramschoolQuestionBank @relation(fields: [questionId], references: [questionId], onDelete: Cascade)
+
+  @@map("cramschool_studentanswer")
+}
+
+model CramschoolErrorLog {
+  errorLogId    Int       @id @default(autoincrement()) @map("error_log_id")
+  studentId     Int       @map("student_id")
+  questionId    Int       @map("question_id")
+  errorCount    Int       @default(1) @map("error_count")
+  reviewStatus  String    @default("New") @map("review_status")
+  isDeleted     Boolean   @default(false) @map("is_deleted")
+  deletedAt     DateTime? @map("deleted_at")
+
+  student       CramschoolStudent @relation(fields: [studentId], references: [studentId], onDelete: Cascade)
+  question      CramschoolQuestionBank @relation(fields: [questionId], references: [questionId], onDelete: Cascade)
+  importedQuestions CramschoolQuestionBank[] @relation("ImportedFromErrorLog")
+
+  @@unique([studentId, questionId])
+  @@map("cramschool_errorlog")
+}
+
+model CramschoolErrorLogImage {
+  imageId   Int       @id @default(autoincrement()) @map("image_id")
+  errorLogId Int      @map("error_log_id")
+  imagePath String   @map("image_path")
+  caption   String?   @map("caption")
+  sortOrder Int       @default(0) @map("sort_order")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@map("cramschool_errorlogimage")
+}
+
+model CramschoolStudentMistakeNote {
+  noteId    Int       @id @default(autoincrement()) @map("note_id")
+  studentId Int       @map("student_id")
+  title     String    @map("title")
+  subject   String?   @map("subject")
+  content   String?   @map("content")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  isDeleted Boolean   @default(false) @map("is_deleted")
+  deletedAt DateTime? @map("deleted_at")
+
+  student   CramschoolStudent @relation(fields: [studentId], references: [studentId], onDelete: Cascade)
+  images    CramschoolStudentMistakeNoteImage[]
+
+  @@map("cramschool_studentmistakenote")
+}
+
+model CramschoolStudentMistakeNoteImage {
+  imageId   Int       @id @default(autoincrement()) @map("image_id")
+  noteId    Int       @map("note_id")
+  imagePath String   @map("image_path")
+  caption   String?   @map("caption")
+  sortOrder Int       @default(0) @map("sort_order")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  note      CramschoolStudentMistakeNote @relation(fields: [noteId], references: [noteId], onDelete: Cascade)
+
+  @@map("cramschool_studentmistakenoteimage")
+}
+
+model CramschoolRestaurant {
+  restaurantId  Int       @id @default(autoincrement()) @map("restaurant_id")
+  name          String    @map("name")
+  phone         String?   @map("phone")
+  address       String?   @map("address")
+  menuImagePath String?   @map("menu_image_path")
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  groupOrders   CramschoolGroupOrder[]
+
+  @@map("cramschool_restaurant")
+}
+
+model CramschoolGroupOrder {
+  groupOrderId Int       @id @default(autoincrement()) @map("group_order_id")
+  restaurantId Int       @map("restaurant_id")
+  title        String    @map("title")
+  orderLink    String    @unique @map("order_link")
+  status       String    @default("Open") @map("status")
+  deadline     DateTime  @map("deadline")
+  createdById  Int?      @map("created_by_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  closedAt     DateTime? @map("closed_at")
+
+  restaurant   CramschoolRestaurant @relation(fields: [restaurantId], references: [restaurantId], onDelete: Restrict)
+  orders       CramschoolOrder[]
+
+  @@map("cramschool_grouporder")
+}
+
+model CramschoolOrder {
+  orderId     Int       @id @default(autoincrement()) @map("order_id")
+  groupOrderId Int      @map("group_order_id")
+  studentId   Int       @map("student_id")
+  status      String    @default("Pending") @map("status")
+  totalAmount Decimal   @default(0) @db.Decimal(10, 2) @map("total_amount")
+  notes       String?   @map("notes")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  isDeleted   Boolean   @default(false) @map("is_deleted")
+  deletedAt   DateTime? @map("deleted_at")
+
+  groupOrder  CramschoolGroupOrder @relation(fields: [groupOrderId], references: [groupOrderId], onDelete: Cascade)
+  student     CramschoolStudent @relation(fields: [studentId], references: [studentId], onDelete: Cascade)
+  items       CramschoolOrderItem[]
+
+  @@map("cramschool_order")
+}
+
+model CramschoolOrderItem {
+  orderItemId Int       @id @default(autoincrement()) @map("order_item_id")
+  orderId     Int       @map("order_id")
+  itemName    String    @map("item_name")
+  quantity    Int       @default(1) @map("quantity")
+  unitPrice   Decimal   @db.Decimal(10, 2) @map("unit_price")
+  subtotal    Decimal   @db.Decimal(10, 2) @map("subtotal")
+
+  order       CramschoolOrder @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
+
+  @@map("cramschool_orderitem")
+}
+
+model CramschoolStudentGroup {
+  groupId     Int       @id @default(autoincrement()) @map("group_id")
+  name        String    @map("name")
+  description String?   @map("description")
+  groupType   String    @default("teaching") @map("group_type")
+  createdById Int?      @map("created_by_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  students    CramschoolStudentGroupStudent[]
+  learningResources CramschoolLearningResourceStudentGroup[]
+
+  @@map("cramschool_studentgroup")
+}
+
+model CramschoolStudentGroupStudent {
+  id          Int @id @default(autoincrement())
+  groupId     Int @map("group_id")
+  studentId   Int @map("student_id")
+
+  group       CramschoolStudentGroup @relation(fields: [groupId], references: [groupId], onDelete: Cascade)
+  student     CramschoolStudent @relation(fields: [studentId], references: [studentId], onDelete: Cascade)
+
+  @@unique([groupId, studentId])
+  @@map("cramschool_studentgroup_students")
+}
+
+model CramschoolContentTemplate {
+  templateId      Int       @id @default(autoincrement()) @map("template_id")
+  title           String    @map("title")
+  structure       Json      @default("[]") @map("structure")
+  tiptapStructure Json?     @map("tiptap_structure")
+  createdById     Int?      @map("created_by_id")
+  isPublic        Boolean   @default(false) @map("is_public")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  tags            CramschoolContentTemplateTag[]
+
+  @@map("cramschool_contenttemplate")
+}
+
+model CramschoolContentTemplateTag {
+  id          Int @id @default(autoincrement())
+  templateId  Int @map("template_id")
+  tagId       Int @map("tag_id")
+
+  template    CramschoolContentTemplate @relation(fields: [templateId], references: [templateId], onDelete: Cascade)
+  tag         CramschoolHashtag @relation(fields: [tagId], references: [tagId], onDelete: Cascade)
+
+  @@unique([templateId, tagId])
+  @@map("cramschool_contenttemplate_tags")
+}
+
+model CramschoolLearningResource {
+  resourceId      Int       @id @default(autoincrement()) @map("resource_id")
+  title           String    @map("title")
+  mode            String    @default("HANDOUT") @map("mode")
+  structure       Json      @default("[]") @map("structure")
+  tiptapStructure Json?     @map("tiptap_structure")
+  settings        Json      @default("{}") @map("settings")
+  createdById     Int?      @map("created_by_id")
+  isIndividualized Boolean  @default(false) @map("is_individualized")
+  availableFrom   DateTime? @map("available_from")
+  availableUntil  DateTime? @map("available_until")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  courses         CramschoolLearningResourceCourse[]
+  studentGroups   CramschoolLearningResourceStudentGroup[]
+  tags            CramschoolLearningResourceTag[]
+
+  @@map("cramschool_learningresource")
+}
+
+model CramschoolLearningResourceCourse {
+  id          Int @id @default(autoincrement())
+  resourceId  Int @map("resource_id")
+  courseId    Int @map("course_id")
+
+  resource    CramschoolLearningResource @relation(fields: [resourceId], references: [resourceId], onDelete: Cascade)
+  course      CramschoolCourse @relation(fields: [courseId], references: [courseId], onDelete: Cascade)
+
+  @@unique([resourceId, courseId])
+  @@map("cramschool_learningresource_courses")
+}
+
+model CramschoolLearningResourceStudentGroup {
+  id          Int @id @default(autoincrement())
+  resourceId  Int @map("resource_id")
+  groupId     Int @map("student_group_id")
+
+  resource    CramschoolLearningResource @relation(fields: [resourceId], references: [resourceId], onDelete: Cascade)
+  group       CramschoolStudentGroup @relation(fields: [groupId], references: [groupId], onDelete: Cascade)
+
+  @@unique([resourceId, groupId])
+  @@map("cramschool_learningresource_student_groups")
+}
+
+model CramschoolLearningResourceTag {
+  id          Int @id @default(autoincrement())
+  resourceId  Int @map("resource_id")
+  tagId       Int @map("tag_id")
+
+  resource    CramschoolLearningResource @relation(fields: [resourceId], references: [resourceId], onDelete: Cascade)
+  tag         CramschoolHashtag @relation(fields: [tagId], references: [tagId], onDelete: Cascade)
+
+  @@unique([resourceId, tagId])
+  @@map("cramschool_learningresource_tags")
+}

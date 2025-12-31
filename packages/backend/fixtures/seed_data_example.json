@@ -1,0 +1,521 @@
+{
+    "models": {
+        "account.CustomUser": [
+            {
+                "lookup_fields": [
+                    "username"
+                ],
+                "data": {
+                    "username": "admin",
+                    "email": "admin@example.com",
+                    "first_name": "管理",
+                    "last_name": "員",
+                    "role": "ADMIN",
+                    "is_staff": true,
+                    "is_superuser": true,
+                    "is_active": true
+                }
+            },
+            {
+                "lookup_fields": [
+                    "username"
+                ],
+                "data": {
+                    "username": "teacher1",
+                    "email": "teacher1@example.com",
+                    "first_name": "郭",
+                    "last_name": "老師",
+                    "role": "TEACHER",
+                    "is_staff": false,
+                    "is_active": true
+                }
+            },
+            {
+                "lookup_fields": [
+                    "username"
+                ],
+                "data": {
+                    "username": "accountant1",
+                    "email": "accountant1@example.com",
+                    "first_name": "陳",
+                    "last_name": "會計",
+                    "role": "ACCOUNTANT",
+                    "is_staff": false,
+                    "is_active": true
+                }
+            },
+            {
+                "lookup_fields": [
+                    "username"
+                ],
+                "data": {
+                    "username": "student1",
+                    "email": "student1@example.com",
+                    "first_name": "張",
+                    "last_name": "和宸",
+                    "role": "STUDENT",
+                    "is_staff": false,
+                    "is_active": true
+                }
+            },
+            {
+                "lookup_fields": [
+                    "username"
+                ],
+                "data": {
+                    "username": "student2",
+                    "email": "student2@example.com",
+                    "first_name": "李",
+                    "last_name": "佳綺",
+                    "role": "STUDENT",
+                    "is_staff": false,
+                    "is_active": true
+                }
+            },
+            {
+                "lookup_fields": [
+                    "username"
+                ],
+                "data": {
+                    "username": "akira",
+                    "email": "akira@example.com",
+                    "first_name": "永明",
+                    "last_name": "郭",
+                    "role": "TEACHER",
+                    "is_staff": false,
+                    "is_active": true
+                }
+            },
+            {
+                "lookup_fields": [
+                    "username"
+                ],
+                "data": {
+                    "username": "kai",
+                    "email": "kai@example.com",
+                    "first_name": "智凱",
+                    "last_name": "莊",
+                    "role": "TEACHER",
+                    "is_staff": false,
+                    "is_active": true
+                }
+            },
+            {
+                "lookup_fields": [
+                    "username"
+                ],
+                "data": {
+                    "username": "bordless",
+                    "email": "bordless@example.com",
+                    "first_name": "如吟",
+                    "last_name": "陳",
+                    "role": "ACCOUNTANT",
+                    "is_staff": false,
+                    "is_active": true
+                }
+            },
+            {
+                "lookup_fields": [
+                    "username"
+                ],
+                "data": {
+                    "username": "luoyujun",
+                    "email": "luoyujun@example.com",
+                    "first_name": "予君",
+                    "last_name": "羅",
+                    "role": "STUDENT",
+                    "is_staff": false,
+                    "is_active": true
+                }
+            },
+            {
+                "lookup_fields": [
+                    "username"
+                ],
+                "data": {
+                    "username": "linshixiu",
+                    "email": "linshixiu@example.com",
+                    "first_name": "軾修",
+                    "last_name": "林",
+                    "role": "STUDENT",
+                    "is_staff": false,
+                    "is_active": true
+                }
+            },
+            {
+                "lookup_fields": [
+                    "username"
+                ],
+                "data": {
+                    "username": "liaoyunjie",
+                    "email": "liaoyunjie@example.com",
+                    "first_name": "沄婕",
+                    "last_name": "廖",
+                    "role": "STUDENT",
+                    "is_staff": false,
+                    "is_active": true
+                }
+            }
+        ],
+        "cramschool.Student": [
+            {
+                "lookup_fields": [
+                    "name",
+                    "school"
+                ],
+                "data": {
+                    "name": "張和宸",
+                    "school": "嘉義高工",
+                    "grade": "高三",
+                    "phone": "0912345678",
+                    "emergency_contact_name": "張父",
+                    "emergency_contact_phone": "0923456789",
+                    "user": "account.CustomUser:username:student1",
+                    "notes": "測試學生資料"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "name",
+                    "school"
+                ],
+                "data": {
+                    "name": "李四",
+                    "school": "YY國中",
+                    "grade": "八年級",
+                    "phone": "0987654321",
+                    "emergency_contact_name": "李母",
+                    "emergency_contact_phone": "0976543210",
+                    "user": "account.CustomUser:username:student2",
+                    "notes": "測試學生資料"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "name",
+                    "school"
+                ],
+                "data": {
+                    "name": "羅予君",
+                    "school": "嘉義高工",
+                    "grade": "高三",
+                    "phone": "",
+                    "emergency_contact_name": "",
+                    "emergency_contact_phone": "",
+                    "user": "account.CustomUser:username:luoyujun",
+                    "notes": ""
+                }
+            },
+            {
+                "lookup_fields": [
+                    "name",
+                    "school"
+                ],
+                "data": {
+                    "name": "林軾修",
+                    "school": "嘉義高工",
+                    "grade": "高三",
+                    "phone": "",
+                    "emergency_contact_name": "",
+                    "emergency_contact_phone": "",
+                    "user": "account.CustomUser:username:linshixiu",
+                    "notes": ""
+                }
+            },
+            {
+                "lookup_fields": [
+                    "name",
+                    "school"
+                ],
+                "data": {
+                    "name": "廖沄婕",
+                    "school": "嘉義高工",
+                    "grade": "高一",
+                    "phone": "",
+                    "emergency_contact_name": "",
+                    "emergency_contact_phone": "",
+                    "user": "account.CustomUser:username:liaoyunjie",
+                    "notes": ""
+                }
+            }
+        ],
+        "cramschool.Teacher": [
+            {
+                "lookup_fields": [
+                    "name"
+                ],
+                "data": {
+                    "name": "郭永明",
+                    "user": "account.CustomUser:username:akira",
+                    "permission_level": "Teacher"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "name"
+                ],
+                "data": {
+                    "name": "莊智凱",
+                    "user": "account.CustomUser:username:kai",
+                    "permission_level": "Teacher"
+                }
+            }
+        ],
+        "cramschool.Subject": [
+            {
+                "lookup_fields": [
+                    "name"
+                ],
+                "data": {
+                    "name": "國小數學",
+                    "code": "MATH_PRIMARY"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "name"
+                ],
+                "data": {
+                    "name": "國中數學",
+                    "code": "MATH_MIDDLE"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "name"
+                ],
+                "data": {
+                    "name": "高中數學",
+                    "code": "MATH_HIGH"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "name"
+                ],
+                "data": {
+                    "name": "高職數學",
+                    "code": "MATH_VOCATIONAL"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "name"
+                ],
+                "data": {
+                    "name": "國小英文",
+                    "code": "ENG_PRIMARY"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "name"
+                ],
+                "data": {
+                    "name": "國中英文",
+                    "code": "ENG_MIDDLE"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "name"
+                ],
+                "data": {
+                    "name": "高中英文",
+                    "code": "ENG_HIGH"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "name"
+                ],
+                "data": {
+                    "name": "高職英文",
+                    "code": "ENG_VOCATIONAL"
+                }
+            }
+        ],
+        "cramschool.Course": [
+            {
+                "lookup_fields": [
+                    "course_name",
+                    "day_of_week"
+                ],
+                "data": {
+                    "course_name": "高職一數學C",
+                    "teacher": "cramschool.Teacher:name:郭永明",
+                    "day_of_week": "Sat",
+                    "start_time": "18:00:00",
+                    "end_time": "21:00:00",
+                    "fee_per_session": "4000.00",
+                    "status": "Active"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "course_name",
+                    "day_of_week"
+                ],
+                "data": {
+                    "course_name": "高職三數學C",
+                    "teacher": "cramschool.Teacher:name:郭永明",
+                    "day_of_week": "Sat",
+                    "start_time": "14:30:00",
+                    "end_time": "17:30:00",
+                    "fee_per_session": "4000.00",
+                    "status": "Active"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "course_name",
+                    "day_of_week"
+                ],
+                "data": {
+                    "course_name": "高職三專業",
+                    "teacher": "cramschool.Teacher:name:郭永明",
+                    "day_of_week": "Sat",
+                    "start_time": "10:00:00",
+                    "end_time": "13:00:00",
+                    "fee_per_session": "4000.00",
+                    "status": "Active"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "course_name",
+                    "day_of_week"
+                ],
+                "data": {
+                    "course_name": "初級程式設計",
+                    "teacher": "cramschool.Teacher:name:郭永明",
+                    "day_of_week": "Sun",
+                    "start_time": "14:30:00",
+                    "end_time": "17:30:00",
+                    "fee_per_session": "6000.00",
+                    "status": "Active"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "course_name",
+                    "day_of_week"
+                ],
+                "data": {
+                    "course_name": "高級程式設計",
+                    "teacher": "cramschool.Teacher:name:郭永明",
+                    "day_of_week": "Sun",
+                    "start_time": "18:00:00",
+                    "end_time": "21:00:00",
+                    "fee_per_session": "8000.00",
+                    "status": "Active"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "course_name",
+                    "day_of_week"
+                ],
+                "data": {
+                    "course_name": "國一數學",
+                    "teacher": "cramschool.Teacher:name:莊智凱",
+                    "day_of_week": "Wed",
+                    "start_time": "18:00:00",
+                    "end_time": "21:00:00",
+                    "fee_per_session": "3000.00",
+                    "status": "Active"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "course_name",
+                    "day_of_week"
+                ],
+                "data": {
+                    "course_name": "國二數學",
+                    "teacher": "cramschool.Teacher:name:郭永明",
+                    "day_of_week": "Wed",
+                    "start_time": "18:00:00",
+                    "end_time": "21:00:00",
+                    "fee_per_session": "3000.00",
+                    "status": "Active"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "course_name",
+                    "day_of_week"
+                ],
+                "data": {
+                    "course_name": "國三數學",
+                    "teacher": "cramschool.Teacher:name:莊智凱",
+                    "day_of_week": "Wed",
+                    "start_time": "18:00:00",
+                    "end_time": "21:00:00",
+                    "fee_per_session": "3000.00",
+                    "status": "Active"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "course_name",
+                    "day_of_week"
+                ],
+                "data": {
+                    "course_name": "國中英文",
+                    "teacher": "cramschool.Teacher:name:郭永明",
+                    "day_of_week": "Fri",
+                    "start_time": "18:00:00",
+                    "end_time": "21:00:00",
+                    "fee_per_session": "3000.00",
+                    "status": "Active"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "course_name",
+                    "day_of_week"
+                ],
+                "data": {
+                    "course_name": "高中英文",
+                    "teacher": "cramschool.Teacher:name:郭永明",
+                    "day_of_week": "Fri",
+                    "start_time": "18:00:00",
+                    "end_time": "21:00:00",
+                    "fee_per_session": "4000.00",
+                    "status": "Active"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "course_name",
+                    "day_of_week"
+                ],
+                "data": {
+                    "course_name": "國中理化",
+                    "teacher": "cramschool.Teacher:name:莊智凱",
+                    "day_of_week": "Thu",
+                    "start_time": "18:00:00",
+                    "end_time": "21:00:00",
+                    "fee_per_session": "3000.00",
+                    "status": "Active"
+                }
+            },
+            {
+                "lookup_fields": [
+                    "course_name",
+                    "day_of_week"
+                ],
+                "data": {
+                    "course_name": "高一數學A",
+                    "teacher": "cramschool.Teacher:name:莊智凱",
+                    "day_of_week": "Tue",
+                    "start_time": "18:00:00",
+                    "end_time": "21:00:00",
+                    "fee_per_session": "4000.00",
+                    "status": "Active"
+                }
+            }
+        ]
+    }
+}

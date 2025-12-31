@@ -27,9 +27,10 @@ exports.UserSchema = zod_1.z.object({
 });
 /**
  * 登入請求 DTO Schema
+ * email 字段實際上可以是 email 或 username
  */
 exports.LoginRequestSchema = zod_1.z.object({
-    email: zod_1.z.string().email(),
+    email: zod_1.z.string().min(1), // 允許 email 或 username
     password: zod_1.z.string().min(1)
 });
 /**
