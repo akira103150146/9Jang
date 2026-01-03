@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   CreateLeaveDto,
@@ -57,6 +57,21 @@ export class LeavesService {
   }
 
   async createLeave(createDto: CreateLeaveDto): Promise<Leave> {
+    // 驗證學生是否報名了該課程
+    const enrollment = await this.prisma.cramschoolStudentEnrollment.findFirst({
+      where: {
+        studentId: createDto.student_id,
+        courseId: createDto.course_id,
+        isDeleted: false,
+      },
+    });
+
+    if (!enrollment) {
+      throw new BadRequestException(
+        `學生未報名此課程，無法為該課程請假`
+      );
+    }
+
     const leave = await this.prisma.cramschoolLeave.create({
       data: {
         studentId: createDto.student_id,
@@ -79,9 +94,31 @@ export class LeavesService {
       throw new NotFoundException(`Leave with ID ${id} not found`);
     }
 
+    // 如果更新了學生或課程，需要驗證學生是否報名了該課程
+    const studentId = updateDto.student_id !== undefined ? updateDto.student_id : leave.studentId;
+    const courseId = updateDto.course_id !== undefined ? updateDto.course_id : leave.courseId;
+
+    if (updateDto.student_id !== undefined || updateDto.course_id !== undefined) {
+      const enrollment = await this.prisma.cramschoolStudentEnrollment.findFirst({
+        where: {
+          studentId: studentId,
+          courseId: courseId,
+          isDeleted: false,
+        },
+      });
+
+      if (!enrollment) {
+        throw new BadRequestException(
+          `學生未報名此課程，無法為該課程請假`
+        );
+      }
+    }
+
     await this.prisma.cramschoolLeave.update({
       where: { leaveId: id },
       data: {
+        studentId: updateDto.student_id !== undefined ? updateDto.student_id : undefined,
+        courseId: updateDto.course_id !== undefined ? updateDto.course_id : undefined,
         leaveDate: updateDto.leave_date ? new Date(updateDto.leave_date) : undefined,
         reason: updateDto.reason,
         approvalStatus: updateDto.approval_status,

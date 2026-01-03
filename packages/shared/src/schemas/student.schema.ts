@@ -16,7 +16,12 @@ export const StudentSchema = z.object({
   is_deleted: z.boolean().default(false),
   deleted_at: z.string().datetime().nullable().optional(),
   user_id: z.number().int().positive().nullable().optional(),
-  initial_password: z.string().max(50).nullable().optional()
+  initial_password: z.string().max(50).nullable().optional(),
+  // 計算字段（從後端返回）
+  has_tuition_needed: z.boolean().optional(),
+  total_fees: z.number().optional(),
+  unpaid_fees: z.number().optional(),
+  enrollments_count: z.number().optional(),
 })
 
 export type Student = z.infer<typeof StudentSchema>

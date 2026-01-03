@@ -89,11 +89,12 @@
                 :value="leaveForm.course"
                 @input="updateForm('course', ($event.target as HTMLSelectElement).value)"
                 required
+                :disabled="!student || enrolledCourses.length === 0"
                 class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
               >
-                <option value="">請選擇課程</option>
+                <option value="">{{ student && enrolledCourses.length === 0 ? '此學生尚未報名任何課程' : '請選擇課程' }}</option>
                 <option
-                  v-for="course in courses"
+                  v-for="course in enrolledCourses"
                   :key="course.course_id || (course as { id?: number }).id"
                   :value="String(course.course_id || (course as { id?: number }).id || '')"
                 >
@@ -155,6 +156,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { formatDate } from '../utils/studentFormatters'
 import type { NormalizedStudent } from '../utils/studentUtils'
 import type { Leave, LeaveForm } from '../composables/useStudentLeave'
@@ -185,6 +187,32 @@ const emit = defineEmits<{
   (e: 'restore', leaveId: number, studentName: string): void
   (e: 'update:leaveForm', value: LeaveForm): void
 }>()
+
+// 計算該學生已報名的課程
+const enrolledCourses = computed(() => {
+  if (!props.student || !props.student.enrollments || props.student.enrollments.length === 0) {
+    return []
+  }
+  
+  // 獲取該學生已報名的課程ID列表（排除已刪除的報名）
+  const enrolledCourseIds = props.student.enrollments
+    .filter((e: any) => {
+      // 檢查是否已刪除（可能有多種字段名稱）
+      const isDeleted = e.is_deleted || e.isDeleted || false
+      return !isDeleted
+    })
+    .map((e: any) => {
+      // 嘗試多種方式獲取 course_id
+      return e.course_id || e.course?.course_id || e.course?.id || e.course
+    })
+    .filter((id: any) => id !== undefined && id !== null) // 過濾掉無效的ID
+  
+  // 從所有課程中過濾出已報名的課程
+  return props.courses.filter((course) => {
+    const courseId = course.course_id || course.id
+    return enrolledCourseIds.includes(courseId)
+  })
+})
 
 const getLeaveStatusColor = (status: string): string => {
   const colorMap: Record<string, string> = {

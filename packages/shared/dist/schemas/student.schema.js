@@ -18,7 +18,12 @@ exports.StudentSchema = zod_1.z.object({
     is_deleted: zod_1.z.boolean().default(false),
     deleted_at: zod_1.z.string().datetime().nullable().optional(),
     user_id: zod_1.z.number().int().positive().nullable().optional(),
-    initial_password: zod_1.z.string().max(50).nullable().optional()
+    initial_password: zod_1.z.string().max(50).nullable().optional(),
+    // 計算字段（從後端返回）
+    has_tuition_needed: zod_1.z.boolean().optional(),
+    total_fees: zod_1.z.number().optional(),
+    unpaid_fees: zod_1.z.number().optional(),
+    enrollments_count: zod_1.z.number().optional(),
 });
 /**
  * 創建學生 DTO Schema

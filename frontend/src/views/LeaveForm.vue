@@ -24,12 +24,16 @@
             v-model="form.course"
             class="bg-gray-100 text-gray-900 border-0 rounded-md p-3 mb-4 focus:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-150"
             required
+            :disabled="!form.student"
           >
-            <option value="">選擇課程</option>
+            <option value="">{{ form.student ? '選擇課程' : '請先選擇學生' }}</option>
             <option v-for="course in courses" :key="course.course_id || course.id" :value="course.course_id || course.id">
               {{ course.course_name }} ({{ getDayDisplay(course.day_of_week) }} {{ formatTime(course.start_time) }}-{{ formatTime(course.end_time) }})
             </option>
           </select>
+          <p v-if="form.student && courses.length === 0" class="text-sm text-amber-600 mb-2">
+            此學生尚未報名任何課程
+          </p>
 
           <label class="block text-sm font-medium text-gray-700 mb-2">請假日期 <span class="text-red-500">*</span></label>
           <input 
@@ -81,9 +85,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { leaveAPI, studentAPI, courseAPI } from '../services/api'
+import { leaveAPI, studentAPI, courseAPI, enrollmentAPI } from '../services/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -91,7 +95,8 @@ const router = useRouter()
 const isEdit = computed(() => !!route.params.id)
 const loading = ref(false)
 const students = ref([])
-const courses = ref([])
+const allCourses = ref([]) // 所有課程
+const enrolledCourses = ref([]) // 學生已報名的課程
 
 const form = ref({
   student: '',
@@ -99,6 +104,16 @@ const form = ref({
   leave_date: new Date().toISOString().split('T')[0], // 預設為今天
   reason: '',
   approval_status: 'Pending'
+})
+
+// 計算屬性：根據是否選擇學生來決定顯示的課程列表
+const courses = computed(() => {
+  if (form.value.student) {
+    // 如果選擇了學生，只顯示該學生已報名的課程
+    return enrolledCourses.value
+  }
+  // 如果沒有選擇學生，顯示所有課程（編輯模式下）
+  return allCourses.value
 })
 
 const dayMap = {
@@ -134,11 +149,78 @@ const fetchCourses = async () => {
   try {
     const response = await courseAPI.getAll()
     const data = response.data.results || response.data
-    courses.value = data
+    allCourses.value = data
   } catch (error) {
     console.warn('獲取課程列表失敗:', error)
   }
 }
+
+// 獲取學生已報名的課程
+const fetchStudentEnrolledCourses = async (studentId) => {
+  if (!studentId) {
+    enrolledCourses.value = []
+    return
+  }
+
+  try {
+    // 方法1：嘗試從學生資料中獲取報名課程（更高效）
+    try {
+      const studentResponse = await studentAPI.getById(studentId)
+      const student = studentResponse.data
+      
+      if (student.enrollments && Array.isArray(student.enrollments)) {
+        // 過濾出未刪除的報名記錄
+        const activeEnrollments = student.enrollments.filter(e => !e.is_deleted)
+        const enrolledCourseIds = activeEnrollments.map(e => e.course_id || e.course?.course_id || e.course?.id || e.course)
+        
+        // 從所有課程中過濾出已報名的課程
+        enrolledCourses.value = allCourses.value.filter(course => {
+          const courseId = course.course_id || course.id
+          return enrolledCourseIds.includes(courseId)
+        })
+        return
+      }
+    } catch (error) {
+      console.warn('從學生資料獲取報名課程失敗，嘗試其他方法:', error)
+    }
+
+    // 方法2：從報名記錄中獲取（備用方法）
+    const response = await enrollmentAPI.getAll(true)
+    const enrollments = response.data.results || response.data
+    
+    // 過濾出該學生的報名記錄（排除已刪除的）
+    const studentEnrollments = Array.isArray(enrollments) 
+      ? enrollments.filter(e => {
+          const enrollmentStudentId = e.student_id || e.student?.student_id || e.student?.id || e.student
+          return enrollmentStudentId === parseInt(studentId) && !e.is_deleted
+        })
+      : []
+
+    // 獲取這些報名記錄對應的課程ID
+    const enrolledCourseIds = studentEnrollments.map(e => e.course_id || e.course?.course_id || e.course?.id || e.course)
+    
+    // 從所有課程中過濾出已報名的課程
+    enrolledCourses.value = allCourses.value.filter(course => {
+      const courseId = course.course_id || course.id
+      return enrolledCourseIds.includes(courseId)
+    })
+  } catch (error) {
+    console.warn('獲取學生報名課程失敗:', error)
+    enrolledCourses.value = []
+  }
+}
+
+// 監聽學生選擇變化
+watch(() => form.value.student, async (newStudentId) => {
+  if (newStudentId) {
+    // 清空課程選擇
+    form.value.course = ''
+    // 獲取該學生已報名的課程
+    await fetchStudentEnrolledCourses(newStudentId)
+  } else {
+    enrolledCourses.value = []
+  }
+})
 
 const fetchLeave = async () => {
   if (!isEdit.value) return
@@ -146,12 +228,19 @@ const fetchLeave = async () => {
   try {
     const response = await leaveAPI.getById(route.params.id)
     const leave = response.data
+    const studentId = leave.student || leave.student_id || ''
+    
     form.value = {
-      student: leave.student || leave.student_id || '',
+      student: studentId,
       course: leave.course || leave.course_id || '',
       leave_date: leave.leave_date || new Date().toISOString().split('T')[0],
       reason: leave.reason || '',
       approval_status: leave.approval_status || 'Pending'
+    }
+    
+    // 如果是編輯模式，獲取該學生已報名的課程
+    if (studentId) {
+      await fetchStudentEnrolledCourses(studentId)
     }
   } catch (error) {
     console.error('獲取請假記錄失敗:', error)

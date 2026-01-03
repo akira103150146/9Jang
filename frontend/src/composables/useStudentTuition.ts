@@ -195,8 +195,9 @@ export function useStudentTuition(
 
       alert(message)
 
-      // 刷新學生列表以更新「需要生成學費」的數量
-      await fetchStudents('')
+      // 刷新學生列表以更新「需要生成學費」的數量和費用統計
+      // 添加時間戳確保強制刷新
+      await fetchStudents(`?t=${Date.now()}`)
     } catch (error) {
       console.error('批次生成學費失敗：', error)
       alert('批次生成學費時發生錯誤，請稍後再試')

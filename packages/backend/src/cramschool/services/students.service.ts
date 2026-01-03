@@ -202,11 +202,77 @@ export class StudentsService {
           }),
         ]);
 
+        // 計算是否有需要生成的學費
+        // 檢查是否有未刪除且活躍的報名
+        let hasTuitionNeeded = false;
+        if (student.enrollments && student.enrollments.length > 0) {
+          const activeEnrollments = student.enrollments.filter(
+            (e: any) => !e.isDeleted && e.isActive
+          );
+          
+          if (activeEnrollments.length > 0) {
+            const currentDate = new Date();
+            const currentYear = currentDate.getFullYear();
+            const currentMonth = currentDate.getMonth() + 1;
+            
+            // 檢查每個活躍報名
+            for (const enrollment of activeEnrollments) {
+              // 如果報名沒有期間，檢查當前月份是否已經有費用記錄
+              if (!enrollment.periods || enrollment.periods.length === 0) {
+                // 檢查當前月份是否已經有費用記錄
+                const existingFee = student.extraFees?.find(
+                  (fee: any) =>
+                    fee.feeDate.getFullYear() === currentYear &&
+                    fee.feeDate.getMonth() + 1 === currentMonth &&
+                    fee.item === '學費'
+                );
+                if (!existingFee) {
+                  hasTuitionNeeded = true;
+                  break;
+                }
+              }
+              
+              // 如果有期間，檢查期間內是否有未生成的學費月份
+              for (const period of enrollment.periods) {
+                const startDate = new Date(period.startDate);
+                const endDate = period.endDate ? new Date(period.endDate) : new Date(currentYear + 1, 11, 31);
+                
+                let date = new Date(startDate);
+                while (date <= endDate && !hasTuitionNeeded) {
+                  const year = date.getFullYear();
+                  const month = date.getMonth() + 1;
+                  
+                  // 檢查該月份是否已經有費用記錄（檢查費用名目是否為「學費」）
+                  const existingFee = student.extraFees?.find(
+                    (fee: any) =>
+                      fee.feeDate.getFullYear() === year &&
+                      fee.feeDate.getMonth() + 1 === month &&
+                      fee.item === '學費'
+                  );
+                  
+                  if (!existingFee) {
+                    hasTuitionNeeded = true;
+                    break;
+                  }
+                  
+                  // 移到下個月
+                  date = new Date(year, month, 1);
+                }
+                
+                if (hasTuitionNeeded) break;
+              }
+              
+              if (hasTuitionNeeded) break;
+            }
+          }
+        }
+
         return {
           ...this.toStudentDto(student),
           total_fees: Number(totalFees._sum.amount || 0),
           unpaid_fees: Number(unpaidFees._sum.amount || 0),
           enrollments_count: student.enrollments.length,
+          has_tuition_needed: hasTuitionNeeded,
           student_groups: student.studentGroups?.map((sg: any) => ({
             group_id: sg.group.groupId,
             name: sg.group.name,
@@ -215,6 +281,7 @@ export class StudentsService {
           })) || [],
           enrollments: student.enrollments.map((e: any) => ({
             enrollment_id: e.enrollmentId,
+            course_id: e.courseId,
             course_name: e.course.courseName,
             enroll_date: e.enrollDate.toISOString().split('T')[0],
             discount_rate: Number(e.discountRate),
@@ -456,37 +523,60 @@ export class StudentsService {
     const currentMonth = currentDate.getMonth() + 1;
 
     for (const enrollment of student.enrollments) {
-      for (const period of enrollment.periods) {
-        const startDate = new Date(period.startDate);
-        const endDate = period.endDate ? new Date(period.endDate) : new Date(currentYear + 1, 11, 31);
-        
-        // 生成該期間內每個月的學費項目
-        let date = new Date(startDate);
-        while (date <= endDate) {
-          const year = date.getFullYear();
-          const month = date.getMonth() + 1;
+      // 如果報名沒有期間，生成當前月份的學費
+      if (!enrollment.periods || enrollment.periods.length === 0) {
+        // 檢查當前月份是否已經有費用記錄（檢查費用名目是否為「學費」）
+        const existingFee = student.extraFees.find(
+          (fee) =>
+            fee.feeDate.getFullYear() === currentYear &&
+            fee.feeDate.getMonth() + 1 === currentMonth &&
+            fee.item === '學費'
+        );
+
+        if (!existingFee) {
+          tuitionMonths.push({
+            year: currentYear,
+            month: currentMonth,
+            enrollment_id: enrollment.enrollmentId,
+            course_name: enrollment.course.courseName,
+            has_fee: false,
+            weeks: 4, // 預設4週
+          });
+        }
+      } else {
+        // 如果有期間，生成期間內每個月的學費
+        for (const period of enrollment.periods) {
+          const startDate = new Date(period.startDate);
+          const endDate = period.endDate ? new Date(period.endDate) : new Date(currentYear + 1, 11, 31);
           
-          // 檢查該月份是否已經有費用記錄
-          const existingFee = student.extraFees.find(
-            (fee) =>
-              fee.feeDate.getFullYear() === year &&
-              fee.feeDate.getMonth() + 1 === month &&
-              fee.item.includes(enrollment.course.courseName)
-          );
+          // 生成該期間內每個月的學費項目
+          let date = new Date(startDate);
+          while (date <= endDate) {
+            const year = date.getFullYear();
+            const month = date.getMonth() + 1;
+            
+            // 檢查該月份是否已經有費用記錄（檢查費用名目是否為「學費」）
+            const existingFee = student.extraFees.find(
+              (fee) =>
+                fee.feeDate.getFullYear() === year &&
+                fee.feeDate.getMonth() + 1 === month &&
+                fee.item === '學費'
+            );
 
-          if (!existingFee) {
-            tuitionMonths.push({
-              year,
-              month,
-              enrollment_id: enrollment.enrollmentId,
-              course_name: enrollment.course.courseName,
-              has_fee: false,
-              weeks: 4, // 預設4週
-            });
+            if (!existingFee) {
+              tuitionMonths.push({
+                year,
+                month,
+                enrollment_id: enrollment.enrollmentId,
+                course_name: enrollment.course.courseName,
+                has_fee: false,
+                weeks: 4, // 預設4週
+              });
+            }
+
+            // 移到下個月
+            date = new Date(year, month, 1);
           }
-
-          // 移到下個月
-          date = new Date(year, month, 1);
         }
       }
     }
@@ -522,19 +612,20 @@ export class StudentsService {
     }
 
     // 計算費用（基於課程費用和週數）
-    const weeklyFee = Number(enrollment.course.feePerSession) || 0;
-    const totalAmount = weeklyFee * data.weeks;
+    // 每堂費用是每周上四次課的費用，所以費用計算邏輯為：課程費用/4*週數
+    const courseFee = Number(enrollment.course.feePerSession) || 0;
+    const totalAmount = (courseFee / 4) * data.weeks;
 
     // 創建費用記錄
     const feeDate = new Date(data.year, data.month - 1, 1);
     const fee = await this.prisma.cramschoolExtraFee.create({
       data: {
         studentId: id,
-        item: `${enrollment.course.courseName} - ${data.year}年${data.month}月學費`,
+        item: '學費',
         amount: totalAmount,
         feeDate,
         paymentStatus: 'Unpaid',
-        notes: `自動生成 - ${data.weeks}週`,
+        notes: `${enrollment.course.courseName} - ${data.year}年${data.month}月 - ${data.weeks}週`,
       },
     });
 

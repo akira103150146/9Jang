@@ -16,6 +16,10 @@ export declare const StudentSchema: z.ZodObject<{
     deleted_at: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     user_id: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
     initial_password: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    has_tuition_needed: z.ZodOptional<z.ZodBoolean>;
+    total_fees: z.ZodOptional<z.ZodNumber>;
+    unpaid_fees: z.ZodOptional<z.ZodNumber>;
+    enrollments_count: z.ZodOptional<z.ZodNumber>;
 }, "strip", z.ZodTypeAny, {
     student_id: number;
     name: string;
@@ -29,6 +33,10 @@ export declare const StudentSchema: z.ZodObject<{
     deleted_at?: string | null | undefined;
     user_id?: number | null | undefined;
     initial_password?: string | null | undefined;
+    has_tuition_needed?: boolean | undefined;
+    total_fees?: number | undefined;
+    unpaid_fees?: number | undefined;
+    enrollments_count?: number | undefined;
 }, {
     student_id: number;
     name: string;
@@ -42,6 +50,10 @@ export declare const StudentSchema: z.ZodObject<{
     deleted_at?: string | null | undefined;
     user_id?: number | null | undefined;
     initial_password?: string | null | undefined;
+    has_tuition_needed?: boolean | undefined;
+    total_fees?: number | undefined;
+    unpaid_fees?: number | undefined;
+    enrollments_count?: number | undefined;
 }>;
 export type Student = z.infer<typeof StudentSchema>;
 /**
@@ -56,6 +68,10 @@ export declare const CreateStudentSchema: z.ZodObject<{
     emergency_contact_phone: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     notes: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     user_id: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    has_tuition_needed: z.ZodOptional<z.ZodBoolean>;
+    total_fees: z.ZodOptional<z.ZodNumber>;
+    unpaid_fees: z.ZodOptional<z.ZodNumber>;
+    enrollments_count: z.ZodOptional<z.ZodNumber>;
 } & {
     initial_password: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
@@ -68,6 +84,10 @@ export declare const CreateStudentSchema: z.ZodObject<{
     notes?: string | null | undefined;
     user_id?: number | null | undefined;
     initial_password?: string | undefined;
+    has_tuition_needed?: boolean | undefined;
+    total_fees?: number | undefined;
+    unpaid_fees?: number | undefined;
+    enrollments_count?: number | undefined;
 }, {
     name: string;
     school: string;
@@ -78,6 +98,10 @@ export declare const CreateStudentSchema: z.ZodObject<{
     notes?: string | null | undefined;
     user_id?: number | null | undefined;
     initial_password?: string | undefined;
+    has_tuition_needed?: boolean | undefined;
+    total_fees?: number | undefined;
+    unpaid_fees?: number | undefined;
+    enrollments_count?: number | undefined;
 }>;
 export type CreateStudentDto = z.infer<typeof CreateStudentSchema>;
 /**
@@ -96,6 +120,10 @@ export declare const UpdateStudentSchema: z.ZodObject<Omit<{
     deleted_at: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
     user_id: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodNumber>>>;
     initial_password: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
+    has_tuition_needed: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
+    total_fees: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
+    unpaid_fees: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
+    enrollments_count: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
 }, "student_id" | "is_deleted" | "deleted_at">, "strip", z.ZodTypeAny, {
     name?: string | undefined;
     school?: string | undefined;
@@ -106,6 +134,10 @@ export declare const UpdateStudentSchema: z.ZodObject<Omit<{
     notes?: string | null | undefined;
     user_id?: number | null | undefined;
     initial_password?: string | null | undefined;
+    has_tuition_needed?: boolean | undefined;
+    total_fees?: number | undefined;
+    unpaid_fees?: number | undefined;
+    enrollments_count?: number | undefined;
 }, {
     name?: string | undefined;
     school?: string | undefined;
@@ -116,6 +148,10 @@ export declare const UpdateStudentSchema: z.ZodObject<Omit<{
     notes?: string | null | undefined;
     user_id?: number | null | undefined;
     initial_password?: string | null | undefined;
+    has_tuition_needed?: boolean | undefined;
+    total_fees?: number | undefined;
+    unpaid_fees?: number | undefined;
+    enrollments_count?: number | undefined;
 }>;
 export type UpdateStudentDto = z.infer<typeof UpdateStudentSchema>;
 /**
