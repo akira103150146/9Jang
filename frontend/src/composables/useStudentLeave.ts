@@ -78,6 +78,10 @@ export function useStudentLeave(
       const leavesData = leavesResponse.data.results || leavesResponse.data
       const allLeaves = Array.isArray(leavesData) ? leavesData : []
 
+      // #region agent log
+      fetch('http://127.0.0.1:2000/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useStudentLeave.ts:81',message:'Processing leaves data',data:{allLeavesLength:allLeaves.length,firstLeave:JSON.stringify(allLeaves[0])},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
+      
       leaveData.value = {
         leaves: allLeaves
           .filter((l: unknown) => {
@@ -99,28 +103,43 @@ export function useStudentLeave(
             const leave = l as {
               leave_id?: number
               id?: number
+              course_id?: number
+              course?: { course_id?: number; course_name?: string } | number
               student_name?: string
               student?: { name?: string }
               course_name?: string
-              course?: { course_name?: string }
               leave_date?: string
               reason?: string
               approval_status?: string
               is_deleted?: boolean
               deleted_at?: string | null
             }
-            return {
+            // #region agent log
+            fetch('http://127.0.0.1:2000/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useStudentLeave.ts:99',message:'Mapping leave data',data:{leave:JSON.stringify(leave),courseId:leave.course_id,course:leave.course,courseName:leave.course_name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+            // #endregion
+            
+            const mappedLeave = {
               leave_id: leave.leave_id || leave.id || 0,
               student_name: leave.student_name || leave.student?.name || '',
-              course_name: leave.course_name || leave.course?.course_name || '',
+              course_name: leave.course_name || (typeof leave.course === 'object' && leave.course ? leave.course.course_name : '') || '',
               leave_date: leave.leave_date || '',
               reason: leave.reason || '',
               approval_status: (leave.approval_status as 'Pending' | 'Approved' | 'Rejected') || 'Pending',
               is_deleted: leave.is_deleted || false,
               deleted_at: leave.deleted_at || null,
             } as Leave
+            
+            // #region agent log
+            fetch('http://127.0.0.1:2000/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useStudentLeave.ts:121',message:'Mapped leave result',data:{mappedLeave:JSON.stringify(mappedLeave),courseName:mappedLeave.course_name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+            // #endregion
+            
+            return mappedLeave
           }),
       }
+      
+      // #region agent log
+      fetch('http://127.0.0.1:2000/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useStudentLeave.ts:127',message:'Final leaves data',data:{leavesCount:leaveData.value.leaves.length,firstLeave:JSON.stringify(leaveData.value.leaves[0])},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
     } catch (error) {
       console.error('獲取請假記錄失敗：', error)
       alert('獲取請假記錄失敗')
@@ -150,8 +169,15 @@ export function useStudentLeave(
   const submitLeave = async (): Promise<void> => {
     if (!selectedStudent.value) return
 
+    // #region agent log
+    fetch('http://127.0.0.1:2000/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useStudentLeave.ts:150',message:'submitLeave called',data:{leaveForm:JSON.stringify(leaveForm.value),selectedStudentId:selectedStudent.value.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+
     // 驗證必填字段
     if (!leaveForm.value.course) {
+      // #region agent log
+      fetch('http://127.0.0.1:2000/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useStudentLeave.ts:154',message:'Course validation failed',data:{course:leaveForm.value.course},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       alert('請選擇課程')
       return
     }
@@ -167,15 +193,28 @@ export function useStudentLeave(
 
     savingLeave.value = true
     try {
+      const courseIdParsed = parseInt(String(leaveForm.value.course))
+      // #region agent log
+      fetch('http://127.0.0.1:2000/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useStudentLeave.ts:172',message:'Parsing course_id',data:{courseValue:leaveForm.value.course,courseIdParsed,isNaN:isNaN(courseIdParsed)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      
       const submitData = {
         student_id: selectedStudent.value.id,
-        course_id: parseInt(String(leaveForm.value.course)),
+        course_id: courseIdParsed,
         leave_date: leaveForm.value.leave_date,
         reason: trimmedReason,
         approval_status: leaveForm.value.approval_status,
       }
+      
+      // #region agent log
+      fetch('http://127.0.0.1:2000/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useStudentLeave.ts:180',message:'Submitting leave data',data:{submitData:JSON.stringify(submitData)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
 
-      await leaveAPI.create(submitData)
+      const response = await leaveAPI.create(submitData)
+      // #region agent log
+      fetch('http://127.0.0.1:2000/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useStudentLeave.ts:185',message:'Leave created response',data:{response:JSON.stringify(response.data)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      
       alert('新增請假記錄成功！')
 
       leaveForm.value = { ...DEFAULT_LEAVE_FORM }
@@ -186,6 +225,9 @@ export function useStudentLeave(
       }
     } catch (error: unknown) {
       console.error('新增請假記錄失敗:', error)
+      // #region agent log
+      fetch('http://127.0.0.1:2000/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useStudentLeave.ts:196',message:'Leave creation error',data:{error:JSON.stringify(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       const err = error as { response?: { data?: { detail?: string } } }
       if (err.response?.data) {
         const errorMsg = err.response.data.detail || JSON.stringify(err.response.data)

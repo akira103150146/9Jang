@@ -333,6 +333,7 @@ export class StudentsService {
       })) || [],
       enrollments: student.enrollments.map((e: any) => ({
         enrollment_id: e.enrollmentId,
+        course_id: e.courseId,
         course_name: e.course.courseName,
         enroll_date: e.enrollDate.toISOString().split('T')[0],
         discount_rate: Number(e.discountRate),

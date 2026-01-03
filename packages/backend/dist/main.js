@@ -2799,7 +2799,7 @@ let LeavesService = class LeavesService {
                 approvalStatus: createDto.approval_status || 'Pending',
             },
         });
-        return this.getLeave(leave.leaveId);
+        return await this.getLeave(leave.leaveId);
     }
     async updateLeave(id, updateDto) {
         const leave = await this.prisma.cramschoolLeave.findUnique({
@@ -2866,7 +2866,7 @@ let LeavesService = class LeavesService {
         return this.getLeave(id);
     }
     toLeaveDto(leave) {
-        return {
+        const result = {
             leave_id: leave.leaveId,
             student_id: leave.studentId,
             course_id: leave.courseId,
@@ -2875,7 +2875,10 @@ let LeavesService = class LeavesService {
             approval_status: leave.approvalStatus,
             is_deleted: leave.isDeleted,
             deleted_at: leave.deletedAt?.toISOString() || null,
+            course_name: leave.course?.courseName || undefined,
+            student_name: leave.student?.name || undefined,
         };
+        return result;
     }
 };
 exports.LeavesService = LeavesService;
@@ -3923,6 +3926,7 @@ let StudentsService = class StudentsService {
             })) || [],
             enrollments: student.enrollments.map((e) => ({
                 enrollment_id: e.enrollmentId,
+                course_id: e.courseId,
                 course_name: e.course.courseName,
                 enroll_date: e.enrollDate.toISOString().split('T')[0],
                 discount_rate: Number(e.discountRate),

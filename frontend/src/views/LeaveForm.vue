@@ -176,8 +176,13 @@ const fetchStudentEnrolledCourses = async (studentId) => {
         // 從所有課程中過濾出已報名的課程
         enrolledCourses.value = allCourses.value.filter(course => {
           const courseId = course.course_id || course.id
-          return enrolledCourseIds.includes(courseId)
+          // 支持字符串和數字類型的匹配
+          return enrolledCourseIds.some(eid => {
+            if (eid === null || eid === undefined) return false
+            return eid === courseId || eid === parseInt(courseId) || parseInt(eid) === courseId
+          })
         })
+        
         return
       }
     } catch (error) {
@@ -202,7 +207,11 @@ const fetchStudentEnrolledCourses = async (studentId) => {
     // 從所有課程中過濾出已報名的課程
     enrolledCourses.value = allCourses.value.filter(course => {
       const courseId = course.course_id || course.id
-      return enrolledCourseIds.includes(courseId)
+      // 支持字符串和數字類型的匹配
+      return enrolledCourseIds.some(eid => {
+        if (eid === null || eid === undefined) return false
+        return eid === courseId || eid === parseInt(courseId) || parseInt(eid) === courseId
+      })
     })
   } catch (error) {
     console.warn('獲取學生報名課程失敗:', error)
@@ -229,18 +238,38 @@ const fetchLeave = async () => {
     const response = await leaveAPI.getById(route.params.id)
     const leave = response.data
     const studentId = leave.student || leave.student_id || ''
+    const courseId = leave.course || leave.course_id || ''
+    const courseIdNum = courseId ? parseInt(courseId) : null
     
+    // 先設置學生，然後獲取該學生已報名的課程
     form.value = {
       student: studentId,
-      course: leave.course || leave.course_id || '',
+      course: '', // 先不設置課程，等課程列表載入後再設置
       leave_date: leave.leave_date || new Date().toISOString().split('T')[0],
       reason: leave.reason || '',
       approval_status: leave.approval_status || 'Pending'
     }
     
-    // 如果是編輯模式，獲取該學生已報名的課程
+    // 如果是編輯模式，先獲取該學生已報名的課程，然後再設置課程
     if (studentId) {
       await fetchStudentEnrolledCourses(studentId)
+      
+      // 現在設置課程，確保課程列表已經載入
+      // 嘗試匹配課程ID（支持字符串和數字類型）
+      const matchedCourse = enrolledCourses.value.find(c => {
+        const cid = c.course_id || c.id
+        return cid === courseIdNum || cid === courseId || 
+               parseInt(cid) === courseIdNum || parseInt(cid) === parseInt(courseId) ||
+               cid === String(courseIdNum) || cid === String(courseId)
+      })
+      
+      if (matchedCourse) {
+        // 使用匹配到的課程的ID（確保類型一致）
+        form.value.course = matchedCourse.course_id || matchedCourse.id
+      } else if (courseIdNum || courseId) {
+        // 如果沒有匹配到，但原始數據有課程ID，仍然設置（可能課程不在已報名列表中，但我們仍然要顯示）
+        form.value.course = courseIdNum || courseId
+      }
     }
   } catch (error) {
     console.error('獲取請假記錄失敗:', error)
@@ -283,6 +312,7 @@ const handleSubmit = async () => {
 
 onMounted(async () => {
   await Promise.all([fetchStudents(), fetchCourses()])
+  
   if (isEdit.value) {
     await fetchLeave()
   }

@@ -82,7 +82,7 @@ export class LeavesService {
       },
     });
 
-    return this.getLeave(leave.leaveId);
+    return await this.getLeave(leave.leaveId);
   }
 
   async updateLeave(id: number, updateDto: UpdateLeaveDto): Promise<Leave> {
@@ -167,8 +167,8 @@ export class LeavesService {
     return this.getLeave(id);
   }
 
-  private toLeaveDto(leave: any): Leave {
-    return {
+  private toLeaveDto(leave: any): Leave & { course_name?: string; student_name?: string } {
+    const result: any = {
       leave_id: leave.leaveId,
       student_id: leave.studentId,
       course_id: leave.courseId,
@@ -177,6 +177,11 @@ export class LeavesService {
       approval_status: leave.approvalStatus as 'Pending' | 'Approved' | 'Rejected',
       is_deleted: leave.isDeleted,
       deleted_at: leave.deletedAt?.toISOString() || null,
+      // 添加課程名稱和學生名稱以便前端顯示
+      course_name: leave.course?.courseName || undefined,
+      student_name: leave.student?.name || undefined,
     };
+    
+    return result as Leave;
   }
 }

@@ -60,18 +60,23 @@
               </td>
               <td class="whitespace-nowrap px-4 py-4 text-center">
                 <div class="flex justify-center gap-2">
-                  <router-link
-                    :to="`/attendance/leaves/edit/${leave.leave_id || leave.id}`"
-                    class="rounded-full bg-sky-500 px-3 py-1 text-xs font-semibold text-white hover:bg-sky-600"
-                  >
-                    編輯
-                  </router-link>
                   <button
-                    @click="deleteLeave(leave.leave_id || leave.id, leave.student_name)"
+                    v-if="leave.approval_status === 'Pending'"
+                    @click="approveLeave(leave.leave_id || leave.id)"
+                    class="rounded-full bg-emerald-500 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-600"
+                  >
+                    核准
+                  </button>
+                  <button
+                    v-if="leave.approval_status === 'Pending'"
+                    @click="rejectLeave(leave.leave_id || leave.id)"
                     class="rounded-full bg-rose-500 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-600"
                   >
-                    刪除
+                    拒絕
                   </button>
+                  <span v-if="leave.approval_status !== 'Pending'" class="text-xs text-slate-400">
+                    {{ leave.approval_status === 'Approved' ? '已核准' : '已拒絕' }}
+                  </span>
                 </div>
               </td>
             </tr>
@@ -145,23 +150,45 @@ const fetchLeaves = async () => {
   }
 }
 
-const deleteLeave = async (id, studentName) => {
+const approveLeave = async (id) => {
   if (!id) {
-    alert('示意資料無法刪除，請於 API 可用後再操作。')
-    return
-  }
-
-  if (!confirm(`確定要刪除「${studentName}」的請假記錄嗎？`)) {
+    alert('無法核准，請稍後再試。')
     return
   }
 
   try {
-    await leaveAPI.delete(id)
-    alert('刪除成功')
+    await leaveAPI.update(id, { approval_status: 'Approved' })
+    alert('核准成功')
     fetchLeaves()
   } catch (error) {
-    console.error('刪除失敗:', error)
-    alert('刪除失敗，請稍後再試')
+    console.error('核准失敗:', error)
+    if (error.response?.data) {
+      const errorMsg = error.response.data.detail || JSON.stringify(error.response.data)
+      alert(`核准失敗：${errorMsg}`)
+    } else {
+      alert('核准失敗，請稍後再試')
+    }
+  }
+}
+
+const rejectLeave = async (id) => {
+  if (!id) {
+    alert('無法拒絕，請稍後再試。')
+    return
+  }
+
+  try {
+    await leaveAPI.update(id, { approval_status: 'Rejected' })
+    alert('拒絕成功')
+    fetchLeaves()
+  } catch (error) {
+    console.error('拒絕失敗:', error)
+    if (error.response?.data) {
+      const errorMsg = error.response.data.detail || JSON.stringify(error.response.data)
+      alert(`拒絕失敗：${errorMsg}`)
+    } else {
+      alert('拒絕失敗，請稍後再試')
+    }
   }
 }
 
