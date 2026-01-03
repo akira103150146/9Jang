@@ -89,8 +89,8 @@
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted, computed } from 'vue'
+<script setup lang="ts">
+import { ref, onMounted, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { feeAPI, studentAPI } from '../services/api'
 
@@ -119,26 +119,54 @@ const fetchStudents = async () => {
   }
 }
 
+// 將中文名目轉換為英文選項值
+const convertItemToOptionValue = (item: string): string => {
+  const itemMap: Record<string, string> = {
+    '學費': 'Tuition',
+    '交通費': 'Transport',
+    '餐費': 'Meal',
+    '書籍費': 'Book',
+    '其他': 'Other',
+  }
+  
+  // 如果已經是英文值，直接返回
+  if (['Tuition', 'Transport', 'Meal', 'Book', 'Other'].includes(item)) {
+    return item
+  }
+  
+  // 如果是中文，轉換為英文
+  return itemMap[item] || item
+}
+
 const fetchFee = async () => {
   if (!isEdit.value) return
   
   try {
     const response = await feeAPI.getById(route.params.id)
     const fee = response.data
+    
     let paymentStatus = fee.payment_status || 'Unpaid'
     // 如果遇到舊的 Partial 狀態（理論上不應該有），轉換為 Unpaid
     if (paymentStatus === 'Partial') {
       paymentStatus = 'Unpaid'
     }
+    
+    // 將後端返回的 item（可能是中文）轉換為前端選項值（英文）
+    const itemValue = convertItemToOptionValue(fee.item || '')
+    
     form.value = {
       student: fee.student || fee.student_id || '',
-      item: fee.item,
+      item: itemValue,
       amount: Math.round(parseFloat(fee.amount || 0)),
       fee_date: fee.fee_date || new Date().toISOString().split('T')[0],
       payment_status: paymentStatus
     }
+    
+    // 確保 v-model 能正確綁定（使用 nextTick 確保 DOM 更新）
+    await nextTick()
   } catch (error) {
     console.error('獲取費用記錄失敗:', error)
+    console.error('錯誤詳情:', error.response?.data || error)
     alert('獲取費用記錄失敗，請稍後再試')
     router.push('/fees')
   }
