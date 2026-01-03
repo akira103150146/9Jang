@@ -22,7 +22,8 @@ exports.CourseSchema = zod_1.z.object({
     end_time: zod_1.z.string(), // TimeField 在 JSON 中為字符串格式 "HH:MM:SS"
     day_of_week: exports.CourseDayEnum,
     fee_per_session: zod_1.z.number().nonnegative(), // DecimalField 轉換為數字
-    status: exports.CourseStatusEnum.default('Active')
+    status: exports.CourseStatusEnum.default('Active'),
+    enrollments_count: zod_1.z.number().int().nonnegative().optional() // 報名該課程的學生人數（排除已刪除的報名）
 });
 /**
  * 創建課程 DTO Schema

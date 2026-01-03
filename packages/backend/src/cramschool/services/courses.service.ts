@@ -48,6 +48,12 @@ export class CoursesService {
             user: true,
           },
         },
+        enrollments: {
+          where: { isDeleted: false },
+          include: {
+            student: true,
+          },
+        },
       },
     });
 
@@ -113,8 +119,13 @@ export class CoursesService {
     });
   }
 
-  private toCourseDto(course: any): Course {
-    return {
+  private toCourseDto(course: any): Course & { enrollments_count?: number } {
+    // 計算報名人數（排除已刪除的報名）
+    const enrollmentsCount = course.enrollments 
+      ? course.enrollments.filter((e: any) => !e.isDeleted).length 
+      : 0;
+
+    const result: any = {
       course_id: course.courseId,
       course_name: course.courseName,
       teacher_id: course.teacherId,
@@ -123,6 +134,8 @@ export class CoursesService {
       day_of_week: course.dayOfWeek as 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun',
       fee_per_session: Number(course.feePerSession),
       status: course.status as 'Active' | 'Pending' | 'Closed',
+      enrollments_count: enrollmentsCount,
     };
+    return result as Course;
   }
 }

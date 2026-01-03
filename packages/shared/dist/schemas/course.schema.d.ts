@@ -20,6 +20,7 @@ export declare const CourseSchema: z.ZodObject<{
     day_of_week: z.ZodEnum<["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]>;
     fee_per_session: z.ZodNumber;
     status: z.ZodDefault<z.ZodEnum<["Active", "Pending", "Closed"]>>;
+    enrollments_count: z.ZodOptional<z.ZodNumber>;
 }, "strip", z.ZodTypeAny, {
     status: "Active" | "Pending" | "Closed";
     teacher_id: number;
@@ -29,6 +30,7 @@ export declare const CourseSchema: z.ZodObject<{
     end_time: string;
     day_of_week: "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun";
     fee_per_session: number;
+    enrollments_count?: number | undefined;
 }, {
     teacher_id: number;
     course_id: number;
@@ -38,6 +40,7 @@ export declare const CourseSchema: z.ZodObject<{
     day_of_week: "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun";
     fee_per_session: number;
     status?: "Active" | "Pending" | "Closed" | undefined;
+    enrollments_count?: number | undefined;
 }>;
 export type Course = z.infer<typeof CourseSchema>;
 /**
@@ -52,6 +55,7 @@ export declare const CreateCourseSchema: z.ZodObject<Omit<{
     day_of_week: z.ZodEnum<["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]>;
     fee_per_session: z.ZodNumber;
     status: z.ZodDefault<z.ZodEnum<["Active", "Pending", "Closed"]>>;
+    enrollments_count: z.ZodOptional<z.ZodNumber>;
 }, "course_id">, "strip", z.ZodTypeAny, {
     status: "Active" | "Pending" | "Closed";
     teacher_id: number;
@@ -60,6 +64,7 @@ export declare const CreateCourseSchema: z.ZodObject<Omit<{
     end_time: string;
     day_of_week: "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun";
     fee_per_session: number;
+    enrollments_count?: number | undefined;
 }, {
     teacher_id: number;
     course_name: string;
@@ -68,6 +73,7 @@ export declare const CreateCourseSchema: z.ZodObject<Omit<{
     day_of_week: "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun";
     fee_per_session: number;
     status?: "Active" | "Pending" | "Closed" | undefined;
+    enrollments_count?: number | undefined;
 }>;
 export type CreateCourseDto = z.infer<typeof CreateCourseSchema>;
 /**
@@ -82,8 +88,10 @@ export declare const UpdateCourseSchema: z.ZodObject<Omit<{
     day_of_week: z.ZodOptional<z.ZodEnum<["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]>>;
     fee_per_session: z.ZodOptional<z.ZodNumber>;
     status: z.ZodOptional<z.ZodDefault<z.ZodEnum<["Active", "Pending", "Closed"]>>>;
+    enrollments_count: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
 }, "course_id">, "strip", z.ZodTypeAny, {
     status?: "Active" | "Pending" | "Closed" | undefined;
+    enrollments_count?: number | undefined;
     teacher_id?: number | undefined;
     course_name?: string | undefined;
     start_time?: string | undefined;
@@ -92,6 +100,7 @@ export declare const UpdateCourseSchema: z.ZodObject<Omit<{
     fee_per_session?: number | undefined;
 }, {
     status?: "Active" | "Pending" | "Closed" | undefined;
+    enrollments_count?: number | undefined;
     teacher_id?: number | undefined;
     course_name?: string | undefined;
     start_time?: string | undefined;

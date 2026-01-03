@@ -2199,6 +2199,12 @@ let CoursesService = class CoursesService {
                         user: true,
                     },
                 },
+                enrollments: {
+                    where: { isDeleted: false },
+                    include: {
+                        student: true,
+                    },
+                },
             },
         });
         if (!course) {
@@ -2253,7 +2259,10 @@ let CoursesService = class CoursesService {
         });
     }
     toCourseDto(course) {
-        return {
+        const enrollmentsCount = course.enrollments
+            ? course.enrollments.filter((e) => !e.isDeleted).length
+            : 0;
+        const result = {
             course_id: course.courseId,
             course_name: course.courseName,
             teacher_id: course.teacherId,
@@ -2262,7 +2271,9 @@ let CoursesService = class CoursesService {
             day_of_week: course.dayOfWeek,
             fee_per_session: Number(course.feePerSession),
             status: course.status,
+            enrollments_count: enrollmentsCount,
         };
+        return result;
     }
 };
 exports.CoursesService = CoursesService;

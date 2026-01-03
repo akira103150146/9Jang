@@ -22,7 +22,8 @@ export const CourseSchema = z.object({
   end_time: z.string(), // TimeField 在 JSON 中為字符串格式 "HH:MM:SS"
   day_of_week: CourseDayEnum,
   fee_per_session: z.number().nonnegative(), // DecimalField 轉換為數字
-  status: CourseStatusEnum.default('Active')
+  status: CourseStatusEnum.default('Active'),
+  enrollments_count: z.number().int().nonnegative().optional() // 報名該課程的學生人數（排除已刪除的報名）
 })
 
 export type Course = z.infer<typeof CourseSchema>
