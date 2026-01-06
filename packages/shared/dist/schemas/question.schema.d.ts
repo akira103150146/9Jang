@@ -437,26 +437,6 @@ export declare const QuestionQuerySchema: z.ZodObject<{
 }>;
 export type QuestionQuery = z.infer<typeof QuestionQuerySchema>;
 /**
- * 科目 Schema
- */
-export declare const SubjectSchema: z.ZodObject<{
-    subject_id: z.ZodNumber;
-    name: z.ZodString;
-    code: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-}, "strip", z.ZodTypeAny, {
-    name: string;
-    subject_id: number;
-    code?: string | null | undefined;
-    description?: string | null | undefined;
-}, {
-    name: string;
-    subject_id: number;
-    code?: string | null | undefined;
-    description?: string | null | undefined;
-}>;
-export type Subject = z.infer<typeof SubjectSchema>;
-/**
  * 標籤 Schema
  */
 export declare const TagSchema: z.ZodObject<{

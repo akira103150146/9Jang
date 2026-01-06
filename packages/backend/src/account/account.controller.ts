@@ -61,9 +61,49 @@ export class AccountController {
 
   @Get('current-role')
   @UseGuards(JwtAuthGuard)
-  async getCurrentRole(@Request() req): Promise<{ role: string }> {
-    const user = await this.accountService.getCurrentUser(req.user.id);
-    return { role: user.role };
+  async getCurrentRole(
+    @Request() req,
+    @Query('temp_role') tempRole?: string,
+  ): Promise<{
+    original_role: string;
+    original_role_display: string;
+    temp_role: string | null;
+    temp_role_display: string | null;
+    effective_role: string;
+    effective_role_display: string;
+  }> {
+    return this.accountService.getCurrentRole(req.user.id, tempRole);
+  }
+
+  @Post('switch-role')
+  @UseGuards(JwtAuthGuard)
+  async switchRole(
+    @Request() req,
+    @Body() body: { role: string },
+  ): Promise<{ message: string; temp_role: string; original_role: string }> {
+    return this.accountService.switchRole(req.user.id, body.role);
+  }
+
+  @Post('reset-role')
+  @UseGuards(JwtAuthGuard)
+  async resetRole(
+    @Request() req,
+  ): Promise<{ message: string; current_role: string }> {
+    return this.accountService.resetRole(req.user.id);
+  }
+
+  @Post('impersonate-user')
+  @UseGuards(JwtAuthGuard)
+  async impersonateUser(
+    @Request() req,
+    @Body() body: { user_id: number },
+  ): Promise<{
+    user: User;
+    access: string;
+    refresh: string;
+    message: string;
+  }> {
+    return this.accountService.impersonateUser(req.user.id, body.user_id);
   }
 
   @Post('change-password')

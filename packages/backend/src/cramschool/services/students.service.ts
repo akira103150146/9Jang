@@ -758,4 +758,87 @@ export class StudentsService {
       initial_password: student.initialPassword,
     };
   }
+
+  async getAttendanceAndLeaves(id: number): Promise<any> {
+    const student = await this.prisma.cramschoolStudent.findUnique({
+      where: { studentId: id },
+    });
+
+    if (!student) {
+      throw new NotFoundException(`Student with ID ${id} not found`);
+    }
+
+    // 獲取出席記錄
+    const attendances = await this.prisma.cramschoolAttendance.findMany({
+      where: {
+        studentId: id,
+        isDeleted: false,
+      },
+      include: {
+        session: {
+          include: {
+            course: true,
+          },
+        },
+        student: true,
+      },
+      orderBy: {
+        session: {
+          sessionDate: 'desc',
+        },
+      },
+    });
+
+    // 獲取請假記錄
+    const leaves = await this.prisma.cramschoolLeave.findMany({
+      where: {
+        studentId: id,
+        isDeleted: false,
+      },
+      include: {
+        course: true,
+        student: true,
+      },
+      orderBy: {
+        leaveDate: 'desc',
+      },
+    });
+
+    // 轉換出席記錄
+    const attendanceData = attendances.map((a) => ({
+      attendance_id: a.attendanceId,
+      session_id: a.sessionId,
+      session_id_display: a.session?.sessionId,
+      student_id: a.studentId,
+      student_name: a.student?.name,
+      status: a.status,
+      course_name: a.session?.course?.courseName,
+      session_date: a.session?.sessionDate
+        ? a.session.sessionDate.toISOString().split('T')[0]
+        : null,
+      is_deleted: a.isDeleted,
+      deleted_at: a.deletedAt?.toISOString() || null,
+    }));
+
+    // 轉換請假記錄
+    const leaveData = leaves.map((l) => ({
+      leave_id: l.leaveId,
+      student_id: l.studentId,
+      course_id: l.courseId,
+      leave_date: l.leaveDate.toISOString().split('T')[0],
+      reason: l.reason,
+      approval_status: l.approvalStatus,
+      course_name: l.course?.courseName,
+      student_name: l.student?.name,
+      is_deleted: l.isDeleted,
+      deleted_at: l.deletedAt?.toISOString() || null,
+    }));
+
+    return {
+      student_id: student.studentId,
+      student_name: student.name,
+      attendances: attendanceData,
+      leaves: leaveData,
+    };
+  }
 }

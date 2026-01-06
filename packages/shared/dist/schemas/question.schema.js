@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.TagSchema = exports.SubjectSchema = exports.QuestionQuerySchema = exports.UpdateQuestionSchema = exports.CreateQuestionSchema = exports.QuestionSchema = exports.QuestionTypeEnum = exports.QuestionLevelEnum = void 0;
+exports.TagSchema = exports.QuestionQuerySchema = exports.UpdateQuestionSchema = exports.CreateQuestionSchema = exports.QuestionSchema = exports.QuestionTypeEnum = exports.QuestionLevelEnum = void 0;
 const zod_1 = require("zod");
 const tiptap_1 = require("../types/tiptap");
 /**
@@ -96,15 +96,6 @@ exports.QuestionQuerySchema = zod_1.z.object({
     source: zod_1.z.string().optional(),
     page: zod_1.z.coerce.number().int().positive().default(1),
     page_size: zod_1.z.coerce.number().int().positive().max(100).default(10)
-});
-/**
- * 科目 Schema
- */
-exports.SubjectSchema = zod_1.z.object({
-    subject_id: zod_1.z.number().int().positive(),
-    name: zod_1.z.string().min(1).max(50),
-    code: zod_1.z.string().max(20).nullable().optional(),
-    description: zod_1.z.string().nullable().optional()
 });
 /**
  * 標籤 Schema

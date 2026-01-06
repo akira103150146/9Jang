@@ -21,7 +21,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.AccountController = void 0;
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
@@ -46,9 +46,17 @@ let AccountController = class AccountController {
     async getCurrentUser(req) {
         return this.accountService.getCurrentUser(req.user.id);
     }
-    async getCurrentRole(req) {
-        const user = await this.accountService.getCurrentUser(req.user.id);
-        return { role: user.role };
+    async getCurrentRole(req, tempRole) {
+        return this.accountService.getCurrentRole(req.user.id, tempRole);
+    }
+    async switchRole(req, body) {
+        return this.accountService.switchRole(req.user.id, body.role);
+    }
+    async resetRole(req) {
+        return this.accountService.resetRole(req.user.id);
+    }
+    async impersonateUser(req, body) {
+        return this.accountService.impersonateUser(req.user.id, body.user_id);
     }
     async changePassword(req, changePasswordDto) {
         await this.accountService.changePassword(req.user.id, changePasswordDto);
@@ -102,18 +110,45 @@ __decorate([
     (0, common_1.Get)('current-role'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('temp_role')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
 ], AccountController.prototype, "getCurrentRole", null);
+__decorate([
+    (0, common_1.Post)('switch-role'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
+], AccountController.prototype, "switchRole", null);
+__decorate([
+    (0, common_1.Post)('reset-role'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
+], AccountController.prototype, "resetRole", null);
+__decorate([
+    (0, common_1.Post)('impersonate-user'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", typeof (_k = typeof Promise !== "undefined" && Promise) === "function" ? _k : Object)
+], AccountController.prototype, "impersonateUser", null);
 __decorate([
     (0, common_1.Post)('change-password'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_2.ChangePasswordRequestSchema))),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, typeof (_h = typeof shared_1.ChangePasswordRequestDto !== "undefined" && shared_1.ChangePasswordRequestDto) === "function" ? _h : Object]),
-    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
+    __metadata("design:paramtypes", [Object, typeof (_l = typeof shared_1.ChangePasswordRequestDto !== "undefined" && shared_1.ChangePasswordRequestDto) === "function" ? _l : Object]),
+    __metadata("design:returntype", typeof (_m = typeof Promise !== "undefined" && Promise) === "function" ? _m : Object)
 ], AccountController.prototype, "changePassword", null);
 __decorate([
     (0, common_1.Get)('users'),
@@ -130,7 +165,7 @@ __decorate([
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
-    __metadata("design:returntype", typeof (_k = typeof Promise !== "undefined" && Promise) === "function" ? _k : Object)
+    __metadata("design:returntype", typeof (_o = typeof Promise !== "undefined" && Promise) === "function" ? _o : Object)
 ], AccountController.prototype, "getUser", null);
 __decorate([
     (0, common_1.Get)('roles'),
@@ -455,6 +490,105 @@ let AccountService = class AccountService {
         };
         return roleMap[role] || role;
     }
+    async switchRole(userId, targetRole) {
+        const user = await this.prisma.accountCustomUser.findUnique({
+            where: { id: userId },
+        });
+        if (!user || user.role !== 'ADMIN') {
+            throw new common_1.ForbiddenException('只有管理員可以切換角色');
+        }
+        const validRoles = ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'];
+        if (!validRoles.includes(targetRole)) {
+            throw new common_1.BadRequestException(`無效的角色。有效角色：${validRoles.join(', ')}`);
+        }
+        return {
+            message: `已切換到 ${this.getRoleDisplay(targetRole)} 視角`,
+            temp_role: targetRole,
+            original_role: user.role,
+        };
+    }
+    async resetRole(userId) {
+        const user = await this.prisma.accountCustomUser.findUnique({
+            where: { id: userId },
+        });
+        if (!user || user.role !== 'ADMIN') {
+            throw new common_1.ForbiddenException('只有管理員可以重置角色');
+        }
+        return {
+            message: `已重置回 ${this.getRoleDisplay(user.role)} 視角`,
+            current_role: user.role,
+        };
+    }
+    async getCurrentRole(userId, tempRole) {
+        const user = await this.prisma.accountCustomUser.findUnique({
+            where: { id: userId },
+        });
+        if (!user) {
+            throw new common_1.NotFoundException('User not found');
+        }
+        const validRoles = ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'];
+        let effectiveTempRole = null;
+        if (tempRole && validRoles.includes(tempRole)) {
+            if (user.role === 'ADMIN') {
+                effectiveTempRole = tempRole;
+            }
+        }
+        const originalRole = user.role;
+        const effectiveRole = effectiveTempRole || originalRole;
+        return {
+            original_role: originalRole,
+            original_role_display: this.getRoleDisplay(originalRole),
+            temp_role: effectiveTempRole,
+            temp_role_display: effectiveTempRole ? this.getRoleDisplay(effectiveTempRole) : null,
+            effective_role: effectiveRole,
+            effective_role_display: this.getRoleDisplay(effectiveRole),
+        };
+    }
+    async impersonateUser(adminUserId, targetUserId) {
+        const adminUser = await this.prisma.accountCustomUser.findUnique({
+            where: { id: adminUserId },
+        });
+        if (!adminUser || adminUser.role !== 'ADMIN') {
+            throw new common_1.ForbiddenException('只有管理員可以模擬其他用戶');
+        }
+        const targetUser = await this.prisma.accountCustomUser.findUnique({
+            where: { id: targetUserId },
+            include: {
+                customRole: {
+                    include: {
+                        permissions: true,
+                    },
+                },
+                studentProfile: true,
+            },
+        });
+        if (!targetUser) {
+            throw new common_1.NotFoundException('目標用戶不存在');
+        }
+        const payload = { sub: targetUser.id, username: targetUser.username };
+        const access = this.jwtService.sign(payload, { expiresIn: '1h' });
+        const refresh = this.jwtService.sign(payload, { expiresIn: '7d' });
+        const userDto = {
+            id: targetUser.id,
+            username: targetUser.username,
+            email: targetUser.email,
+            first_name: targetUser.firstName || '',
+            last_name: targetUser.lastName || '',
+            role: targetUser.role,
+            custom_role: targetUser.customRoleId,
+            custom_role_name: targetUser.customRole?.name || null,
+            is_staff: targetUser.isStaff,
+            is_active: targetUser.isActive,
+            must_change_password: targetUser.mustChangePassword,
+            student_id: targetUser.studentProfile?.studentId || null,
+        };
+        return {
+            user: userDto,
+            access,
+            refresh,
+            message: `已切換為 ${targetUser.username} 身分`,
+        };
+    }
 };
 exports.AccountService = AccountService;
 exports.AccountService = AccountService = __decorate([
@@ -777,6 +911,225 @@ function createPaginatedResponse(results, count, page, pageSize) {
 
 /***/ }),
 
+/***/ "./src/cramschool/controllers/attendances.controller.ts":
+/*!**************************************************************!*\
+  !*** ./src/cramschool/controllers/attendances.controller.ts ***!
+  \**************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c, _d, _e, _f, _g, _h;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.AttendancesController = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const attendances_service_1 = __webpack_require__(/*! ../services/attendances.service */ "./src/cramschool/services/attendances.service.ts");
+const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
+const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
+const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+let AttendancesController = class AttendancesController {
+    constructor(attendancesService) {
+        this.attendancesService = attendancesService;
+    }
+    async getAttendances(includeDeleted = 'false', page = 1, pageSize = 10) {
+        return this.attendancesService.getAttendances(includeDeleted === 'true', page, pageSize);
+    }
+    async getAttendance(id) {
+        return this.attendancesService.getAttendance(id);
+    }
+    async createAttendance(createDto) {
+        return this.attendancesService.createAttendance(createDto);
+    }
+    async updateAttendance(id, updateDto) {
+        return this.attendancesService.updateAttendance(id, updateDto);
+    }
+    async deleteAttendance(id) {
+        return this.attendancesService.deleteAttendance(id);
+    }
+    async restoreAttendance(id) {
+        return this.attendancesService.restoreAttendance(id);
+    }
+};
+exports.AttendancesController = AttendancesController;
+__decorate([
+    (0, common_1.Get)(),
+    __param(0, (0, common_1.Query)('include_deleted')),
+    __param(1, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
+    __param(2, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Number, Number]),
+    __metadata("design:returntype", Promise)
+], AttendancesController.prototype, "getAttendances", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_b = typeof Promise !== "undefined" && Promise) === "function" ? _b : Object)
+], AttendancesController.prototype, "getAttendance", null);
+__decorate([
+    (0, common_1.Post)(),
+    __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateAttendanceSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_c = typeof shared_1.CreateAttendanceDto !== "undefined" && shared_1.CreateAttendanceDto) === "function" ? _c : Object]),
+    __metadata("design:returntype", typeof (_d = typeof Promise !== "undefined" && Promise) === "function" ? _d : Object)
+], AttendancesController.prototype, "createAttendance", null);
+__decorate([
+    (0, common_1.Put)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateAttendanceSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, typeof (_e = typeof shared_1.UpdateAttendanceDto !== "undefined" && shared_1.UpdateAttendanceDto) === "function" ? _e : Object]),
+    __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
+], AttendancesController.prototype, "updateAttendance", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+], AttendancesController.prototype, "deleteAttendance", null);
+__decorate([
+    (0, common_1.Post)(':id/restore'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
+], AttendancesController.prototype, "restoreAttendance", null);
+exports.AttendancesController = AttendancesController = __decorate([
+    (0, common_1.Controller)('cramschool/attendances'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __metadata("design:paramtypes", [typeof (_a = typeof attendances_service_1.AttendancesService !== "undefined" && attendances_service_1.AttendancesService) === "function" ? _a : Object])
+], AttendancesController);
+
+
+/***/ }),
+
+/***/ "./src/cramschool/controllers/content-templates.controller.ts":
+/*!********************************************************************!*\
+  !*** ./src/cramschool/controllers/content-templates.controller.ts ***!
+  \********************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c, _d, _e, _f, _g, _h;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ContentTemplatesController = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const content_templates_service_1 = __webpack_require__(/*! ../services/content-templates.service */ "./src/cramschool/services/content-templates.service.ts");
+const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
+const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
+const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
+const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+let ContentTemplatesController = class ContentTemplatesController {
+    constructor(contentTemplatesService, prisma) {
+        this.contentTemplatesService = contentTemplatesService;
+        this.prisma = prisma;
+    }
+    async getContentTemplates(req, page = 1, pageSize = 10) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        const userRole = userRecord?.role || '';
+        return this.contentTemplatesService.getContentTemplates(user.id, userRole, page, pageSize);
+    }
+    async getContentTemplate(req, id) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        const userRole = userRecord?.role || '';
+        return this.contentTemplatesService.getContentTemplate(id, user.id, userRole);
+    }
+    async createContentTemplate(req, createDto) {
+        const user = req.user;
+        return this.contentTemplatesService.createContentTemplate(createDto, user.id);
+    }
+    async updateContentTemplate(req, id, updateDto) {
+        const user = req.user;
+        return this.contentTemplatesService.updateContentTemplate(id, updateDto, user.id);
+    }
+    async deleteContentTemplate(req, id) {
+        const user = req.user;
+        return this.contentTemplatesService.deleteContentTemplate(id, user.id);
+    }
+};
+exports.ContentTemplatesController = ContentTemplatesController;
+__decorate([
+    (0, common_1.Get)(),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
+    __param(2, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Number, Number]),
+    __metadata("design:returntype", Promise)
+], ContentTemplatesController.prototype, "getContentTemplates", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Number]),
+    __metadata("design:returntype", typeof (_c = typeof Promise !== "undefined" && Promise) === "function" ? _c : Object)
+], ContentTemplatesController.prototype, "getContentTemplate", null);
+__decorate([
+    (0, common_1.Post)(),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateContentTemplateSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, typeof (_d = typeof shared_1.CreateContentTemplateDto !== "undefined" && shared_1.CreateContentTemplateDto) === "function" ? _d : Object]),
+    __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
+], ContentTemplatesController.prototype, "createContentTemplate", null);
+__decorate([
+    (0, common_1.Put)(':id'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(2, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateContentTemplateSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Number, typeof (_f = typeof shared_1.UpdateContentTemplateDto !== "undefined" && shared_1.UpdateContentTemplateDto) === "function" ? _f : Object]),
+    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+], ContentTemplatesController.prototype, "updateContentTemplate", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Number]),
+    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
+], ContentTemplatesController.prototype, "deleteContentTemplate", null);
+exports.ContentTemplatesController = ContentTemplatesController = __decorate([
+    (0, common_1.Controller)('cramschool/content-templates'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __metadata("design:paramtypes", [typeof (_a = typeof content_templates_service_1.ContentTemplatesService !== "undefined" && content_templates_service_1.ContentTemplatesService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
+], ContentTemplatesController);
+
+
+/***/ }),
+
 /***/ "./src/cramschool/controllers/courses.controller.ts":
 /*!**********************************************************!*\
   !*** ./src/cramschool/controllers/courses.controller.ts ***!
@@ -796,17 +1149,19 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f, _g;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CoursesController = void 0;
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const courses_service_1 = __webpack_require__(/*! ../services/courses.service */ "./src/cramschool/services/courses.service.ts");
+const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
 let CoursesController = class CoursesController {
-    constructor(coursesService) {
+    constructor(coursesService, prisma) {
         this.coursesService = coursesService;
+        this.prisma = prisma;
     }
     async getCourses(page = 1, pageSize = 10) {
         return this.coursesService.getCourses(page, pageSize);
@@ -823,6 +1178,16 @@ let CoursesController = class CoursesController {
     async deleteCourse(id) {
         return this.coursesService.deleteCourse(id);
     }
+    async getStudentStatus(id) {
+        return this.coursesService.getStudentStatus(id);
+    }
+    async getResources(id, req) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        return this.coursesService.getResources(id, user.id, userRecord?.role || 'STUDENT');
+    }
 };
 exports.CoursesController = CoursesController;
 __decorate([
@@ -838,34 +1203,49 @@ __decorate([
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
-    __metadata("design:returntype", typeof (_b = typeof Promise !== "undefined" && Promise) === "function" ? _b : Object)
+    __metadata("design:returntype", typeof (_c = typeof Promise !== "undefined" && Promise) === "function" ? _c : Object)
 ], CoursesController.prototype, "getCourse", null);
 __decorate([
     (0, common_1.Post)(),
     __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateCourseSchema))),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_c = typeof shared_1.CreateCourseDto !== "undefined" && shared_1.CreateCourseDto) === "function" ? _c : Object]),
-    __metadata("design:returntype", typeof (_d = typeof Promise !== "undefined" && Promise) === "function" ? _d : Object)
+    __metadata("design:paramtypes", [typeof (_d = typeof shared_1.CreateCourseDto !== "undefined" && shared_1.CreateCourseDto) === "function" ? _d : Object]),
+    __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
 ], CoursesController.prototype, "createCourse", null);
 __decorate([
     (0, common_1.Put)(':id'),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateCourseSchema))),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, typeof (_e = typeof shared_1.UpdateCourseDto !== "undefined" && shared_1.UpdateCourseDto) === "function" ? _e : Object]),
-    __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
+    __metadata("design:paramtypes", [Number, typeof (_f = typeof shared_1.UpdateCourseDto !== "undefined" && shared_1.UpdateCourseDto) === "function" ? _f : Object]),
+    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
 ], CoursesController.prototype, "updateCourse", null);
 __decorate([
     (0, common_1.Delete)(':id'),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
-    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
 ], CoursesController.prototype, "deleteCourse", null);
+__decorate([
+    (0, common_1.Get)(':id/student-status'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
+], CoursesController.prototype, "getStudentStatus", null);
+__decorate([
+    (0, common_1.Get)(':id/resources'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", typeof (_k = typeof Promise !== "undefined" && Promise) === "function" ? _k : Object)
+], CoursesController.prototype, "getResources", null);
 exports.CoursesController = CoursesController = __decorate([
     (0, common_1.Controller)('cramschool/courses'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
-    __metadata("design:paramtypes", [typeof (_a = typeof courses_service_1.CoursesService !== "undefined" && courses_service_1.CoursesService) === "function" ? _a : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof courses_service_1.CoursesService !== "undefined" && courses_service_1.CoursesService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
 ], CoursesController);
 
 
@@ -1058,6 +1438,302 @@ exports.EnrollmentsController = EnrollmentsController = __decorate([
 
 /***/ }),
 
+/***/ "./src/cramschool/controllers/error-log-images.controller.ts":
+/*!*******************************************************************!*\
+  !*** ./src/cramschool/controllers/error-log-images.controller.ts ***!
+  \*******************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c, _d, _e, _f, _g, _h;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ErrorLogImagesController = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const error_log_images_service_1 = __webpack_require__(/*! ../services/error-log-images.service */ "./src/cramschool/services/error-log-images.service.ts");
+const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
+const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
+const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
+const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+let ErrorLogImagesController = class ErrorLogImagesController {
+    constructor(errorLogImagesService, prisma) {
+        this.errorLogImagesService = errorLogImagesService;
+        this.prisma = prisma;
+    }
+    async getErrorLogImages(req, errorLogId, page = 1, pageSize = 10) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        const userRole = userRecord?.role || '';
+        if (userRole === 'ACCOUNTANT' || userRole === 'STUDENT') {
+            return { count: 0, results: [], page: 1, page_size: pageSize };
+        }
+        return this.errorLogImagesService.getErrorLogImages(errorLogId, page, pageSize);
+    }
+    async getErrorLogImage(id) {
+        return this.errorLogImagesService.getErrorLogImage(id);
+    }
+    async createErrorLogImage(createDto) {
+        return this.errorLogImagesService.createErrorLogImage(createDto);
+    }
+    async updateErrorLogImage(id, updateDto) {
+        return this.errorLogImagesService.updateErrorLogImage(id, updateDto);
+    }
+    async deleteErrorLogImage(id) {
+        return this.errorLogImagesService.deleteErrorLogImage(id);
+    }
+};
+exports.ErrorLogImagesController = ErrorLogImagesController;
+__decorate([
+    (0, common_1.Get)(),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('error_log', new common_1.ParseIntPipe({ optional: true }))),
+    __param(2, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
+    __param(3, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Number, Number, Number]),
+    __metadata("design:returntype", Promise)
+], ErrorLogImagesController.prototype, "getErrorLogImages", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_c = typeof Promise !== "undefined" && Promise) === "function" ? _c : Object)
+], ErrorLogImagesController.prototype, "getErrorLogImage", null);
+__decorate([
+    (0, common_1.Post)(),
+    __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateErrorLogImageSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_d = typeof shared_1.CreateErrorLogImageDto !== "undefined" && shared_1.CreateErrorLogImageDto) === "function" ? _d : Object]),
+    __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
+], ErrorLogImagesController.prototype, "createErrorLogImage", null);
+__decorate([
+    (0, common_1.Put)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateErrorLogImageSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, typeof (_f = typeof shared_1.UpdateErrorLogImageDto !== "undefined" && shared_1.UpdateErrorLogImageDto) === "function" ? _f : Object]),
+    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+], ErrorLogImagesController.prototype, "updateErrorLogImage", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
+], ErrorLogImagesController.prototype, "deleteErrorLogImage", null);
+exports.ErrorLogImagesController = ErrorLogImagesController = __decorate([
+    (0, common_1.Controller)('cramschool/error-log-images'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __metadata("design:paramtypes", [typeof (_a = typeof error_log_images_service_1.ErrorLogImagesService !== "undefined" && error_log_images_service_1.ErrorLogImagesService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
+], ErrorLogImagesController);
+
+
+/***/ }),
+
+/***/ "./src/cramschool/controllers/error-logs.controller.ts":
+/*!*************************************************************!*\
+  !*** ./src/cramschool/controllers/error-logs.controller.ts ***!
+  \*************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ErrorLogsController = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const platform_express_1 = __webpack_require__(/*! @nestjs/platform-express */ "@nestjs/platform-express");
+const error_logs_service_1 = __webpack_require__(/*! ../services/error-logs.service */ "./src/cramschool/services/error-logs.service.ts");
+const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
+const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
+const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
+const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+let ErrorLogsController = class ErrorLogsController {
+    constructor(errorLogsService, prisma) {
+        this.errorLogsService = errorLogsService;
+        this.prisma = prisma;
+    }
+    async getErrorLogs(req, includeDeleted = 'false', studentId, page = 1, pageSize = 10) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        const userRole = userRecord?.role || '';
+        return this.errorLogsService.getErrorLogs(user.id, userRole, includeDeleted === 'true', studentId, page, pageSize);
+    }
+    async getErrorLog(id) {
+        return this.errorLogsService.getErrorLog(id);
+    }
+    async createErrorLog(createDto) {
+        return this.errorLogsService.createErrorLog(createDto);
+    }
+    async updateErrorLog(id, updateDto) {
+        return this.errorLogsService.updateErrorLog(id, updateDto);
+    }
+    async deleteErrorLog(id) {
+        return this.errorLogsService.deleteErrorLog(id);
+    }
+    async restoreErrorLog(id) {
+        return this.errorLogsService.restoreErrorLog(id);
+    }
+    async importToQuestionBank(req, id) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        const userRole = userRecord?.role || '';
+        if (userRole === 'ACCOUNTANT') {
+            throw new Error('會計不可匯入題庫');
+        }
+        if (userRole !== 'TEACHER' && userRole !== 'ADMIN') {
+            throw new Error('無權限');
+        }
+        return this.errorLogsService.importToQuestionBank(id, user.id);
+    }
+    async uploadImages(req, id, files) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        const userRole = userRecord?.role || '';
+        if (userRole === 'STUDENT') {
+            throw new Error('學生不可上傳學生管理端錯題圖片');
+        }
+        if (userRole !== 'ADMIN' && userRole !== 'TEACHER' && userRole !== 'ACCOUNTANT') {
+            throw new Error('無權限');
+        }
+        if (!files || files.length === 0) {
+            throw new Error('沒有提供圖片');
+        }
+        return this.errorLogsService.uploadImages(id, files);
+    }
+    async reorderImages(req, id, body) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        const userRole = userRecord?.role || '';
+        if (userRole === 'STUDENT') {
+            throw new Error('學生不可操作');
+        }
+        if (userRole !== 'ADMIN' && userRole !== 'TEACHER' && userRole !== 'ACCOUNTANT') {
+            throw new Error('無權限');
+        }
+        if (!body.image_ids || !Array.isArray(body.image_ids) || body.image_ids.length === 0) {
+            throw new Error('請提供 image_ids');
+        }
+        return this.errorLogsService.reorderImages(id, body.image_ids);
+    }
+};
+exports.ErrorLogsController = ErrorLogsController;
+__decorate([
+    (0, common_1.Get)(),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('include_deleted')),
+    __param(2, (0, common_1.Query)('student', new common_1.ParseIntPipe({ optional: true }))),
+    __param(3, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
+    __param(4, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, Number, Number, Number]),
+    __metadata("design:returntype", Promise)
+], ErrorLogsController.prototype, "getErrorLogs", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_c = typeof Promise !== "undefined" && Promise) === "function" ? _c : Object)
+], ErrorLogsController.prototype, "getErrorLog", null);
+__decorate([
+    (0, common_1.Post)(),
+    __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateErrorLogSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_d = typeof shared_1.CreateErrorLogDto !== "undefined" && shared_1.CreateErrorLogDto) === "function" ? _d : Object]),
+    __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
+], ErrorLogsController.prototype, "createErrorLog", null);
+__decorate([
+    (0, common_1.Put)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateErrorLogSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, typeof (_f = typeof shared_1.UpdateErrorLogDto !== "undefined" && shared_1.UpdateErrorLogDto) === "function" ? _f : Object]),
+    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+], ErrorLogsController.prototype, "updateErrorLog", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
+], ErrorLogsController.prototype, "deleteErrorLog", null);
+__decorate([
+    (0, common_1.Post)(':id/restore'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
+], ErrorLogsController.prototype, "restoreErrorLog", null);
+__decorate([
+    (0, common_1.Post)(':id/import-to-question-bank'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Number]),
+    __metadata("design:returntype", typeof (_k = typeof Promise !== "undefined" && Promise) === "function" ? _k : Object)
+], ErrorLogsController.prototype, "importToQuestionBank", null);
+__decorate([
+    (0, common_1.Post)(':id/upload-images'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FilesInterceptor)('images', 10)),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(2, (0, common_1.UploadedFiles)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Number, Array]),
+    __metadata("design:returntype", typeof (_l = typeof Promise !== "undefined" && Promise) === "function" ? _l : Object)
+], ErrorLogsController.prototype, "uploadImages", null);
+__decorate([
+    (0, common_1.Post)(':id/reorder-images'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Number, Object]),
+    __metadata("design:returntype", typeof (_m = typeof Promise !== "undefined" && Promise) === "function" ? _m : Object)
+], ErrorLogsController.prototype, "reorderImages", null);
+exports.ErrorLogsController = ErrorLogsController = __decorate([
+    (0, common_1.Controller)('cramschool/error-logs'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __metadata("design:paramtypes", [typeof (_a = typeof error_logs_service_1.ErrorLogsService !== "undefined" && error_logs_service_1.ErrorLogsService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
+], ErrorLogsController);
+
+
+/***/ }),
+
 /***/ "./src/cramschool/controllers/fees.controller.ts":
 /*!*******************************************************!*\
   !*** ./src/cramschool/controllers/fees.controller.ts ***!
@@ -1161,6 +1837,222 @@ exports.FeesController = FeesController = __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof fees_service_1.FeesService !== "undefined" && fees_service_1.FeesService) === "function" ? _a : Object])
 ], FeesController);
+
+
+/***/ }),
+
+/***/ "./src/cramschool/controllers/group-orders.controller.ts":
+/*!***************************************************************!*\
+  !*** ./src/cramschool/controllers/group-orders.controller.ts ***!
+  \***************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.GroupOrdersController = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const group_orders_service_1 = __webpack_require__(/*! ../services/group-orders.service */ "./src/cramschool/services/group-orders.service.ts");
+const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
+const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
+const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
+const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+let GroupOrdersController = class GroupOrdersController {
+    constructor(groupOrdersService, prisma) {
+        this.groupOrdersService = groupOrdersService;
+        this.prisma = prisma;
+    }
+    async getGroupOrders(req, page = 1, pageSize = 10) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        if (userRecord?.role === 'ADMIN') {
+            return { count: 0, results: [], page: 1, page_size: pageSize };
+        }
+        return this.groupOrdersService.getGroupOrders(page, pageSize);
+    }
+    async getGroupOrder(id) {
+        return this.groupOrdersService.getGroupOrder(id);
+    }
+    async createGroupOrder(req, createDto) {
+        const user = req.user;
+        return this.groupOrdersService.createGroupOrder(createDto, user.id);
+    }
+    async updateGroupOrder(id, updateDto) {
+        return this.groupOrdersService.updateGroupOrder(id, updateDto);
+    }
+    async deleteGroupOrder(id) {
+        return this.groupOrdersService.deleteGroupOrder(id);
+    }
+    async completeGroupOrder(req, id) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        const userRole = userRecord?.role || '';
+        return this.groupOrdersService.completeGroupOrder(id, user.id, userRole);
+    }
+};
+exports.GroupOrdersController = GroupOrdersController;
+__decorate([
+    (0, common_1.Get)(),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
+    __param(2, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Number, Number]),
+    __metadata("design:returntype", Promise)
+], GroupOrdersController.prototype, "getGroupOrders", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_c = typeof Promise !== "undefined" && Promise) === "function" ? _c : Object)
+], GroupOrdersController.prototype, "getGroupOrder", null);
+__decorate([
+    (0, common_1.Post)(),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateGroupOrderSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, typeof (_d = typeof shared_1.CreateGroupOrderDto !== "undefined" && shared_1.CreateGroupOrderDto) === "function" ? _d : Object]),
+    __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
+], GroupOrdersController.prototype, "createGroupOrder", null);
+__decorate([
+    (0, common_1.Put)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateGroupOrderSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, typeof (_f = typeof shared_1.UpdateGroupOrderDto !== "undefined" && shared_1.UpdateGroupOrderDto) === "function" ? _f : Object]),
+    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+], GroupOrdersController.prototype, "updateGroupOrder", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
+], GroupOrdersController.prototype, "deleteGroupOrder", null);
+__decorate([
+    (0, common_1.Post)(':id/complete'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Number]),
+    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
+], GroupOrdersController.prototype, "completeGroupOrder", null);
+exports.GroupOrdersController = GroupOrdersController = __decorate([
+    (0, common_1.Controller)('cramschool/group-orders'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __metadata("design:paramtypes", [typeof (_a = typeof group_orders_service_1.GroupOrdersService !== "undefined" && group_orders_service_1.GroupOrdersService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
+], GroupOrdersController);
+
+
+/***/ }),
+
+/***/ "./src/cramschool/controllers/hashtags.controller.ts":
+/*!***********************************************************!*\
+  !*** ./src/cramschool/controllers/hashtags.controller.ts ***!
+  \***********************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c, _d, _e, _f, _g;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.HashtagsController = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const hashtags_service_1 = __webpack_require__(/*! ../services/hashtags.service */ "./src/cramschool/services/hashtags.service.ts");
+const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
+const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
+const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+let HashtagsController = class HashtagsController {
+    constructor(hashtagsService) {
+        this.hashtagsService = hashtagsService;
+    }
+    async getHashtags(page = 1, pageSize = 10) {
+        return this.hashtagsService.getHashtags(page, pageSize);
+    }
+    async getHashtag(id) {
+        return this.hashtagsService.getHashtag(id);
+    }
+    async createHashtag(createDto) {
+        return this.hashtagsService.createHashtag(createDto);
+    }
+    async updateHashtag(id, updateDto) {
+        return this.hashtagsService.updateHashtag(id, updateDto);
+    }
+    async deleteHashtag(id) {
+        return this.hashtagsService.deleteHashtag(id);
+    }
+};
+exports.HashtagsController = HashtagsController;
+__decorate([
+    (0, common_1.Get)(),
+    __param(0, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
+    __param(1, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Number]),
+    __metadata("design:returntype", Promise)
+], HashtagsController.prototype, "getHashtags", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_b = typeof Promise !== "undefined" && Promise) === "function" ? _b : Object)
+], HashtagsController.prototype, "getHashtag", null);
+__decorate([
+    (0, common_1.Post)(),
+    __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateHashtagSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_c = typeof shared_1.CreateHashtagDto !== "undefined" && shared_1.CreateHashtagDto) === "function" ? _c : Object]),
+    __metadata("design:returntype", typeof (_d = typeof Promise !== "undefined" && Promise) === "function" ? _d : Object)
+], HashtagsController.prototype, "createHashtag", null);
+__decorate([
+    (0, common_1.Put)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateHashtagSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, typeof (_e = typeof shared_1.UpdateHashtagDto !== "undefined" && shared_1.UpdateHashtagDto) === "function" ? _e : Object]),
+    __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
+], HashtagsController.prototype, "updateHashtag", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+], HashtagsController.prototype, "deleteHashtag", null);
+exports.HashtagsController = HashtagsController = __decorate([
+    (0, common_1.Controller)('cramschool/hashtags'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __metadata("design:paramtypes", [typeof (_a = typeof hashtags_service_1.HashtagsService !== "undefined" && hashtags_service_1.HashtagsService) === "function" ? _a : Object])
+], HashtagsController);
 
 
 /***/ }),
@@ -1448,6 +2340,323 @@ exports.MediaController = MediaController = __decorate([
 
 /***/ }),
 
+/***/ "./src/cramschool/controllers/order-items.controller.ts":
+/*!**************************************************************!*\
+  !*** ./src/cramschool/controllers/order-items.controller.ts ***!
+  \**************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c, _d, _e, _f, _g;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.OrderItemsController = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const order_items_service_1 = __webpack_require__(/*! ../services/order-items.service */ "./src/cramschool/services/order-items.service.ts");
+const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
+const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
+const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+let OrderItemsController = class OrderItemsController {
+    constructor(orderItemsService) {
+        this.orderItemsService = orderItemsService;
+    }
+    async getOrderItems(orderId, page = 1, pageSize = 10) {
+        return this.orderItemsService.getOrderItems(orderId, page, pageSize);
+    }
+    async getOrderItem(id) {
+        return this.orderItemsService.getOrderItem(id);
+    }
+    async createOrderItem(createDto) {
+        return this.orderItemsService.createOrderItem(createDto);
+    }
+    async updateOrderItem(id, updateDto) {
+        return this.orderItemsService.updateOrderItem(id, updateDto);
+    }
+    async deleteOrderItem(id) {
+        return this.orderItemsService.deleteOrderItem(id);
+    }
+};
+exports.OrderItemsController = OrderItemsController;
+__decorate([
+    (0, common_1.Get)(),
+    __param(0, (0, common_1.Query)('order', new common_1.ParseIntPipe({ optional: true }))),
+    __param(1, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
+    __param(2, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Number, Number]),
+    __metadata("design:returntype", Promise)
+], OrderItemsController.prototype, "getOrderItems", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_b = typeof Promise !== "undefined" && Promise) === "function" ? _b : Object)
+], OrderItemsController.prototype, "getOrderItem", null);
+__decorate([
+    (0, common_1.Post)(),
+    __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateOrderItemSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_c = typeof shared_1.CreateOrderItemDto !== "undefined" && shared_1.CreateOrderItemDto) === "function" ? _c : Object]),
+    __metadata("design:returntype", typeof (_d = typeof Promise !== "undefined" && Promise) === "function" ? _d : Object)
+], OrderItemsController.prototype, "createOrderItem", null);
+__decorate([
+    (0, common_1.Put)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateOrderItemSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, typeof (_e = typeof shared_1.UpdateOrderItemDto !== "undefined" && shared_1.UpdateOrderItemDto) === "function" ? _e : Object]),
+    __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
+], OrderItemsController.prototype, "updateOrderItem", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+], OrderItemsController.prototype, "deleteOrderItem", null);
+exports.OrderItemsController = OrderItemsController = __decorate([
+    (0, common_1.Controller)('cramschool/order-items'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __metadata("design:paramtypes", [typeof (_a = typeof order_items_service_1.OrderItemsService !== "undefined" && order_items_service_1.OrderItemsService) === "function" ? _a : Object])
+], OrderItemsController);
+
+
+/***/ }),
+
+/***/ "./src/cramschool/controllers/orders.controller.ts":
+/*!*********************************************************!*\
+  !*** ./src/cramschool/controllers/orders.controller.ts ***!
+  \*********************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.OrdersController = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const orders_service_1 = __webpack_require__(/*! ../services/orders.service */ "./src/cramschool/services/orders.service.ts");
+const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
+const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
+const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
+const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+let OrdersController = class OrdersController {
+    constructor(ordersService, prisma) {
+        this.ordersService = ordersService;
+        this.prisma = prisma;
+    }
+    async getOrders(req, includeDeleted = 'false', groupOrderId, studentId, page = 1, pageSize = 10) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        if (userRecord?.role === 'ADMIN') {
+            return { count: 0, results: [], page: 1, page_size: pageSize };
+        }
+        if (userRecord?.role === 'STUDENT') {
+            const student = await this.prisma.cramschoolStudent.findFirst({
+                where: { userId: user.id },
+            });
+            if (student) {
+                studentId = student.studentId;
+            }
+            else {
+                return { count: 0, results: [], page: 1, page_size: pageSize };
+            }
+        }
+        return this.ordersService.getOrders(includeDeleted === 'true', groupOrderId, studentId, page, pageSize);
+    }
+    async getOrder(id) {
+        return this.ordersService.getOrder(id);
+    }
+    async createOrder(createDto) {
+        return this.ordersService.createOrder(createDto);
+    }
+    async updateOrder(id, updateDto) {
+        return this.ordersService.updateOrder(id, updateDto);
+    }
+    async deleteOrder(id) {
+        return this.ordersService.deleteOrder(id);
+    }
+    async restoreOrder(id) {
+        return this.ordersService.restoreOrder(id);
+    }
+};
+exports.OrdersController = OrdersController;
+__decorate([
+    (0, common_1.Get)(),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('include_deleted')),
+    __param(2, (0, common_1.Query)('group_order', new common_1.ParseIntPipe({ optional: true }))),
+    __param(3, (0, common_1.Query)('student', new common_1.ParseIntPipe({ optional: true }))),
+    __param(4, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
+    __param(5, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, Number, Number, Number, Number]),
+    __metadata("design:returntype", Promise)
+], OrdersController.prototype, "getOrders", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_c = typeof Promise !== "undefined" && Promise) === "function" ? _c : Object)
+], OrdersController.prototype, "getOrder", null);
+__decorate([
+    (0, common_1.Post)(),
+    __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateOrderSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_d = typeof shared_1.CreateOrderDto !== "undefined" && shared_1.CreateOrderDto) === "function" ? _d : Object]),
+    __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
+], OrdersController.prototype, "createOrder", null);
+__decorate([
+    (0, common_1.Put)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateOrderSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, typeof (_f = typeof shared_1.UpdateOrderDto !== "undefined" && shared_1.UpdateOrderDto) === "function" ? _f : Object]),
+    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+], OrdersController.prototype, "updateOrder", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
+], OrdersController.prototype, "deleteOrder", null);
+__decorate([
+    (0, common_1.Post)(':id/restore'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
+], OrdersController.prototype, "restoreOrder", null);
+exports.OrdersController = OrdersController = __decorate([
+    (0, common_1.Controller)('cramschool/orders'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __metadata("design:paramtypes", [typeof (_a = typeof orders_service_1.OrdersService !== "undefined" && orders_service_1.OrdersService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
+], OrdersController);
+
+
+/***/ }),
+
+/***/ "./src/cramschool/controllers/question-tags.controller.ts":
+/*!****************************************************************!*\
+  !*** ./src/cramschool/controllers/question-tags.controller.ts ***!
+  \****************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c, _d, _e, _f, _g;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.QuestionTagsController = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const question_tags_service_1 = __webpack_require__(/*! ../services/question-tags.service */ "./src/cramschool/services/question-tags.service.ts");
+const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
+const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
+const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+let QuestionTagsController = class QuestionTagsController {
+    constructor(questionTagsService) {
+        this.questionTagsService = questionTagsService;
+    }
+    async getQuestionTags(page = 1, pageSize = 10) {
+        return this.questionTagsService.getQuestionTags(page, pageSize);
+    }
+    async getQuestionTag(id) {
+        return this.questionTagsService.getQuestionTag(id);
+    }
+    async createQuestionTag(createDto) {
+        return this.questionTagsService.createQuestionTag(createDto);
+    }
+    async updateQuestionTag(id, updateDto) {
+        return this.questionTagsService.updateQuestionTag(id, updateDto);
+    }
+    async deleteQuestionTag(id) {
+        return this.questionTagsService.deleteQuestionTag(id);
+    }
+};
+exports.QuestionTagsController = QuestionTagsController;
+__decorate([
+    (0, common_1.Get)(),
+    __param(0, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
+    __param(1, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Number]),
+    __metadata("design:returntype", Promise)
+], QuestionTagsController.prototype, "getQuestionTags", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_b = typeof Promise !== "undefined" && Promise) === "function" ? _b : Object)
+], QuestionTagsController.prototype, "getQuestionTag", null);
+__decorate([
+    (0, common_1.Post)(),
+    __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateQuestionTagSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_c = typeof shared_1.CreateQuestionTagDto !== "undefined" && shared_1.CreateQuestionTagDto) === "function" ? _c : Object]),
+    __metadata("design:returntype", typeof (_d = typeof Promise !== "undefined" && Promise) === "function" ? _d : Object)
+], QuestionTagsController.prototype, "createQuestionTag", null);
+__decorate([
+    (0, common_1.Put)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateQuestionTagSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, typeof (_e = typeof shared_1.UpdateQuestionTagDto !== "undefined" && shared_1.UpdateQuestionTagDto) === "function" ? _e : Object]),
+    __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
+], QuestionTagsController.prototype, "updateQuestionTag", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+], QuestionTagsController.prototype, "deleteQuestionTag", null);
+exports.QuestionTagsController = QuestionTagsController = __decorate([
+    (0, common_1.Controller)('cramschool/question-tags'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __metadata("design:paramtypes", [typeof (_a = typeof question_tags_service_1.QuestionTagsService !== "undefined" && question_tags_service_1.QuestionTagsService) === "function" ? _a : Object])
+], QuestionTagsController);
+
+
+/***/ }),
+
 /***/ "./src/cramschool/controllers/questions.controller.ts":
 /*!************************************************************!*\
   !*** ./src/cramschool/controllers/questions.controller.ts ***!
@@ -1467,10 +2676,11 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.QuestionsController = void 0;
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const platform_express_1 = __webpack_require__(/*! @nestjs/platform-express */ "@nestjs/platform-express");
 const questions_service_1 = __webpack_require__(/*! ../services/questions.service */ "./src/cramschool/services/questions.service.ts");
 const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
@@ -1511,6 +2721,54 @@ let QuestionsController = class QuestionsController {
             where: { id: user.id },
         });
         return this.questionsService.deleteQuestion(id, userRecord?.role || 'STUDENT');
+    }
+    async searchChapters(query, subjectId, level) {
+        return this.questionsService.searchChapters(query, subjectId, level);
+    }
+    async getSourceOptions() {
+        return this.questionsService.getSourceOptions();
+    }
+    async exportToLatex(id) {
+        return this.questionsService.exportToLatex(id);
+    }
+    async exportToMarkdown(id) {
+        return this.questionsService.exportToMarkdown(id);
+    }
+    async previewFromWord(req, file, body) {
+        if (!body.subject_id || !body.level || !body.chapter) {
+            throw new Error('請提供 subject_id, level, chapter');
+        }
+        return this.questionsService.previewFromWord(file, body.subject_id, body.level, body.chapter);
+    }
+    async importFromWord(req, file, body) {
+        const user = req.user;
+        if (!body.subject_id || !body.level || !body.chapter) {
+            throw new Error('請提供 subject_id, level, chapter');
+        }
+        return this.questionsService.importFromWord(file, body.subject_id, body.level, body.chapter, user.id);
+    }
+    async previewFromMarkdown(req, files, body) {
+        if (!body.subject_id || !body.level || !body.chapter) {
+            throw new Error('請提供 subject_id, level, chapter');
+        }
+        const markdownFile = files.find((f) => f.fieldname === 'markdown_file' && (f.originalname.endsWith('.md') || f.originalname.endsWith('.markdown')));
+        const imageFiles = files.filter((f) => f.fieldname === 'images' || f.fieldname.startsWith('images'));
+        if (!markdownFile) {
+            throw new Error('請選擇 Markdown 檔案');
+        }
+        return this.questionsService.previewFromMarkdown(markdownFile, imageFiles || [], body.subject_id, body.level, body.chapter);
+    }
+    async importFromMarkdown(req, files, body) {
+        const user = req.user;
+        if (!body.subject_id || !body.level || !body.chapter) {
+            throw new Error('請提供 subject_id, level, chapter');
+        }
+        const markdownFile = files.find((f) => f.fieldname === 'markdown_file' && (f.originalname.endsWith('.md') || f.originalname.endsWith('.markdown')));
+        const imageFiles = files.filter((f) => f.fieldname === 'images' || f.fieldname.startsWith('images'));
+        if (!markdownFile) {
+            throw new Error('請選擇 Markdown 檔案');
+        }
+        return this.questionsService.importFromMarkdown(markdownFile, imageFiles || [], body.subject_id, body.level, body.chapter, user.id);
     }
 };
 exports.QuestionsController = QuestionsController;
@@ -1554,6 +2812,79 @@ __decorate([
     __metadata("design:paramtypes", [Number, Object]),
     __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
 ], QuestionsController.prototype, "deleteQuestion", null);
+__decorate([
+    (0, common_1.Get)('search-chapters'),
+    __param(0, (0, common_1.Query)('q')),
+    __param(1, (0, common_1.Query)('subject', new common_1.ParseIntPipe({ optional: true }))),
+    __param(2, (0, common_1.Query)('level')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Number, String]),
+    __metadata("design:returntype", typeof (_k = typeof Promise !== "undefined" && Promise) === "function" ? _k : Object)
+], QuestionsController.prototype, "searchChapters", null);
+__decorate([
+    (0, common_1.Get)('source-options'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", typeof (_l = typeof Promise !== "undefined" && Promise) === "function" ? _l : Object)
+], QuestionsController.prototype, "getSourceOptions", null);
+__decorate([
+    (0, common_1.Get)(':id/export-to-latex'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_m = typeof Promise !== "undefined" && Promise) === "function" ? _m : Object)
+], QuestionsController.prototype, "exportToLatex", null);
+__decorate([
+    (0, common_1.Get)(':id/export-to-markdown'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_o = typeof Promise !== "undefined" && Promise) === "function" ? _o : Object)
+], QuestionsController.prototype, "exportToMarkdown", null);
+__decorate([
+    (0, common_1.Post)('preview-from-word'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.UploadedFile)()),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, typeof (_q = typeof Express !== "undefined" && (_p = Express.Multer) !== void 0 && _p.File) === "function" ? _q : Object, Object]),
+    __metadata("design:returntype", typeof (_r = typeof Promise !== "undefined" && Promise) === "function" ? _r : Object)
+], QuestionsController.prototype, "previewFromWord", null);
+__decorate([
+    (0, common_1.Post)('import-from-word'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.UploadedFile)()),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, typeof (_t = typeof Express !== "undefined" && (_s = Express.Multer) !== void 0 && _s.File) === "function" ? _t : Object, Object]),
+    __metadata("design:returntype", typeof (_u = typeof Promise !== "undefined" && Promise) === "function" ? _u : Object)
+], QuestionsController.prototype, "importFromWord", null);
+__decorate([
+    (0, common_1.Post)('preview-from-markdown'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.AnyFilesInterceptor)({
+        limits: { fileSize: 5 * 1024 * 1024 },
+    })),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.UploadedFiles)()),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Array, Object]),
+    __metadata("design:returntype", typeof (_v = typeof Promise !== "undefined" && Promise) === "function" ? _v : Object)
+], QuestionsController.prototype, "previewFromMarkdown", null);
+__decorate([
+    (0, common_1.Post)('import-from-markdown'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.AnyFilesInterceptor)({
+        limits: { fileSize: 5 * 1024 * 1024 },
+    })),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.UploadedFiles)()),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Array, Object]),
+    __metadata("design:returntype", typeof (_w = typeof Promise !== "undefined" && Promise) === "function" ? _w : Object)
+], QuestionsController.prototype, "importFromMarkdown", null);
 exports.QuestionsController = QuestionsController = __decorate([
     (0, common_1.Controller)('cramschool/questions'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
@@ -1582,7 +2913,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f, _g, _h;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ResourcesController = void 0;
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
@@ -1626,6 +2957,23 @@ let ResourcesController = class ResourcesController {
             where: { id: user.id },
         });
         return this.resourcesService.deleteResource(id, userRecord?.role || 'STUDENT');
+    }
+    async bindToCourse(req, id, body) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        const userRole = userRecord?.role || '';
+        if (!body.course_id) {
+            throw new Error('需要提供 course_id');
+        }
+        return this.resourcesService.bindToCourse(id, body.course_id, body.action || 'add', user.id, userRole);
+    }
+    async exportResource(id, body) {
+        return this.resourcesService.exportResource(id, body.format_type || 'question_only');
+    }
+    async gradeResource(id, body) {
+        return this.resourcesService.gradeResource(id, body.submission || {});
     }
 };
 exports.ResourcesController = ResourcesController;
@@ -1672,11 +3020,339 @@ __decorate([
     __metadata("design:paramtypes", [Number, Object]),
     __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
 ], ResourcesController.prototype, "deleteResource", null);
+__decorate([
+    (0, common_1.Post)(':id/bind-to-course'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Number, Object]),
+    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
+], ResourcesController.prototype, "bindToCourse", null);
+__decorate([
+    (0, common_1.Post)(':id/export'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", typeof (_k = typeof Promise !== "undefined" && Promise) === "function" ? _k : Object)
+], ResourcesController.prototype, "exportResource", null);
+__decorate([
+    (0, common_1.Post)(':id/grade'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", typeof (_l = typeof Promise !== "undefined" && Promise) === "function" ? _l : Object)
+], ResourcesController.prototype, "gradeResource", null);
 exports.ResourcesController = ResourcesController = __decorate([
     (0, common_1.Controller)('cramschool/resources'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof resources_service_1.ResourcesService !== "undefined" && resources_service_1.ResourcesService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
 ], ResourcesController);
+
+
+/***/ }),
+
+/***/ "./src/cramschool/controllers/restaurants.controller.ts":
+/*!**************************************************************!*\
+  !*** ./src/cramschool/controllers/restaurants.controller.ts ***!
+  \**************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c, _d, _e, _f, _g, _h;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.RestaurantsController = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const restaurants_service_1 = __webpack_require__(/*! ../services/restaurants.service */ "./src/cramschool/services/restaurants.service.ts");
+const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
+const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
+const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
+const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+let RestaurantsController = class RestaurantsController {
+    constructor(restaurantsService, prisma) {
+        this.restaurantsService = restaurantsService;
+        this.prisma = prisma;
+    }
+    async getRestaurants(req, page = 1, pageSize = 10) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        if (userRecord?.role === 'ADMIN') {
+            return { count: 0, results: [], page: 1, page_size: pageSize };
+        }
+        return this.restaurantsService.getRestaurants(page, pageSize);
+    }
+    async getRestaurant(id) {
+        return this.restaurantsService.getRestaurant(id);
+    }
+    async createRestaurant(createDto) {
+        return this.restaurantsService.createRestaurant(createDto);
+    }
+    async updateRestaurant(id, updateDto) {
+        return this.restaurantsService.updateRestaurant(id, updateDto);
+    }
+    async deleteRestaurant(id) {
+        return this.restaurantsService.deleteRestaurant(id);
+    }
+};
+exports.RestaurantsController = RestaurantsController;
+__decorate([
+    (0, common_1.Get)(),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
+    __param(2, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Number, Number]),
+    __metadata("design:returntype", Promise)
+], RestaurantsController.prototype, "getRestaurants", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_c = typeof Promise !== "undefined" && Promise) === "function" ? _c : Object)
+], RestaurantsController.prototype, "getRestaurant", null);
+__decorate([
+    (0, common_1.Post)(),
+    __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateRestaurantSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_d = typeof shared_1.CreateRestaurantDto !== "undefined" && shared_1.CreateRestaurantDto) === "function" ? _d : Object]),
+    __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
+], RestaurantsController.prototype, "createRestaurant", null);
+__decorate([
+    (0, common_1.Put)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateRestaurantSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, typeof (_f = typeof shared_1.UpdateRestaurantDto !== "undefined" && shared_1.UpdateRestaurantDto) === "function" ? _f : Object]),
+    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+], RestaurantsController.prototype, "updateRestaurant", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
+], RestaurantsController.prototype, "deleteRestaurant", null);
+exports.RestaurantsController = RestaurantsController = __decorate([
+    (0, common_1.Controller)('cramschool/restaurants'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __metadata("design:paramtypes", [typeof (_a = typeof restaurants_service_1.RestaurantsService !== "undefined" && restaurants_service_1.RestaurantsService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
+], RestaurantsController);
+
+
+/***/ }),
+
+/***/ "./src/cramschool/controllers/sessions.controller.ts":
+/*!***********************************************************!*\
+  !*** ./src/cramschool/controllers/sessions.controller.ts ***!
+  \***********************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c, _d, _e, _f, _g;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SessionsController = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const sessions_service_1 = __webpack_require__(/*! ../services/sessions.service */ "./src/cramschool/services/sessions.service.ts");
+const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
+const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
+const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+let SessionsController = class SessionsController {
+    constructor(sessionsService) {
+        this.sessionsService = sessionsService;
+    }
+    async getSessions(page = 1, pageSize = 10) {
+        return this.sessionsService.getSessions(page, pageSize);
+    }
+    async getSession(id) {
+        return this.sessionsService.getSession(id);
+    }
+    async createSession(createDto) {
+        return this.sessionsService.createSession(createDto);
+    }
+    async updateSession(id, updateDto) {
+        return this.sessionsService.updateSession(id, updateDto);
+    }
+    async deleteSession(id) {
+        return this.sessionsService.deleteSession(id);
+    }
+};
+exports.SessionsController = SessionsController;
+__decorate([
+    (0, common_1.Get)(),
+    __param(0, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
+    __param(1, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Number]),
+    __metadata("design:returntype", Promise)
+], SessionsController.prototype, "getSessions", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_b = typeof Promise !== "undefined" && Promise) === "function" ? _b : Object)
+], SessionsController.prototype, "getSession", null);
+__decorate([
+    (0, common_1.Post)(),
+    __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateSessionSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_c = typeof shared_1.CreateSessionDto !== "undefined" && shared_1.CreateSessionDto) === "function" ? _c : Object]),
+    __metadata("design:returntype", typeof (_d = typeof Promise !== "undefined" && Promise) === "function" ? _d : Object)
+], SessionsController.prototype, "createSession", null);
+__decorate([
+    (0, common_1.Put)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateSessionSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, typeof (_e = typeof shared_1.UpdateSessionDto !== "undefined" && shared_1.UpdateSessionDto) === "function" ? _e : Object]),
+    __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
+], SessionsController.prototype, "updateSession", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+], SessionsController.prototype, "deleteSession", null);
+exports.SessionsController = SessionsController = __decorate([
+    (0, common_1.Controller)('cramschool/sessions'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __metadata("design:paramtypes", [typeof (_a = typeof sessions_service_1.SessionsService !== "undefined" && sessions_service_1.SessionsService) === "function" ? _a : Object])
+], SessionsController);
+
+
+/***/ }),
+
+/***/ "./src/cramschool/controllers/student-answers.controller.ts":
+/*!******************************************************************!*\
+  !*** ./src/cramschool/controllers/student-answers.controller.ts ***!
+  \******************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c, _d, _e, _f, _g, _h;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.StudentAnswersController = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const student_answers_service_1 = __webpack_require__(/*! ../services/student-answers.service */ "./src/cramschool/services/student-answers.service.ts");
+const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
+const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
+const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+let StudentAnswersController = class StudentAnswersController {
+    constructor(studentAnswersService) {
+        this.studentAnswersService = studentAnswersService;
+    }
+    async getStudentAnswers(includeDeleted = 'false', page = 1, pageSize = 10) {
+        return this.studentAnswersService.getStudentAnswers(includeDeleted === 'true', page, pageSize);
+    }
+    async getStudentAnswer(id) {
+        return this.studentAnswersService.getStudentAnswer(id);
+    }
+    async createStudentAnswer(createDto) {
+        return this.studentAnswersService.createStudentAnswer(createDto);
+    }
+    async updateStudentAnswer(id, updateDto) {
+        return this.studentAnswersService.updateStudentAnswer(id, updateDto);
+    }
+    async deleteStudentAnswer(id) {
+        return this.studentAnswersService.deleteStudentAnswer(id);
+    }
+    async restoreStudentAnswer(id) {
+        return this.studentAnswersService.restoreStudentAnswer(id);
+    }
+};
+exports.StudentAnswersController = StudentAnswersController;
+__decorate([
+    (0, common_1.Get)(),
+    __param(0, (0, common_1.Query)('include_deleted')),
+    __param(1, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
+    __param(2, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Number, Number]),
+    __metadata("design:returntype", Promise)
+], StudentAnswersController.prototype, "getStudentAnswers", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_b = typeof Promise !== "undefined" && Promise) === "function" ? _b : Object)
+], StudentAnswersController.prototype, "getStudentAnswer", null);
+__decorate([
+    (0, common_1.Post)(),
+    __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateStudentAnswerSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_c = typeof shared_1.CreateStudentAnswerDto !== "undefined" && shared_1.CreateStudentAnswerDto) === "function" ? _c : Object]),
+    __metadata("design:returntype", typeof (_d = typeof Promise !== "undefined" && Promise) === "function" ? _d : Object)
+], StudentAnswersController.prototype, "createStudentAnswer", null);
+__decorate([
+    (0, common_1.Put)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateStudentAnswerSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, typeof (_e = typeof shared_1.UpdateStudentAnswerDto !== "undefined" && shared_1.UpdateStudentAnswerDto) === "function" ? _e : Object]),
+    __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
+], StudentAnswersController.prototype, "updateStudentAnswer", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+], StudentAnswersController.prototype, "deleteStudentAnswer", null);
+__decorate([
+    (0, common_1.Post)(':id/restore'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
+], StudentAnswersController.prototype, "restoreStudentAnswer", null);
+exports.StudentAnswersController = StudentAnswersController = __decorate([
+    (0, common_1.Controller)('cramschool/student-answers'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __metadata("design:paramtypes", [typeof (_a = typeof student_answers_service_1.StudentAnswersService !== "undefined" && student_answers_service_1.StudentAnswersService) === "function" ? _a : Object])
+], StudentAnswersController);
 
 
 /***/ }),
@@ -1798,6 +3474,343 @@ exports.StudentGroupsController = StudentGroupsController = __decorate([
 
 /***/ }),
 
+/***/ "./src/cramschool/controllers/student-mistake-note-images.controller.ts":
+/*!******************************************************************************!*\
+  !*** ./src/cramschool/controllers/student-mistake-note-images.controller.ts ***!
+  \******************************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c, _d, _e, _f, _g, _h;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.StudentMistakeNoteImagesController = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const student_mistake_note_images_service_1 = __webpack_require__(/*! ../services/student-mistake-note-images.service */ "./src/cramschool/services/student-mistake-note-images.service.ts");
+const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
+const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
+const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
+const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+let StudentMistakeNoteImagesController = class StudentMistakeNoteImagesController {
+    constructor(studentMistakeNoteImagesService, prisma) {
+        this.studentMistakeNoteImagesService = studentMistakeNoteImagesService;
+        this.prisma = prisma;
+    }
+    async getStudentMistakeNoteImages(req, noteId, page = 1, pageSize = 10) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        const userRole = userRecord?.role || '';
+        return this.studentMistakeNoteImagesService.getStudentMistakeNoteImages(user.id, userRole, noteId, page, pageSize);
+    }
+    async getStudentMistakeNoteImage(req, id) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        const userRole = userRecord?.role || '';
+        return this.studentMistakeNoteImagesService.getStudentMistakeNoteImage(id, user.id, userRole);
+    }
+    async createStudentMistakeNoteImage(req, createDto) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        const userRole = userRecord?.role || '';
+        return this.studentMistakeNoteImagesService.createStudentMistakeNoteImage(createDto, user.id, userRole);
+    }
+    async updateStudentMistakeNoteImage(req, id, updateDto) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        const userRole = userRecord?.role || '';
+        return this.studentMistakeNoteImagesService.updateStudentMistakeNoteImage(id, updateDto, user.id, userRole);
+    }
+    async deleteStudentMistakeNoteImage(req, id) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        const userRole = userRecord?.role || '';
+        return this.studentMistakeNoteImagesService.deleteStudentMistakeNoteImage(id, user.id, userRole);
+    }
+};
+exports.StudentMistakeNoteImagesController = StudentMistakeNoteImagesController;
+__decorate([
+    (0, common_1.Get)(),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('note', new common_1.ParseIntPipe({ optional: true }))),
+    __param(2, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
+    __param(3, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Number, Number, Number]),
+    __metadata("design:returntype", Promise)
+], StudentMistakeNoteImagesController.prototype, "getStudentMistakeNoteImages", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Number]),
+    __metadata("design:returntype", typeof (_c = typeof Promise !== "undefined" && Promise) === "function" ? _c : Object)
+], StudentMistakeNoteImagesController.prototype, "getStudentMistakeNoteImage", null);
+__decorate([
+    (0, common_1.Post)(),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateStudentMistakeNoteImageSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, typeof (_d = typeof shared_1.CreateStudentMistakeNoteImageDto !== "undefined" && shared_1.CreateStudentMistakeNoteImageDto) === "function" ? _d : Object]),
+    __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
+], StudentMistakeNoteImagesController.prototype, "createStudentMistakeNoteImage", null);
+__decorate([
+    (0, common_1.Put)(':id'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(2, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateStudentMistakeNoteImageSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Number, typeof (_f = typeof shared_1.UpdateStudentMistakeNoteImageDto !== "undefined" && shared_1.UpdateStudentMistakeNoteImageDto) === "function" ? _f : Object]),
+    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+], StudentMistakeNoteImagesController.prototype, "updateStudentMistakeNoteImage", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Number]),
+    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
+], StudentMistakeNoteImagesController.prototype, "deleteStudentMistakeNoteImage", null);
+exports.StudentMistakeNoteImagesController = StudentMistakeNoteImagesController = __decorate([
+    (0, common_1.Controller)('cramschool/student-mistake-note-images'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __metadata("design:paramtypes", [typeof (_a = typeof student_mistake_note_images_service_1.StudentMistakeNoteImagesService !== "undefined" && student_mistake_note_images_service_1.StudentMistakeNoteImagesService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
+], StudentMistakeNoteImagesController);
+
+
+/***/ }),
+
+/***/ "./src/cramschool/controllers/student-mistake-notes.controller.ts":
+/*!************************************************************************!*\
+  !*** ./src/cramschool/controllers/student-mistake-notes.controller.ts ***!
+  \************************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.StudentMistakeNotesController = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const platform_express_1 = __webpack_require__(/*! @nestjs/platform-express */ "@nestjs/platform-express");
+const student_mistake_notes_service_1 = __webpack_require__(/*! ../services/student-mistake-notes.service */ "./src/cramschool/services/student-mistake-notes.service.ts");
+const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
+const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
+const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
+const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+let StudentMistakeNotesController = class StudentMistakeNotesController {
+    constructor(studentMistakeNotesService, prisma) {
+        this.studentMistakeNotesService = studentMistakeNotesService;
+        this.prisma = prisma;
+    }
+    async getStudentMistakeNotes(req, includeDeleted = 'false', studentId, searchQuery, page = 1, pageSize = 10) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        const userRole = userRecord?.role || '';
+        return this.studentMistakeNotesService.getStudentMistakeNotes(user.id, userRole, includeDeleted === 'true', studentId, searchQuery, page, pageSize);
+    }
+    async getStudentMistakeNote(req, id) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        const userRole = userRecord?.role || '';
+        return this.studentMistakeNotesService.getStudentMistakeNote(id, user.id, userRole);
+    }
+    async createStudentMistakeNote(req, createDto) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        const userRole = userRecord?.role || '';
+        return this.studentMistakeNotesService.createStudentMistakeNote(createDto, user.id, userRole);
+    }
+    async updateStudentMistakeNote(req, id, updateDto) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        const userRole = userRecord?.role || '';
+        return this.studentMistakeNotesService.updateStudentMistakeNote(id, updateDto, user.id, userRole);
+    }
+    async deleteStudentMistakeNote(req, id) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        const userRole = userRecord?.role || '';
+        return this.studentMistakeNotesService.deleteStudentMistakeNote(id, user.id, userRole);
+    }
+    async restoreStudentMistakeNote(id) {
+        return this.studentMistakeNotesService.restoreStudentMistakeNote(id);
+    }
+    async importToQuestionBank(req, id, body) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        const userRole = userRecord?.role || '';
+        if (userRole === 'ACCOUNTANT') {
+            throw new Error('會計不可匯入題庫');
+        }
+        if (userRole !== 'TEACHER' && userRole !== 'ADMIN') {
+            throw new Error('無權限');
+        }
+        return this.studentMistakeNotesService.importToQuestionBank(id, user.id, body);
+    }
+    async uploadImages(req, id, files) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        const userRole = userRecord?.role || '';
+        if (userRole !== 'STUDENT') {
+            throw new Error('只有學生可以上傳錯題筆記圖片');
+        }
+        if (!files || files.length === 0) {
+            throw new Error('沒有提供圖片');
+        }
+        return this.studentMistakeNotesService.uploadImages(id, user.id, files);
+    }
+    async reorderImages(req, id, body) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        const userRole = userRecord?.role || '';
+        if (userRole !== 'STUDENT') {
+            throw new Error('只有學生可以操作');
+        }
+        if (!body.image_ids || !Array.isArray(body.image_ids) || body.image_ids.length === 0) {
+            throw new Error('請提供 image_ids');
+        }
+        return this.studentMistakeNotesService.reorderImages(id, user.id, body.image_ids);
+    }
+};
+exports.StudentMistakeNotesController = StudentMistakeNotesController;
+__decorate([
+    (0, common_1.Get)(),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('include_deleted')),
+    __param(2, (0, common_1.Query)('student_id', new common_1.ParseIntPipe({ optional: true }))),
+    __param(3, (0, common_1.Query)('q')),
+    __param(4, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
+    __param(5, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, Number, String, Number, Number]),
+    __metadata("design:returntype", Promise)
+], StudentMistakeNotesController.prototype, "getStudentMistakeNotes", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Number]),
+    __metadata("design:returntype", typeof (_c = typeof Promise !== "undefined" && Promise) === "function" ? _c : Object)
+], StudentMistakeNotesController.prototype, "getStudentMistakeNote", null);
+__decorate([
+    (0, common_1.Post)(),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateStudentMistakeNoteSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, typeof (_d = typeof shared_1.CreateStudentMistakeNoteDto !== "undefined" && shared_1.CreateStudentMistakeNoteDto) === "function" ? _d : Object]),
+    __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
+], StudentMistakeNotesController.prototype, "createStudentMistakeNote", null);
+__decorate([
+    (0, common_1.Put)(':id'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(2, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateStudentMistakeNoteSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Number, typeof (_f = typeof shared_1.UpdateStudentMistakeNoteDto !== "undefined" && shared_1.UpdateStudentMistakeNoteDto) === "function" ? _f : Object]),
+    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+], StudentMistakeNotesController.prototype, "updateStudentMistakeNote", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Number]),
+    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
+], StudentMistakeNotesController.prototype, "deleteStudentMistakeNote", null);
+__decorate([
+    (0, common_1.Post)(':id/restore'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
+], StudentMistakeNotesController.prototype, "restoreStudentMistakeNote", null);
+__decorate([
+    (0, common_1.Post)(':id/import-to-question-bank'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Number, Object]),
+    __metadata("design:returntype", typeof (_k = typeof Promise !== "undefined" && Promise) === "function" ? _k : Object)
+], StudentMistakeNotesController.prototype, "importToQuestionBank", null);
+__decorate([
+    (0, common_1.Post)(':id/upload-images'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FilesInterceptor)('images', 10)),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(2, (0, common_1.UploadedFiles)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Number, Array]),
+    __metadata("design:returntype", typeof (_l = typeof Promise !== "undefined" && Promise) === "function" ? _l : Object)
+], StudentMistakeNotesController.prototype, "uploadImages", null);
+__decorate([
+    (0, common_1.Post)(':id/reorder-images'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Number, Object]),
+    __metadata("design:returntype", typeof (_m = typeof Promise !== "undefined" && Promise) === "function" ? _m : Object)
+], StudentMistakeNotesController.prototype, "reorderImages", null);
+exports.StudentMistakeNotesController = StudentMistakeNotesController = __decorate([
+    (0, common_1.Controller)('cramschool/student-mistake-notes'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __metadata("design:paramtypes", [typeof (_a = typeof student_mistake_notes_service_1.StudentMistakeNotesService !== "undefined" && student_mistake_notes_service_1.StudentMistakeNotesService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
+], StudentMistakeNotesController);
+
+
+/***/ }),
+
 /***/ "./src/cramschool/controllers/students.controller.ts":
 /*!***********************************************************!*\
   !*** ./src/cramschool/controllers/students.controller.ts ***!
@@ -1817,7 +3830,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.StudentsController = void 0;
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
@@ -1873,6 +3886,9 @@ let StudentsController = class StudentsController {
     }
     async toggleAccountStatus(id) {
         return this.studentsService.toggleAccountStatus(id);
+    }
+    async getAttendanceAndLeaves(id) {
+        return this.studentsService.getAttendanceAndLeaves(id);
     }
 };
 exports.StudentsController = StudentsController;
@@ -1958,11 +3974,139 @@ __decorate([
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", typeof (_q = typeof Promise !== "undefined" && Promise) === "function" ? _q : Object)
 ], StudentsController.prototype, "toggleAccountStatus", null);
+__decorate([
+    (0, common_1.Get)(':id/attendance_and_leaves'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", typeof (_r = typeof Promise !== "undefined" && Promise) === "function" ? _r : Object)
+], StudentsController.prototype, "getAttendanceAndLeaves", null);
 exports.StudentsController = StudentsController = __decorate([
     (0, common_1.Controller)('cramschool/students'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof students_service_1.StudentsService !== "undefined" && students_service_1.StudentsService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
 ], StudentsController);
+
+
+/***/ }),
+
+/***/ "./src/cramschool/controllers/subjects.controller.ts":
+/*!***********************************************************!*\
+  !*** ./src/cramschool/controllers/subjects.controller.ts ***!
+  \***********************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c, _d, _e, _f, _g, _h;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SubjectsController = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const subjects_service_1 = __webpack_require__(/*! ../services/subjects.service */ "./src/cramschool/services/subjects.service.ts");
+const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
+const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
+const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
+const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+let SubjectsController = class SubjectsController {
+    constructor(subjectsService, prisma) {
+        this.subjectsService = subjectsService;
+        this.prisma = prisma;
+    }
+    async getSubjects(page = 1, pageSize = 10, req) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        return this.subjectsService.getSubjects(page, pageSize, userRecord?.role || 'STUDENT');
+    }
+    async getSubject(id, req) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        return this.subjectsService.getSubject(id, userRecord?.role || 'STUDENT');
+    }
+    async createSubject(createDto, req) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        return this.subjectsService.createSubject(createDto, userRecord?.role || 'STUDENT');
+    }
+    async updateSubject(id, updateDto, req) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        return this.subjectsService.updateSubject(id, updateDto, userRecord?.role || 'STUDENT');
+    }
+    async deleteSubject(id, req) {
+        const user = req.user;
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+        });
+        return this.subjectsService.deleteSubject(id, userRecord?.role || 'STUDENT');
+    }
+};
+exports.SubjectsController = SubjectsController;
+__decorate([
+    (0, common_1.Get)(),
+    __param(0, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
+    __param(1, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Number, Object]),
+    __metadata("design:returntype", Promise)
+], SubjectsController.prototype, "getSubjects", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", typeof (_c = typeof Promise !== "undefined" && Promise) === "function" ? _c : Object)
+], SubjectsController.prototype, "getSubject", null);
+__decorate([
+    (0, common_1.Post)(),
+    __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateSubjectSchema))),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_d = typeof shared_1.CreateSubjectDto !== "undefined" && shared_1.CreateSubjectDto) === "function" ? _d : Object, Object]),
+    __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
+], SubjectsController.prototype, "createSubject", null);
+__decorate([
+    (0, common_1.Put)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateSubjectSchema))),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, typeof (_f = typeof shared_1.UpdateSubjectDto !== "undefined" && shared_1.UpdateSubjectDto) === "function" ? _f : Object, Object]),
+    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+], SubjectsController.prototype, "updateSubject", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
+], SubjectsController.prototype, "deleteSubject", null);
+exports.SubjectsController = SubjectsController = __decorate([
+    (0, common_1.Controller)('cramschool/subjects'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __metadata("design:paramtypes", [typeof (_a = typeof subjects_service_1.SubjectsService !== "undefined" && subjects_service_1.SubjectsService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
+], SubjectsController);
 
 
 /***/ }),
@@ -2098,6 +4242,38 @@ const resources_service_1 = __webpack_require__(/*! ./services/resources.service
 const student_groups_service_1 = __webpack_require__(/*! ./services/student-groups.service */ "./src/cramschool/services/student-groups.service.ts");
 const fees_service_1 = __webpack_require__(/*! ./services/fees.service */ "./src/cramschool/services/fees.service.ts");
 const media_controller_1 = __webpack_require__(/*! ./controllers/media.controller */ "./src/cramschool/controllers/media.controller.ts");
+const attendances_controller_1 = __webpack_require__(/*! ./controllers/attendances.controller */ "./src/cramschool/controllers/attendances.controller.ts");
+const sessions_controller_1 = __webpack_require__(/*! ./controllers/sessions.controller */ "./src/cramschool/controllers/sessions.controller.ts");
+const attendances_service_1 = __webpack_require__(/*! ./services/attendances.service */ "./src/cramschool/services/attendances.service.ts");
+const sessions_service_1 = __webpack_require__(/*! ./services/sessions.service */ "./src/cramschool/services/sessions.service.ts");
+const subjects_controller_1 = __webpack_require__(/*! ./controllers/subjects.controller */ "./src/cramschool/controllers/subjects.controller.ts");
+const subjects_service_1 = __webpack_require__(/*! ./services/subjects.service */ "./src/cramschool/services/subjects.service.ts");
+const hashtags_controller_1 = __webpack_require__(/*! ./controllers/hashtags.controller */ "./src/cramschool/controllers/hashtags.controller.ts");
+const hashtags_service_1 = __webpack_require__(/*! ./services/hashtags.service */ "./src/cramschool/services/hashtags.service.ts");
+const question_tags_controller_1 = __webpack_require__(/*! ./controllers/question-tags.controller */ "./src/cramschool/controllers/question-tags.controller.ts");
+const question_tags_service_1 = __webpack_require__(/*! ./services/question-tags.service */ "./src/cramschool/services/question-tags.service.ts");
+const student_answers_controller_1 = __webpack_require__(/*! ./controllers/student-answers.controller */ "./src/cramschool/controllers/student-answers.controller.ts");
+const student_answers_service_1 = __webpack_require__(/*! ./services/student-answers.service */ "./src/cramschool/services/student-answers.service.ts");
+const restaurants_controller_1 = __webpack_require__(/*! ./controllers/restaurants.controller */ "./src/cramschool/controllers/restaurants.controller.ts");
+const restaurants_service_1 = __webpack_require__(/*! ./services/restaurants.service */ "./src/cramschool/services/restaurants.service.ts");
+const group_orders_controller_1 = __webpack_require__(/*! ./controllers/group-orders.controller */ "./src/cramschool/controllers/group-orders.controller.ts");
+const group_orders_service_1 = __webpack_require__(/*! ./services/group-orders.service */ "./src/cramschool/services/group-orders.service.ts");
+const orders_controller_1 = __webpack_require__(/*! ./controllers/orders.controller */ "./src/cramschool/controllers/orders.controller.ts");
+const orders_service_1 = __webpack_require__(/*! ./services/orders.service */ "./src/cramschool/services/orders.service.ts");
+const order_items_controller_1 = __webpack_require__(/*! ./controllers/order-items.controller */ "./src/cramschool/controllers/order-items.controller.ts");
+const order_items_service_1 = __webpack_require__(/*! ./services/order-items.service */ "./src/cramschool/services/order-items.service.ts");
+const content_templates_controller_1 = __webpack_require__(/*! ./controllers/content-templates.controller */ "./src/cramschool/controllers/content-templates.controller.ts");
+const content_templates_service_1 = __webpack_require__(/*! ./services/content-templates.service */ "./src/cramschool/services/content-templates.service.ts");
+const error_logs_controller_1 = __webpack_require__(/*! ./controllers/error-logs.controller */ "./src/cramschool/controllers/error-logs.controller.ts");
+const error_logs_service_1 = __webpack_require__(/*! ./services/error-logs.service */ "./src/cramschool/services/error-logs.service.ts");
+const student_mistake_notes_controller_1 = __webpack_require__(/*! ./controllers/student-mistake-notes.controller */ "./src/cramschool/controllers/student-mistake-notes.controller.ts");
+const student_mistake_notes_service_1 = __webpack_require__(/*! ./services/student-mistake-notes.service */ "./src/cramschool/services/student-mistake-notes.service.ts");
+const error_log_images_controller_1 = __webpack_require__(/*! ./controllers/error-log-images.controller */ "./src/cramschool/controllers/error-log-images.controller.ts");
+const error_log_images_service_1 = __webpack_require__(/*! ./services/error-log-images.service */ "./src/cramschool/services/error-log-images.service.ts");
+const student_mistake_note_images_controller_1 = __webpack_require__(/*! ./controllers/student-mistake-note-images.controller */ "./src/cramschool/controllers/student-mistake-note-images.controller.ts");
+const student_mistake_note_images_service_1 = __webpack_require__(/*! ./services/student-mistake-note-images.service */ "./src/cramschool/services/student-mistake-note-images.service.ts");
+const word_importer_service_1 = __webpack_require__(/*! ./services/word-importer.service */ "./src/cramschool/services/word-importer.service.ts");
+const markdown_importer_service_1 = __webpack_require__(/*! ./services/markdown-importer.service */ "./src/cramschool/services/markdown-importer.service.ts");
 let CramschoolModule = class CramschoolModule {
 };
 exports.CramschoolModule = CramschoolModule;
@@ -2115,6 +4291,21 @@ exports.CramschoolModule = CramschoolModule = __decorate([
             student_groups_controller_1.StudentGroupsController,
             fees_controller_1.FeesController,
             media_controller_1.MediaController,
+            attendances_controller_1.AttendancesController,
+            sessions_controller_1.SessionsController,
+            subjects_controller_1.SubjectsController,
+            hashtags_controller_1.HashtagsController,
+            question_tags_controller_1.QuestionTagsController,
+            student_answers_controller_1.StudentAnswersController,
+            restaurants_controller_1.RestaurantsController,
+            group_orders_controller_1.GroupOrdersController,
+            orders_controller_1.OrdersController,
+            order_items_controller_1.OrderItemsController,
+            content_templates_controller_1.ContentTemplatesController,
+            error_logs_controller_1.ErrorLogsController,
+            student_mistake_notes_controller_1.StudentMistakeNotesController,
+            error_log_images_controller_1.ErrorLogImagesController,
+            student_mistake_note_images_controller_1.StudentMistakeNoteImagesController,
         ],
         providers: [
             students_service_1.StudentsService,
@@ -2127,6 +4318,23 @@ exports.CramschoolModule = CramschoolModule = __decorate([
             resources_service_1.ResourcesService,
             student_groups_service_1.StudentGroupsService,
             fees_service_1.FeesService,
+            attendances_service_1.AttendancesService,
+            sessions_service_1.SessionsService,
+            subjects_service_1.SubjectsService,
+            hashtags_service_1.HashtagsService,
+            question_tags_service_1.QuestionTagsService,
+            student_answers_service_1.StudentAnswersService,
+            restaurants_service_1.RestaurantsService,
+            group_orders_service_1.GroupOrdersService,
+            orders_service_1.OrdersService,
+            order_items_service_1.OrderItemsService,
+            content_templates_service_1.ContentTemplatesService,
+            error_logs_service_1.ErrorLogsService,
+            student_mistake_notes_service_1.StudentMistakeNotesService,
+            error_log_images_service_1.ErrorLogImagesService,
+            student_mistake_note_images_service_1.StudentMistakeNoteImagesService,
+            word_importer_service_1.WordImporterService,
+            markdown_importer_service_1.MarkdownImporterService,
         ],
         exports: [
             students_service_1.StudentsService,
@@ -2135,6 +4343,351 @@ exports.CramschoolModule = CramschoolModule = __decorate([
         ],
     })
 ], CramschoolModule);
+
+
+/***/ }),
+
+/***/ "./src/cramschool/services/attendances.service.ts":
+/*!********************************************************!*\
+  !*** ./src/cramschool/services/attendances.service.ts ***!
+  \********************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.AttendancesService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
+const pagination_util_1 = __webpack_require__(/*! ../../common/utils/pagination.util */ "./src/common/utils/pagination.util.ts");
+let AttendancesService = class AttendancesService {
+    constructor(prisma) {
+        this.prisma = prisma;
+    }
+    async getAttendances(includeDeleted = false, page = 1, pageSize = 10) {
+        const skip = (page - 1) * pageSize;
+        const where = {};
+        if (!includeDeleted) {
+            where.isDeleted = false;
+        }
+        const [results, count] = await Promise.all([
+            this.prisma.cramschoolAttendance.findMany({
+                where,
+                skip,
+                take: pageSize,
+                include: {
+                    session: {
+                        include: {
+                            course: true,
+                        },
+                    },
+                    student: true,
+                },
+                orderBy: {
+                    session: {
+                        sessionDate: 'desc',
+                    },
+                },
+            }),
+            this.prisma.cramschoolAttendance.count({ where }),
+        ]);
+        return (0, pagination_util_1.createPaginatedResponse)(results.map((a) => this.toAttendanceDto(a)), count, page, pageSize);
+    }
+    async getAttendance(id) {
+        const attendance = await this.prisma.cramschoolAttendance.findUnique({
+            where: { attendanceId: id },
+            include: {
+                session: {
+                    include: {
+                        course: true,
+                    },
+                },
+                student: true,
+            },
+        });
+        if (!attendance) {
+            throw new common_1.NotFoundException(`Attendance with ID ${id} not found`);
+        }
+        return this.toAttendanceDto(attendance);
+    }
+    async createAttendance(createDto) {
+        const attendance = await this.prisma.cramschoolAttendance.create({
+            data: {
+                sessionId: createDto.session_id,
+                studentId: createDto.student_id,
+                status: createDto.status || 'Absent',
+            },
+            include: {
+                session: {
+                    include: {
+                        course: true,
+                    },
+                },
+                student: true,
+            },
+        });
+        return this.toAttendanceDto(attendance);
+    }
+    async updateAttendance(id, updateDto) {
+        const attendance = await this.prisma.cramschoolAttendance.findUnique({
+            where: { attendanceId: id },
+        });
+        if (!attendance) {
+            throw new common_1.NotFoundException(`Attendance with ID ${id} not found`);
+        }
+        const updatedAttendance = await this.prisma.cramschoolAttendance.update({
+            where: { attendanceId: id },
+            data: {
+                sessionId: updateDto.session_id,
+                studentId: updateDto.student_id,
+                status: updateDto.status,
+            },
+            include: {
+                session: {
+                    include: {
+                        course: true,
+                    },
+                },
+                student: true,
+            },
+        });
+        return this.toAttendanceDto(updatedAttendance);
+    }
+    async deleteAttendance(id) {
+        const attendance = await this.prisma.cramschoolAttendance.findUnique({
+            where: { attendanceId: id },
+        });
+        if (!attendance) {
+            throw new common_1.NotFoundException(`Attendance with ID ${id} not found`);
+        }
+        await this.prisma.cramschoolAttendance.update({
+            where: { attendanceId: id },
+            data: {
+                isDeleted: true,
+                deletedAt: new Date(),
+            },
+        });
+    }
+    async restoreAttendance(id) {
+        const attendance = await this.prisma.cramschoolAttendance.findUnique({
+            where: { attendanceId: id },
+        });
+        if (!attendance) {
+            throw new common_1.NotFoundException(`Attendance with ID ${id} not found`);
+        }
+        if (!attendance.isDeleted) {
+            throw new common_1.NotFoundException(`Attendance with ID ${id} is not deleted`);
+        }
+        const restoredAttendance = await this.prisma.cramschoolAttendance.update({
+            where: { attendanceId: id },
+            data: {
+                isDeleted: false,
+                deletedAt: null,
+            },
+            include: {
+                session: {
+                    include: {
+                        course: true,
+                    },
+                },
+                student: true,
+            },
+        });
+        return this.toAttendanceDto(restoredAttendance);
+    }
+    toAttendanceDto(attendance) {
+        const result = {
+            attendance_id: attendance.attendanceId,
+            session_id: attendance.sessionId,
+            student_id: attendance.studentId,
+            status: attendance.status,
+            is_deleted: attendance.isDeleted,
+            deleted_at: attendance.deletedAt?.toISOString() || null,
+            student_name: attendance.student?.name || undefined,
+            session_id_display: attendance.session?.sessionId || undefined,
+            course_name: attendance.session?.course?.courseName || undefined,
+            session_date: attendance.session?.sessionDate
+                ? attendance.session.sessionDate.toISOString().split('T')[0]
+                : undefined,
+        };
+        return result;
+    }
+};
+exports.AttendancesService = AttendancesService;
+exports.AttendancesService = AttendancesService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _a : Object])
+], AttendancesService);
+
+
+/***/ }),
+
+/***/ "./src/cramschool/services/content-templates.service.ts":
+/*!**************************************************************!*\
+  !*** ./src/cramschool/services/content-templates.service.ts ***!
+  \**************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ContentTemplatesService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
+const pagination_util_1 = __webpack_require__(/*! ../../common/utils/pagination.util */ "./src/common/utils/pagination.util.ts");
+let ContentTemplatesService = class ContentTemplatesService {
+    constructor(prisma) {
+        this.prisma = prisma;
+    }
+    async getContentTemplates(userId, userRole, page = 1, pageSize = 10) {
+        const skip = (page - 1) * pageSize;
+        if (userRole !== 'TEACHER') {
+            return { count: 0, results: [], page: 1, page_size: pageSize };
+        }
+        const where = {
+            OR: [
+                { isPublic: true },
+                { createdById: userId },
+            ],
+        };
+        const [results, count] = await Promise.all([
+            this.prisma.cramschoolContentTemplate.findMany({
+                where,
+                skip,
+                take: pageSize,
+                include: {
+                    tags: {
+                        include: {
+                            tag: true,
+                        },
+                    },
+                },
+                orderBy: { templateId: 'desc' },
+            }),
+            this.prisma.cramschoolContentTemplate.count({ where }),
+        ]);
+        return (0, pagination_util_1.createPaginatedResponse)(results.map((t) => this.toContentTemplateDto(t)), count, page, pageSize);
+    }
+    async getContentTemplate(id, userId, userRole) {
+        const template = await this.prisma.cramschoolContentTemplate.findUnique({
+            where: { templateId: id },
+            include: {
+                tags: {
+                    include: {
+                        tag: true,
+                    },
+                },
+            },
+        });
+        if (!template) {
+            throw new common_1.NotFoundException(`ContentTemplate with ID ${id} not found`);
+        }
+        if (userRole !== 'TEACHER') {
+            throw new common_1.NotFoundException(`ContentTemplate with ID ${id} not found`);
+        }
+        if (!template.isPublic && template.createdById !== userId) {
+            throw new common_1.NotFoundException(`ContentTemplate with ID ${id} not found`);
+        }
+        return this.toContentTemplateDto(template);
+    }
+    async createContentTemplate(createDto, userId) {
+        const template = await this.prisma.cramschoolContentTemplate.create({
+            data: {
+                title: createDto.title,
+                structure: createDto.structure || [],
+                tiptapStructure: createDto.tiptap_structure || null,
+                createdById: userId,
+                isPublic: createDto.is_public || false,
+            },
+            include: {
+                tags: {
+                    include: {
+                        tag: true,
+                    },
+                },
+            },
+        });
+        return this.toContentTemplateDto(template);
+    }
+    async updateContentTemplate(id, updateDto, userId) {
+        const template = await this.prisma.cramschoolContentTemplate.findUnique({
+            where: { templateId: id },
+        });
+        if (!template) {
+            throw new common_1.NotFoundException(`ContentTemplate with ID ${id} not found`);
+        }
+        if (template.createdById !== userId) {
+            throw new common_1.NotFoundException(`ContentTemplate with ID ${id} not found`);
+        }
+        const updatedTemplate = await this.prisma.cramschoolContentTemplate.update({
+            where: { templateId: id },
+            data: {
+                title: updateDto.title,
+                structure: updateDto.structure,
+                tiptapStructure: updateDto.tiptap_structure,
+                isPublic: updateDto.is_public,
+            },
+            include: {
+                tags: {
+                    include: {
+                        tag: true,
+                    },
+                },
+            },
+        });
+        return this.toContentTemplateDto(updatedTemplate);
+    }
+    async deleteContentTemplate(id, userId) {
+        const template = await this.prisma.cramschoolContentTemplate.findUnique({
+            where: { templateId: id },
+        });
+        if (!template) {
+            throw new common_1.NotFoundException(`ContentTemplate with ID ${id} not found`);
+        }
+        if (template.createdById !== userId) {
+            throw new common_1.NotFoundException(`ContentTemplate with ID ${id} not found`);
+        }
+        await this.prisma.cramschoolContentTemplate.delete({
+            where: { templateId: id },
+        });
+    }
+    toContentTemplateDto(template) {
+        return {
+            template_id: template.templateId,
+            title: template.title,
+            structure: template.structure,
+            tiptap_structure: template.tiptapStructure || null,
+            created_by: template.createdById || null,
+            is_public: template.isPublic,
+            tag_ids: template.tags?.map((t) => t.tag?.tagId || t.tagId) || [],
+            created_at: template.createdAt?.toISOString(),
+            updated_at: template.updatedAt?.toISOString(),
+        };
+    }
+};
+exports.ContentTemplatesService = ContentTemplatesService;
+exports.ContentTemplatesService = ContentTemplatesService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _a : Object])
+], ContentTemplatesService);
 
 
 /***/ }),
@@ -2274,6 +4827,115 @@ let CoursesService = class CoursesService {
             enrollments_count: enrollmentsCount,
         };
         return result;
+    }
+    async getStudentStatus(id) {
+        const course = await this.prisma.cramschoolCourse.findUnique({
+            where: { courseId: id },
+            include: {
+                enrollments: {
+                    where: { isDeleted: false },
+                    include: {
+                        student: true,
+                        periods: {
+                            where: { isActive: true },
+                        },
+                    },
+                },
+            },
+        });
+        if (!course) {
+            throw new common_1.NotFoundException(`Course with ID ${id} not found`);
+        }
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayStr = today.toISOString().split('T')[0];
+        const todayLeaves = await this.prisma.cramschoolLeave.findMany({
+            where: {
+                courseId: id,
+                leaveDate: today,
+                isDeleted: false,
+            },
+            select: { studentId: true },
+        });
+        const todayLeaveStudentIds = new Set(todayLeaves.map((l) => l.studentId));
+        let presentCount = 0;
+        let leaveCount = 0;
+        let inactiveCount = 0;
+        for (const enrollment of course.enrollments) {
+            const studentId = enrollment.studentId;
+            let hasActivePeriod = false;
+            for (const period of enrollment.periods) {
+                const startDate = period.startDate.toISOString().split('T')[0];
+                const endDate = period.endDate
+                    ? period.endDate.toISOString().split('T')[0]
+                    : null;
+                if (startDate <= todayStr && (!endDate || endDate >= todayStr)) {
+                    hasActivePeriod = true;
+                    break;
+                }
+            }
+            if (!hasActivePeriod) {
+                inactiveCount++;
+                continue;
+            }
+            if (todayLeaveStudentIds.has(studentId)) {
+                leaveCount++;
+            }
+            else {
+                presentCount++;
+            }
+        }
+        return {
+            course_id: course.courseId,
+            course_name: course.courseName,
+            total_students: course.enrollments.length,
+            present_count: presentCount,
+            leave_count: leaveCount,
+            inactive_count: inactiveCount,
+        };
+    }
+    async getResources(id, userId, userRole) {
+        const course = await this.prisma.cramschoolCourse.findUnique({
+            where: { courseId: id },
+            include: {
+                teacher: true,
+            },
+        });
+        if (!course) {
+            throw new common_1.NotFoundException(`Course with ID ${id} not found`);
+        }
+        if (userRole === 'TEACHER') {
+            const teacher = await this.prisma.cramschoolTeacher.findFirst({
+                where: { userId },
+            });
+            if (!teacher || course.teacherId !== teacher.teacherId) {
+                throw new common_1.NotFoundException('您沒有權限查看此課程的資源');
+            }
+        }
+        else if (userRole !== 'ADMIN') {
+            throw new common_1.NotFoundException('您沒有權限查看課程資源');
+        }
+        const resources = await this.prisma.cramschoolLearningResource.findMany({
+            where: {
+                courses: {
+                    some: {
+                        courseId: id,
+                    },
+                },
+            },
+            include: {
+                courses: true,
+            },
+        });
+        return resources.map((r) => ({
+            resource_id: r.resourceId,
+            title: r.title,
+            mode: r.mode,
+            course_ids: r.courses?.map((c) => c.courseId) || [],
+            created_by: r.createdById || null,
+            created_at: r.createdAt?.toISOString() || null,
+            updated_at: r.updatedAt?.toISOString() || null,
+        }));
     }
 };
 exports.CoursesService = CoursesService;
@@ -2541,6 +5203,431 @@ exports.EnrollmentsService = EnrollmentsService = __decorate([
 
 /***/ }),
 
+/***/ "./src/cramschool/services/error-log-images.service.ts":
+/*!*************************************************************!*\
+  !*** ./src/cramschool/services/error-log-images.service.ts ***!
+  \*************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ErrorLogImagesService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
+const pagination_util_1 = __webpack_require__(/*! ../../common/utils/pagination.util */ "./src/common/utils/pagination.util.ts");
+let ErrorLogImagesService = class ErrorLogImagesService {
+    constructor(prisma) {
+        this.prisma = prisma;
+    }
+    async getErrorLogImages(errorLogId, page = 1, pageSize = 10) {
+        const skip = (page - 1) * pageSize;
+        const where = {};
+        if (errorLogId) {
+            where.errorLogId = errorLogId;
+        }
+        const [results, count] = await Promise.all([
+            this.prisma.cramschoolErrorLogImage.findMany({
+                where,
+                skip,
+                take: pageSize,
+                orderBy: [{ sortOrder: 'asc' }, { imageId: 'asc' }],
+            }),
+            this.prisma.cramschoolErrorLogImage.count({ where }),
+        ]);
+        return (0, pagination_util_1.createPaginatedResponse)(results.map((img) => this.toErrorLogImageDto(img)), count, page, pageSize);
+    }
+    async getErrorLogImage(id) {
+        const image = await this.prisma.cramschoolErrorLogImage.findUnique({
+            where: { imageId: id },
+        });
+        if (!image) {
+            throw new common_1.NotFoundException(`ErrorLogImage with ID ${id} not found`);
+        }
+        return this.toErrorLogImageDto(image);
+    }
+    async createErrorLogImage(createDto) {
+        const image = await this.prisma.cramschoolErrorLogImage.create({
+            data: {
+                errorLogId: createDto.error_log_id,
+                imagePath: createDto.image_path,
+                caption: createDto.caption || null,
+                sortOrder: createDto.sort_order || 0,
+            },
+        });
+        return this.toErrorLogImageDto(image);
+    }
+    async updateErrorLogImage(id, updateDto) {
+        const image = await this.prisma.cramschoolErrorLogImage.findUnique({
+            where: { imageId: id },
+        });
+        if (!image) {
+            throw new common_1.NotFoundException(`ErrorLogImage with ID ${id} not found`);
+        }
+        const updatedImage = await this.prisma.cramschoolErrorLogImage.update({
+            where: { imageId: id },
+            data: {
+                caption: updateDto.caption !== undefined ? updateDto.caption : undefined,
+                sortOrder: updateDto.sort_order !== undefined ? updateDto.sort_order : undefined,
+            },
+        });
+        return this.toErrorLogImageDto(updatedImage);
+    }
+    async deleteErrorLogImage(id) {
+        const image = await this.prisma.cramschoolErrorLogImage.findUnique({
+            where: { imageId: id },
+        });
+        if (!image) {
+            throw new common_1.NotFoundException(`ErrorLogImage with ID ${id} not found`);
+        }
+        await this.prisma.cramschoolErrorLogImage.delete({
+            where: { imageId: id },
+        });
+    }
+    toErrorLogImageDto(image) {
+        return {
+            image_id: image.imageId,
+            error_log_id: image.errorLogId,
+            image_path: image.imagePath,
+            caption: image.caption || null,
+            sort_order: image.sortOrder,
+            created_at: image.createdAt?.toISOString(),
+        };
+    }
+};
+exports.ErrorLogImagesService = ErrorLogImagesService;
+exports.ErrorLogImagesService = ErrorLogImagesService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _a : Object])
+], ErrorLogImagesService);
+
+
+/***/ }),
+
+/***/ "./src/cramschool/services/error-logs.service.ts":
+/*!*******************************************************!*\
+  !*** ./src/cramschool/services/error-logs.service.ts ***!
+  \*******************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ErrorLogsService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
+const pagination_util_1 = __webpack_require__(/*! ../../common/utils/pagination.util */ "./src/common/utils/pagination.util.ts");
+const path = __webpack_require__(/*! path */ "path");
+const fs = __webpack_require__(/*! fs/promises */ "fs/promises");
+const uuid_1 = __webpack_require__(/*! uuid */ "uuid");
+let ErrorLogsService = class ErrorLogsService {
+    constructor(prisma) {
+        this.prisma = prisma;
+    }
+    async getErrorLogs(userId, userRole, includeDeleted = false, studentId, page = 1, pageSize = 10) {
+        const skip = (page - 1) * pageSize;
+        const where = {};
+        if (!includeDeleted) {
+            where.isDeleted = false;
+        }
+        if (userRole === 'ACCOUNTANT') {
+            return { count: 0, results: [], page: 1, page_size: pageSize };
+        }
+        if (userRole === 'STUDENT') {
+            const student = await this.prisma.cramschoolStudent.findFirst({
+                where: { userId },
+            });
+            if (student) {
+                where.studentId = student.studentId;
+            }
+            else {
+                return { count: 0, results: [], page: 1, page_size: pageSize };
+            }
+        }
+        if (studentId) {
+            where.studentId = studentId;
+        }
+        const [results, count] = await Promise.all([
+            this.prisma.cramschoolErrorLog.findMany({
+                where,
+                skip,
+                take: pageSize,
+                include: {
+                    student: true,
+                    question: {
+                        include: {
+                            subject: true,
+                        },
+                    },
+                },
+                orderBy: { errorLogId: 'desc' },
+            }),
+            this.prisma.cramschoolErrorLog.count({ where }),
+        ]);
+        return (0, pagination_util_1.createPaginatedResponse)(results.map((el) => this.toErrorLogDto(el)), count, page, pageSize);
+    }
+    async getErrorLog(id) {
+        const errorLog = await this.prisma.cramschoolErrorLog.findUnique({
+            where: { errorLogId: id },
+            include: {
+                student: true,
+                question: {
+                    include: {
+                        subject: true,
+                    },
+                },
+            },
+        });
+        if (!errorLog) {
+            throw new common_1.NotFoundException(`ErrorLog with ID ${id} not found`);
+        }
+        return this.toErrorLogDto(errorLog);
+    }
+    async createErrorLog(createDto) {
+        const errorLog = await this.prisma.cramschoolErrorLog.create({
+            data: {
+                studentId: createDto.student_id,
+                questionId: createDto.question_id,
+                errorCount: createDto.error_count || 1,
+                reviewStatus: createDto.review_status || 'New',
+            },
+            include: {
+                student: true,
+                question: {
+                    include: {
+                        subject: true,
+                    },
+                },
+            },
+        });
+        return this.toErrorLogDto(errorLog);
+    }
+    async updateErrorLog(id, updateDto) {
+        const errorLog = await this.prisma.cramschoolErrorLog.findUnique({
+            where: { errorLogId: id },
+        });
+        if (!errorLog) {
+            throw new common_1.NotFoundException(`ErrorLog with ID ${id} not found`);
+        }
+        const updatedErrorLog = await this.prisma.cramschoolErrorLog.update({
+            where: { errorLogId: id },
+            data: {
+                studentId: updateDto.student_id,
+                questionId: updateDto.question_id,
+                errorCount: updateDto.error_count,
+                reviewStatus: updateDto.review_status,
+            },
+            include: {
+                student: true,
+                question: {
+                    include: {
+                        subject: true,
+                    },
+                },
+            },
+        });
+        return this.toErrorLogDto(updatedErrorLog);
+    }
+    async deleteErrorLog(id) {
+        const errorLog = await this.prisma.cramschoolErrorLog.findUnique({
+            where: { errorLogId: id },
+        });
+        if (!errorLog) {
+            throw new common_1.NotFoundException(`ErrorLog with ID ${id} not found`);
+        }
+        await this.prisma.cramschoolErrorLog.update({
+            where: { errorLogId: id },
+            data: {
+                isDeleted: true,
+                deletedAt: new Date(),
+            },
+        });
+    }
+    async restoreErrorLog(id) {
+        const errorLog = await this.prisma.cramschoolErrorLog.findUnique({
+            where: { errorLogId: id },
+        });
+        if (!errorLog) {
+            throw new common_1.NotFoundException(`ErrorLog with ID ${id} not found`);
+        }
+        if (!errorLog.isDeleted) {
+            throw new common_1.NotFoundException(`ErrorLog with ID ${id} is not deleted`);
+        }
+        const restoredErrorLog = await this.prisma.cramschoolErrorLog.update({
+            where: { errorLogId: id },
+            data: {
+                isDeleted: false,
+                deletedAt: null,
+            },
+            include: {
+                student: true,
+                question: {
+                    include: {
+                        subject: true,
+                    },
+                },
+            },
+        });
+        return this.toErrorLogDto(restoredErrorLog);
+    }
+    async importToQuestionBank(id, userId) {
+        const errorLog = await this.prisma.cramschoolErrorLog.findUnique({
+            where: { errorLogId: id },
+            include: {
+                question: true,
+                student: true,
+            },
+        });
+        if (!errorLog) {
+            throw new common_1.NotFoundException(`ErrorLog with ID ${id} not found`);
+        }
+        const existing = await this.prisma.cramschoolQuestionBank.findFirst({
+            where: {
+                importedFromErrorLogId: id,
+            },
+        });
+        if (existing) {
+            return existing;
+        }
+        const question = errorLog.question;
+        const newQuestion = await this.prisma.cramschoolQuestionBank.create({
+            data: {
+                subjectId: question.subjectId,
+                level: question.level,
+                chapter: question.chapter,
+                content: question.content,
+                imagePath: question.imagePath,
+                correctAnswer: question.correctAnswer,
+                difficulty: question.difficulty,
+                questionNumber: question.questionNumber,
+                origin: question.origin,
+                originDetail: question.originDetail,
+                solutionContent: question.solutionContent,
+                source: 'imported_from_error_log',
+                createdById: userId,
+                importedFromErrorLogId: id,
+                importedStudentId: errorLog.studentId,
+            },
+        });
+        return newQuestion;
+    }
+    async uploadImages(errorLogId, files) {
+        const errorLog = await this.prisma.cramschoolErrorLog.findUnique({
+            where: { errorLogId },
+        });
+        if (!errorLog) {
+            throw new common_1.NotFoundException(`ErrorLog with ID ${errorLogId} not found`);
+        }
+        const maxSortOrder = await this.prisma.cramschoolErrorLogImage.aggregate({
+            where: { errorLogId },
+            _max: { sortOrder: true },
+        });
+        const currentMax = maxSortOrder._max.sortOrder || 0;
+        const created = [];
+        for (let idx = 0; idx < files.length; idx++) {
+            const file = files[idx];
+            const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+            const fileExt = path.extname(file.originalname).slice(1).toLowerCase();
+            if (!allowedExtensions.includes(fileExt)) {
+                throw new common_1.BadRequestException(`不支援的文件類型。允許的類型：${allowedExtensions.join(', ')}`);
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                throw new common_1.BadRequestException('圖片文件大小不能超過 5MB');
+            }
+            const now = new Date();
+            const dateFolder = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
+            const uniqueFilename = `${(0, uuid_1.v4)().replace(/-/g, '')}.${fileExt}`;
+            const relativePath = `error_log_images/${dateFolder}/${uniqueFilename}`;
+            const mediaRoot = process.env.MEDIA_ROOT || './media';
+            const fullPath = path.join(mediaRoot, relativePath);
+            const dir = path.dirname(fullPath);
+            await fs.mkdir(dir, { recursive: true });
+            await fs.writeFile(fullPath, file.buffer);
+            const mediaUrl = process.env.MEDIA_URL || '/media/';
+            const imageUrl = mediaUrl.startsWith('http')
+                ? `${mediaUrl}${relativePath}`
+                : `${process.env.BASE_URL || 'http://localhost:3000'}${mediaUrl}${relativePath}`;
+            const image = await this.prisma.cramschoolErrorLogImage.create({
+                data: {
+                    errorLogId,
+                    imagePath: relativePath,
+                    sortOrder: currentMax + idx + 1,
+                },
+            });
+            created.push({
+                image_id: image.imageId,
+                error_log_id: image.errorLogId,
+                image_path: image.imagePath,
+                image_url: imageUrl,
+                caption: image.caption || null,
+                sort_order: image.sortOrder,
+                created_at: image.createdAt?.toISOString(),
+            });
+        }
+        return created;
+    }
+    async reorderImages(errorLogId, imageIds) {
+        const errorLog = await this.prisma.cramschoolErrorLog.findUnique({
+            where: { errorLogId },
+        });
+        if (!errorLog) {
+            throw new common_1.NotFoundException(`ErrorLog with ID ${errorLogId} not found`);
+        }
+        const images = await this.prisma.cramschoolErrorLogImage.findMany({
+            where: {
+                errorLogId,
+                imageId: { in: imageIds },
+            },
+        });
+        if (images.length !== imageIds.length) {
+            throw new common_1.BadRequestException('image_ids 包含不屬於此錯題的圖片');
+        }
+        const updates = imageIds.map((imageId, index) => this.prisma.cramschoolErrorLogImage.update({
+            where: { imageId },
+            data: { sortOrder: index + 1 },
+        }));
+        await Promise.all(updates);
+        return { success: true };
+    }
+    toErrorLogDto(errorLog) {
+        return {
+            error_log_id: errorLog.errorLogId,
+            student_id: errorLog.studentId,
+            question_id: errorLog.questionId,
+            error_count: errorLog.errorCount,
+            review_status: errorLog.reviewStatus,
+            is_deleted: errorLog.isDeleted,
+            deleted_at: errorLog.deletedAt?.toISOString() || null,
+        };
+    }
+};
+exports.ErrorLogsService = ErrorLogsService;
+exports.ErrorLogsService = ErrorLogsService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _a : Object])
+], ErrorLogsService);
+
+
+/***/ }),
+
 /***/ "./src/cramschool/services/fees.service.ts":
 /*!*************************************************!*\
   !*** ./src/cramschool/services/fees.service.ts ***!
@@ -2719,6 +5806,346 @@ exports.FeesService = FeesService = __decorate([
 
 /***/ }),
 
+/***/ "./src/cramschool/services/group-orders.service.ts":
+/*!*********************************************************!*\
+  !*** ./src/cramschool/services/group-orders.service.ts ***!
+  \*********************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.GroupOrdersService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
+const pagination_util_1 = __webpack_require__(/*! ../../common/utils/pagination.util */ "./src/common/utils/pagination.util.ts");
+let GroupOrdersService = class GroupOrdersService {
+    constructor(prisma) {
+        this.prisma = prisma;
+    }
+    async getGroupOrders(page = 1, pageSize = 10) {
+        const skip = (page - 1) * pageSize;
+        const [results, count] = await Promise.all([
+            this.prisma.cramschoolGroupOrder.findMany({
+                skip,
+                take: pageSize,
+                include: {
+                    restaurant: true,
+                    orders: {
+                        where: {
+                            status: { in: ['Pending', 'Confirmed'] },
+                            isDeleted: false,
+                        },
+                    },
+                },
+                orderBy: { groupOrderId: 'desc' },
+            }),
+            this.prisma.cramschoolGroupOrder.count(),
+        ]);
+        return (0, pagination_util_1.createPaginatedResponse)(results.map((go) => this.toGroupOrderDto(go)), count, page, pageSize);
+    }
+    async getGroupOrder(id) {
+        const groupOrder = await this.prisma.cramschoolGroupOrder.findUnique({
+            where: { groupOrderId: id },
+            include: {
+                restaurant: true,
+                orders: {
+                    where: {
+                        status: { in: ['Pending', 'Confirmed'] },
+                        isDeleted: false,
+                    },
+                },
+            },
+        });
+        if (!groupOrder) {
+            throw new common_1.NotFoundException(`GroupOrder with ID ${id} not found`);
+        }
+        return this.toGroupOrderDto(groupOrder);
+    }
+    async createGroupOrder(createDto, userId) {
+        const orderLink = `group-order-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+        const groupOrder = await this.prisma.cramschoolGroupOrder.create({
+            data: {
+                restaurantId: createDto.restaurant_id,
+                title: createDto.title,
+                orderLink,
+                status: createDto.status || 'Open',
+                deadline: new Date(createDto.deadline),
+                createdById: createDto.created_by_id || null,
+            },
+            include: {
+                restaurant: true,
+                orders: true,
+            },
+        });
+        return this.toGroupOrderDto(groupOrder);
+    }
+    async updateGroupOrder(id, updateDto) {
+        const groupOrder = await this.prisma.cramschoolGroupOrder.findUnique({
+            where: { groupOrderId: id },
+        });
+        if (!groupOrder) {
+            throw new common_1.NotFoundException(`GroupOrder with ID ${id} not found`);
+        }
+        const updatedGroupOrder = await this.prisma.cramschoolGroupOrder.update({
+            where: { groupOrderId: id },
+            data: {
+                restaurantId: updateDto.restaurant_id,
+                title: updateDto.title,
+                orderLink: updateDto.order_link,
+                status: updateDto.status,
+                deadline: updateDto.deadline ? new Date(updateDto.deadline) : undefined,
+                createdById: updateDto.created_by_id !== undefined ? updateDto.created_by_id : undefined,
+            },
+            include: {
+                restaurant: true,
+                orders: {
+                    where: {
+                        status: { in: ['Pending', 'Confirmed'] },
+                        isDeleted: false,
+                    },
+                },
+            },
+        });
+        return this.toGroupOrderDto(updatedGroupOrder);
+    }
+    async deleteGroupOrder(id) {
+        const groupOrder = await this.prisma.cramschoolGroupOrder.findUnique({
+            where: { groupOrderId: id },
+        });
+        if (!groupOrder) {
+            throw new common_1.NotFoundException(`GroupOrder with ID ${id} not found`);
+        }
+        await this.prisma.cramschoolGroupOrder.delete({
+            where: { groupOrderId: id },
+        });
+    }
+    async completeGroupOrder(id, userId, userRole) {
+        const groupOrder = await this.prisma.cramschoolGroupOrder.findUnique({
+            where: { groupOrderId: id },
+            include: {
+                restaurant: true,
+                orders: {
+                    where: {
+                        status: { in: ['Pending', 'Confirmed'] },
+                        isDeleted: false,
+                    },
+                    include: {
+                        student: true,
+                    },
+                },
+            },
+        });
+        if (!groupOrder) {
+            throw new common_1.NotFoundException(`GroupOrder with ID ${id} not found`);
+        }
+        const isAccountant = userRole === 'ACCOUNTANT';
+        const isOwnerTeacher = userRole === 'TEACHER' && groupOrder.createdById === userId;
+        if (!isAccountant && !isOwnerTeacher) {
+            throw new common_1.ForbiddenException('只有會計或發起該團購的老師可以完成團購');
+        }
+        const updatedGroupOrder = await this.prisma.cramschoolGroupOrder.update({
+            where: { groupOrderId: id },
+            data: {
+                status: 'Completed',
+                closedAt: new Date(),
+            },
+            include: {
+                restaurant: true,
+                orders: {
+                    where: {
+                        status: { in: ['Pending', 'Confirmed'] },
+                        isDeleted: false,
+                    },
+                    include: {
+                        student: true,
+                    },
+                },
+            },
+        });
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        for (const order of updatedGroupOrder.orders) {
+            const existingFee = await this.prisma.cramschoolExtraFee.findFirst({
+                where: {
+                    studentId: order.studentId,
+                    item: 'Meal',
+                    amount: order.totalAmount,
+                    feeDate: today,
+                    isDeleted: false,
+                },
+            });
+            if (!existingFee) {
+                const teacher = groupOrder.createdById
+                    ? await this.prisma.cramschoolTeacher.findUnique({
+                        where: { teacherId: groupOrder.createdById },
+                    })
+                    : null;
+                const teacherName = teacher?.name || '未知';
+                const restaurantName = updatedGroupOrder.restaurant?.name || '未知';
+                const notes = `餐費/團購：${updatedGroupOrder.title}｜店家：${restaurantName}｜發起老師：${teacherName}｜團購ID:${updatedGroupOrder.groupOrderId}｜訂單ID:${order.orderId}`;
+                await this.prisma.cramschoolExtraFee.create({
+                    data: {
+                        studentId: order.studentId,
+                        item: 'Meal',
+                        amount: order.totalAmount,
+                        feeDate: today,
+                        paymentStatus: 'Unpaid',
+                        notes,
+                    },
+                });
+            }
+        }
+        return this.toGroupOrderDto(updatedGroupOrder);
+    }
+    toGroupOrderDto(groupOrder) {
+        const ordersCount = groupOrder.orders?.length || 0;
+        const totalAmount = groupOrder.orders?.reduce((sum, o) => sum + Number(o.totalAmount || 0), 0) || 0;
+        return {
+            group_order_id: groupOrder.groupOrderId,
+            restaurant_id: groupOrder.restaurantId,
+            title: groupOrder.title,
+            order_link: groupOrder.orderLink,
+            status: groupOrder.status,
+            deadline: groupOrder.deadline.toISOString(),
+            created_by_id: groupOrder.createdById || null,
+            created_at: groupOrder.createdAt?.toISOString(),
+            closed_at: groupOrder.closedAt?.toISOString() || null,
+        };
+    }
+};
+exports.GroupOrdersService = GroupOrdersService;
+exports.GroupOrdersService = GroupOrdersService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _a : Object])
+], GroupOrdersService);
+
+
+/***/ }),
+
+/***/ "./src/cramschool/services/hashtags.service.ts":
+/*!*****************************************************!*\
+  !*** ./src/cramschool/services/hashtags.service.ts ***!
+  \*****************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.HashtagsService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
+const pagination_util_1 = __webpack_require__(/*! ../../common/utils/pagination.util */ "./src/common/utils/pagination.util.ts");
+let HashtagsService = class HashtagsService {
+    constructor(prisma) {
+        this.prisma = prisma;
+    }
+    async getHashtags(page = 1, pageSize = 10) {
+        const skip = (page - 1) * pageSize;
+        const [results, count] = await Promise.all([
+            this.prisma.cramschoolHashtag.findMany({
+                skip,
+                take: pageSize,
+                include: {
+                    creator: true,
+                },
+                orderBy: { tagName: 'asc' },
+            }),
+            this.prisma.cramschoolHashtag.count(),
+        ]);
+        return (0, pagination_util_1.createPaginatedResponse)(results.map((h) => this.toHashtagDto(h)), count, page, pageSize);
+    }
+    async getHashtag(id) {
+        const hashtag = await this.prisma.cramschoolHashtag.findUnique({
+            where: { tagId: id },
+            include: {
+                creator: true,
+            },
+        });
+        if (!hashtag) {
+            throw new common_1.NotFoundException(`Hashtag with ID ${id} not found`);
+        }
+        return this.toHashtagDto(hashtag);
+    }
+    async createHashtag(createDto) {
+        const hashtag = await this.prisma.cramschoolHashtag.create({
+            data: {
+                tagName: createDto.tag_name,
+                creatorId: createDto.creator_id || null,
+            },
+            include: {
+                creator: true,
+            },
+        });
+        return this.toHashtagDto(hashtag);
+    }
+    async updateHashtag(id, updateDto) {
+        const hashtag = await this.prisma.cramschoolHashtag.findUnique({
+            where: { tagId: id },
+        });
+        if (!hashtag) {
+            throw new common_1.NotFoundException(`Hashtag with ID ${id} not found`);
+        }
+        const updatedHashtag = await this.prisma.cramschoolHashtag.update({
+            where: { tagId: id },
+            data: {
+                tagName: updateDto.tag_name,
+                creatorId: updateDto.creator_id !== undefined ? updateDto.creator_id : undefined,
+            },
+            include: {
+                creator: true,
+            },
+        });
+        return this.toHashtagDto(updatedHashtag);
+    }
+    async deleteHashtag(id) {
+        const hashtag = await this.prisma.cramschoolHashtag.findUnique({
+            where: { tagId: id },
+        });
+        if (!hashtag) {
+            throw new common_1.NotFoundException(`Hashtag with ID ${id} not found`);
+        }
+        await this.prisma.cramschoolHashtag.delete({
+            where: { tagId: id },
+        });
+    }
+    toHashtagDto(hashtag) {
+        const result = {
+            tag_id: hashtag.tagId,
+            tag_name: hashtag.tagName,
+            creator_id: hashtag.creatorId || null,
+            creator_name: hashtag.creator?.name || undefined,
+        };
+        return result;
+    }
+};
+exports.HashtagsService = HashtagsService;
+exports.HashtagsService = HashtagsService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _a : Object])
+], HashtagsService);
+
+
+/***/ }),
+
 /***/ "./src/cramschool/services/leaves.service.ts":
 /*!***************************************************!*\
   !*** ./src/cramschool/services/leaves.service.ts ***!
@@ -2890,6 +6317,625 @@ exports.LeavesService = LeavesService = __decorate([
 
 /***/ }),
 
+/***/ "./src/cramschool/services/markdown-importer.service.ts":
+/*!**************************************************************!*\
+  !*** ./src/cramschool/services/markdown-importer.service.ts ***!
+  \**************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.MarkdownImporterService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const uuid_1 = __webpack_require__(/*! uuid */ "uuid");
+let MarkdownImporterService = class MarkdownImporterService {
+    async importQuestions(markdownContent, imagesDict, defaultSubjectId, defaultLevel, defaultChapter, saveImagesFunc) {
+        const errors = [];
+        const questions = [];
+        try {
+            const lines = markdownContent.split('\n');
+            let currentLines = [];
+            let inQuestion = false;
+            for (let idx = 0; idx < lines.length; idx++) {
+                const line = lines[idx];
+                if (/^\d+\.\s+\*\*【題號】/.test(line)) {
+                    if (currentLines.length > 0) {
+                        const parsedQ = this.parseSingleQuestion(currentLines, defaultSubjectId, defaultLevel, defaultChapter);
+                        if (parsedQ) {
+                            questions.push(parsedQ);
+                        }
+                    }
+                    currentLines = [line];
+                    inQuestion = true;
+                }
+                else if (inQuestion) {
+                    currentLines.push(line);
+                }
+            }
+            if (currentLines.length > 0) {
+                const parsedQ = this.parseSingleQuestion(currentLines, defaultSubjectId, defaultLevel, defaultChapter);
+                if (parsedQ) {
+                    questions.push(parsedQ);
+                }
+            }
+            if (saveImagesFunc && imagesDict && Object.keys(imagesDict).length > 0) {
+                const imageMapping = {};
+                for (const [filename, fileBytes] of Object.entries(imagesDict)) {
+                    try {
+                        const ext = filename.split('.').pop() || 'png';
+                        const uniqueFilename = `${(0, uuid_1.v4)().replace(/-/g, '')}.${ext}`;
+                        const imageUrl = await saveImagesFunc(fileBytes, uniqueFilename);
+                        imageMapping[filename] = imageUrl;
+                        imageMapping[`./media/${filename}`] = imageUrl;
+                    }
+                    catch (error) {
+                        errors.push(`上傳圖片 ${filename} 失敗：${error.message}`);
+                    }
+                }
+                for (const question of questions) {
+                    question.content = this.replaceImagePaths(question.content, imageMapping);
+                    question.correct_answer = this.replaceImagePaths(question.correct_answer, imageMapping);
+                    if (question.solution_content?.text) {
+                        question.solution_content.text = this.replaceImagePaths(question.solution_content.text, imageMapping);
+                    }
+                }
+            }
+            return { questions, errors };
+        }
+        catch (error) {
+            errors.push(`解析 Markdown 失敗：${error.message}`);
+            return { questions, errors };
+        }
+    }
+    parseSingleQuestion(lines, subjectId, level, chapter) {
+        try {
+            const firstLine = lines[0] || '';
+            const questionNumberMatch = firstLine.match(/【題號】：(\w+)/);
+            const questionNumber = questionNumberMatch ? questionNumberMatch[1] : '';
+            const difficultyMatch = firstLine.match(/【難易度】：(易|中|難)/);
+            const difficultyStr = difficultyMatch ? difficultyMatch[1] : '中';
+            const difficulty = { 易: 1, 中: 3, 難: 5 }[difficultyStr] || 3;
+            const originMatch = firstLine.match(/【出處】：([^　]+)/);
+            const origin = originMatch ? originMatch[1] : '';
+            const sourceMatch = firstLine.match(/【題源】：([^\*]+)/);
+            const source = sourceMatch ? sourceMatch[1].trim() : '';
+            const questionLines = [];
+            const answerSection = [];
+            const solutionSection = [];
+            let currentSection = 'question';
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i];
+                const stripped = line.trim();
+                if (stripped.startsWith('《答案》')) {
+                    currentSection = 'answer';
+                    answerSection.push(line);
+                }
+                else if (stripped.startsWith('《解析》')) {
+                    currentSection = 'solution';
+                    solutionSection.push(line);
+                }
+                else if (currentSection === 'question') {
+                    if (stripped.startsWith('>')) {
+                        questionLines.push(line.replace(/^>\s*/, '').trim());
+                    }
+                    else if (stripped && !stripped.startsWith('《')) {
+                        questionLines.push(stripped);
+                    }
+                }
+                else if (currentSection === 'answer') {
+                    answerSection.push(line);
+                }
+                else if (currentSection === 'solution') {
+                    solutionSection.push(line);
+                }
+            }
+            const questionContent = questionLines.join('\n').trim();
+            const answerText = answerSection.join('\n').trim();
+            const answerMatch = answerText.match(/《答案》\s*([A-Z]|[A-Z,]+|\d+|[^\n《]+)/);
+            const answerValue = answerMatch ? answerMatch[1].trim() : '';
+            let solutionText = solutionSection.join('\n').trim();
+            solutionText = solutionText.replace(/《解析》\s*\\?/, '').trim();
+            let questionType = 'SINGLE_CHOICE';
+            if (questionContent.includes('(A)') || questionContent.includes('（A）')) {
+                if (answerValue.includes(',') || answerValue.length > 1) {
+                    questionType = 'MULTIPLE_CHOICE';
+                }
+            }
+            const options = [];
+            const optionPattern = /[(\（]([A-Z])[)\）]\s*\$?([^(\（\n]+?)(?=\s*[(\（]|$)/g;
+            let optionMatch;
+            while ((optionMatch = optionPattern.exec(questionContent)) !== null) {
+                const letter = optionMatch[1];
+                let text = optionMatch[2].trim();
+                text = text.replace(/\$$/, '').replace(/　/g, ' ').trim();
+                options.push({ value: letter, label: text });
+            }
+            const correctAnswerContent = `**《答案》${answerValue}**`;
+            const solutionContent = solutionText
+                ? {
+                    format: 'markdown',
+                    text: solutionText,
+                }
+                : undefined;
+            return {
+                subject_id: subjectId,
+                level,
+                chapter,
+                content: questionContent,
+                correct_answer: correctAnswerContent,
+                solution_content: solutionContent,
+                difficulty,
+                question_type: questionType,
+                options,
+                question_number: questionNumber,
+                origin,
+                origin_detail: source,
+                source: source || origin,
+            };
+        }
+        catch (error) {
+            return null;
+        }
+    }
+    replaceImagePaths(text, imageMapping) {
+        return text.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, altText, originalPath) => {
+            if (originalPath in imageMapping) {
+                return `![${altText}](${imageMapping[originalPath]})`;
+            }
+            if (`./media/${originalPath}` in imageMapping) {
+                return `![${altText}](${imageMapping[`./media/${originalPath}`]})`;
+            }
+            return match;
+        });
+    }
+};
+exports.MarkdownImporterService = MarkdownImporterService;
+exports.MarkdownImporterService = MarkdownImporterService = __decorate([
+    (0, common_1.Injectable)()
+], MarkdownImporterService);
+
+
+/***/ }),
+
+/***/ "./src/cramschool/services/order-items.service.ts":
+/*!********************************************************!*\
+  !*** ./src/cramschool/services/order-items.service.ts ***!
+  \********************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.OrderItemsService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
+const pagination_util_1 = __webpack_require__(/*! ../../common/utils/pagination.util */ "./src/common/utils/pagination.util.ts");
+let OrderItemsService = class OrderItemsService {
+    constructor(prisma) {
+        this.prisma = prisma;
+    }
+    async getOrderItems(orderId, page = 1, pageSize = 10) {
+        const skip = (page - 1) * pageSize;
+        const where = {};
+        if (orderId) {
+            where.orderId = orderId;
+        }
+        const [results, count] = await Promise.all([
+            this.prisma.cramschoolOrderItem.findMany({
+                where,
+                skip,
+                take: pageSize,
+                include: {
+                    order: true,
+                },
+                orderBy: { orderItemId: 'asc' },
+            }),
+            this.prisma.cramschoolOrderItem.count({ where }),
+        ]);
+        return (0, pagination_util_1.createPaginatedResponse)(results.map((oi) => this.toOrderItemDto(oi)), count, page, pageSize);
+    }
+    async getOrderItem(id) {
+        const orderItem = await this.prisma.cramschoolOrderItem.findUnique({
+            where: { orderItemId: id },
+            include: {
+                order: true,
+            },
+        });
+        if (!orderItem) {
+            throw new common_1.NotFoundException(`OrderItem with ID ${id} not found`);
+        }
+        return this.toOrderItemDto(orderItem);
+    }
+    async createOrderItem(createDto) {
+        const orderItem = await this.prisma.cramschoolOrderItem.create({
+            data: {
+                orderId: createDto.order_id,
+                itemName: createDto.item_name,
+                quantity: createDto.quantity || 1,
+                unitPrice: createDto.unit_price,
+                subtotal: createDto.subtotal || createDto.unit_price * (createDto.quantity || 1),
+            },
+            include: {
+                order: true,
+            },
+        });
+        return this.toOrderItemDto(orderItem);
+    }
+    async updateOrderItem(id, updateDto) {
+        const orderItem = await this.prisma.cramschoolOrderItem.findUnique({
+            where: { orderItemId: id },
+        });
+        if (!orderItem) {
+            throw new common_1.NotFoundException(`OrderItem with ID ${id} not found`);
+        }
+        const updatedOrderItem = await this.prisma.cramschoolOrderItem.update({
+            where: { orderItemId: id },
+            data: {
+                orderId: updateDto.order_id,
+                itemName: updateDto.item_name,
+                quantity: updateDto.quantity,
+                unitPrice: updateDto.unit_price,
+                subtotal: updateDto.subtotal !== undefined ? updateDto.subtotal : undefined,
+            },
+            include: {
+                order: true,
+            },
+        });
+        return this.toOrderItemDto(updatedOrderItem);
+    }
+    async deleteOrderItem(id) {
+        const orderItem = await this.prisma.cramschoolOrderItem.findUnique({
+            where: { orderItemId: id },
+        });
+        if (!orderItem) {
+            throw new common_1.NotFoundException(`OrderItem with ID ${id} not found`);
+        }
+        await this.prisma.cramschoolOrderItem.delete({
+            where: { orderItemId: id },
+        });
+    }
+    toOrderItemDto(orderItem) {
+        return {
+            order_item_id: orderItem.orderItemId,
+            order_id: orderItem.orderId,
+            item_name: orderItem.itemName,
+            quantity: orderItem.quantity,
+            unit_price: Number(orderItem.unitPrice),
+            subtotal: Number(orderItem.subtotal),
+        };
+    }
+};
+exports.OrderItemsService = OrderItemsService;
+exports.OrderItemsService = OrderItemsService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _a : Object])
+], OrderItemsService);
+
+
+/***/ }),
+
+/***/ "./src/cramschool/services/orders.service.ts":
+/*!***************************************************!*\
+  !*** ./src/cramschool/services/orders.service.ts ***!
+  \***************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.OrdersService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
+const pagination_util_1 = __webpack_require__(/*! ../../common/utils/pagination.util */ "./src/common/utils/pagination.util.ts");
+let OrdersService = class OrdersService {
+    constructor(prisma) {
+        this.prisma = prisma;
+    }
+    async getOrders(includeDeleted = false, groupOrderId, studentId, page = 1, pageSize = 10) {
+        const skip = (page - 1) * pageSize;
+        const where = {};
+        if (!includeDeleted) {
+            where.isDeleted = false;
+        }
+        if (groupOrderId) {
+            where.groupOrderId = groupOrderId;
+        }
+        if (studentId) {
+            where.studentId = studentId;
+        }
+        const [results, count] = await Promise.all([
+            this.prisma.cramschoolOrder.findMany({
+                where,
+                skip,
+                take: pageSize,
+                include: {
+                    groupOrder: {
+                        include: {
+                            restaurant: true,
+                        },
+                    },
+                    student: true,
+                    items: true,
+                },
+                orderBy: { orderId: 'desc' },
+            }),
+            this.prisma.cramschoolOrder.count({ where }),
+        ]);
+        return (0, pagination_util_1.createPaginatedResponse)(results.map((o) => this.toOrderDto(o)), count, page, pageSize);
+    }
+    async getOrder(id) {
+        const order = await this.prisma.cramschoolOrder.findUnique({
+            where: { orderId: id },
+            include: {
+                groupOrder: {
+                    include: {
+                        restaurant: true,
+                    },
+                },
+                student: true,
+                items: true,
+            },
+        });
+        if (!order) {
+            throw new common_1.NotFoundException(`Order with ID ${id} not found`);
+        }
+        return this.toOrderDto(order);
+    }
+    async createOrder(createDto) {
+        const order = await this.prisma.cramschoolOrder.create({
+            data: {
+                groupOrderId: createDto.group_order_id,
+                studentId: createDto.student_id,
+                status: createDto.status || 'Pending',
+                totalAmount: createDto.total_amount || 0,
+                notes: createDto.notes || null,
+            },
+            include: {
+                groupOrder: {
+                    include: {
+                        restaurant: true,
+                    },
+                },
+                student: true,
+                items: true,
+            },
+        });
+        return this.toOrderDto(order);
+    }
+    async updateOrder(id, updateDto) {
+        const order = await this.prisma.cramschoolOrder.findUnique({
+            where: { orderId: id },
+        });
+        if (!order) {
+            throw new common_1.NotFoundException(`Order with ID ${id} not found`);
+        }
+        const updatedOrder = await this.prisma.cramschoolOrder.update({
+            where: { orderId: id },
+            data: {
+                groupOrderId: updateDto.group_order_id,
+                studentId: updateDto.student_id,
+                status: updateDto.status,
+                totalAmount: updateDto.total_amount !== undefined ? updateDto.total_amount : undefined,
+                notes: updateDto.notes !== undefined ? updateDto.notes : undefined,
+            },
+            include: {
+                groupOrder: {
+                    include: {
+                        restaurant: true,
+                    },
+                },
+                student: true,
+                items: true,
+            },
+        });
+        return this.toOrderDto(updatedOrder);
+    }
+    async deleteOrder(id) {
+        const order = await this.prisma.cramschoolOrder.findUnique({
+            where: { orderId: id },
+        });
+        if (!order) {
+            throw new common_1.NotFoundException(`Order with ID ${id} not found`);
+        }
+        await this.prisma.cramschoolOrder.update({
+            where: { orderId: id },
+            data: {
+                isDeleted: true,
+                deletedAt: new Date(),
+            },
+        });
+    }
+    async restoreOrder(id) {
+        const order = await this.prisma.cramschoolOrder.findUnique({
+            where: { orderId: id },
+        });
+        if (!order) {
+            throw new common_1.NotFoundException(`Order with ID ${id} not found`);
+        }
+        if (!order.isDeleted) {
+            throw new common_1.NotFoundException(`Order with ID ${id} is not deleted`);
+        }
+        const restoredOrder = await this.prisma.cramschoolOrder.update({
+            where: { orderId: id },
+            data: {
+                isDeleted: false,
+                deletedAt: null,
+            },
+            include: {
+                groupOrder: {
+                    include: {
+                        restaurant: true,
+                    },
+                },
+                student: true,
+                items: true,
+            },
+        });
+        return this.toOrderDto(restoredOrder);
+    }
+    toOrderDto(order) {
+        return {
+            order_id: order.orderId,
+            group_order_id: order.groupOrderId,
+            student_id: order.studentId,
+            status: order.status,
+            total_amount: Number(order.totalAmount),
+            notes: order.notes || null,
+            created_at: order.createdAt?.toISOString(),
+            updated_at: order.updatedAt?.toISOString(),
+            is_deleted: order.isDeleted,
+            deleted_at: order.deletedAt?.toISOString() || null,
+        };
+    }
+};
+exports.OrdersService = OrdersService;
+exports.OrdersService = OrdersService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _a : Object])
+], OrdersService);
+
+
+/***/ }),
+
+/***/ "./src/cramschool/services/question-tags.service.ts":
+/*!**********************************************************!*\
+  !*** ./src/cramschool/services/question-tags.service.ts ***!
+  \**********************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.QuestionTagsService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
+const pagination_util_1 = __webpack_require__(/*! ../../common/utils/pagination.util */ "./src/common/utils/pagination.util.ts");
+let QuestionTagsService = class QuestionTagsService {
+    constructor(prisma) {
+        this.prisma = prisma;
+    }
+    async getQuestionTags(page = 1, pageSize = 10) {
+        const skip = (page - 1) * pageSize;
+        const [results, count] = await Promise.all([
+            this.prisma.cramschoolQuestionTag.findMany({
+                skip,
+                take: pageSize,
+                include: {
+                    question: true,
+                    tag: true,
+                },
+            }),
+            this.prisma.cramschoolQuestionTag.count(),
+        ]);
+        return (0, pagination_util_1.createPaginatedResponse)(results.map((qt) => this.toQuestionTagDto(qt)), count, page, pageSize);
+    }
+    async getQuestionTag(id) {
+        const questionTag = await this.prisma.cramschoolQuestionTag.findUnique({
+            where: { questionTagId: id },
+            include: {
+                question: true,
+                tag: true,
+            },
+        });
+        if (!questionTag) {
+            throw new common_1.NotFoundException(`QuestionTag with ID ${id} not found`);
+        }
+        return this.toQuestionTagDto(questionTag);
+    }
+    async createQuestionTag(createDto) {
+        const questionTag = await this.prisma.cramschoolQuestionTag.create({
+            data: {
+                questionId: createDto.question_id,
+                tagId: createDto.tag_id,
+            },
+            include: {
+                question: true,
+                tag: true,
+            },
+        });
+        return this.toQuestionTagDto(questionTag);
+    }
+    async updateQuestionTag(id, updateDto) {
+        const questionTag = await this.prisma.cramschoolQuestionTag.findUnique({
+            where: { questionTagId: id },
+        });
+        if (!questionTag) {
+            throw new common_1.NotFoundException(`QuestionTag with ID ${id} not found`);
+        }
+        const updatedQuestionTag = await this.prisma.cramschoolQuestionTag.update({
+            where: { questionTagId: id },
+            data: {
+                questionId: updateDto.question_id,
+                tagId: updateDto.tag_id,
+            },
+            include: {
+                question: true,
+                tag: true,
+            },
+        });
+        return this.toQuestionTagDto(updatedQuestionTag);
+    }
+    async deleteQuestionTag(id) {
+        const questionTag = await this.prisma.cramschoolQuestionTag.findUnique({
+            where: { questionTagId: id },
+        });
+        if (!questionTag) {
+            throw new common_1.NotFoundException(`QuestionTag with ID ${id} not found`);
+        }
+        await this.prisma.cramschoolQuestionTag.delete({
+            where: { questionTagId: id },
+        });
+    }
+    toQuestionTagDto(questionTag) {
+        return {
+            question_tag_id: questionTag.questionTagId,
+            question_id: questionTag.questionId,
+            tag_id: questionTag.tagId,
+        };
+    }
+};
+exports.QuestionTagsService = QuestionTagsService;
+exports.QuestionTagsService = QuestionTagsService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _a : Object])
+], QuestionTagsService);
+
+
+/***/ }),
+
 /***/ "./src/cramschool/services/questions.service.ts":
 /*!******************************************************!*\
   !*** ./src/cramschool/services/questions.service.ts ***!
@@ -2906,15 +6952,22 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-var _a;
+var _a, _b, _c;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.QuestionsService = void 0;
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
 const pagination_util_1 = __webpack_require__(/*! ../../common/utils/pagination.util */ "./src/common/utils/pagination.util.ts");
+const word_importer_service_1 = __webpack_require__(/*! ./word-importer.service */ "./src/cramschool/services/word-importer.service.ts");
+const markdown_importer_service_1 = __webpack_require__(/*! ./markdown-importer.service */ "./src/cramschool/services/markdown-importer.service.ts");
+const path = __webpack_require__(/*! path */ "path");
+const fs = __webpack_require__(/*! fs/promises */ "fs/promises");
+const uuid_1 = __webpack_require__(/*! uuid */ "uuid");
 let QuestionsService = class QuestionsService {
-    constructor(prisma) {
+    constructor(prisma, wordImporter, markdownImporter) {
         this.prisma = prisma;
+        this.wordImporter = wordImporter;
+        this.markdownImporter = markdownImporter;
     }
     async getQuestions(query, userId, userRole) {
         if (userRole === 'STUDENT') {
@@ -3118,11 +7171,429 @@ let QuestionsService = class QuestionsService {
         }
         return textParts.join(' ');
     }
+    async searchChapters(query, subjectId, level) {
+        if (!query || !query.trim()) {
+            return [];
+        }
+        const where = {
+            chapter: { contains: query.trim(), mode: 'insensitive' },
+        };
+        if (subjectId) {
+            where.subjectId = subjectId;
+        }
+        if (level) {
+            where.level = level;
+        }
+        const questions = await this.prisma.cramschoolQuestionBank.findMany({
+            where,
+            select: { chapter: true },
+        });
+        const chapterMap = new Map();
+        for (const q of questions) {
+            if (q.chapter) {
+                chapterMap.set(q.chapter, (chapterMap.get(q.chapter) || 0) + 1);
+            }
+        }
+        const chapters = Array.from(chapterMap.entries()).map(([chapter, count]) => {
+            const relevance = chapter.toLowerCase().startsWith(query.toLowerCase().trim()) ? 2 : 1;
+            return {
+                chapter,
+                count,
+                relevance,
+            };
+        });
+        chapters.sort((a, b) => {
+            if (b.relevance !== a.relevance) {
+                return b.relevance - a.relevance;
+            }
+            return b.count - a.count;
+        });
+        return chapters.slice(0, 10);
+    }
+    async getSourceOptions() {
+        const options = [
+            '九章自命題',
+            '參考書',
+            '歷屆試題',
+            '網路資源',
+            '其他',
+        ];
+        return {
+            options,
+            default: '九章自命題',
+        };
+    }
+    async exportToLatex(id) {
+        const question = await this.prisma.cramschoolQuestionBank.findUnique({
+            where: { questionId: id },
+        });
+        if (!question) {
+            throw new common_1.NotFoundException(`Question with ID ${id} not found`);
+        }
+        const solutionContent = question.solutionContent;
+        if (!solutionContent) {
+            throw new common_1.NotFoundException('該題目沒有詳解內容');
+        }
+        const latexParts = [];
+        const content = solutionContent.content || [];
+        for (const node of content) {
+            const nodeType = node.type;
+            const attrs = node.attrs || {};
+            if (nodeType === 'paragraph') {
+                const text = this.extractTextFromTiptap(node);
+                if (text) {
+                    latexParts.push(text);
+                }
+            }
+            else if (nodeType === 'mathField') {
+                const latex = attrs.latex || '';
+                if (latex) {
+                    latexParts.push(`$${latex}$`);
+                }
+            }
+            else if (nodeType === 'latexFormula') {
+                const latex = attrs.latex || '';
+                const displayMode = attrs.displayMode !== false;
+                if (latex) {
+                    if (displayMode) {
+                        latexParts.push(`$$\\begin{align}${latex}\\end{align}$$`);
+                    }
+                    else {
+                        latexParts.push(`$${latex}$`);
+                    }
+                }
+            }
+        }
+        const latexCode = latexParts.join('\n\n');
+        return {
+            latex: latexCode,
+            question_id: question.questionId,
+        };
+    }
+    async exportToMarkdown(id) {
+        const question = await this.prisma.cramschoolQuestionBank.findUnique({
+            where: { questionId: id },
+        });
+        if (!question) {
+            throw new common_1.NotFoundException(`Question with ID ${id} not found`);
+        }
+        const solutionContent = question.solutionContent;
+        if (!solutionContent) {
+            throw new common_1.NotFoundException('該題目沒有詳解內容');
+        }
+        if (solutionContent.format === 'markdown') {
+            return {
+                markdown: solutionContent.text || '',
+                question_id: question.questionId,
+            };
+        }
+        const markdown = this.extractTextFromTiptap(solutionContent);
+        return {
+            markdown,
+            question_id: question.questionId,
+        };
+    }
+    async previewFromWord(file, subjectId, level, chapter) {
+        if (!file) {
+            throw new common_1.BadRequestException('請選擇要匯入的檔案');
+        }
+        const filename = file.originalname;
+        if (!filename.endsWith('.docx') && !filename.endsWith('.doc')) {
+            throw new common_1.BadRequestException('不支援的檔案格式，請上傳 .docx 或 .doc 檔案');
+        }
+        const subject = await this.prisma.cramschoolSubject.findUnique({
+            where: { subjectId },
+        });
+        if (!subject) {
+            throw new common_1.BadRequestException('科目不存在');
+        }
+        const saveImageFunc = async (imageBytes, imageFilename) => {
+            const now = new Date();
+            const dateFolder = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
+            const ext = path.extname(imageFilename) || '.png';
+            const uniqueFilename = `${(0, uuid_1.v4)().replace(/-/g, '')}${ext}`;
+            const relativePath = `question_images/${dateFolder}/${uniqueFilename}`;
+            const mediaRoot = process.env.MEDIA_ROOT || './media';
+            const fullPath = path.join(mediaRoot, relativePath);
+            const dir = path.dirname(fullPath);
+            await fs.mkdir(dir, { recursive: true });
+            await fs.writeFile(fullPath, imageBytes);
+            const mediaUrl = process.env.MEDIA_URL || '/media/';
+            const imageUrl = mediaUrl.startsWith('http')
+                ? `${mediaUrl}${relativePath}`
+                : `${process.env.BASE_URL || 'http://localhost:3000'}${mediaUrl}${relativePath}`;
+            return imageUrl;
+        };
+        const { questions, errors } = await this.wordImporter.importQuestions(file.buffer, filename, subjectId, level, chapter, saveImageFunc);
+        if (questions.length === 0) {
+            throw new common_1.BadRequestException('未能從檔案中解析出任何題目');
+        }
+        const previewQuestions = questions.map((q) => ({
+            question_number: q.question_number || '',
+            origin: q.origin || '',
+            origin_detail: q.origin_detail || '',
+            difficulty: q.difficulty || 3,
+            content: q.content || '',
+            correct_answer: q.answer || '',
+        }));
+        return {
+            success: true,
+            total: questions.length,
+            questions: previewQuestions,
+            errors: errors.slice(0, 20),
+        };
+    }
+    async importFromWord(file, subjectId, level, chapter, userId) {
+        if (!file) {
+            throw new common_1.BadRequestException('請選擇要匯入的檔案');
+        }
+        const filename = file.originalname;
+        if (!filename.endsWith('.docx') && !filename.endsWith('.doc')) {
+            throw new common_1.BadRequestException('不支援的檔案格式，請上傳 .docx 或 .doc 檔案');
+        }
+        const subject = await this.prisma.cramschoolSubject.findUnique({
+            where: { subjectId },
+        });
+        if (!subject) {
+            throw new common_1.BadRequestException('科目不存在');
+        }
+        const saveImageFunc = async (imageBytes, imageFilename) => {
+            const now = new Date();
+            const dateFolder = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
+            const ext = path.extname(imageFilename) || '.png';
+            const uniqueFilename = `${(0, uuid_1.v4)().replace(/-/g, '')}${ext}`;
+            const relativePath = `question_images/${dateFolder}/${uniqueFilename}`;
+            const mediaRoot = process.env.MEDIA_ROOT || './media';
+            const fullPath = path.join(mediaRoot, relativePath);
+            const dir = path.dirname(fullPath);
+            await fs.mkdir(dir, { recursive: true });
+            await fs.writeFile(fullPath, imageBytes);
+            const mediaUrl = process.env.MEDIA_URL || '/media/';
+            const imageUrl = mediaUrl.startsWith('http')
+                ? `${mediaUrl}${relativePath}`
+                : `${process.env.BASE_URL || 'http://localhost:3000'}${mediaUrl}${relativePath}`;
+            return imageUrl;
+        };
+        const { questions, errors } = await this.wordImporter.importQuestions(file.buffer, filename, subjectId, level, chapter, saveImageFunc);
+        if (questions.length === 0) {
+            throw new common_1.BadRequestException('未能從檔案中解析出任何題目');
+        }
+        const createdQuestions = [];
+        for (const q of questions) {
+            try {
+                const options = q.options?.map((opt) => ({
+                    value: opt.letter,
+                    label: opt.content,
+                })) || [];
+                let questionType = 'SINGLE_CHOICE';
+                if (options.length > 0) {
+                    if (q.answer.includes(',') || q.answer.length > 1) {
+                        questionType = 'MULTIPLE_CHOICE';
+                    }
+                }
+                let imagePath = null;
+                if (q.image_paths && q.image_paths.length > 0) {
+                    imagePath = q.image_paths[0];
+                }
+                const created = await this.prisma.cramschoolQuestionBank.create({
+                    data: {
+                        subjectId,
+                        level,
+                        chapter,
+                        content: q.content,
+                        correctAnswer: q.answer,
+                        difficulty: q.difficulty,
+                        questionType,
+                        options: options.length > 0 ? options : null,
+                        questionNumber: q.question_number || null,
+                        origin: q.origin || '',
+                        originDetail: q.origin_detail || '',
+                        imagePath,
+                        solutionContent: q.explanation
+                            ? {
+                                format: 'markdown',
+                                text: q.explanation,
+                            }
+                            : null,
+                        source: q.origin || 'imported_from_word',
+                        createdById: userId,
+                    },
+                });
+                createdQuestions.push(created);
+            }
+            catch (error) {
+                errors.push(`匯入題目失敗：${error.message}`);
+            }
+        }
+        return {
+            success: true,
+            total: questions.length,
+            imported: createdQuestions.length,
+            questions: createdQuestions.map((q) => this.toQuestionDto(q)),
+            errors: errors.slice(0, 20),
+        };
+    }
+    async previewFromMarkdown(markdownFile, images, subjectId, level, chapter) {
+        if (!markdownFile) {
+            throw new common_1.BadRequestException('請選擇 Markdown 檔案');
+        }
+        const filename = markdownFile.originalname;
+        if (!filename.endsWith('.md') && !filename.endsWith('.markdown')) {
+            throw new common_1.BadRequestException('不支援的檔案格式，請上傳 .md 或 .markdown 檔案');
+        }
+        const subject = await this.prisma.cramschoolSubject.findUnique({
+            where: { subjectId },
+        });
+        if (!subject) {
+            throw new common_1.BadRequestException('科目不存在');
+        }
+        let markdownContent;
+        try {
+            markdownContent = markdownFile.buffer.toString('utf-8');
+        }
+        catch (error) {
+            throw new common_1.BadRequestException(`讀取 Markdown 檔案失敗：${error.message}`);
+        }
+        const imagesDict = {};
+        if (images && images.length > 0) {
+            for (const img of images) {
+                try {
+                    imagesDict[img.originalname] = img.buffer;
+                }
+                catch (error) {
+                    throw new common_1.BadRequestException(`讀取圖片檔案 ${img.originalname} 失敗：${error.message}`);
+                }
+            }
+        }
+        const saveImageFunc = async (imageBytes, imageFilename) => {
+            const now = new Date();
+            const dateFolder = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
+            const ext = path.extname(imageFilename) || '.png';
+            const uniqueFilename = `${(0, uuid_1.v4)().replace(/-/g, '')}${ext}`;
+            const relativePath = `question_images/preview/${dateFolder}/${uniqueFilename}`;
+            const mediaRoot = process.env.MEDIA_ROOT || './media';
+            const fullPath = path.join(mediaRoot, relativePath);
+            const dir = path.dirname(fullPath);
+            await fs.mkdir(dir, { recursive: true });
+            await fs.writeFile(fullPath, imageBytes);
+            const mediaUrl = process.env.MEDIA_URL || '/media/';
+            const imageUrl = mediaUrl.startsWith('http')
+                ? `${mediaUrl}${relativePath}`
+                : `${process.env.BASE_URL || 'http://localhost:3000'}${mediaUrl}${relativePath}`;
+            return imageUrl;
+        };
+        const { questions, errors } = await this.markdownImporter.importQuestions(markdownContent, imagesDict, subjectId, level, chapter, imagesDict && Object.keys(imagesDict).length > 0 ? saveImageFunc : undefined);
+        if (questions.length === 0) {
+            throw new common_1.BadRequestException('未能從 Markdown 中解析出任何題目');
+        }
+        const previewQuestions = questions.map((q) => ({
+            question_number: q.question_number || '',
+            origin: q.origin || '',
+            origin_detail: q.origin_detail || '',
+            difficulty: q.difficulty || 3,
+            content: q.content || '',
+            correct_answer: q.correct_answer || '',
+        }));
+        return {
+            success: true,
+            total: questions.length,
+            questions: previewQuestions,
+            errors: errors.slice(0, 20),
+        };
+    }
+    async importFromMarkdown(markdownFile, images, subjectId, level, chapter, userId) {
+        if (!markdownFile) {
+            throw new common_1.BadRequestException('請選擇 Markdown 檔案');
+        }
+        const filename = markdownFile.originalname;
+        if (!filename.endsWith('.md') && !filename.endsWith('.markdown')) {
+            throw new common_1.BadRequestException('不支援的檔案格式，請上傳 .md 或 .markdown 檔案');
+        }
+        const subject = await this.prisma.cramschoolSubject.findUnique({
+            where: { subjectId },
+        });
+        if (!subject) {
+            throw new common_1.BadRequestException('科目不存在');
+        }
+        let markdownContent;
+        try {
+            markdownContent = markdownFile.buffer.toString('utf-8');
+        }
+        catch (error) {
+            throw new common_1.BadRequestException(`讀取 Markdown 檔案失敗：${error.message}`);
+        }
+        const imagesDict = {};
+        if (images && images.length > 0) {
+            for (const img of images) {
+                try {
+                    imagesDict[img.originalname] = img.buffer;
+                }
+                catch (error) {
+                    throw new common_1.BadRequestException(`讀取圖片檔案 ${img.originalname} 失敗：${error.message}`);
+                }
+            }
+        }
+        const saveImageFunc = async (imageBytes, imageFilename) => {
+            const now = new Date();
+            const dateFolder = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
+            const ext = path.extname(imageFilename) || '.png';
+            const uniqueFilename = `${(0, uuid_1.v4)().replace(/-/g, '')}${ext}`;
+            const relativePath = `question_images/${dateFolder}/${uniqueFilename}`;
+            const mediaRoot = process.env.MEDIA_ROOT || './media';
+            const fullPath = path.join(mediaRoot, relativePath);
+            const dir = path.dirname(fullPath);
+            await fs.mkdir(dir, { recursive: true });
+            await fs.writeFile(fullPath, imageBytes);
+            const mediaUrl = process.env.MEDIA_URL || '/media/';
+            const imageUrl = mediaUrl.startsWith('http')
+                ? `${mediaUrl}${relativePath}`
+                : `${process.env.BASE_URL || 'http://localhost:3000'}${mediaUrl}${relativePath}`;
+            return imageUrl;
+        };
+        const { questions, errors } = await this.markdownImporter.importQuestions(markdownContent, imagesDict, subjectId, level, chapter, imagesDict && Object.keys(imagesDict).length > 0 ? saveImageFunc : undefined);
+        if (questions.length === 0) {
+            throw new common_1.BadRequestException('未能從 Markdown 中解析出任何題目');
+        }
+        const createdQuestions = [];
+        for (const q of questions) {
+            try {
+                const created = await this.prisma.cramschoolQuestionBank.create({
+                    data: {
+                        subjectId: q.subject_id,
+                        level: q.level,
+                        chapter: q.chapter,
+                        content: q.content,
+                        correctAnswer: q.correct_answer,
+                        difficulty: q.difficulty,
+                        questionType: q.question_type,
+                        options: q.options && q.options.length > 0 ? q.options : null,
+                        questionNumber: q.question_number || null,
+                        origin: q.origin || '',
+                        originDetail: q.origin_detail || '',
+                        solutionContent: q.solution_content,
+                        source: q.source || 'imported_from_markdown',
+                        createdById: userId,
+                    },
+                });
+                createdQuestions.push(created);
+            }
+            catch (error) {
+                errors.push(`匯入題目失敗：${error.message}`);
+            }
+        }
+        return {
+            success: true,
+            total: questions.length,
+            imported: createdQuestions.length,
+            questions: createdQuestions.map((q) => this.toQuestionDto(q)),
+            errors: errors.slice(0, 20),
+        };
+    }
 };
 exports.QuestionsService = QuestionsService;
 exports.QuestionsService = QuestionsService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [typeof (_a = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _a : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _a : Object, typeof (_b = typeof word_importer_service_1.WordImporterService !== "undefined" && word_importer_service_1.WordImporterService) === "function" ? _b : Object, typeof (_c = typeof markdown_importer_service_1.MarkdownImporterService !== "undefined" && markdown_importer_service_1.MarkdownImporterService) === "function" ? _c : Object])
 ], QuestionsService);
 
 
@@ -3441,6 +7912,90 @@ let ResourcesService = class ResourcesService {
             where: { resourceId: id },
         });
     }
+    async bindToCourse(id, courseId, action, userId, userRole) {
+        if (userRole !== 'TEACHER') {
+            throw new common_1.ForbiddenException('只有老師可以綁定教學資源到課程');
+        }
+        const resource = await this.prisma.cramschoolLearningResource.findUnique({
+            where: { resourceId: id },
+        });
+        if (!resource) {
+            throw new common_1.NotFoundException(`Resource with ID ${id} not found`);
+        }
+        const course = await this.prisma.cramschoolCourse.findUnique({
+            where: { courseId },
+            include: {
+                teacher: true,
+            },
+        });
+        if (!course) {
+            throw new common_1.NotFoundException(`Course with ID ${courseId} not found`);
+        }
+        const teacher = await this.prisma.cramschoolTeacher.findFirst({
+            where: { userId },
+        });
+        if (!teacher || course.teacherId !== teacher.teacherId) {
+            throw new common_1.ForbiddenException('只能在自己的課程下綁定資源');
+        }
+        if (action === 'add') {
+            const existing = await this.prisma.cramschoolLearningResourceCourse.findUnique({
+                where: {
+                    resourceId_courseId: {
+                        resourceId: id,
+                        courseId,
+                    },
+                },
+            });
+            if (!existing) {
+                await this.prisma.cramschoolLearningResourceCourse.create({
+                    data: {
+                        resourceId: id,
+                        courseId,
+                    },
+                });
+            }
+            return { message: `已將資源綁定到課程 ${course.courseName}` };
+        }
+        else if (action === 'remove') {
+            await this.prisma.cramschoolLearningResourceCourse.deleteMany({
+                where: {
+                    resourceId: id,
+                    courseId,
+                },
+            });
+            return { message: `已從課程 ${course.courseName} 解除綁定` };
+        }
+        else {
+            throw new common_1.ForbiddenException('action 必須是 "add" 或 "remove"');
+        }
+    }
+    async exportResource(id, formatType = 'question_only') {
+        const resource = await this.prisma.cramschoolLearningResource.findUnique({
+            where: { resourceId: id },
+        });
+        if (!resource) {
+            throw new common_1.NotFoundException(`Resource with ID ${id} not found`);
+        }
+        return {
+            resource_id: resource.resourceId,
+            mode: resource.mode,
+            format_type: formatType,
+            message: '匯出功能需要遷移 resource_modes 目錄後才能完整實現',
+        };
+    }
+    async gradeResource(id, submission) {
+        const resource = await this.prisma.cramschoolLearningResource.findUnique({
+            where: { resourceId: id },
+        });
+        if (!resource) {
+            throw new common_1.NotFoundException(`Resource with ID ${id} not found`);
+        }
+        return {
+            resource_id: resource.resourceId,
+            mode: resource.mode,
+            message: '評分功能需要遷移 resource_modes 目錄後才能完整實現',
+        };
+    }
     toResourceDto(resource) {
         return {
             resource_id: resource.resourceId,
@@ -3466,6 +8021,393 @@ exports.ResourcesService = ResourcesService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [typeof (_a = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _a : Object])
 ], ResourcesService);
+
+
+/***/ }),
+
+/***/ "./src/cramschool/services/restaurants.service.ts":
+/*!********************************************************!*\
+  !*** ./src/cramschool/services/restaurants.service.ts ***!
+  \********************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.RestaurantsService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
+const pagination_util_1 = __webpack_require__(/*! ../../common/utils/pagination.util */ "./src/common/utils/pagination.util.ts");
+let RestaurantsService = class RestaurantsService {
+    constructor(prisma) {
+        this.prisma = prisma;
+    }
+    async getRestaurants(page = 1, pageSize = 10) {
+        const skip = (page - 1) * pageSize;
+        const [results, count] = await Promise.all([
+            this.prisma.cramschoolRestaurant.findMany({
+                skip,
+                take: pageSize,
+                orderBy: { name: 'asc' },
+            }),
+            this.prisma.cramschoolRestaurant.count(),
+        ]);
+        return (0, pagination_util_1.createPaginatedResponse)(results.map((r) => this.toRestaurantDto(r)), count, page, pageSize);
+    }
+    async getRestaurant(id) {
+        const restaurant = await this.prisma.cramschoolRestaurant.findUnique({
+            where: { restaurantId: id },
+        });
+        if (!restaurant) {
+            throw new common_1.NotFoundException(`Restaurant with ID ${id} not found`);
+        }
+        return this.toRestaurantDto(restaurant);
+    }
+    async createRestaurant(createDto) {
+        const restaurant = await this.prisma.cramschoolRestaurant.create({
+            data: {
+                name: createDto.name,
+                phone: createDto.phone || null,
+                address: createDto.address || null,
+                menuImagePath: createDto.menu_image_path || null,
+                isActive: createDto.is_active !== undefined ? createDto.is_active : true,
+            },
+        });
+        return this.toRestaurantDto(restaurant);
+    }
+    async updateRestaurant(id, updateDto) {
+        const restaurant = await this.prisma.cramschoolRestaurant.findUnique({
+            where: { restaurantId: id },
+        });
+        if (!restaurant) {
+            throw new common_1.NotFoundException(`Restaurant with ID ${id} not found`);
+        }
+        const updatedRestaurant = await this.prisma.cramschoolRestaurant.update({
+            where: { restaurantId: id },
+            data: {
+                name: updateDto.name,
+                phone: updateDto.phone !== undefined ? updateDto.phone : undefined,
+                address: updateDto.address !== undefined ? updateDto.address : undefined,
+                menuImagePath: updateDto.menu_image_path !== undefined ? updateDto.menu_image_path : undefined,
+                isActive: updateDto.is_active !== undefined ? updateDto.is_active : undefined,
+            },
+        });
+        return this.toRestaurantDto(updatedRestaurant);
+    }
+    async deleteRestaurant(id) {
+        const restaurant = await this.prisma.cramschoolRestaurant.findUnique({
+            where: { restaurantId: id },
+        });
+        if (!restaurant) {
+            throw new common_1.NotFoundException(`Restaurant with ID ${id} not found`);
+        }
+        await this.prisma.cramschoolRestaurant.delete({
+            where: { restaurantId: id },
+        });
+    }
+    toRestaurantDto(restaurant) {
+        return {
+            restaurant_id: restaurant.restaurantId,
+            name: restaurant.name,
+            phone: restaurant.phone || null,
+            address: restaurant.address || null,
+            menu_image_path: restaurant.menuImagePath || null,
+            is_active: restaurant.isActive,
+            created_at: restaurant.createdAt?.toISOString(),
+            updated_at: restaurant.updatedAt?.toISOString(),
+        };
+    }
+};
+exports.RestaurantsService = RestaurantsService;
+exports.RestaurantsService = RestaurantsService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _a : Object])
+], RestaurantsService);
+
+
+/***/ }),
+
+/***/ "./src/cramschool/services/sessions.service.ts":
+/*!*****************************************************!*\
+  !*** ./src/cramschool/services/sessions.service.ts ***!
+  \*****************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SessionsService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
+const pagination_util_1 = __webpack_require__(/*! ../../common/utils/pagination.util */ "./src/common/utils/pagination.util.ts");
+let SessionsService = class SessionsService {
+    constructor(prisma) {
+        this.prisma = prisma;
+    }
+    async getSessions(page = 1, pageSize = 10) {
+        const skip = (page - 1) * pageSize;
+        const [results, count] = await Promise.all([
+            this.prisma.cramschoolSessionRecord.findMany({
+                skip,
+                take: pageSize,
+                include: {
+                    course: true,
+                },
+                orderBy: { sessionDate: 'desc' },
+            }),
+            this.prisma.cramschoolSessionRecord.count(),
+        ]);
+        return (0, pagination_util_1.createPaginatedResponse)(results.map((s) => this.toSessionDto(s)), count, page, pageSize);
+    }
+    async getSession(id) {
+        const session = await this.prisma.cramschoolSessionRecord.findUnique({
+            where: { sessionId: id },
+            include: {
+                course: true,
+            },
+        });
+        if (!session) {
+            throw new common_1.NotFoundException(`Session with ID ${id} not found`);
+        }
+        return this.toSessionDto(session);
+    }
+    async createSession(createDto) {
+        const session = await this.prisma.cramschoolSessionRecord.create({
+            data: {
+                courseId: createDto.course_id,
+                sessionDate: new Date(createDto.session_date),
+            },
+            include: {
+                course: true,
+            },
+        });
+        return this.toSessionDto(session);
+    }
+    async updateSession(id, updateDto) {
+        const session = await this.prisma.cramschoolSessionRecord.findUnique({
+            where: { sessionId: id },
+        });
+        if (!session) {
+            throw new common_1.NotFoundException(`Session with ID ${id} not found`);
+        }
+        const updatedSession = await this.prisma.cramschoolSessionRecord.update({
+            where: { sessionId: id },
+            data: {
+                courseId: updateDto.course_id,
+                sessionDate: updateDto.session_date ? new Date(updateDto.session_date) : undefined,
+            },
+            include: {
+                course: true,
+            },
+        });
+        return this.toSessionDto(updatedSession);
+    }
+    async deleteSession(id) {
+        const session = await this.prisma.cramschoolSessionRecord.findUnique({
+            where: { sessionId: id },
+        });
+        if (!session) {
+            throw new common_1.NotFoundException(`Session with ID ${id} not found`);
+        }
+        await this.prisma.cramschoolSessionRecord.delete({
+            where: { sessionId: id },
+        });
+    }
+    toSessionDto(session) {
+        const result = {
+            session_id: session.sessionId,
+            course_id: session.courseId,
+            session_date: session.sessionDate.toISOString().split('T')[0],
+            course_name: session.course?.courseName || undefined,
+        };
+        return result;
+    }
+};
+exports.SessionsService = SessionsService;
+exports.SessionsService = SessionsService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _a : Object])
+], SessionsService);
+
+
+/***/ }),
+
+/***/ "./src/cramschool/services/student-answers.service.ts":
+/*!************************************************************!*\
+  !*** ./src/cramschool/services/student-answers.service.ts ***!
+  \************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.StudentAnswersService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
+const pagination_util_1 = __webpack_require__(/*! ../../common/utils/pagination.util */ "./src/common/utils/pagination.util.ts");
+let StudentAnswersService = class StudentAnswersService {
+    constructor(prisma) {
+        this.prisma = prisma;
+    }
+    async getStudentAnswers(includeDeleted = false, page = 1, pageSize = 10) {
+        const skip = (page - 1) * pageSize;
+        const where = {};
+        if (!includeDeleted) {
+            where.isDeleted = false;
+        }
+        const [results, count] = await Promise.all([
+            this.prisma.cramschoolStudentAnswer.findMany({
+                where,
+                skip,
+                take: pageSize,
+                include: {
+                    student: true,
+                    question: true,
+                },
+                orderBy: { answerId: 'desc' },
+            }),
+            this.prisma.cramschoolStudentAnswer.count({ where }),
+        ]);
+        return (0, pagination_util_1.createPaginatedResponse)(results.map((a) => this.toStudentAnswerDto(a)), count, page, pageSize);
+    }
+    async getStudentAnswer(id) {
+        const answer = await this.prisma.cramschoolStudentAnswer.findUnique({
+            where: { answerId: id },
+            include: {
+                student: true,
+                question: true,
+            },
+        });
+        if (!answer) {
+            throw new common_1.NotFoundException(`StudentAnswer with ID ${id} not found`);
+        }
+        return this.toStudentAnswerDto(answer);
+    }
+    async createStudentAnswer(createDto) {
+        const answer = await this.prisma.cramschoolStudentAnswer.create({
+            data: {
+                studentId: createDto.student_id,
+                questionId: createDto.question_id,
+                testName: createDto.test_name,
+                submissionId: createDto.submission_id || null,
+                isCorrect: createDto.is_correct || false,
+                scannedFilePath: createDto.scanned_file_path || null,
+            },
+            include: {
+                student: true,
+                question: true,
+            },
+        });
+        return this.toStudentAnswerDto(answer);
+    }
+    async updateStudentAnswer(id, updateDto) {
+        const answer = await this.prisma.cramschoolStudentAnswer.findUnique({
+            where: { answerId: id },
+        });
+        if (!answer) {
+            throw new common_1.NotFoundException(`StudentAnswer with ID ${id} not found`);
+        }
+        const updatedAnswer = await this.prisma.cramschoolStudentAnswer.update({
+            where: { answerId: id },
+            data: {
+                studentId: updateDto.student_id,
+                questionId: updateDto.question_id,
+                testName: updateDto.test_name,
+                submissionId: updateDto.submission_id !== undefined ? updateDto.submission_id : undefined,
+                isCorrect: updateDto.is_correct,
+                scannedFilePath: updateDto.scanned_file_path !== undefined ? updateDto.scanned_file_path : undefined,
+            },
+            include: {
+                student: true,
+                question: true,
+            },
+        });
+        return this.toStudentAnswerDto(updatedAnswer);
+    }
+    async deleteStudentAnswer(id) {
+        const answer = await this.prisma.cramschoolStudentAnswer.findUnique({
+            where: { answerId: id },
+        });
+        if (!answer) {
+            throw new common_1.NotFoundException(`StudentAnswer with ID ${id} not found`);
+        }
+        await this.prisma.cramschoolStudentAnswer.update({
+            where: { answerId: id },
+            data: {
+                isDeleted: true,
+                deletedAt: new Date(),
+            },
+        });
+    }
+    async restoreStudentAnswer(id) {
+        const answer = await this.prisma.cramschoolStudentAnswer.findUnique({
+            where: { answerId: id },
+        });
+        if (!answer) {
+            throw new common_1.NotFoundException(`StudentAnswer with ID ${id} not found`);
+        }
+        if (!answer.isDeleted) {
+            throw new common_1.NotFoundException(`StudentAnswer with ID ${id} is not deleted`);
+        }
+        const restoredAnswer = await this.prisma.cramschoolStudentAnswer.update({
+            where: { answerId: id },
+            data: {
+                isDeleted: false,
+                deletedAt: null,
+            },
+            include: {
+                student: true,
+                question: true,
+            },
+        });
+        return this.toStudentAnswerDto(restoredAnswer);
+    }
+    toStudentAnswerDto(answer) {
+        return {
+            answer_id: answer.answerId,
+            student_id: answer.studentId,
+            question_id: answer.questionId,
+            test_name: answer.testName,
+            submission_id: answer.submissionId || null,
+            is_correct: answer.isCorrect,
+            scanned_file_path: answer.scannedFilePath || null,
+            is_deleted: answer.isDeleted,
+            deleted_at: answer.deletedAt?.toISOString() || null,
+        };
+    }
+};
+exports.StudentAnswersService = StudentAnswersService;
+exports.StudentAnswersService = StudentAnswersService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _a : Object])
+], StudentAnswersService);
 
 
 /***/ }),
@@ -3640,6 +8582,590 @@ exports.StudentGroupsService = StudentGroupsService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [typeof (_a = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _a : Object])
 ], StudentGroupsService);
+
+
+/***/ }),
+
+/***/ "./src/cramschool/services/student-mistake-note-images.service.ts":
+/*!************************************************************************!*\
+  !*** ./src/cramschool/services/student-mistake-note-images.service.ts ***!
+  \************************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.StudentMistakeNoteImagesService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
+const pagination_util_1 = __webpack_require__(/*! ../../common/utils/pagination.util */ "./src/common/utils/pagination.util.ts");
+let StudentMistakeNoteImagesService = class StudentMistakeNoteImagesService {
+    constructor(prisma) {
+        this.prisma = prisma;
+    }
+    async getStudentMistakeNoteImages(userId, userRole, noteId, page = 1, pageSize = 10) {
+        const skip = (page - 1) * pageSize;
+        const where = {};
+        if (userRole !== 'STUDENT') {
+            return { count: 0, results: [], page: 1, page_size: pageSize };
+        }
+        const student = await this.prisma.cramschoolStudent.findFirst({
+            where: { userId },
+        });
+        if (!student) {
+            return { count: 0, results: [], page: 1, page_size: pageSize };
+        }
+        if (noteId) {
+            where.noteId = noteId;
+            const note = await this.prisma.cramschoolStudentMistakeNote.findUnique({
+                where: { noteId },
+            });
+            if (!note || note.studentId !== student.studentId) {
+                return { count: 0, results: [], page: 1, page_size: pageSize };
+            }
+        }
+        else {
+            const notes = await this.prisma.cramschoolStudentMistakeNote.findMany({
+                where: { studentId: student.studentId },
+                select: { noteId: true },
+            });
+            where.noteId = { in: notes.map((n) => n.noteId) };
+        }
+        const [results, count] = await Promise.all([
+            this.prisma.cramschoolStudentMistakeNoteImage.findMany({
+                where,
+                skip,
+                take: pageSize,
+                include: {
+                    note: {
+                        include: {
+                            student: true,
+                        },
+                    },
+                },
+                orderBy: [{ sortOrder: 'asc' }, { imageId: 'asc' }],
+            }),
+            this.prisma.cramschoolStudentMistakeNoteImage.count({ where }),
+        ]);
+        return (0, pagination_util_1.createPaginatedResponse)(results.map((img) => this.toStudentMistakeNoteImageDto(img)), count, page, pageSize);
+    }
+    async getStudentMistakeNoteImage(id, userId, userRole) {
+        const image = await this.prisma.cramschoolStudentMistakeNoteImage.findUnique({
+            where: { imageId: id },
+            include: {
+                note: {
+                    include: {
+                        student: true,
+                    },
+                },
+            },
+        });
+        if (!image) {
+            throw new common_1.NotFoundException(`StudentMistakeNoteImage with ID ${id} not found`);
+        }
+        if (userRole !== 'STUDENT') {
+            throw new common_1.NotFoundException(`StudentMistakeNoteImage with ID ${id} not found`);
+        }
+        const student = await this.prisma.cramschoolStudent.findFirst({
+            where: { userId },
+        });
+        if (!student || image.note.studentId !== student.studentId) {
+            throw new common_1.NotFoundException(`StudentMistakeNoteImage with ID ${id} not found`);
+        }
+        return this.toStudentMistakeNoteImageDto(image);
+    }
+    async createStudentMistakeNoteImage(createDto, userId, userRole) {
+        if (userRole !== 'STUDENT') {
+            throw new common_1.ForbiddenException('只有學生可以新增錯題筆記圖片');
+        }
+        const student = await this.prisma.cramschoolStudent.findFirst({
+            where: { userId },
+        });
+        if (!student) {
+            throw new common_1.ForbiddenException('找不到學生資料');
+        }
+        const note = await this.prisma.cramschoolStudentMistakeNote.findUnique({
+            where: { noteId: createDto.note_id },
+        });
+        if (!note || note.studentId !== student.studentId) {
+            throw new common_1.ForbiddenException('只能為自己的錯題筆記添加圖片');
+        }
+        const image = await this.prisma.cramschoolStudentMistakeNoteImage.create({
+            data: {
+                noteId: createDto.note_id,
+                imagePath: createDto.image_path,
+                caption: createDto.caption || null,
+                sortOrder: createDto.sort_order || 0,
+            },
+            include: {
+                note: {
+                    include: {
+                        student: true,
+                    },
+                },
+            },
+        });
+        return this.toStudentMistakeNoteImageDto(image);
+    }
+    async updateStudentMistakeNoteImage(id, updateDto, userId, userRole) {
+        const image = await this.prisma.cramschoolStudentMistakeNoteImage.findUnique({
+            where: { imageId: id },
+            include: {
+                note: {
+                    include: {
+                        student: true,
+                    },
+                },
+            },
+        });
+        if (!image) {
+            throw new common_1.NotFoundException(`StudentMistakeNoteImage with ID ${id} not found`);
+        }
+        if (userRole !== 'STUDENT') {
+            throw new common_1.ForbiddenException('只有學生可以編輯錯題筆記圖片');
+        }
+        const student = await this.prisma.cramschoolStudent.findFirst({
+            where: { userId },
+        });
+        if (!student || image.note.studentId !== student.studentId) {
+            throw new common_1.ForbiddenException('只能編輯自己的錯題筆記圖片');
+        }
+        const updatedImage = await this.prisma.cramschoolStudentMistakeNoteImage.update({
+            where: { imageId: id },
+            data: {
+                caption: updateDto.caption !== undefined ? updateDto.caption : undefined,
+                sortOrder: updateDto.sort_order !== undefined ? updateDto.sort_order : undefined,
+            },
+            include: {
+                note: {
+                    include: {
+                        student: true,
+                    },
+                },
+            },
+        });
+        return this.toStudentMistakeNoteImageDto(updatedImage);
+    }
+    async deleteStudentMistakeNoteImage(id, userId, userRole) {
+        const image = await this.prisma.cramschoolStudentMistakeNoteImage.findUnique({
+            where: { imageId: id },
+            include: {
+                note: {
+                    include: {
+                        student: true,
+                    },
+                },
+            },
+        });
+        if (!image) {
+            throw new common_1.NotFoundException(`StudentMistakeNoteImage with ID ${id} not found`);
+        }
+        if (userRole !== 'STUDENT') {
+            throw new common_1.ForbiddenException('只有學生可以刪除錯題筆記圖片');
+        }
+        const student = await this.prisma.cramschoolStudent.findFirst({
+            where: { userId },
+        });
+        if (!student || image.note.studentId !== student.studentId) {
+            throw new common_1.ForbiddenException('只能刪除自己的錯題筆記圖片');
+        }
+        await this.prisma.cramschoolStudentMistakeNoteImage.delete({
+            where: { imageId: id },
+        });
+    }
+    toStudentMistakeNoteImageDto(image) {
+        return {
+            image_id: image.imageId,
+            note_id: image.noteId,
+            image_path: image.imagePath,
+            caption: image.caption || null,
+            sort_order: image.sortOrder,
+            created_at: image.createdAt?.toISOString(),
+        };
+    }
+};
+exports.StudentMistakeNoteImagesService = StudentMistakeNoteImagesService;
+exports.StudentMistakeNoteImagesService = StudentMistakeNoteImagesService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _a : Object])
+], StudentMistakeNoteImagesService);
+
+
+/***/ }),
+
+/***/ "./src/cramschool/services/student-mistake-notes.service.ts":
+/*!******************************************************************!*\
+  !*** ./src/cramschool/services/student-mistake-notes.service.ts ***!
+  \******************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.StudentMistakeNotesService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
+const pagination_util_1 = __webpack_require__(/*! ../../common/utils/pagination.util */ "./src/common/utils/pagination.util.ts");
+const path = __webpack_require__(/*! path */ "path");
+const fs = __webpack_require__(/*! fs/promises */ "fs/promises");
+const uuid_1 = __webpack_require__(/*! uuid */ "uuid");
+let StudentMistakeNotesService = class StudentMistakeNotesService {
+    constructor(prisma) {
+        this.prisma = prisma;
+    }
+    async getStudentMistakeNotes(userId, userRole, includeDeleted = false, studentId, searchQuery, page = 1, pageSize = 10) {
+        const skip = (page - 1) * pageSize;
+        const where = {};
+        if (userRole === 'ACCOUNTANT') {
+            return { count: 0, results: [], page: 1, page_size: pageSize };
+        }
+        if (userRole === 'STUDENT') {
+            const student = await this.prisma.cramschoolStudent.findFirst({
+                where: { userId },
+            });
+            if (student) {
+                where.studentId = student.studentId;
+            }
+            else {
+                return { count: 0, results: [], page: 1, page_size: pageSize };
+            }
+        }
+        else if (userRole === 'TEACHER' || userRole === 'ADMIN') {
+            if (studentId) {
+                where.studentId = studentId;
+            }
+            else {
+                return { count: 0, results: [], page: 1, page_size: pageSize };
+            }
+        }
+        else {
+            return { count: 0, results: [], page: 1, page_size: pageSize };
+        }
+        if (!includeDeleted) {
+            where.isDeleted = false;
+        }
+        if (searchQuery) {
+            where.OR = [
+                { title: { contains: searchQuery } },
+                { subject: { contains: searchQuery } },
+                { content: { contains: searchQuery } },
+            ];
+        }
+        const [results, count] = await Promise.all([
+            this.prisma.cramschoolStudentMistakeNote.findMany({
+                where,
+                skip,
+                take: pageSize,
+                include: {
+                    student: true,
+                },
+                orderBy: [{ updatedAt: 'desc' }, { noteId: 'desc' }],
+            }),
+            this.prisma.cramschoolStudentMistakeNote.count({ where }),
+        ]);
+        return (0, pagination_util_1.createPaginatedResponse)(results.map((n) => this.toStudentMistakeNoteDto(n)), count, page, pageSize);
+    }
+    async getStudentMistakeNote(id, userId, userRole) {
+        const note = await this.prisma.cramschoolStudentMistakeNote.findUnique({
+            where: { noteId: id },
+            include: {
+                student: true,
+            },
+        });
+        if (!note) {
+            throw new common_1.NotFoundException(`StudentMistakeNote with ID ${id} not found`);
+        }
+        if (userRole === 'STUDENT') {
+            const student = await this.prisma.cramschoolStudent.findFirst({
+                where: { userId },
+            });
+            if (!student || note.studentId !== student.studentId) {
+                throw new common_1.NotFoundException(`StudentMistakeNote with ID ${id} not found`);
+            }
+        }
+        else if (userRole === 'ACCOUNTANT') {
+            throw new common_1.NotFoundException(`StudentMistakeNote with ID ${id} not found`);
+        }
+        return this.toStudentMistakeNoteDto(note);
+    }
+    async createStudentMistakeNote(createDto, userId, userRole) {
+        if (userRole !== 'STUDENT') {
+            throw new common_1.ForbiddenException('只有學生可以新增錯題筆記');
+        }
+        const student = await this.prisma.cramschoolStudent.findFirst({
+            where: { userId },
+        });
+        if (!student) {
+            throw new common_1.ForbiddenException('找不到學生資料');
+        }
+        const note = await this.prisma.cramschoolStudentMistakeNote.create({
+            data: {
+                studentId: student.studentId,
+                title: createDto.title,
+                subject: createDto.subject || null,
+                content: createDto.content || null,
+            },
+            include: {
+                student: true,
+            },
+        });
+        return this.toStudentMistakeNoteDto(note);
+    }
+    async updateStudentMistakeNote(id, updateDto, userId, userRole) {
+        const note = await this.prisma.cramschoolStudentMistakeNote.findUnique({
+            where: { noteId: id },
+        });
+        if (!note) {
+            throw new common_1.NotFoundException(`StudentMistakeNote with ID ${id} not found`);
+        }
+        if (userRole !== 'STUDENT') {
+            throw new common_1.ForbiddenException('只有學生可以編輯錯題筆記');
+        }
+        const student = await this.prisma.cramschoolStudent.findFirst({
+            where: { userId },
+        });
+        if (!student || note.studentId !== student.studentId) {
+            throw new common_1.ForbiddenException('只能編輯自己的錯題筆記');
+        }
+        const updatedNote = await this.prisma.cramschoolStudentMistakeNote.update({
+            where: { noteId: id },
+            data: {
+                title: updateDto.title,
+                subject: updateDto.subject !== undefined ? updateDto.subject : undefined,
+                content: updateDto.content !== undefined ? updateDto.content : undefined,
+            },
+            include: {
+                student: true,
+            },
+        });
+        return this.toStudentMistakeNoteDto(updatedNote);
+    }
+    async deleteStudentMistakeNote(id, userId, userRole) {
+        const note = await this.prisma.cramschoolStudentMistakeNote.findUnique({
+            where: { noteId: id },
+        });
+        if (!note) {
+            throw new common_1.NotFoundException(`StudentMistakeNote with ID ${id} not found`);
+        }
+        if (userRole !== 'STUDENT') {
+            throw new common_1.ForbiddenException('只有學生可以刪除錯題筆記');
+        }
+        const student = await this.prisma.cramschoolStudent.findFirst({
+            where: { userId },
+        });
+        if (!student || note.studentId !== student.studentId) {
+            throw new common_1.ForbiddenException('只能刪除自己的錯題筆記');
+        }
+        await this.prisma.cramschoolStudentMistakeNote.update({
+            where: { noteId: id },
+            data: {
+                isDeleted: true,
+                deletedAt: new Date(),
+            },
+        });
+    }
+    async restoreStudentMistakeNote(id) {
+        const note = await this.prisma.cramschoolStudentMistakeNote.findUnique({
+            where: { noteId: id },
+        });
+        if (!note) {
+            throw new common_1.NotFoundException(`StudentMistakeNote with ID ${id} not found`);
+        }
+        if (!note.isDeleted) {
+            throw new common_1.NotFoundException(`StudentMistakeNote with ID ${id} is not deleted`);
+        }
+        const restoredNote = await this.prisma.cramschoolStudentMistakeNote.update({
+            where: { noteId: id },
+            data: {
+                isDeleted: false,
+                deletedAt: null,
+            },
+            include: {
+                student: true,
+            },
+        });
+        return this.toStudentMistakeNoteDto(restoredNote);
+    }
+    async importToQuestionBank(id, userId, body) {
+        const note = await this.prisma.cramschoolStudentMistakeNote.findUnique({
+            where: { noteId: id },
+            include: {
+                student: true,
+            },
+        });
+        if (!note) {
+            throw new common_1.NotFoundException(`StudentMistakeNote with ID ${id} not found`);
+        }
+        if (note.isDeleted) {
+            throw new common_1.NotFoundException(`StudentMistakeNote with ID ${id} is deleted`);
+        }
+        const newQuestion = await this.prisma.cramschoolQuestionBank.create({
+            data: {
+                subjectId: body.subject_id,
+                level: body.level,
+                chapter: body.chapter,
+                content: body.content,
+                correctAnswer: body.correct_answer,
+                difficulty: body.difficulty || 3,
+                questionNumber: body.question_number || null,
+                origin: body.origin || '',
+                originDetail: body.origin_detail || '',
+                solutionContent: body.solution_content || '',
+                imagePath: body.image_path || null,
+                source: 'imported_from_student_note',
+                createdById: userId,
+                importedStudentId: note.studentId,
+            },
+        });
+        if (body.tag_ids && body.tag_ids.length > 0) {
+            const tagRelations = body.tag_ids.map((tagId) => ({
+                questionId: newQuestion.questionId,
+                tagId,
+            }));
+            await this.prisma.cramschoolQuestionTag.createMany({
+                data: tagRelations,
+                skipDuplicates: true,
+            });
+        }
+        return newQuestion;
+    }
+    async uploadImages(noteId, userId, files) {
+        const note = await this.prisma.cramschoolStudentMistakeNote.findUnique({
+            where: { noteId },
+            include: {
+                student: true,
+            },
+        });
+        if (!note) {
+            throw new common_1.NotFoundException(`StudentMistakeNote with ID ${noteId} not found`);
+        }
+        const student = await this.prisma.cramschoolStudent.findFirst({
+            where: { userId },
+        });
+        if (!student || note.studentId !== student.studentId) {
+            throw new common_1.ForbiddenException('只能操作自己的錯題筆記');
+        }
+        const maxSortOrder = await this.prisma.cramschoolStudentMistakeNoteImage.aggregate({
+            where: { noteId },
+            _max: { sortOrder: true },
+        });
+        const currentMax = maxSortOrder._max.sortOrder || 0;
+        const created = [];
+        for (let idx = 0; idx < files.length; idx++) {
+            const file = files[idx];
+            const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+            const fileExt = path.extname(file.originalname).slice(1).toLowerCase();
+            if (!allowedExtensions.includes(fileExt)) {
+                throw new common_1.BadRequestException(`不支援的文件類型。允許的類型：${allowedExtensions.join(', ')}`);
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                throw new common_1.BadRequestException('圖片文件大小不能超過 5MB');
+            }
+            const now = new Date();
+            const dateFolder = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
+            const uniqueFilename = `${(0, uuid_1.v4)().replace(/-/g, '')}.${fileExt}`;
+            const relativePath = `mistake_images/${dateFolder}/${uniqueFilename}`;
+            const mediaRoot = process.env.MEDIA_ROOT || './media';
+            const fullPath = path.join(mediaRoot, relativePath);
+            const dir = path.dirname(fullPath);
+            await fs.mkdir(dir, { recursive: true });
+            await fs.writeFile(fullPath, file.buffer);
+            const mediaUrl = process.env.MEDIA_URL || '/media/';
+            const imageUrl = mediaUrl.startsWith('http')
+                ? `${mediaUrl}${relativePath}`
+                : `${process.env.BASE_URL || 'http://localhost:3000'}${mediaUrl}${relativePath}`;
+            const image = await this.prisma.cramschoolStudentMistakeNoteImage.create({
+                data: {
+                    noteId,
+                    imagePath: relativePath,
+                    sortOrder: currentMax + idx + 1,
+                },
+                include: {
+                    note: {
+                        include: {
+                            student: true,
+                        },
+                    },
+                },
+            });
+            created.push({
+                image_id: image.imageId,
+                note_id: image.noteId,
+                image_path: image.imagePath,
+                image_url: imageUrl,
+                caption: image.caption || null,
+                sort_order: image.sortOrder,
+                created_at: image.createdAt?.toISOString(),
+            });
+        }
+        return created;
+    }
+    async reorderImages(noteId, userId, imageIds) {
+        const note = await this.prisma.cramschoolStudentMistakeNote.findUnique({
+            where: { noteId },
+        });
+        if (!note) {
+            throw new common_1.NotFoundException(`StudentMistakeNote with ID ${noteId} not found`);
+        }
+        const student = await this.prisma.cramschoolStudent.findFirst({
+            where: { userId },
+        });
+        if (!student || note.studentId !== student.studentId) {
+            throw new common_1.ForbiddenException('只能操作自己的錯題筆記');
+        }
+        const images = await this.prisma.cramschoolStudentMistakeNoteImage.findMany({
+            where: {
+                noteId,
+                imageId: { in: imageIds },
+            },
+        });
+        if (images.length !== imageIds.length) {
+            throw new common_1.BadRequestException('image_ids 包含不屬於此筆記的圖片');
+        }
+        const updates = imageIds.map((imageId, index) => this.prisma.cramschoolStudentMistakeNoteImage.update({
+            where: { imageId },
+            data: { sortOrder: index + 1 },
+        }));
+        await Promise.all(updates);
+        return { success: true };
+    }
+    toStudentMistakeNoteDto(note) {
+        return {
+            note_id: note.noteId,
+            student_id: note.studentId,
+            title: note.title,
+            subject: note.subject || null,
+            content: note.content || null,
+            created_at: note.createdAt?.toISOString(),
+            updated_at: note.updatedAt?.toISOString(),
+            is_deleted: note.isDeleted,
+            deleted_at: note.deletedAt?.toISOString() || null,
+        };
+    }
+};
+exports.StudentMistakeNotesService = StudentMistakeNotesService;
+exports.StudentMistakeNotesService = StudentMistakeNotesService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _a : Object])
+], StudentMistakeNotesService);
 
 
 /***/ }),
@@ -4279,12 +9805,203 @@ let StudentsService = class StudentsService {
             initial_password: student.initialPassword,
         };
     }
+    async getAttendanceAndLeaves(id) {
+        const student = await this.prisma.cramschoolStudent.findUnique({
+            where: { studentId: id },
+        });
+        if (!student) {
+            throw new common_1.NotFoundException(`Student with ID ${id} not found`);
+        }
+        const attendances = await this.prisma.cramschoolAttendance.findMany({
+            where: {
+                studentId: id,
+                isDeleted: false,
+            },
+            include: {
+                session: {
+                    include: {
+                        course: true,
+                    },
+                },
+                student: true,
+            },
+            orderBy: {
+                session: {
+                    sessionDate: 'desc',
+                },
+            },
+        });
+        const leaves = await this.prisma.cramschoolLeave.findMany({
+            where: {
+                studentId: id,
+                isDeleted: false,
+            },
+            include: {
+                course: true,
+                student: true,
+            },
+            orderBy: {
+                leaveDate: 'desc',
+            },
+        });
+        const attendanceData = attendances.map((a) => ({
+            attendance_id: a.attendanceId,
+            session_id: a.sessionId,
+            session_id_display: a.session?.sessionId,
+            student_id: a.studentId,
+            student_name: a.student?.name,
+            status: a.status,
+            course_name: a.session?.course?.courseName,
+            session_date: a.session?.sessionDate
+                ? a.session.sessionDate.toISOString().split('T')[0]
+                : null,
+            is_deleted: a.isDeleted,
+            deleted_at: a.deletedAt?.toISOString() || null,
+        }));
+        const leaveData = leaves.map((l) => ({
+            leave_id: l.leaveId,
+            student_id: l.studentId,
+            course_id: l.courseId,
+            leave_date: l.leaveDate.toISOString().split('T')[0],
+            reason: l.reason,
+            approval_status: l.approvalStatus,
+            course_name: l.course?.courseName,
+            student_name: l.student?.name,
+            is_deleted: l.isDeleted,
+            deleted_at: l.deletedAt?.toISOString() || null,
+        }));
+        return {
+            student_id: student.studentId,
+            student_name: student.name,
+            attendances: attendanceData,
+            leaves: leaveData,
+        };
+    }
 };
 exports.StudentsService = StudentsService;
 exports.StudentsService = StudentsService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [typeof (_a = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _a : Object])
 ], StudentsService);
+
+
+/***/ }),
+
+/***/ "./src/cramschool/services/subjects.service.ts":
+/*!*****************************************************!*\
+  !*** ./src/cramschool/services/subjects.service.ts ***!
+  \*****************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SubjectsService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
+const pagination_util_1 = __webpack_require__(/*! ../../common/utils/pagination.util */ "./src/common/utils/pagination.util.ts");
+let SubjectsService = class SubjectsService {
+    constructor(prisma) {
+        this.prisma = prisma;
+    }
+    async getSubjects(page = 1, pageSize = 10, userRole) {
+        if (userRole === 'STUDENT' || userRole === 'ACCOUNTANT') {
+            return (0, pagination_util_1.createPaginatedResponse)([], 0, page, pageSize);
+        }
+        const skip = (page - 1) * pageSize;
+        const [results, count] = await Promise.all([
+            this.prisma.cramschoolSubject.findMany({
+                skip,
+                take: pageSize,
+                orderBy: { name: 'asc' },
+            }),
+            this.prisma.cramschoolSubject.count(),
+        ]);
+        return (0, pagination_util_1.createPaginatedResponse)(results.map((s) => this.toSubjectDto(s)), count, page, pageSize);
+    }
+    async getSubject(id, userRole) {
+        if (userRole === 'STUDENT' || userRole === 'ACCOUNTANT') {
+            throw new common_1.ForbiddenException('您沒有權限查看科目');
+        }
+        const subject = await this.prisma.cramschoolSubject.findUnique({
+            where: { subjectId: id },
+        });
+        if (!subject) {
+            throw new common_1.NotFoundException(`Subject with ID ${id} not found`);
+        }
+        return this.toSubjectDto(subject);
+    }
+    async createSubject(createDto, userRole) {
+        if (userRole === 'STUDENT' || userRole === 'ACCOUNTANT') {
+            throw new common_1.ForbiddenException('您沒有權限創建科目');
+        }
+        const subject = await this.prisma.cramschoolSubject.create({
+            data: {
+                name: createDto.name,
+                code: createDto.code || null,
+                description: createDto.description || null,
+            },
+        });
+        return this.toSubjectDto(subject);
+    }
+    async updateSubject(id, updateDto, userRole) {
+        if (userRole === 'STUDENT' || userRole === 'ACCOUNTANT') {
+            throw new common_1.ForbiddenException('您沒有權限更新科目');
+        }
+        const subject = await this.prisma.cramschoolSubject.findUnique({
+            where: { subjectId: id },
+        });
+        if (!subject) {
+            throw new common_1.NotFoundException(`Subject with ID ${id} not found`);
+        }
+        const updatedSubject = await this.prisma.cramschoolSubject.update({
+            where: { subjectId: id },
+            data: {
+                name: updateDto.name,
+                code: updateDto.code,
+                description: updateDto.description,
+            },
+        });
+        return this.toSubjectDto(updatedSubject);
+    }
+    async deleteSubject(id, userRole) {
+        if (userRole === 'STUDENT' || userRole === 'ACCOUNTANT') {
+            throw new common_1.ForbiddenException('您沒有權限刪除科目');
+        }
+        const subject = await this.prisma.cramschoolSubject.findUnique({
+            where: { subjectId: id },
+        });
+        if (!subject) {
+            throw new common_1.NotFoundException(`Subject with ID ${id} not found`);
+        }
+        await this.prisma.cramschoolSubject.delete({
+            where: { subjectId: id },
+        });
+    }
+    toSubjectDto(subject) {
+        return {
+            subject_id: subject.subjectId,
+            name: subject.name,
+            code: subject.code || null,
+            description: subject.description || null,
+            created_at: subject.createdAt?.toISOString(),
+        };
+    }
+};
+exports.SubjectsService = SubjectsService;
+exports.SubjectsService = SubjectsService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _a : Object])
+], SubjectsService);
 
 
 /***/ }),
@@ -4402,6 +10119,215 @@ exports.TeachersService = TeachersService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [typeof (_a = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _a : Object])
 ], TeachersService);
+
+
+/***/ }),
+
+/***/ "./src/cramschool/services/word-importer.service.ts":
+/*!**********************************************************!*\
+  !*** ./src/cramschool/services/word-importer.service.ts ***!
+  \**********************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.WordImporterService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const mammoth = __webpack_require__(/*! mammoth */ "mammoth");
+let WordImporterService = class WordImporterService {
+    constructor() {
+        this.difficultyMap = {
+            易: 1,
+            簡單: 1,
+            Easy: 1,
+            中: 3,
+            中等: 3,
+            Medium: 3,
+            難: 5,
+            困難: 5,
+            Hard: 5,
+        };
+    }
+    async importQuestions(fileContent, filename, defaultSubjectId, defaultLevel, defaultChapter, saveImagesFunc) {
+        const errors = [];
+        const questions = [];
+        try {
+            if (!filename.endsWith('.docx') && !filename.endsWith('.doc')) {
+                throw new common_1.BadRequestException('不支援的檔案格式，請上傳 .docx 或 .doc 檔案');
+            }
+            if (filename.endsWith('.docx')) {
+                const result = await mammoth.extractRawText({ buffer: fileContent });
+                const htmlResult = await mammoth.convertToHtml({ buffer: fileContent });
+                const imageMap = {};
+                if (saveImagesFunc) {
+                    try {
+                    }
+                    catch (e) {
+                    }
+                }
+                const parsed = this.parseDocxContent(result.value, htmlResult.value, imageMap);
+                questions.push(...parsed.questions);
+                errors.push(...parsed.errors);
+            }
+            else {
+                throw new common_1.BadRequestException('.doc 格式需要額外的依賴，目前僅支援 .docx');
+            }
+            for (const q of questions) {
+                if (!q.origin) {
+                    q.origin = '';
+                }
+                if (!q.origin_detail) {
+                    q.origin_detail = '';
+                }
+            }
+            return { questions, errors };
+        }
+        catch (error) {
+            errors.push(`解析檔案失敗：${error.message}`);
+            return { questions, errors };
+        }
+    }
+    parseDocxContent(rawText, htmlContent, imageMap) {
+        const questions = [];
+        const errors = [];
+        const lines = rawText.split('\n').filter((line) => line.trim());
+        let currentQuestion = null;
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed)
+                continue;
+            const questionIdMatch = trimmed.match(/【題號】：\s*(\S+)/);
+            const questionNumberMatch = trimmed.match(/^(\d+)[\.、\)）]/);
+            if (questionIdMatch) {
+                if (currentQuestion) {
+                    questions.push(currentQuestion);
+                }
+                currentQuestion = {
+                    question_number: undefined,
+                    question_id: questionIdMatch[1],
+                    difficulty: 3,
+                    origin: '',
+                    origin_detail: '',
+                    content: '',
+                    options: [],
+                    answer: '',
+                    explanation: '',
+                };
+                this.parseQuestionHeader(trimmed, currentQuestion);
+                continue;
+            }
+            else if (questionNumberMatch) {
+                if (currentQuestion) {
+                    questions.push(currentQuestion);
+                }
+                currentQuestion = {
+                    question_number: questionNumberMatch[1],
+                    question_id: undefined,
+                    difficulty: 3,
+                    origin: '',
+                    origin_detail: '',
+                    content: '',
+                    options: [],
+                    answer: '',
+                    explanation: '',
+                };
+                continue;
+            }
+            if (currentQuestion) {
+                if (!currentQuestion.question_id) {
+                    const qIdMatch = trimmed.match(/【題號】：\s*(\S+)/);
+                    if (qIdMatch) {
+                        currentQuestion.question_id = qIdMatch[1];
+                        continue;
+                    }
+                }
+                const difficultyMatch = trimmed.match(/【難易度】：\s*(\S+)/);
+                if (difficultyMatch) {
+                    const difficultyText = difficultyMatch[1];
+                    currentQuestion.difficulty = this.difficultyMap[difficultyText] || 3;
+                    continue;
+                }
+                const originMatch = trimmed.match(/【出處】：\s*(.+)/);
+                if (originMatch) {
+                    currentQuestion.origin = originMatch[1].trim();
+                    continue;
+                }
+                const originDetailMatch = trimmed.match(/【題源】：\s*(.+)/);
+                if (originDetailMatch) {
+                    currentQuestion.origin_detail = originDetailMatch[1].trim();
+                    continue;
+                }
+                const answerMatch = trimmed.match(/《答案》\s*([A-Z])/);
+                if (answerMatch) {
+                    currentQuestion.answer = answerMatch[1];
+                    continue;
+                }
+                if (trimmed.includes('《解析》')) {
+                    const explanationText = trimmed.replace(/《解析》\s*/, '');
+                    if (explanationText) {
+                        currentQuestion.explanation = explanationText;
+                    }
+                    continue;
+                }
+                const optionMatch = trimmed.match(/^\(([A-Z])\)/);
+                if (optionMatch) {
+                    const optionLetter = optionMatch[1];
+                    const optionContent = trimmed.replace(/^\([A-Z]\)\s*/, '');
+                    currentQuestion.options.push({
+                        letter: optionLetter,
+                        content: optionContent,
+                    });
+                    continue;
+                }
+                if (!currentQuestion.content) {
+                    currentQuestion.content = trimmed;
+                }
+                else {
+                    if (currentQuestion.options.length > 0) {
+                        if (!currentQuestion.explanation) {
+                            currentQuestion.explanation = trimmed;
+                        }
+                        else {
+                            currentQuestion.explanation += '\n\n' + trimmed;
+                        }
+                    }
+                    else {
+                        currentQuestion.content += '\n' + trimmed;
+                    }
+                }
+            }
+        }
+        if (currentQuestion) {
+            questions.push(currentQuestion);
+        }
+        return { questions, errors };
+    }
+    parseQuestionHeader(line, question) {
+        const difficultyMatch = line.match(/【難易度】：\s*(\S+)/);
+        if (difficultyMatch) {
+            const difficultyText = difficultyMatch[1];
+            question.difficulty = this.difficultyMap[difficultyText] || 3;
+        }
+        const originMatch = line.match(/【出處】：\s*([^　]+)/);
+        if (originMatch) {
+            question.origin = originMatch[1].trim();
+        }
+        const originDetailMatch = line.match(/【題源】：\s*([^\*]+)/);
+        if (originDetailMatch) {
+            question.origin_detail = originDetailMatch[1].trim();
+        }
+    }
+};
+exports.WordImporterService = WordImporterService;
+exports.WordImporterService = WordImporterService = __decorate([
+    (0, common_1.Injectable)()
+], WordImporterService);
 
 
 /***/ }),
@@ -4557,6 +10483,16 @@ module.exports = require("@prisma/client");
 /***/ ((module) => {
 
 module.exports = require("bcrypt");
+
+/***/ }),
+
+/***/ "mammoth":
+/*!**************************!*\
+  !*** external "mammoth" ***!
+  \**************************/
+/***/ ((module) => {
+
+module.exports = require("mammoth");
 
 /***/ }),
 

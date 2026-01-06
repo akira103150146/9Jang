@@ -412,6 +412,120 @@ export class ResourcesService {
     });
   }
 
+  async bindToCourse(
+    id: number,
+    courseId: number,
+    action: 'add' | 'remove',
+    userId: number,
+    userRole: string,
+  ): Promise<{ message: string }> {
+    if (userRole !== 'TEACHER') {
+      throw new ForbiddenException('只有老師可以綁定教學資源到課程');
+    }
+
+    const resource = await this.prisma.cramschoolLearningResource.findUnique({
+      where: { resourceId: id },
+    });
+
+    if (!resource) {
+      throw new NotFoundException(`Resource with ID ${id} not found`);
+    }
+
+    const course = await this.prisma.cramschoolCourse.findUnique({
+      where: { courseId },
+      include: {
+        teacher: true,
+      },
+    });
+
+    if (!course) {
+      throw new NotFoundException(`Course with ID ${courseId} not found`);
+    }
+
+    // 驗證是否為自己的課程
+    const teacher = await this.prisma.cramschoolTeacher.findFirst({
+      where: { userId },
+    });
+
+    if (!teacher || course.teacherId !== teacher.teacherId) {
+      throw new ForbiddenException('只能在自己的課程下綁定資源');
+    }
+
+    if (action === 'add') {
+      // 檢查是否已經綁定
+      const existing = await this.prisma.cramschoolLearningResourceCourse.findUnique({
+        where: {
+          resourceId_courseId: {
+            resourceId: id,
+            courseId,
+          },
+        },
+      });
+
+      if (!existing) {
+        await this.prisma.cramschoolLearningResourceCourse.create({
+          data: {
+            resourceId: id,
+            courseId,
+          },
+        });
+      }
+
+      return { message: `已將資源綁定到課程 ${course.courseName}` };
+    } else if (action === 'remove') {
+      await this.prisma.cramschoolLearningResourceCourse.deleteMany({
+        where: {
+          resourceId: id,
+          courseId,
+        },
+      });
+
+      return { message: `已從課程 ${course.courseName} 解除綁定` };
+    } else {
+      throw new ForbiddenException('action 必須是 "add" 或 "remove"');
+    }
+  }
+
+  async exportResource(
+    id: number,
+    formatType: string = 'question_only',
+  ): Promise<any> {
+    const resource = await this.prisma.cramschoolLearningResource.findUnique({
+      where: { resourceId: id },
+    });
+
+    if (!resource) {
+      throw new NotFoundException(`Resource with ID ${id} not found`);
+    }
+
+    // TODO: 實現完整的匯出功能（需要遷移 resource_modes 目錄功能）
+    // 目前先返回基本結構
+    return {
+      resource_id: resource.resourceId,
+      mode: resource.mode,
+      format_type: formatType,
+      message: '匯出功能需要遷移 resource_modes 目錄後才能完整實現',
+    };
+  }
+
+  async gradeResource(id: number, submission: any): Promise<any> {
+    const resource = await this.prisma.cramschoolLearningResource.findUnique({
+      where: { resourceId: id },
+    });
+
+    if (!resource) {
+      throw new NotFoundException(`Resource with ID ${id} not found`);
+    }
+
+    // TODO: 實現完整的評分功能（需要遷移 resource_modes 目錄功能）
+    // 目前先返回基本結構
+    return {
+      resource_id: resource.resourceId,
+      mode: resource.mode,
+      message: '評分功能需要遷移 resource_modes 目錄後才能完整實現',
+    };
+  }
+
   private toResourceDto(resource: any): LearningResource {
     return {
       resource_id: resource.resourceId,

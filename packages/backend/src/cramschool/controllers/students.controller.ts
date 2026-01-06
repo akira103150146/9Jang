@@ -116,4 +116,9 @@ export class StudentsController {
   async toggleAccountStatus(@Param('id', ParseIntPipe) id: number): Promise<any> {
     return this.studentsService.toggleAccountStatus(id);
   }
+
+  @Get(':id/attendance_and_leaves')
+  async getAttendanceAndLeaves(@Param('id', ParseIntPipe) id: number): Promise<any> {
+    return this.studentsService.getAttendanceAndLeaves(id);
+  }
 }

@@ -93,4 +93,39 @@ export class ResourcesController {
     });
     return this.resourcesService.deleteResource(id, userRecord?.role || 'STUDENT');
   }
+
+  @Post(':id/bind-to-course')
+  async bindToCourse(
+    @Request() req,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { course_id: number; action: 'add' | 'remove' },
+  ): Promise<{ message: string }> {
+    const user = req.user;
+    const userRecord = await this.prisma.accountCustomUser.findUnique({
+      where: { id: user.id },
+    });
+    const userRole = userRecord?.role || '';
+
+    if (!body.course_id) {
+      throw new Error('需要提供 course_id');
+    }
+
+    return this.resourcesService.bindToCourse(id, body.course_id, body.action || 'add', user.id, userRole);
+  }
+
+  @Post(':id/export')
+  async exportResource(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { format_type?: string },
+  ): Promise<any> {
+    return this.resourcesService.exportResource(id, body.format_type || 'question_only');
+  }
+
+  @Post(':id/grade')
+  async gradeResource(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { submission: any },
+  ): Promise<any> {
+    return this.resourcesService.gradeResource(id, body.submission || {});
+  }
 }

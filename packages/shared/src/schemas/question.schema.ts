@@ -107,17 +107,6 @@ export const QuestionQuerySchema = z.object({
 export type QuestionQuery = z.infer<typeof QuestionQuerySchema>
 
 /**
- * 科目 Schema
- */
-export const SubjectSchema = z.object({
-  subject_id: z.number().int().positive(),
-  name: z.string().min(1).max(50),
-  code: z.string().max(20).nullable().optional(),
-  description: z.string().nullable().optional()
-})
-export type Subject = z.infer<typeof SubjectSchema>
-
-/**
  * 標籤 Schema
  */
 export const TagSchema = z.object({

@@ -35,3 +35,29 @@ export * from './leave.schema'
 
 // 費用
 export * from './fee.schema'
+
+// 出缺勤
+export * from './attendance.schema'
+export * from './session.schema'
+
+// 科目
+export * from './subject.schema'
+
+// 標籤和題目標籤
+export * from './hashtag.schema'
+export * from './question-tag.schema'
+
+// 學生作答
+export * from './student-answer.schema'
+
+// 錯題記錄
+export * from './error-log.schema'
+export * from './student-mistake-note.schema'
+export * from './error-log-image.schema'
+export * from './student-mistake-note-image.schema'
+
+// 訂單相關
+export * from './restaurant.schema'
+export * from './group-order.schema'
+export * from './order.schema'
+export * from './order-item.schema'

@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
@@ -264,5 +264,145 @@ export class AccountService {
       ACCOUNTANT: '會計',
     };
     return roleMap[role] || role;
+  }
+
+  async switchRole(userId: number, targetRole: string): Promise<{ message: string; temp_role: string; original_role: string }> {
+    const user = await this.prisma.accountCustomUser.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user || user.role !== 'ADMIN') {
+      throw new ForbiddenException('只有管理員可以切換角色');
+    }
+
+    const validRoles = ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'];
+    if (!validRoles.includes(targetRole)) {
+      throw new BadRequestException(`無效的角色。有效角色：${validRoles.join(', ')}`);
+    }
+
+    // TODO: 記錄操作到 audit log
+
+    return {
+      message: `已切換到 ${this.getRoleDisplay(targetRole)} 視角`,
+      temp_role: targetRole,
+      original_role: user.role,
+    };
+  }
+
+  async resetRole(userId: number): Promise<{ message: string; current_role: string }> {
+    const user = await this.prisma.accountCustomUser.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user || user.role !== 'ADMIN') {
+      throw new ForbiddenException('只有管理員可以重置角色');
+    }
+
+    // TODO: 記錄操作到 audit log
+
+    return {
+      message: `已重置回 ${this.getRoleDisplay(user.role)} 視角`,
+      current_role: user.role,
+    };
+  }
+
+  async getCurrentRole(userId: number, tempRole?: string): Promise<{
+    original_role: string;
+    original_role_display: string;
+    temp_role: string | null;
+    temp_role_display: string | null;
+    effective_role: string;
+    effective_role_display: string;
+  }> {
+    const user = await this.prisma.accountCustomUser.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const validRoles = ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'];
+    let effectiveTempRole: string | null = null;
+
+    // 驗證臨時角色是否有效（防止偽造）
+    if (tempRole && validRoles.includes(tempRole)) {
+      // 只有管理員可以使用臨時角色
+      if (user.role === 'ADMIN') {
+        effectiveTempRole = tempRole;
+      }
+    }
+
+    const originalRole = user.role;
+    const effectiveRole = effectiveTempRole || originalRole;
+
+    return {
+      original_role: originalRole,
+      original_role_display: this.getRoleDisplay(originalRole),
+      temp_role: effectiveTempRole,
+      temp_role_display: effectiveTempRole ? this.getRoleDisplay(effectiveTempRole) : null,
+      effective_role: effectiveRole,
+      effective_role_display: this.getRoleDisplay(effectiveRole),
+    };
+  }
+
+  async impersonateUser(adminUserId: number, targetUserId: number): Promise<{
+    user: User;
+    access: string;
+    refresh: string;
+    message: string;
+  }> {
+    const adminUser = await this.prisma.accountCustomUser.findUnique({
+      where: { id: adminUserId },
+    });
+
+    if (!adminUser || adminUser.role !== 'ADMIN') {
+      throw new ForbiddenException('只有管理員可以模擬其他用戶');
+    }
+
+    const targetUser = await this.prisma.accountCustomUser.findUnique({
+      where: { id: targetUserId },
+      include: {
+        customRole: {
+          include: {
+            permissions: true,
+          },
+        },
+        studentProfile: true,
+      },
+    });
+
+    if (!targetUser) {
+      throw new NotFoundException('目標用戶不存在');
+    }
+
+    // 生成目標用戶的 token
+    const payload = { sub: targetUser.id, username: targetUser.username };
+    const access = this.jwtService.sign(payload, { expiresIn: '1h' });
+    const refresh = this.jwtService.sign(payload, { expiresIn: '7d' });
+
+    // TODO: 記錄操作到 audit log
+
+    const userDto: User = {
+      id: targetUser.id,
+      username: targetUser.username,
+      email: targetUser.email,
+      first_name: targetUser.firstName || '',
+      last_name: targetUser.lastName || '',
+      role: targetUser.role as any,
+      custom_role: targetUser.customRoleId,
+      custom_role_name: targetUser.customRole?.name || null,
+      is_staff: targetUser.isStaff,
+      is_active: targetUser.isActive,
+      must_change_password: targetUser.mustChangePassword,
+      student_id: targetUser.studentProfile?.studentId || null,
+    };
+
+    return {
+      user: userDto,
+      access,
+      refresh,
+      message: `已切換為 ${targetUser.username} 身分`,
+    };
   }
 }

@@ -8,9 +8,11 @@ import {
   Delete,
   Query,
   UseGuards,
+  Request,
   ParseIntPipe,
 } from '@nestjs/common';
 import { CoursesService } from '../services/courses.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import {
   CreateCourseDto,
   UpdateCourseDto,
@@ -24,7 +26,10 @@ import { JwtAuthGuard } from '../../account/guards/jwt-auth.guard';
 @Controller('cramschool/courses')
 @UseGuards(JwtAuthGuard)
 export class CoursesController {
-  constructor(private readonly coursesService: CoursesService) {}
+  constructor(
+    private readonly coursesService: CoursesService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   @Get()
   async getCourses(
@@ -57,5 +62,22 @@ export class CoursesController {
   @Delete(':id')
   async deleteCourse(@Param('id', ParseIntPipe) id: number): Promise<void> {
     return this.coursesService.deleteCourse(id);
+  }
+
+  @Get(':id/student-status')
+  async getStudentStatus(@Param('id', ParseIntPipe) id: number): Promise<any> {
+    return this.coursesService.getStudentStatus(id);
+  }
+
+  @Get(':id/resources')
+  async getResources(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req,
+  ): Promise<any> {
+    const user = req.user;
+    const userRecord = await this.prisma.accountCustomUser.findUnique({
+      where: { id: user.id },
+    });
+    return this.coursesService.getResources(id, user.id, userRecord?.role || 'STUDENT');
   }
 }

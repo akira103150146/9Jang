@@ -138,4 +138,136 @@ export class CoursesService {
     };
     return result as Course;
   }
+
+  async getStudentStatus(id: number): Promise<any> {
+    const course = await this.prisma.cramschoolCourse.findUnique({
+      where: { courseId: id },
+      include: {
+        enrollments: {
+          where: { isDeleted: false },
+          include: {
+            student: true,
+            periods: {
+              where: { isActive: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!course) {
+      throw new NotFoundException(`Course with ID ${id} not found`);
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().split('T')[0];
+
+    // 獲取今天該課程的請假記錄
+    const todayLeaves = await this.prisma.cramschoolLeave.findMany({
+      where: {
+        courseId: id,
+        leaveDate: today,
+        isDeleted: false,
+      },
+      select: { studentId: true },
+    });
+    const todayLeaveStudentIds = new Set(todayLeaves.map((l) => l.studentId));
+
+    let presentCount = 0;
+    let leaveCount = 0;
+    let inactiveCount = 0;
+
+    // 遍歷每個報名記錄
+    for (const enrollment of course.enrollments) {
+      const studentId = enrollment.studentId;
+
+      // 檢查該學生的報名期間是否包含今天
+      let hasActivePeriod = false;
+      for (const period of enrollment.periods) {
+        const startDate = period.startDate.toISOString().split('T')[0];
+        const endDate = period.endDate
+          ? period.endDate.toISOString().split('T')[0]
+          : null;
+
+        if (startDate <= todayStr && (!endDate || endDate >= todayStr)) {
+          hasActivePeriod = true;
+          break;
+        }
+      }
+
+      // 如果沒有活躍的期間，算作暫停
+      if (!hasActivePeriod) {
+        inactiveCount++;
+        continue;
+      }
+
+      // 如果有活躍期間，檢查今天是否有請假記錄
+      if (todayLeaveStudentIds.has(studentId)) {
+        leaveCount++;
+      } else {
+        presentCount++;
+      }
+    }
+
+    return {
+      course_id: course.courseId,
+      course_name: course.courseName,
+      total_students: course.enrollments.length,
+      present_count: presentCount,
+      leave_count: leaveCount,
+      inactive_count: inactiveCount,
+    };
+  }
+
+  async getResources(id: number, userId: number, userRole: string): Promise<any> {
+    const course = await this.prisma.cramschoolCourse.findUnique({
+      where: { courseId: id },
+      include: {
+        teacher: true,
+      },
+    });
+
+    if (!course) {
+      throw new NotFoundException(`Course with ID ${id} not found`);
+    }
+
+    // 權限檢查
+    if (userRole === 'TEACHER') {
+      const teacher = await this.prisma.cramschoolTeacher.findFirst({
+        where: { userId },
+      });
+
+      if (!teacher || course.teacherId !== teacher.teacherId) {
+        throw new NotFoundException('您沒有權限查看此課程的資源');
+      }
+    } else if (userRole !== 'ADMIN') {
+      throw new NotFoundException('您沒有權限查看課程資源');
+    }
+
+    // 獲取課程綁定的所有教學資源
+    const resources = await this.prisma.cramschoolLearningResource.findMany({
+      where: {
+        courses: {
+          some: {
+            courseId: id,
+          },
+        },
+      },
+      include: {
+        courses: true,
+      },
+    });
+
+    // 轉換資源數據
+    return resources.map((r) => ({
+      resource_id: r.resourceId,
+      title: r.title,
+      mode: r.mode,
+      course_ids: r.courses?.map((c: any) => c.courseId) || [],
+      created_by: r.createdById || null,
+      created_at: r.createdAt?.toISOString() || null,
+      updated_at: r.updatedAt?.toISOString() || null,
+    }));
+  }
 }
