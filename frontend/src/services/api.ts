@@ -44,7 +44,7 @@ import {
 import { logger } from '../utils/logger'
 
 // 從環境變數獲取 API 基礎 URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
 
 /**
  * API 響應包裝類型

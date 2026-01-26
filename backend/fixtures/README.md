@@ -10,13 +10,13 @@
 
 ```bash
 # 從 JSON 文件初始化資料
-python manage.py seed_data fixtures/seed_data_example.json
+pnpm seed:data fixtures/seed_data_example.json
 
 # 預覽模式（不會實際寫入資料庫）
-python manage.py seed_data fixtures/seed_data_example.json --dry-run
+pnpm seed:data fixtures/seed_data_example.json --dry-run
 
 # 清除現有資料後再初始化（危險操作）
-python manage.py seed_data fixtures/seed_data_example.json --clear
+pnpm seed:data fixtures/seed_data_example.json --clear
 ```
 
 ## JSON 文件格式
@@ -67,6 +67,8 @@ python manage.py seed_data fixtures/seed_data_example.json --clear
 
 3. **唯一性**: `lookup_fields` 中的欄位組合應該能唯一識別一條記錄
 
+4. **密碼處理**: 對於 `account.CustomUser`，如果沒有指定 `password`，將使用 `username` 作為預設密碼
+
 ## 範例
 
 ### 創建用戶和學生
@@ -110,7 +112,7 @@ python manage.py seed_data fixtures/seed_data_example.json --clear
         "data": {
           "course_name": "七年級數學",
           "subject": "cramschool.Subject:code:MATH",
-          "teacher": "account.CustomUser:username:teacher1"
+          "teacher": "cramschool.Teacher:name:teacher1"
         }
       }
     ],
@@ -134,3 +136,17 @@ python manage.py seed_data fixtures/seed_data_example.json --clear
 - 在生產環境使用前，務必備份資料庫
 - `--clear` 選項會刪除所有現有資料，請謹慎使用
 
+## 清空資料庫
+
+如果需要清空資料庫，可以使用：
+
+```bash
+# 清空所有資料（需要確認）
+pnpm flush:db
+
+# 跳過確認，直接清空
+pnpm flush:db --noinput
+
+# 保留認證相關資料
+pnpm flush:db --keep-auth
+```

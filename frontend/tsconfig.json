@@ -28,7 +28,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@9jang/shared": ["../packages/shared/src"]
+      "@9jang/shared": ["../shared/src"]
     }
   },
   "include": [

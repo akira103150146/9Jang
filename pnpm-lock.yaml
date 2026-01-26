@@ -16,7 +16,7 @@ importers:
     dependencies:
       '@9jang/shared':
         specifier: workspace:*
-        version: link:../packages/shared
+        version: link:../shared
       '@codemirror/autocomplete':
         specifier: ^6.20.0
         version: 6.20.0
@@ -157,7 +157,7 @@ importers:
         specifier: ^3.22.4
         version: 3.25.76
 
-  packages/backend:
+  backend:
     dependencies:
       '@9jang/shared':
         specifier: workspace:*
@@ -296,7 +296,7 @@ importers:
         specifier: ^5.3.3
         version: 5.9.3
 
-  packages/shared:
+  shared:
     dependencies:
       zod:
         specifier: ^3.22.4

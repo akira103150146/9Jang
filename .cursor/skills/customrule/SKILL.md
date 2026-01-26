@@ -7,7 +7,7 @@ description: This is a new rule
 
 ## Architecture Standard
 - We are using a Monorepo structure with `pnpm workspaces`.
-- Centralized Data Source: All API schemas and types MUST reside in `packages/shared/src/schemas`.
+- Centralized Data Source: All API schemas and types MUST reside in `shared/src/schemas`.
 - Never define types locally if they represent API entities; always use `z.infer<typeof Schema>` from the shared package.
 
 ## TypeScript Best Practices

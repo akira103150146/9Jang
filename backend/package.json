@@ -29,9 +29,9 @@
     "test:db": "ts-node --project tsconfig.json src/test-db-connection.ts",
     "flush:db": "ts-node --project tsconfig.json src/scripts/flush-db.ts",
     "seed:data": "ts-node --project tsconfig.json src/scripts/seed-data.ts",
-    "docker:postgres:up": "cd ../.. && docker-compose up -d postgres",
-    "docker:postgres:down": "cd ../.. && docker-compose stop postgres",
-    "docker:postgres:logs": "cd ../.. && docker-compose logs -f postgres"
+    "docker:postgres:up": "cd .. && docker-compose up -d postgres",
+    "docker:postgres:down": "cd .. && docker-compose stop postgres",
+    "docker:postgres:logs": "cd .. && docker-compose logs -f postgres"
   },
   "dependencies": {
     "@9jang/shared": "workspace:*",
