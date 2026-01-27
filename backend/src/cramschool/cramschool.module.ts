@@ -9,13 +9,21 @@ import { QuestionsController } from './controllers/questions.controller';
 import { ResourcesController } from './controllers/resources.controller';
 import { StudentGroupsController } from './controllers/student-groups.controller';
 import { FeesController } from './controllers/fees.controller';
-import { StudentsService } from './services/students.service';
+import { StudentsService } from './services/students/students.service';
+import { StudentsPermissionService } from './services/students/students-permission.service';
+import { StudentsQueryService } from './services/students/students-query.service';
+import { StudentsFeeService } from './services/students/students-fee.service';
+import { StudentsStatsService } from './services/students/students-stats.service';
 import { TeachersService } from './services/teachers.service';
 import { CoursesService } from './services/courses.service';
 import { EnrollmentsService } from './services/enrollments.service';
 import { EnrollmentPeriodsService } from './services/enrollment-periods.service';
 import { LeavesService } from './services/leaves.service';
-import { QuestionsService } from './services/questions.service';
+import { QuestionsService } from './services/questions/questions.service';
+import { QuestionsPermissionService } from './services/questions/questions-permission.service';
+import { QuestionsQueryService } from './services/questions/questions-query.service';
+import { QuestionsExportService } from './services/questions/questions-export.service';
+import { QuestionsImportService } from './services/questions/questions-import.service';
 import { ResourcesService } from './services/resources.service';
 import { StudentGroupsService } from './services/student-groups.service';
 import { FeesService } from './services/fees.service';
@@ -84,12 +92,20 @@ import { MarkdownImporterService } from './services/markdown-importer.service';
   ],
   providers: [
     StudentsService,
+    StudentsQueryService,
+    StudentsFeeService,
+    StudentsPermissionService,
+    StudentsStatsService,
     TeachersService,
     CoursesService,
     EnrollmentsService,
     EnrollmentPeriodsService,
     LeavesService,
     QuestionsService,
+    QuestionsPermissionService,
+    QuestionsQueryService,
+    QuestionsExportService,
+    QuestionsImportService,
     ResourcesService,
     StudentGroupsService,
     FeesService,

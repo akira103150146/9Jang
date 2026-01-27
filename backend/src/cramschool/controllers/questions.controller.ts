@@ -15,7 +15,7 @@ import {
   UploadedFiles,
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor, AnyFilesInterceptor } from '@nestjs/platform-express';
-import { QuestionsService } from '../services/questions.service';
+import { QuestionsService } from '../services/questions/questions.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   CreateQuestionDto,

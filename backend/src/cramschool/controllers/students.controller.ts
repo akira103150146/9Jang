@@ -11,7 +11,7 @@ import {
   Request,
   ParseIntPipe,
 } from '@nestjs/common';
-import { StudentsService } from '../services/students.service';
+import { StudentsService } from '../services/students/students.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   CreateStudentDto,
