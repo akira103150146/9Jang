@@ -5,6 +5,7 @@
 
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../../../prisma/prisma.service'
+import type { ExportResult, QuestionOption } from '../../types/question-export.types'
 
 @Injectable()
 export class QuestionsExportService {
@@ -13,7 +14,7 @@ export class QuestionsExportService {
   /**
    * 匯出為 LaTeX 格式
    */
-  async exportToLatex(id: number): Promise<any> {
+  async exportToLatex(id: number): Promise<ExportResult> {
     const question = await this.prisma.cramschoolQuestionBank.findUnique({
       where: { questionId: id },
       include: {
@@ -61,7 +62,7 @@ export class QuestionsExportService {
       latex += '\\begin{enumerate}\n'
       const options = typeof question.options === 'object' ? question.options : JSON.parse(String(question.options))
       if (Array.isArray(options)) {
-        options.forEach((option: any) => {
+        options.forEach((option: QuestionOption | string) => {
           const optionText = typeof option === 'object' ? (option.text || option.label || '') : String(option)
           latex += `  \\item ${this.convertToLatex(optionText)}\n`
         })
@@ -98,7 +99,7 @@ export class QuestionsExportService {
   /**
    * 匯出為 Markdown 格式
    */
-  async exportToMarkdown(id: number): Promise<any> {
+  async exportToMarkdown(id: number): Promise<ExportResult> {
     const question = await this.prisma.cramschoolQuestionBank.findUnique({
       where: { questionId: id },
       include: {
@@ -142,7 +143,7 @@ export class QuestionsExportService {
       markdown += '## 選項\n\n'
       const options = typeof question.options === 'object' ? question.options : JSON.parse(String(question.options))
       if (Array.isArray(options)) {
-        options.forEach((option: any, index: number) => {
+        options.forEach((option: QuestionOption | string, index: number) => {
           const letter = String.fromCharCode(65 + index) // A, B, C, D...
           const optionText = typeof option === 'object' ? (option.text || option.label || '') : String(option)
           markdown += `${letter}. ${optionText}\n`

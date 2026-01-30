@@ -81,8 +81,10 @@ import ImagePreviewModal from './question-list/ImagePreviewModal.vue'
 import { useQuestionList, type QuestionWithExtras } from '../composables/useQuestionList'
 import { useQuestionPreview } from '../composables/question-list/useQuestionPreview'
 import { useImageModal } from '../composables/question-list/useImageModal'
+import { useToast } from '../composables/useToast'
 
 const router = useRouter()
+const toast = useToast()
 
 // 使用 composable
 const {
@@ -125,10 +127,11 @@ const deleteQuestion = async (id: number): Promise<void> => {
   if (!confirm('確定要刪除此題目嗎？此操作無法復原。')) return
   try {
     await questionBankAPI.delete(id)
+    toast.success('刪除成功')
     fetchQuestions()
   } catch (error) {
     console.error('刪除失敗：', error)
-    alert('刪除失敗')
+    toast.error('刪除失敗')
   }
 }
 

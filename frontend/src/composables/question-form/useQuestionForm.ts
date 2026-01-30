@@ -6,16 +6,18 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { questionBankAPI } from '@/services/api'
+import type { JSONContent } from '@tiptap/core'
+import { useToast } from '@/composables/useToast'
 
 export interface QuestionFormData {
   subject: number | string
   level: string
   chapter: string
-  content: any
+  content: JSONContent
   question_type: string
   options: string[]
-  correct_answer: any
-  solution_content: any
+  correct_answer: JSONContent
+  solution_content: JSONContent
   difficulty: number
   question_number: string
   origin: string
@@ -27,6 +29,7 @@ export interface QuestionFormData {
 export function useQuestionForm() {
   const router = useRouter()
   const route = useRoute()
+  const toast = useToast()
 
   const formData = ref<QuestionFormData>({
     subject: '',
@@ -51,9 +54,9 @@ export function useQuestionForm() {
   const isQuestionLoaded = ref(false)
 
   // 提取 Tiptap JSON 中的純文字
-  const extractTextFromTiptapJSON = (json: any): string => {
+  const extractTextFromTiptapJSON = (json: JSONContent): string => {
     if (!json || typeof json !== 'object') return ''
-    if (json.type === 'text') return json.text || ''
+    if (json.type === 'text' && json.text) return json.text
     if (json.content && Array.isArray(json.content)) {
       return json.content.map(extractTextFromTiptapJSON).join('')
     }
@@ -63,27 +66,27 @@ export function useQuestionForm() {
   // 驗證表單
   const validateForm = (): boolean => {
     if (!formData.value.subject) {
-      alert('請選擇科目')
+      toast.error('請選擇科目')
       return false
     }
     if (!formData.value.level) {
-      alert('請選擇年級')
+      toast.error('請選擇年級')
       return false
     }
     if (!formData.value.chapter || !formData.value.chapter.trim()) {
-      alert('請輸入章節')
+      toast.error('請輸入章節')
       return false
     }
 
     const contentText = extractTextFromTiptapJSON(formData.value.content)
     if (!contentText || !contentText.trim()) {
-      alert('請輸入題目內容')
+      toast.error('請輸入題目內容')
       return false
     }
 
     const answerText = extractTextFromTiptapJSON(formData.value.correct_answer)
     if (!answerText || !answerText.trim()) {
-      alert('請輸入正確答案')
+      toast.error('請輸入正確答案')
       return false
     }
 
@@ -117,17 +120,22 @@ export function useQuestionForm() {
         await questionBankAPI.create(data)
       }
       
-      alert('儲存成功！')
+      toast.success('儲存成功！')
       goBack()
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('儲存題目失敗：', error)
-      if (error.response?.data) {
-        const errorMsg = typeof error.response.data === 'string' 
-          ? error.response.data 
-          : JSON.stringify(error.response.data)
-        alert(`儲存失敗：${errorMsg}`)
+      if (error && typeof error === 'object' && 'response' in error) {
+        const errorResponse = error as { response?: { data?: unknown } }
+        if (errorResponse.response?.data) {
+          const errorMsg = typeof errorResponse.response.data === 'string' 
+            ? errorResponse.response.data 
+            : JSON.stringify(errorResponse.response.data)
+          toast.error(`儲存失敗：${errorMsg}`)
+        } else {
+          toast.error('儲存失敗，請稍後再試')
+        }
       } else {
-        alert('儲存失敗，請稍後再試')
+        toast.error('儲存失敗，請稍後再試')
       }
     } finally {
       saving.value = false
@@ -173,7 +181,7 @@ export function useQuestionForm() {
       }
     } catch (error) {
       console.error('載入題目失敗：', error)
-      alert('載入題目失敗')
+      toast.error('載入題目失敗')
       goBack()
     }
   }

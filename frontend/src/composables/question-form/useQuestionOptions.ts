@@ -5,14 +5,16 @@
 
 import { ref, watch } from 'vue'
 import type { Ref } from 'vue'
+import type { JSONContent } from '@tiptap/core'
+import type { QuestionFormData } from './useQuestionForm'
 
 export function useQuestionOptions(
-  formData: Ref<any>,
+  formData: Ref<QuestionFormData>,
   isAutoUpdating: Ref<boolean>,
   isQuestionLoaded: Ref<boolean>
 ) {
   // 從題目內容中提取選項
-  const extractOptionsFromContent = (content: any): string[] => {
+  const extractOptionsFromContent = (content: JSONContent): string[] => {
     if (!content || typeof content !== 'object') return []
     
     const text = extractTextFromTiptapJSON(content)
@@ -39,9 +41,9 @@ export function useQuestionOptions(
   }
 
   // 提取 Tiptap JSON 中的純文字
-  const extractTextFromTiptapJSON = (json: any): string => {
+  const extractTextFromTiptapJSON = (json: JSONContent): string => {
     if (!json || typeof json !== 'object') return ''
-    if (json.type === 'text') return json.text || ''
+    if (json.type === 'text' && json.text) return json.text
     if (json.content && Array.isArray(json.content)) {
       return json.content.map(extractTextFromTiptapJSON).join('')
     }
@@ -49,7 +51,7 @@ export function useQuestionOptions(
   }
 
   // 從答案中檢測題型（單選/多選）
-  const detectAnswerType = (answer: any): string => {
+  const detectAnswerType = (answer: JSONContent): string => {
     const answerText = extractTextFromTiptapJSON(answer)
     
     // 檢測是否包含多個選項（如 "AB", "A,B", "A、B" 等）

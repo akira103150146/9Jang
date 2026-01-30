@@ -17,6 +17,7 @@ import { feeRoutes } from './routes/fee.routes'
 import { commonRoutes } from './routes/common.routes'
 import { getCurrentUser } from './guards/auth.guard'
 import { getRoleBasedRouteFilter, checkPagePermission } from './guards/permission.guard'
+import { useToast } from '@/composables/useToast'
 
 /**
  * 路由元信息類型
@@ -57,6 +58,8 @@ const router: Router = createRouter({
 
 // 路由守衛：檢查權限
 router.beforeEach(async (to, from, next) => {
+  const toast = useToast()
+  
   // 登入頁面不需要認證
   if (to.name === 'login') {
     // 如果已經登入，跳轉到首頁
@@ -96,7 +99,7 @@ router.beforeEach(async (to, from, next) => {
   // 檢查是否需要管理員權限
   if (to.meta.requiresAdmin) {
     if (effectiveRole !== 'ADMIN') {
-      alert('您沒有權限訪問此頁面')
+      toast.warning('您沒有權限訪問此頁面')
       next('/')
       return
     }
@@ -105,7 +108,7 @@ router.beforeEach(async (to, from, next) => {
   // 檢查允許的角色
   if (to.meta.allowedRoles && to.meta.allowedRoles.length > 0) {
     if (!to.meta.allowedRoles.includes(effectiveRole)) {
-      alert('您沒有權限訪問此頁面')
+      toast.warning('您沒有權限訪問此頁面')
       next('/')
       return
     }
@@ -119,14 +122,14 @@ router.beforeEach(async (to, from, next) => {
     const teacherOnlyResourcePaths = ['/resources/new', '/resources/edit']
 
     if (teacherOnlyPaths.some((path) => to.path.startsWith(path))) {
-      alert('管理員需要先切換到老師身分才能訪問此功能')
+      toast.info('管理員需要先切換到老師身分才能訪問此功能')
       next('/')
       return
     }
 
     // 檢查資源相關路徑（允許查看，但不允許新增和編輯）
     if (teacherOnlyResourcePaths.some((path) => to.path.startsWith(path))) {
-      alert('管理員需要先切換到老師身分才能編輯資源')
+      toast.info('管理員需要先切換到老師身分才能編輯資源')
       next('/')
       return
     }
@@ -141,7 +144,7 @@ router.beforeEach(async (to, from, next) => {
       return
     }
 
-    alert('您沒有權限訪問此頁面')
+    toast.warning('您沒有權限訪問此頁面')
     next('/')
     return
   }
@@ -157,7 +160,7 @@ router.beforeEach(async (to, from, next) => {
     if (effectiveRole !== 'ADMIN') {
       const hasPermission = await checkPagePermission(user, to.path)
       if (!hasPermission) {
-        alert('您沒有權限訪問此頁面 (Page Permission)')
+        toast.warning('您沒有權限訪問此頁面')
         next('/')
         return
       }

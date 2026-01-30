@@ -16,6 +16,16 @@ import { StudentsQueryService } from './students-query.service';
 import { StudentsFeeService } from './students-fee.service';
 import { StudentsPermissionService } from './students-permission.service';
 import { StudentsStatsService } from './students-stats.service';
+import type { 
+  StudentGroup, 
+  Enrollment,
+  TuitionStatus,
+  AccountStatus,
+  TuitionGenerationResult,
+  BatchTuitionResult,
+  PasswordResetResult,
+  AttendanceAndLeaves
+} from '../../types/student.types';
 
 @Injectable()
 export class StudentsService {
@@ -83,13 +93,13 @@ export class StudentsService {
         return {
           ...this.toStudentDto(student),
           ...stats,
-          student_groups: student.studentGroups?.map((sg: any) => ({
+          student_groups: student.studentGroups?.map((sg: StudentGroup) => ({
             group_id: sg.group.groupId,
             name: sg.group.name,
             description: sg.group.description,
             group_type: sg.group.groupType,
           })) || [],
-          enrollments: student.enrollments.map((e: any) => ({
+          enrollments: student.enrollments.map((e: Enrollment) => ({
             enrollment_id: e.enrollmentId,
             course_id: e.courseId,
             course_name: e.course.courseName,

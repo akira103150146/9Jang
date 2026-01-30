@@ -6,13 +6,14 @@
 import { ref } from 'vue'
 import type { Ref } from 'vue'
 import { questionBankAPI } from '@/services/api'
+import type { QuestionFormData } from './useQuestionForm'
 
 export interface ChapterSuggestion {
   chapter: string
   count: number
 }
 
-export function useChapterSearch(formData: Ref<any>) {
+export function useChapterSearch(formData: Ref<QuestionFormData>) {
   const chapterSuggestions = ref<ChapterSuggestion[]>([])
   const showChapterSuggestions = ref(false)
   let searchChapterTimeout: ReturnType<typeof setTimeout> | null = null

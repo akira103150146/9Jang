@@ -7,6 +7,7 @@ import { Injectable, BadRequestException } from '@nestjs/common'
 import { PrismaService } from '../../../prisma/prisma.service'
 import { WordImporterService } from '../word-importer.service'
 import { MarkdownImporterService } from '../markdown-importer.service'
+import type { ImportResult, PreviewResult } from '../../types/question-import.types'
 
 @Injectable()
 export class QuestionsImportService {
@@ -24,7 +25,7 @@ export class QuestionsImportService {
     subjectId: number,
     level: string,
     chapter: string,
-  ): Promise<any> {
+  ): Promise<PreviewResult> {
     if (!file) {
       throw new BadRequestException('No file uploaded')
     }
@@ -57,7 +58,7 @@ export class QuestionsImportService {
     userId: number,
     userRole?: string,
     difficulty?: string | null,
-  ): Promise<any> {
+  ): Promise<ImportResult> {
     if (!file) {
       throw new BadRequestException('No file uploaded')
     }
@@ -114,7 +115,7 @@ export class QuestionsImportService {
     subjectId: number,
     level: string,
     chapter: string,
-  ): Promise<any> {
+  ): Promise<PreviewResult> {
     const content = markdownFile.buffer.toString('utf-8')
 
     if (!content || content.trim().length === 0) {
@@ -154,7 +155,7 @@ export class QuestionsImportService {
     chapter: string,
     userId: number,
     userRole?: string,
-  ): Promise<any> {
+  ): Promise<ImportResult> {
     const content = markdownFile.buffer.toString('utf-8')
 
     if (!content || content.trim().length === 0) {

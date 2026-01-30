@@ -24,6 +24,14 @@ import {
 } from '@9jang/shared';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { JwtAuthGuard } from '../../account/guards/jwt-auth.guard';
+import type { 
+  TuitionStatus, 
+  AccountStatus, 
+  TuitionGenerationResult,
+  BatchTuitionResult,
+  PasswordResetResult,
+  AttendanceAndLeaves
+} from '../types/student.types';
 
 @Controller('cramschool/students')
 @UseGuards(JwtAuthGuard)
@@ -83,7 +91,7 @@ export class StudentsController {
   }
 
   @Get(':id/tuition_status')
-  async getTuitionStatus(@Param('id', ParseIntPipe) id: number): Promise<any> {
+  async getTuitionStatus(@Param('id', ParseIntPipe) id: number): Promise<TuitionStatus> {
     return this.studentsService.getTuitionStatus(id);
   }
 
@@ -91,14 +99,14 @@ export class StudentsController {
   async generateTuition(
     @Param('id', ParseIntPipe) id: number,
     @Body() data: { year: number; month: number; enrollment_id: number; weeks: number },
-  ): Promise<any> {
+  ): Promise<TuitionGenerationResult> {
     return this.studentsService.generateTuition(id, data);
   }
 
   @Post('batch-generate-tuitions')
   async batchGenerateTuitions(
     @Body() data: { student_ids?: number[]; weeks?: number },
-  ): Promise<any> {
+  ): Promise<BatchTuitionResult> {
     const studentIds = data.student_ids || [];
     const weeks = data.weeks || 4;
     return this.studentsService.batchGenerateTuitions(studentIds, weeks);
@@ -108,17 +116,17 @@ export class StudentsController {
   async resetPassword(
     @Param('id', ParseIntPipe) id: number,
     @Body() data: { password: string },
-  ): Promise<any> {
+  ): Promise<PasswordResetResult> {
     return this.studentsService.resetPassword(id, data.password);
   }
 
   @Post(':id/toggle-account-status')
-  async toggleAccountStatus(@Param('id', ParseIntPipe) id: number): Promise<any> {
+  async toggleAccountStatus(@Param('id', ParseIntPipe) id: number): Promise<AccountStatus> {
     return this.studentsService.toggleAccountStatus(id);
   }
 
   @Get(':id/attendance_and_leaves')
-  async getAttendanceAndLeaves(@Param('id', ParseIntPipe) id: number): Promise<any> {
+  async getAttendanceAndLeaves(@Param('id', ParseIntPipe) id: number): Promise<AttendanceAndLeaves> {
     return this.studentsService.getAttendanceAndLeaves(id);
   }
 }

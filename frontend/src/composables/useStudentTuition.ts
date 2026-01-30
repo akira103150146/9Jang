@@ -2,6 +2,7 @@ import { ref, computed, type Ref } from 'vue'
 import { studentAPI } from '../services/api'
 import { formatAmount } from '../utils/studentFormatters'
 import type { NormalizedStudent } from '../utils/studentUtils'
+import { useToast } from './useToast'
 
 /**
  * 學費狀態項目類型
@@ -27,6 +28,7 @@ export function useStudentTuition(
   fetchStudents: (queryParams?: string) => Promise<void>,
   canSeeAccountingFeatures: Ref<boolean>
 ) {
+  const toast = useToast()
   const showTuitionModal = ref(false)
   const tuitionStatus = ref<TuitionStatusItem[]>([])
   const loadingTuition = ref(false)
@@ -60,12 +62,12 @@ export function useStudentTuition(
 
       // 如果沒有未生成的項目，顯示提示並關閉模態框
       if (tuitionStatus.value.length === 0) {
-        alert('該學生沒有需要生成的學費，請在費用明細頁面查看已生成的學費')
+        toast.info('該學生沒有需要生成的學費，請在費用明細頁面查看已生成的學費')
         closeTuitionModal()
       }
     } catch (error) {
       console.error('獲取學費狀態失敗：', error)
-      alert('獲取學費狀態失敗')
+      toast.error('獲取學費狀態失敗')
       tuitionStatus.value = []
     } finally {
       loadingTuition.value = false
@@ -100,7 +102,7 @@ export function useStudentTuition(
    */
   const generateAllTuitions = async (): Promise<void> => {
     if (!hasSelectedTuitions.value) {
-      alert('請至少選擇一個項目')
+      toast.warning('請至少選擇一個項目')
       return
     }
 
@@ -134,15 +136,15 @@ export function useStudentTuition(
       }
 
       if (failCount === 0) {
-        alert(`成功生成 ${successCount} 項學費！`)
+        toast.success(`成功生成 ${successCount} 項學費！`)
         closeTuitionModal()
         await fetchStudents() // 刷新學生列表
       } else {
-        alert(`成功生成 ${successCount} 項，失敗 ${failCount} 項`)
+        toast.warning(`成功生成 ${successCount} 項，失敗 ${failCount} 項`)
       }
     } catch (error) {
       console.error('批量生成學費失敗：', error)
-      alert('批量生成學費時發生錯誤')
+      toast.error('批量生成學費時發生錯誤')
     } finally {
       savingTuitions.value = false
     }
@@ -155,7 +157,7 @@ export function useStudentTuition(
     const studentsNeedingTuition = studentsWithTuitionNeeded.value
 
     if (studentsNeedingTuition.length === 0) {
-      alert('目前沒有需要生成學費的學生')
+      toast.info('目前沒有需要生成學費的學生')
       return
     }
 
@@ -193,14 +195,14 @@ export function useStudentTuition(
         message += `\n\n有 ${result.errors.length} 個錯誤，請查看控制台詳情`
       }
 
-      alert(message)
+      toast.success(message)
 
       // 刷新學生列表以更新「需要生成學費」的數量和費用統計
       // 添加時間戳確保強制刷新
       await fetchStudents(`?t=${Date.now()}`)
     } catch (error) {
       console.error('批次生成學費失敗：', error)
-      alert('批次生成學費時發生錯誤，請稍後再試')
+      toast.error('批次生成學費時發生錯誤，請稍後再試')
     } finally {
       batchGeneratingTuitions.value = false
     }

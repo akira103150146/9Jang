@@ -37,6 +37,9 @@
       @success="handlePasswordChangeSuccess"
     />
   </div>
+  
+  <!-- Toast 通知容器 -->
+  <Toast />
 </template>
 
 <script setup lang="ts">
@@ -44,6 +47,7 @@ import { computed, ref, watch, onMounted, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Sidebar from './components/Sidebar.vue'
 import ChangePasswordModal from './components/ChangePasswordModal.vue'
+import Toast from './components/Toast.vue'
 import { authAPI } from './services/api'
 
 const sidebarOpen: Ref<boolean> = ref(false)
