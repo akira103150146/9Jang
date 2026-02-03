@@ -213,37 +213,35 @@ export function useStudentTags(
   /**
    * 為學生添加標籤
    */
-  const addTagToStudent = async (tag: Tag): Promise<void> => {
-    if (!selectedStudentForTag.value) return
+  const addTagToStudent = async (tag: Tag, student?: NormalizedStudent): Promise<void> => {
+    // 優先使用傳入的 student 參數，否則使用內部狀態
+    const targetStudent = student || selectedStudentForTag.value;
+    if (!targetStudent) return
 
     addingTagToStudent.value = true
     try {
-      await studentGroupAPI.addStudents(tag.group_id, [selectedStudentForTag.value.id])
+      await studentGroupAPI.addStudents(tag.group_id, [targetStudent.id])
       alert('標籤添加成功')
 
       // 獲取該學生的最新數據（部分更新）
       try {
-        const response = await studentAPI.getById(selectedStudentForTag.value.id)
+        const response = await studentAPI.getById(targetStudent.id)
         const updatedStudentData = normalizeStudent(response.data)
 
-        updateStudent(selectedStudentForTag.value.id, updatedStudentData)
-        Object.assign(selectedStudentForTag.value, updatedStudentData)
+        updateStudent(targetStudent.id, updatedStudentData)
+        if (selectedStudentForTag.value && selectedStudentForTag.value.id === targetStudent.id) {
+          Object.assign(selectedStudentForTag.value, updatedStudentData)
+        }
       } catch (fetchError) {
         console.error('獲取學生最新數據失敗，嘗試刷新整個列表:', fetchError)
         const queryString = new URLSearchParams(route.query).toString()
         await fetchStudents(queryString)
-        const updatedStudent = students.value.find(
-          (s) => s.id === selectedStudentForTag.value!.id
-        )
-        if (updatedStudent) {
-          selectedStudentForTag.value = updatedStudent
-        }
       }
 
       closeAddTagModal()
     } catch (error: unknown) {
       console.error('添加標籤失敗:', error)
-      const err = error as { response?: { data?: { detail?: string } } }
+      const err = error as { response?: { data?: { detail?: string }; status?: number } }
       const errorMsg = err.response?.data?.detail || '添加標籤失敗'
       alert(`添加標籤失敗：${errorMsg}`)
     } finally {

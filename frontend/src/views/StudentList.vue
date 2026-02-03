@@ -144,7 +144,9 @@
       @close="closeAddTagModal"
       @add="(tagId) => {
         const tag = availableTags.find(t => t.group_id === tagId)
-        if (tag) addTagToStudent(tag)
+        if (tag && selectedStudentForTag) {
+          addTagToStudent(tag, selectedStudentForTag);
+        }
       }"
       @open-tag-manager="() => {
         closeAddTagModal()
