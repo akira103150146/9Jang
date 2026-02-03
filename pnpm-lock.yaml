@@ -12,151 +12,6 @@ importers:
         specifier: ^5.3.3
         version: 5.9.3
 
-  frontend:
-    dependencies:
-      '@9jang/shared':
-        specifier: workspace:*
-        version: link:../shared
-      '@codemirror/autocomplete':
-        specifier: ^6.20.0
-        version: 6.20.0
-      '@codemirror/commands':
-        specifier: ^6.10.0
-        version: 6.10.1
-      '@codemirror/gutter':
-        specifier: ^0.19.9
-        version: 0.19.9
-      '@codemirror/lang-cpp':
-        specifier: ^6.0.2
-        version: 6.0.3
-      '@codemirror/lang-json':
-        specifier: ^6.0.2
-        version: 6.0.2
-      '@codemirror/lang-markdown':
-        specifier: ^6.5.0
-        version: 6.5.0
-      '@codemirror/lang-python':
-        specifier: ^6.1.1
-        version: 6.2.1
-      '@codemirror/language':
-        specifier: ^6.11.3
-        version: 6.12.1
-      '@codemirror/state':
-        specifier: ^6.5.2
-        version: 6.5.3
-      '@codemirror/theme-one-dark':
-        specifier: ^6.1.3
-        version: 6.1.3
-      '@codemirror/view':
-        specifier: ^6.39.2
-        version: 6.39.8
-      '@tiptap/core':
-        specifier: ^2.1.13
-        version: 2.27.1(@tiptap/pm@2.27.1)
-      '@tiptap/extension-code-block':
-        specifier: ^2.1.13
-        version: 2.27.1(@tiptap/core@2.27.1(@tiptap/pm@2.27.1))(@tiptap/pm@2.27.1)
-      '@tiptap/extension-image':
-        specifier: ^2.1.13
-        version: 2.27.1(@tiptap/core@2.27.1(@tiptap/pm@2.27.1))
-      '@tiptap/extension-placeholder':
-        specifier: ^3.13.0
-        version: 3.14.0(@tiptap/extensions@3.14.0(@tiptap/core@2.27.1(@tiptap/pm@2.27.1))(@tiptap/pm@2.27.1))
-      '@tiptap/pm':
-        specifier: ^2.1.13
-        version: 2.27.1
-      '@tiptap/starter-kit':
-        specifier: ^2.1.13
-        version: 2.27.1
-      '@tiptap/suggestion':
-        specifier: ^3.13.0
-        version: 3.14.0(@tiptap/core@2.27.1(@tiptap/pm@2.27.1))(@tiptap/pm@2.27.1)
-      '@tiptap/vue-3':
-        specifier: ^2.1.13
-        version: 2.27.1(@tiptap/core@2.27.1(@tiptap/pm@2.27.1))(@tiptap/pm@2.27.1)(vue@3.5.26(typescript@5.9.3))
-      axios:
-        specifier: ^1.6.7
-        version: 1.13.2
-      chart.js:
-        specifier: ^4.5.1
-        version: 4.5.1
-      codemirror:
-        specifier: ^6.0.2
-        version: 6.0.2
-      codemirror-lang-latex:
-        specifier: ^0.2.0
-        version: 0.2.0(@codemirror/autocomplete@6.20.0)(@codemirror/language@6.12.1)(@codemirror/lint@6.9.2)(@codemirror/state@6.5.3)(@codemirror/view@6.39.8)(@lezer/common@1.5.0)(@lezer/generator@1.8.0)(@lezer/highlight@1.2.3)(@lezer/lr@1.4.5)
-      html2pdf.js:
-        specifier: ^0.12.1
-        version: 0.12.1
-      jsxgraph:
-        specifier: ^1.7.0
-        version: 1.12.2
-      katex:
-        specifier: ^0.16.27
-        version: 0.16.27
-      markdown-it:
-        specifier: ^14.1.0
-        version: 14.1.0
-      mathlive:
-        specifier: ^0.95.0
-        version: 0.95.5
-      three:
-        specifier: ^0.160.0
-        version: 0.160.1
-      tippy.js:
-        specifier: ^6.3.7
-        version: 6.3.7
-      vue:
-        specifier: ^3.4.21
-        version: 3.5.26(typescript@5.9.3)
-      vue-chartjs:
-        specifier: ^5.3.3
-        version: 5.3.3(chart.js@4.5.1)(vue@3.5.26(typescript@5.9.3))
-      vue-router:
-        specifier: ^4.3.0
-        version: 4.6.4(vue@3.5.26(typescript@5.9.3))
-    devDependencies:
-      '@types/node':
-        specifier: ^20.11.24
-        version: 20.19.27
-      '@vitejs/plugin-vue':
-        specifier: ^5.0.4
-        version: 5.2.4(vite@5.4.21(@types/node@20.19.27)(terser@5.44.1))(vue@3.5.26(typescript@5.9.3))
-      '@vitest/ui':
-        specifier: ^1.6.0
-        version: 1.6.1(vitest@1.6.1)
-      '@vue/test-utils':
-        specifier: ^2.4.6
-        version: 2.4.6
-      autoprefixer:
-        specifier: ^10.4.17
-        version: 10.4.23(postcss@8.5.6)
-      jsdom:
-        specifier: ^22.1.0
-        version: 22.1.0
-      postcss:
-        specifier: ^8.4.35
-        version: 8.5.6
-      tailwindcss:
-        specifier: ^3.4.1
-        version: 3.4.19
-      typescript:
-        specifier: ^5.3.3
-        version: 5.9.3
-      vite:
-        specifier: ^5.1.4
-        version: 5.4.21(@types/node@20.19.27)(terser@5.44.1)
-      vitest:
-        specifier: ^1.6.0
-        version: 1.6.1(@types/node@20.19.27)(@vitest/ui@1.6.1)(jsdom@22.1.0)(terser@5.44.1)
-      vue-tsc:
-        specifier: ^2.0.6
-        version: 2.2.12(typescript@5.9.3)
-      zod:
-        specifier: ^3.22.4
-        version: 3.25.76
-
   backend:
     dependencies:
       '@9jang/shared':
@@ -292,19 +147,154 @@ importers:
       tsconfig-paths:
         specifier: ^4.2.0
         version: 4.2.0
-      typescript:
+
+  frontend:
+    dependencies:
+      '@9jang/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@codemirror/autocomplete':
+        specifier: ^6.20.0
+        version: 6.20.0
+      '@codemirror/commands':
+        specifier: ^6.10.0
+        version: 6.10.1
+      '@codemirror/gutter':
+        specifier: ^0.19.9
+        version: 0.19.9
+      '@codemirror/lang-cpp':
+        specifier: ^6.0.2
+        version: 6.0.3
+      '@codemirror/lang-json':
+        specifier: ^6.0.2
+        version: 6.0.2
+      '@codemirror/lang-markdown':
+        specifier: ^6.5.0
+        version: 6.5.0
+      '@codemirror/lang-python':
+        specifier: ^6.1.1
+        version: 6.2.1
+      '@codemirror/language':
+        specifier: ^6.11.3
+        version: 6.12.1
+      '@codemirror/state':
+        specifier: ^6.5.2
+        version: 6.5.3
+      '@codemirror/theme-one-dark':
+        specifier: ^6.1.3
+        version: 6.1.3
+      '@codemirror/view':
+        specifier: ^6.39.2
+        version: 6.39.8
+      '@tiptap/core':
+        specifier: ^2.1.13
+        version: 2.27.1(@tiptap/pm@2.27.1)
+      '@tiptap/extension-code-block':
+        specifier: ^2.1.13
+        version: 2.27.1(@tiptap/core@2.27.1(@tiptap/pm@2.27.1))(@tiptap/pm@2.27.1)
+      '@tiptap/extension-image':
+        specifier: ^2.1.13
+        version: 2.27.1(@tiptap/core@2.27.1(@tiptap/pm@2.27.1))
+      '@tiptap/extension-placeholder':
+        specifier: ^3.13.0
+        version: 3.14.0(@tiptap/extensions@3.14.0(@tiptap/core@2.27.1(@tiptap/pm@2.27.1))(@tiptap/pm@2.27.1))
+      '@tiptap/pm':
+        specifier: ^2.1.13
+        version: 2.27.1
+      '@tiptap/starter-kit':
+        specifier: ^2.1.13
+        version: 2.27.1
+      '@tiptap/suggestion':
+        specifier: ^3.13.0
+        version: 3.14.0(@tiptap/core@2.27.1(@tiptap/pm@2.27.1))(@tiptap/pm@2.27.1)
+      '@tiptap/vue-3':
+        specifier: ^2.1.13
+        version: 2.27.1(@tiptap/core@2.27.1(@tiptap/pm@2.27.1))(@tiptap/pm@2.27.1)(vue@3.5.26(typescript@5.9.3))
+      axios:
+        specifier: ^1.6.7
+        version: 1.13.2
+      chart.js:
+        specifier: ^4.5.1
+        version: 4.5.1
+      codemirror:
+        specifier: ^6.0.2
+        version: 6.0.2
+      codemirror-lang-latex:
+        specifier: ^0.2.0
+        version: 0.2.0(@codemirror/autocomplete@6.20.0)(@codemirror/language@6.12.1)(@codemirror/lint@6.9.2)(@codemirror/state@6.5.3)(@codemirror/view@6.39.8)(@lezer/common@1.5.0)(@lezer/generator@1.8.0)(@lezer/highlight@1.2.3)(@lezer/lr@1.4.5)
+      html2pdf.js:
+        specifier: ^0.12.1
+        version: 0.12.1
+      jsxgraph:
+        specifier: ^1.7.0
+        version: 1.12.2
+      katex:
+        specifier: ^0.16.27
+        version: 0.16.27
+      markdown-it:
+        specifier: ^14.1.0
+        version: 14.1.0
+      mathlive:
+        specifier: ^0.95.0
+        version: 0.95.5
+      three:
+        specifier: ^0.160.0
+        version: 0.160.1
+      tippy.js:
+        specifier: ^6.3.7
+        version: 6.3.7
+      vue:
+        specifier: ^3.4.21
+        version: 3.5.26(typescript@5.9.3)
+      vue-chartjs:
         specifier: ^5.3.3
-        version: 5.9.3
+        version: 5.3.3(chart.js@4.5.1)(vue@3.5.26(typescript@5.9.3))
+      vue-router:
+        specifier: ^4.3.0
+        version: 4.6.4(vue@3.5.26(typescript@5.9.3))
+    devDependencies:
+      '@types/node':
+        specifier: ^20.11.24
+        version: 20.19.27
+      '@vitejs/plugin-vue':
+        specifier: ^5.0.4
+        version: 5.2.4(vite@5.4.21(@types/node@20.19.27)(terser@5.44.1))(vue@3.5.26(typescript@5.9.3))
+      '@vitest/ui':
+        specifier: ^1.6.0
+        version: 1.6.1(vitest@1.6.1)
+      '@vue/test-utils':
+        specifier: ^2.4.6
+        version: 2.4.6
+      autoprefixer:
+        specifier: ^10.4.17
+        version: 10.4.23(postcss@8.5.6)
+      jsdom:
+        specifier: ^22.1.0
+        version: 22.1.0
+      postcss:
+        specifier: ^8.4.35
+        version: 8.5.6
+      tailwindcss:
+        specifier: ^3.4.1
+        version: 3.4.19
+      vite:
+        specifier: ^5.1.4
+        version: 5.4.21(@types/node@20.19.27)(terser@5.44.1)
+      vitest:
+        specifier: ^1.6.0
+        version: 1.6.1(@types/node@20.19.27)(@vitest/ui@1.6.1)(jsdom@22.1.0)(terser@5.44.1)
+      vue-tsc:
+        specifier: ^2.0.6
+        version: 2.2.12(typescript@5.9.3)
+      zod:
+        specifier: ^3.22.4
+        version: 3.25.76
 
   shared:
     dependencies:
       zod:
         specifier: ^3.22.4
         version: 3.25.76
-    devDependencies:
-      typescript:
-        specifier: ^5.3.3
-        version: 5.9.3
 
 packages:
 
