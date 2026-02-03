@@ -1,0 +1,94 @@
+version: '3.8'
+
+# 生產環境 Docker Compose 配置
+# 使用方式: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  postgres:
+    # 生產環境使用更穩定的配置
+    restart: always
+    environment:
+      # 建議使用 secrets 或環境變數管理敏感資訊
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    # 生產環境不暴露端口（僅內部訪問）
+    ports: []
+    volumes:
+      # 生產環境使用命名卷或外部存儲
+      - postgres_prod_data:/var/lib/postgresql/data
+    # 性能優化配置
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=200"
+      - "-c"
+      - "shared_buffers=256MB"
+      - "-c"
+      - "effective_cache_size=1GB"
+      - "-c"
+      - "work_mem=8MB"
+
+  backend:
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+      target: production
+    restart: always
+    environment:
+      NODE_ENV: production
+      # 生產環境必須設置強密鑰
+      JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    volumes:
+      # 生產環境只掛載媒體文件
+      - backend_prod_media:/app/media
+      # 不掛載源代碼
+    command: npm run start:prod
+    # 資源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+  frontend:
+    build:
+      context: .
+      dockerfile: ./frontend/Dockerfile
+      target: production
+    restart: always
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+      VITE_BACKEND_URL: ${VITE_BACKEND_URL}
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    volumes: []
+    command: nginx -g 'daemon off;'
+    # 資源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  # 生產環境可選服務
+  redis:
+    profiles: []  # 啟用 Redis
+    restart: always
+    ports: []  # 不暴露端口
+
+volumes:
+  postgres_prod_data:
+    driver: local
+  backend_prod_media:
+    driver: local

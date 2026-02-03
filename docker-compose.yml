@@ -1,0 +1,153 @@
+version: '3.8'
+
+services:
+  # PostgreSQL 資料庫
+  postgres:
+    image: postgres:15-alpine
+    container_name: 9jang-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-9jang_db}
+      # 設置時區
+      TZ: Asia/Taipei
+      PGTZ: Asia/Taipei
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # 持久化資料庫數據
+      - postgres_data:/var/lib/postgresql/data
+      # 初始化腳本（可選）
+      - ./database/init:/docker-entrypoint-initdb.d
+    networks:
+      - 9jang-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # NestJS 後端服務
+  backend:
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+      target: development
+    container_name: 9jang-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: ${PORT:-3000}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-9jang_db}
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-here-change-in-production}
+      JWT_ACCESS_TOKEN_LIFETIME_HOURS: ${JWT_ACCESS_TOKEN_LIFETIME_HOURS:-1}
+      JWT_REFRESH_TOKEN_LIFETIME_DAYS: ${JWT_REFRESH_TOKEN_LIFETIME_DAYS:-7}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000}
+      TIME_ZONE: Asia/Taipei
+      LANGUAGE_CODE: zh-hant
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    volumes:
+      # 開發時掛載源代碼（熱重載）
+      - ./backend/src:/app/backend/src
+      - ./backend/prisma:/app/backend/prisma
+      # 媒體文件持久化
+      - backend_media:/app/backend/media
+      # node_modules 使用容器內的版本（匿名卷防止被覆蓋）
+      - /app/node_modules
+      - /app/backend/node_modules
+    networks:
+      - 9jang-network
+    command: npm run start:dev
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Vue.js 前端服務
+  frontend:
+    build:
+      context: .
+      dockerfile: ./frontend/Dockerfile
+      target: development
+    container_name: 9jang-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3000/api}
+      VITE_BACKEND_URL: ${VITE_BACKEND_URL:-http://localhost:3000}
+      VITE_FRONTEND_PORT: ${VITE_FRONTEND_PORT:-5173}
+      VITE_FRONTEND_HOST: 0.0.0.0
+      VITE_APP_NAME: 九章補習班管理系統
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    volumes:
+      # 開發時掛載源代碼（熱重載）
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      # node_modules 使用容器內的版本
+      - /app/node_modules
+    networks:
+      - 9jang-network
+    command: npm run dev -- --host 0.0.0.0
+
+  # pgAdmin（可選 - 資料庫管理工具）
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: 9jang-pgadmin
+    restart: unless-stopped
+    profiles:
+      - tools
+    depends_on:
+      - postgres
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@9jang.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - 9jang-network
+
+  # Redis（可選 - 用於快取和 Session）
+  redis:
+    image: redis:7-alpine
+    container_name: 9jang-redis
+    restart: unless-stopped
+    profiles:
+      - cache
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - 9jang-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  # 持久化數據卷
+  postgres_data:
+    driver: local
+  backend_media:
+    driver: local
+  pgadmin_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  9jang-network:
+    driver: bridge

@@ -1,0 +1,58 @@
+# Git 行結束符配置
+# 防止 CRLF 問題
+
+# 自動處理文本文件
+* text=auto
+
+# Shell 腳本始終使用 LF
+*.sh text eol=lf
+
+# 其他腳本文件
+*.bash text eol=lf
+*.zsh text eol=lf
+
+# Windows 批處理文件使用 CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# 源代碼文件使用 LF
+*.js text eol=lf
+*.ts text eol=lf
+*.vue text eol=lf
+*.jsx text eol=lf
+*.tsx text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+
+# Python 文件
+*.py text eol=lf
+
+# 配置文件
+.env* text eol=lf
+Dockerfile text eol=lf
+*.conf text eol=lf
+*.config text eol=lf
+
+# 二進制文件（不自動轉換）
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.tar binary
+*.gz binary
+*.so binary
+*.dll binary
+*.exe binary
+*.db binary
+*.sqlite binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary

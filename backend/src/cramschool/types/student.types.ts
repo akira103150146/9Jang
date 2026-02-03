@@ -12,6 +12,8 @@ export interface StudentGroup {
   }
 }
 
+import { Decimal } from '@prisma/client/runtime/library'
+
 export interface Enrollment {
   enrollmentId: number
   courseId: number
@@ -19,7 +21,7 @@ export interface Enrollment {
     courseName: string 
   }
   enrollDate: Date
-  discountRate: number | string
+  discountRate: number | string | Decimal
   isActive: boolean
 }
 

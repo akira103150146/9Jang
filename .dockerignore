@@ -1,64 +1,82 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-*.egg-info/
-dist/
-build/
-*.egg
+# Git
+.git
+.gitignore
+.gitattributes
 
-# 虛擬環境
-venv/
-env/
-ENV/
+# Node.js
+node_modules
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+
+# 環境變數
+.env
+.env.*
+!.env.example
 
 # IDE
-.vscode/
-.idea/
+.vscode
+.idea
 *.swp
 *.swo
 *~
+.DS_Store
 
-# 環境變數文件（生產環境應該通過 GCP 環境變數設置）
-.env
-.env.local
-.env.*.local
-backend/.env
-frontend/.env
+# 日誌
+logs
+*.log
+
+# 測試和覆蓋率
+coverage
+.nyc_output
+test
+*.test.*
+*.spec.*
+
+# 構建輸出
+dist
+build
+.next
+.nuxt
+out
+
+# 臨時文件
+tmp
+temp
+*.tmp
 
 # 資料庫
-*.sqlite3
 *.db
+*.db-journal
+*.sqlite
+*.sqlite3
 
-# 媒體文件（應該使用 Cloud Storage）
-media/
-
-# Git
-.git/
-.gitignore
-
-# 前端（將單獨部署到 Cloud Storage）
-frontend/
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*.yml
 
 # 文檔
 *.md
 !README.md
+docs
 
-# 日誌
-*.log
-
-# 測試
-.pytest_cache/
-.coverage
-htmlcov/
-
-# 作業系統
-.DS_Store
-Thumbs.db
-
-# 臨時文件
-*.tmp
+# 備份
+*.backup
 *.bak
+*.old
 
+# OS
+Thumbs.db
+.DS_Store
+
+# Prisma
+migrations
+
+# 媒體文件（測試用）
+media
+uploads
+
+# 其他
+.cache
+.parcel-cache
