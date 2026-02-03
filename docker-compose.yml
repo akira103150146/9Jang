@@ -62,7 +62,7 @@ services:
       - /app/backend/node_modules
     networks:
       - 9jang-network
-    command: npm run start:dev
+    command: pnpm run start:dev
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api"]
       interval: 30s
@@ -95,7 +95,7 @@ services:
       - /app/node_modules
     networks:
       - 9jang-network
-    command: npm run dev -- --host 0.0.0.0
+    command: pnpm run dev -- --host 0.0.0.0
 
   # pgAdmin（可選 - 資料庫管理工具）
   pgadmin:
