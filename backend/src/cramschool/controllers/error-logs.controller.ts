@@ -1,3 +1,4 @@
+import { AuthRequest } from '@/types/request.types';
 import {
   Controller,
   Get,
@@ -36,7 +37,7 @@ export class ErrorLogsController {
 
   @Get()
   async getErrorLogs(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Query('include_deleted') includeDeleted: string = 'false',
     @Query('student', new ParseIntPipe({ optional: true })) studentId?: number,
     @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
@@ -89,7 +90,7 @@ export class ErrorLogsController {
 
   @Post(':id/import-to-question-bank')
   async importToQuestionBank(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Param('id', ParseIntPipe) id: number,
   ): Promise<any> {
     const user = req.user;
@@ -114,7 +115,7 @@ export class ErrorLogsController {
   @Post(':id/upload-images')
   @UseInterceptors(FilesInterceptor('images', 10))
   async uploadImages(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Param('id', ParseIntPipe) id: number,
     @UploadedFiles() files: Express.Multer.File[],
   ): Promise<any> {
@@ -143,7 +144,7 @@ export class ErrorLogsController {
 
   @Post(':id/reorder-images')
   async reorderImages(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Param('id', ParseIntPipe) id: number,
     @Body() body: { image_ids: number[] },
   ): Promise<any> {

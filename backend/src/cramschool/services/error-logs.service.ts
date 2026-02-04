@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 import {
   CreateErrorLogDto,
   UpdateErrorLogDto,
@@ -229,14 +230,14 @@ export class ErrorLogsService {
         subjectId: question.subjectId,
         level: question.level,
         chapter: question.chapter,
-        content: question.content,
+        content: question.content as Prisma.InputJsonValue,
         imagePath: question.imagePath,
-        correctAnswer: question.correctAnswer,
+        correctAnswer: question.correctAnswer as Prisma.InputJsonValue,
         difficulty: question.difficulty,
         questionNumber: question.questionNumber,
         origin: question.origin,
         originDetail: question.originDetail,
-        solutionContent: question.solutionContent,
+        solutionContent: question.solutionContent as Prisma.InputJsonValue,
         source: 'imported_from_error_log',
         createdById: userId,
         importedFromErrorLogId: id,

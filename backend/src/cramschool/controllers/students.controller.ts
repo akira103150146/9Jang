@@ -1,3 +1,4 @@
+import { AuthRequest } from '@/types/request.types';
 import {
   Controller,
   Get,
@@ -44,7 +45,7 @@ export class StudentsController {
   @Get()
   async getStudents(
     @Query(new ZodValidationPipe(StudentQuerySchema)) query: StudentQuery,
-    @Request() req,
+    @Request() req: AuthRequest,
   ) {
     const user = req.user;
     // 從 JWT payload 獲取用戶角色（需要在 JWT payload 中包含 role）
@@ -63,7 +64,7 @@ export class StudentsController {
   @Post()
   async createStudent(
     @Body(new ZodValidationPipe(CreateStudentSchema)) createDto: CreateStudentDto,
-    @Request() req,
+    @Request() req: AuthRequest,
   ): Promise<Student> {
     const user = req.user;
     const userRecord = await this.prisma.accountCustomUser.findUnique({

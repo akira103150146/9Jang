@@ -1,3 +1,4 @@
+import { AuthRequest } from '@/types/request.types';
 import {
   Controller,
   Get,
@@ -33,7 +34,7 @@ export class ContentTemplatesController {
 
   @Get()
   async getContentTemplates(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
     @Query('page_size', new ParseIntPipe({ optional: true })) pageSize: number = 10,
   ) {
@@ -47,7 +48,7 @@ export class ContentTemplatesController {
 
   @Get(':id')
   async getContentTemplate(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Param('id', ParseIntPipe) id: number,
   ): Promise<ContentTemplate> {
     const user = req.user;
@@ -60,7 +61,7 @@ export class ContentTemplatesController {
 
   @Post()
   async createContentTemplate(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Body(new ZodValidationPipe(CreateContentTemplateSchema)) createDto: CreateContentTemplateDto,
   ): Promise<ContentTemplate> {
     const user = req.user;
@@ -69,7 +70,7 @@ export class ContentTemplatesController {
 
   @Put(':id')
   async updateContentTemplate(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(UpdateContentTemplateSchema)) updateDto: UpdateContentTemplateDto,
   ): Promise<ContentTemplate> {
@@ -79,7 +80,7 @@ export class ContentTemplatesController {
 
   @Delete(':id')
   async deleteContentTemplate(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Param('id', ParseIntPipe) id: number,
   ): Promise<void> {
     const user = req.user;

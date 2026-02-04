@@ -1,3 +1,4 @@
+import { AuthRequest } from '@/types/request.types';
 import {
   Controller,
   Get,
@@ -36,7 +37,7 @@ export class StudentMistakeNotesController {
 
   @Get()
   async getStudentMistakeNotes(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Query('include_deleted') includeDeleted: string = 'false',
     @Query('student_id', new ParseIntPipe({ optional: true })) studentId?: number,
     @Query('q') searchQuery?: string,
@@ -61,7 +62,7 @@ export class StudentMistakeNotesController {
 
   @Get(':id')
   async getStudentMistakeNote(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Param('id', ParseIntPipe) id: number,
   ): Promise<StudentMistakeNote> {
     const user = req.user;
@@ -74,7 +75,7 @@ export class StudentMistakeNotesController {
 
   @Post()
   async createStudentMistakeNote(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Body(new ZodValidationPipe(CreateStudentMistakeNoteSchema)) createDto: CreateStudentMistakeNoteDto,
   ): Promise<StudentMistakeNote> {
     const user = req.user;
@@ -87,7 +88,7 @@ export class StudentMistakeNotesController {
 
   @Put(':id')
   async updateStudentMistakeNote(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(UpdateStudentMistakeNoteSchema)) updateDto: UpdateStudentMistakeNoteDto,
   ): Promise<StudentMistakeNote> {
@@ -101,7 +102,7 @@ export class StudentMistakeNotesController {
 
   @Delete(':id')
   async deleteStudentMistakeNote(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Param('id', ParseIntPipe) id: number,
   ): Promise<void> {
     const user = req.user;
@@ -119,7 +120,7 @@ export class StudentMistakeNotesController {
 
   @Post(':id/import-to-question-bank')
   async importToQuestionBank(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Param('id', ParseIntPipe) id: number,
     @Body() body: {
       subject_id: number;
@@ -158,7 +159,7 @@ export class StudentMistakeNotesController {
   @Post(':id/upload-images')
   @UseInterceptors(FilesInterceptor('images', 10))
   async uploadImages(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Param('id', ParseIntPipe) id: number,
     @UploadedFiles() files: Express.Multer.File[],
   ): Promise<any> {
@@ -182,7 +183,7 @@ export class StudentMistakeNotesController {
 
   @Post(':id/reorder-images')
   async reorderImages(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Param('id', ParseIntPipe) id: number,
     @Body() body: { image_ids: number[] },
   ): Promise<any> {

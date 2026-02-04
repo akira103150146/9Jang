@@ -1,3 +1,4 @@
+import { AuthRequest } from '@/types/request.types';
 import {
   Controller,
   Get,
@@ -40,7 +41,7 @@ export class QuestionsController {
   @Get()
   async getQuestions(
     @Query(new ZodValidationPipe(QuestionQuerySchema)) query: QuestionQuery,
-    @Request() req,
+    @Request() req: AuthRequest,
   ) {
     const user = req.user;
     const userRecord = await this.prisma.accountCustomUser.findUnique({
@@ -57,7 +58,7 @@ export class QuestionsController {
   @Post()
   async createQuestion(
     @Body(new ZodValidationPipe(CreateQuestionSchema)) createDto: CreateQuestionDto,
-    @Request() req,
+    @Request() req: AuthRequest,
   ): Promise<Question> {
     const user = req.user;
     const userRecord = await this.prisma.accountCustomUser.findUnique({
@@ -70,7 +71,7 @@ export class QuestionsController {
   async updateQuestion(
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(UpdateQuestionSchema)) updateDto: UpdateQuestionDto,
-    @Request() req,
+    @Request() req: AuthRequest,
   ): Promise<Question> {
     const user = req.user;
     const userRecord = await this.prisma.accountCustomUser.findUnique({
@@ -80,7 +81,7 @@ export class QuestionsController {
   }
 
   @Delete(':id')
-  async deleteQuestion(@Param('id', ParseIntPipe) id: number, @Request() req): Promise<void> {
+  async deleteQuestion(@Param('id', ParseIntPipe) id: number, @Request() req: AuthRequest): Promise<void> {
     const user = req.user;
     const userRecord = await this.prisma.accountCustomUser.findUnique({
       where: { id: user.id },
@@ -115,7 +116,7 @@ export class QuestionsController {
   @Post('preview-from-word')
   @UseInterceptors(FileInterceptor('file'))
   async previewFromWord(
-    @Request() req,
+    @Request() req: AuthRequest,
     @UploadedFile() file: Express.Multer.File,
     @Body() body: { subject_id: number; level: string; chapter: string },
   ): Promise<any> {
@@ -129,7 +130,7 @@ export class QuestionsController {
   @Post('import-from-word')
   @UseInterceptors(FileInterceptor('file'))
   async importFromWord(
-    @Request() req,
+    @Request() req: AuthRequest,
     @UploadedFile() file: Express.Multer.File,
     @Body() body: { subject_id: number; level: string; chapter: string },
   ): Promise<any> {
@@ -154,7 +155,7 @@ export class QuestionsController {
     }),
   )
   async previewFromMarkdown(
-    @Request() req,
+    @Request() req: AuthRequest,
     @UploadedFiles() files: Express.Multer.File[],
     @Body() body: { subject_id: number; level: string; chapter: string },
   ): Promise<any> {
@@ -188,7 +189,7 @@ export class QuestionsController {
     }),
   )
   async importFromMarkdown(
-    @Request() req,
+    @Request() req: AuthRequest,
     @UploadedFiles() files: Express.Multer.File[],
     @Body() body: { subject_id: number; level: string; chapter: string },
   ): Promise<any> {

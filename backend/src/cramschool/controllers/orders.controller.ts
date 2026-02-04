@@ -1,3 +1,4 @@
+import { AuthRequest } from '@/types/request.types';
 import {
   Controller,
   Get,
@@ -33,7 +34,7 @@ export class OrdersController {
 
   @Get()
   async getOrders(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Query('include_deleted') includeDeleted: string = 'false',
     @Query('group_order', new ParseIntPipe({ optional: true })) groupOrderId?: number,
     @Query('student', new ParseIntPipe({ optional: true })) studentId?: number,

@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 import {
   CreateContentTemplateDto,
   UpdateContentTemplateDto,
@@ -84,7 +85,7 @@ export class ContentTemplatesService {
       data: {
         title: createDto.title,
         structure: createDto.structure || [],
-        tiptapStructure: createDto.tiptap_structure || null,
+        tiptapStructure: createDto.tiptap_structure ?? Prisma.DbNull,
         createdById: userId,
         isPublic: createDto.is_public || false,
       },
@@ -123,7 +124,9 @@ export class ContentTemplatesService {
       data: {
         title: updateDto.title,
         structure: updateDto.structure,
-        tiptapStructure: updateDto.tiptap_structure,
+        tiptapStructure: updateDto.tiptap_structure !== undefined 
+          ? (updateDto.tiptap_structure ?? Prisma.DbNull)
+          : undefined,
         isPublic: updateDto.is_public,
       },
       include: {

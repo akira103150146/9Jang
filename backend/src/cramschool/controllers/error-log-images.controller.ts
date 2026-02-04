@@ -1,3 +1,4 @@
+import { AuthRequest } from '@/types/request.types';
 import {
   Controller,
   Get,
@@ -33,7 +34,7 @@ export class ErrorLogImagesController {
 
   @Get()
   async getErrorLogImages(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Query('error_log', new ParseIntPipe({ optional: true })) errorLogId?: number,
     @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
     @Query('page_size', new ParseIntPipe({ optional: true })) pageSize: number = 10,

@@ -9,6 +9,7 @@ import {
   Param,
   ParseIntPipe,
 } from '@nestjs/common';
+import { AuthRequest } from '@/types/request.types';
 import { AccountService } from './account.service';
 import {
   LoginRequestDto,
@@ -39,7 +40,7 @@ export class AccountController {
 
   @Post('logout')
   @UseGuards(JwtAuthGuard)
-  async logout(@Request() req) {
+  async logout(@Request() _req: AuthRequest) {
     // JWT 是無狀態的，登出主要是客戶端刪除 token
     // 如果需要 token 黑名單，可以在這裡實現
     return { message: '登出成功' };
@@ -55,14 +56,14 @@ export class AccountController {
 
   @Get('users/me')
   @UseGuards(JwtAuthGuard)
-  async getCurrentUser(@Request() req): Promise<User> {
+  async getCurrentUser(@Request() req: AuthRequest): Promise<User> {
     return this.accountService.getCurrentUser(req.user.id);
   }
 
   @Get('current-role')
   @UseGuards(JwtAuthGuard)
   async getCurrentRole(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Query('temp_role') tempRole?: string,
   ): Promise<{
     original_role: string;
@@ -78,7 +79,7 @@ export class AccountController {
   @Post('switch-role')
   @UseGuards(JwtAuthGuard)
   async switchRole(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Body() body: { role: string },
   ): Promise<{ message: string; temp_role: string; original_role: string }> {
     return this.accountService.switchRole(req.user.id, body.role);
@@ -87,7 +88,7 @@ export class AccountController {
   @Post('reset-role')
   @UseGuards(JwtAuthGuard)
   async resetRole(
-    @Request() req,
+    @Request() req: AuthRequest,
   ): Promise<{ message: string; current_role: string }> {
     return this.accountService.resetRole(req.user.id);
   }
@@ -95,7 +96,7 @@ export class AccountController {
   @Post('impersonate-user')
   @UseGuards(JwtAuthGuard)
   async impersonateUser(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Body() body: { user_id: number },
   ): Promise<{
     user: User;
@@ -109,7 +110,7 @@ export class AccountController {
   @Post('change-password')
   @UseGuards(JwtAuthGuard)
   async changePassword(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Body(new ZodValidationPipe(ChangePasswordRequestSchema))
     changePasswordDto: ChangePasswordRequestDto,
   ): Promise<{ message: string }> {

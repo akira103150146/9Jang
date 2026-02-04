@@ -61,7 +61,7 @@ export class GroupOrdersService {
     return this.toGroupOrderDto(groupOrder);
   }
 
-  async createGroupOrder(createDto: CreateGroupOrderDto, userId: number): Promise<GroupOrder> {
+  async createGroupOrder(createDto: CreateGroupOrderDto, _userId: number): Promise<GroupOrder> {
     // 生成唯一連結
     const orderLink = `group-order-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
@@ -225,8 +225,8 @@ export class GroupOrdersService {
   }
 
   private toGroupOrderDto(groupOrder: any): GroupOrder {
-    const ordersCount = groupOrder.orders?.length || 0;
-    const totalAmount = groupOrder.orders?.reduce((sum: number, o: any) => sum + Number(o.totalAmount || 0), 0) || 0;
+    const _ordersCount = groupOrder.orders?.length || 0;
+    const _totalAmount = groupOrder.orders?.reduce((sum: number, o: any) => sum + Number(o._totalAmount || 0), 0) || 0;
 
     return {
       group_order_id: groupOrder.groupOrderId,

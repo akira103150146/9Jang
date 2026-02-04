@@ -6,7 +6,6 @@
 import { Injectable } from '@nestjs/common'
 import { PrismaService } from '../../../prisma/prisma.service'
 import { StudentQuery } from '@9jang/shared'
-import { createPaginatedResponse } from '../../../common/utils/pagination.util'
 
 @Injectable()
 export class StudentsQueryService {

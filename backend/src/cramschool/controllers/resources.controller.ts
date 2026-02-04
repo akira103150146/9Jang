@@ -1,3 +1,4 @@
+import { AuthRequest } from '@/types/request.types';
 import {
   Controller,
   Get,
@@ -33,7 +34,7 @@ export class ResourcesController {
 
   @Get()
   async getResources(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
     @Query('page_size', new ParseIntPipe({ optional: true })) pageSize: number = 10,
     @Query('course', new ParseIntPipe({ optional: true })) courseId?: number,
@@ -62,7 +63,7 @@ export class ResourcesController {
   async createResource(
     @Body(new ZodValidationPipe(CreateLearningResourceSchema))
     createDto: CreateLearningResourceDto,
-    @Request() req,
+    @Request() req: AuthRequest,
   ): Promise<LearningResource> {
     const user = req.user;
     const userRecord = await this.prisma.accountCustomUser.findUnique({
@@ -76,7 +77,7 @@ export class ResourcesController {
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(UpdateLearningResourceSchema))
     updateDto: UpdateLearningResourceDto,
-    @Request() req,
+    @Request() req: AuthRequest,
   ): Promise<LearningResource> {
     const user = req.user;
     const userRecord = await this.prisma.accountCustomUser.findUnique({
@@ -86,7 +87,7 @@ export class ResourcesController {
   }
 
   @Delete(':id')
-  async deleteResource(@Param('id', ParseIntPipe) id: number, @Request() req): Promise<void> {
+  async deleteResource(@Param('id', ParseIntPipe) id: number, @Request() req: AuthRequest): Promise<void> {
     const user = req.user;
     const userRecord = await this.prisma.accountCustomUser.findUnique({
       where: { id: user.id },
@@ -96,7 +97,7 @@ export class ResourcesController {
 
   @Post(':id/bind-to-course')
   async bindToCourse(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Param('id', ParseIntPipe) id: number,
     @Body() body: { course_id: number; action: 'add' | 'remove' },
   ): Promise<{ message: string }> {

@@ -4,7 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import 'reflect-metadata';
 
 export const Roles = (...roles: string[]) => {
-  return (target: any, key?: string, descriptor?: PropertyDescriptor) => {
+  return (target: any, key?: string, _descriptor?: PropertyDescriptor) => {
     Reflect.defineMetadata('roles', roles, target, key);
   };
 };

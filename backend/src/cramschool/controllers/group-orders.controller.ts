@@ -1,3 +1,4 @@
+import { AuthRequest } from '@/types/request.types';
 import {
   Controller,
   Get,
@@ -33,7 +34,7 @@ export class GroupOrdersController {
 
   @Get()
   async getGroupOrders(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
     @Query('page_size', new ParseIntPipe({ optional: true })) pageSize: number = 10,
   ) {
@@ -55,7 +56,7 @@ export class GroupOrdersController {
 
   @Post()
   async createGroupOrder(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Body(new ZodValidationPipe(CreateGroupOrderSchema)) createDto: CreateGroupOrderDto,
   ): Promise<GroupOrder> {
     const user = req.user;
@@ -77,7 +78,7 @@ export class GroupOrdersController {
 
   @Post(':id/complete')
   async completeGroupOrder(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Param('id', ParseIntPipe) id: number,
   ): Promise<GroupOrder> {
     const user = req.user;

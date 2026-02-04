@@ -1,3 +1,4 @@
+import { AuthRequest } from '@/types/request.types';
 import {
   Controller,
   Get,
@@ -48,7 +49,7 @@ export class StudentGroupsController {
   @Post()
   async createStudentGroup(
     @Body(new ZodValidationPipe(CreateStudentGroupSchema)) createDto: CreateStudentGroupDto,
-    @Request() req,
+    @Request() req: AuthRequest,
   ): Promise<StudentGroup> {
     const user = req.user;
     return this.studentGroupsService.createStudentGroup(createDto, user.id);

@@ -1,3 +1,4 @@
+import { AuthRequest } from '@/types/request.types';
 import {
   Controller,
   Get,
@@ -72,7 +73,7 @@ export class CoursesController {
   @Get(':id/resources')
   async getResources(
     @Param('id', ParseIntPipe) id: number,
-    @Request() req,
+    @Request() req: AuthRequest,
   ): Promise<any> {
     const user = req.user;
     const userRecord = await this.prisma.accountCustomUser.findUnique({

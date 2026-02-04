@@ -5,7 +5,7 @@
  * pnpm test:db
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -128,7 +128,7 @@ async function testDatabaseConnection() {
     const questionWithJson = await prisma.cramschoolQuestionBank.findFirst({
       where: {
         content: {
-          not: null,
+          not: Prisma.DbNull,
         },
       },
       take: 1,

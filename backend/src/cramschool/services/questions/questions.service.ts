@@ -150,7 +150,7 @@ export class QuestionsService {
   async updateQuestion(
     id: number,
     updateDto: UpdateQuestionDto,
-    userId: number,
+    _userId: number,
     userRole: string,
   ): Promise<Question> {
     this.permissionService.checkUpdatePermission(userRole)

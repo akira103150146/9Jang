@@ -1,3 +1,4 @@
+import { AuthRequest } from '@/types/request.types';
 import {
   Controller,
   Get,
@@ -33,7 +34,7 @@ export class StudentMistakeNoteImagesController {
 
   @Get()
   async getStudentMistakeNoteImages(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Query('note', new ParseIntPipe({ optional: true })) noteId?: number,
     @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
     @Query('page_size', new ParseIntPipe({ optional: true })) pageSize: number = 10,
@@ -48,7 +49,7 @@ export class StudentMistakeNoteImagesController {
 
   @Get(':id')
   async getStudentMistakeNoteImage(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Param('id', ParseIntPipe) id: number,
   ): Promise<StudentMistakeNoteImage> {
     const user = req.user;
@@ -61,7 +62,7 @@ export class StudentMistakeNoteImagesController {
 
   @Post()
   async createStudentMistakeNoteImage(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Body(new ZodValidationPipe(CreateStudentMistakeNoteImageSchema)) createDto: CreateStudentMistakeNoteImageDto,
   ): Promise<StudentMistakeNoteImage> {
     const user = req.user;
@@ -74,7 +75,7 @@ export class StudentMistakeNoteImagesController {
 
   @Put(':id')
   async updateStudentMistakeNoteImage(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(UpdateStudentMistakeNoteImageSchema)) updateDto: UpdateStudentMistakeNoteImageDto,
   ): Promise<StudentMistakeNoteImage> {
@@ -88,7 +89,7 @@ export class StudentMistakeNoteImagesController {
 
   @Delete(':id')
   async deleteStudentMistakeNoteImage(
-    @Request() req,
+    @Request() req: AuthRequest,
     @Param('id', ParseIntPipe) id: number,
   ): Promise<void> {
     const user = req.user;

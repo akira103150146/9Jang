@@ -1,3 +1,4 @@
+import { AuthRequest } from '@/types/request.types';
 import {
   Controller,
   Get,
@@ -35,7 +36,7 @@ export class SubjectsController {
   async getSubjects(
     @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
     @Query('page_size', new ParseIntPipe({ optional: true })) pageSize: number = 10,
-    @Request() req,
+    @Request() req: AuthRequest,
   ) {
     const user = req.user;
     const userRecord = await this.prisma.accountCustomUser.findUnique({
@@ -45,7 +46,7 @@ export class SubjectsController {
   }
 
   @Get(':id')
-  async getSubject(@Param('id', ParseIntPipe) id: number, @Request() req): Promise<Subject> {
+  async getSubject(@Param('id', ParseIntPipe) id: number, @Request() req: AuthRequest): Promise<Subject> {
     const user = req.user;
     const userRecord = await this.prisma.accountCustomUser.findUnique({
       where: { id: user.id },
@@ -56,7 +57,7 @@ export class SubjectsController {
   @Post()
   async createSubject(
     @Body(new ZodValidationPipe(CreateSubjectSchema)) createDto: CreateSubjectDto,
-    @Request() req,
+    @Request() req: AuthRequest,
   ): Promise<Subject> {
     const user = req.user;
     const userRecord = await this.prisma.accountCustomUser.findUnique({
@@ -69,7 +70,7 @@ export class SubjectsController {
   async updateSubject(
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(UpdateSubjectSchema)) updateDto: UpdateSubjectDto,
-    @Request() req,
+    @Request() req: AuthRequest,
   ): Promise<Subject> {
     const user = req.user;
     const userRecord = await this.prisma.accountCustomUser.findUnique({
@@ -79,7 +80,7 @@ export class SubjectsController {
   }
 
   @Delete(':id')
-  async deleteSubject(@Param('id', ParseIntPipe) id: number, @Request() req): Promise<void> {
+  async deleteSubject(@Param('id', ParseIntPipe) id: number, @Request() req: AuthRequest): Promise<void> {
     const user = req.user;
     const userRecord = await this.prisma.accountCustomUser.findUnique({
       where: { id: user.id },

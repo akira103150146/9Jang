@@ -298,7 +298,7 @@ export class ResourcesService {
   async updateResource(
     id: number,
     updateDto: UpdateLearningResourceDto,
-    userId: number,
+    _userId: number,
     userRole: string,
   ): Promise<LearningResource> {
     // 只有老師可以更新
@@ -508,7 +508,7 @@ export class ResourcesService {
     };
   }
 
-  async gradeResource(id: number, submission: any): Promise<any> {
+  async gradeResource(id: number, _submission: any): Promise<any> {
     const resource = await this.prisma.cramschoolLearningResource.findUnique({
       where: { resourceId: id },
     });
