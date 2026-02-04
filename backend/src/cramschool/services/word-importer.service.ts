@@ -1,8 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import * as mammoth from 'mammoth';
-import * as path from 'path';
-import * as fs from 'fs/promises';
-import { v4 as uuidv4 } from 'uuid';
 
 export interface ParsedQuestion {
   question_number?: string;
@@ -34,9 +31,9 @@ export class WordImporterService {
   async importQuestions(
     fileContent: Buffer,
     filename: string,
-    defaultSubjectId: number,
-    defaultLevel: string,
-    defaultChapter: string,
+    _defaultSubjectId: number,
+    _defaultLevel: string,
+    _defaultChapter: string,
     saveImagesFunc?: (imageBytes: Buffer, filename: string) => Promise<string>,
   ): Promise<{ questions: ParsedQuestion[]; errors: string[] }> {
     const errors: string[] = [];
@@ -93,8 +90,8 @@ export class WordImporterService {
 
   private parseDocxContent(
     rawText: string,
-    htmlContent: string,
-    imageMap: Record<string, string>,
+    _htmlContent: string,
+    _imageMap: Record<string, string>,
   ): { questions: ParsedQuestion[]; errors: string[] } {
     const questions: ParsedQuestion[] = [];
     const errors: string[] = [];

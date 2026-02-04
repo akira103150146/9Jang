@@ -25,6 +25,7 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.AccountController = void 0;
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const request_types_1 = __webpack_require__(/*! @/types/request.types */ "./src/types/request.types.ts");
 const account_service_1 = __webpack_require__(/*! ./account.service */ "./src/account/account.service.ts");
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
@@ -79,6 +80,9 @@ let AccountController = class AccountController {
 exports.AccountController = AccountController;
 __decorate([
     (0, common_1.Post)('login'),
+    (0, swagger_1.ApiOperation)({ summary: '使用者登入', description: '使用帳號密碼登入系統，返回 JWT token' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '登入成功', }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '帳號或密碼錯誤' }),
     __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_2.LoginRequestSchema))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [typeof (_b = typeof shared_1.LoginRequestDto !== "undefined" && shared_1.LoginRequestDto) === "function" ? _b : Object]),
@@ -87,6 +91,10 @@ __decorate([
 __decorate([
     (0, common_1.Post)('logout'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '使用者登出', description: '登出系統（客戶端需刪除 token）' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '登出成功' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [typeof (_d = typeof request_types_1.AuthRequest !== "undefined" && request_types_1.AuthRequest) === "function" ? _d : Object]),
@@ -94,6 +102,9 @@ __decorate([
 ], AccountController.prototype, "logout", null);
 __decorate([
     (0, common_1.Post)('token/refresh'),
+    (0, swagger_1.ApiOperation)({ summary: '刷新 Token', description: '使用 refresh token 獲取新的 access token' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '刷新成功', }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: 'Refresh token 無效或過期' }),
     __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_2.RefreshTokenRequestSchema))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [typeof (_e = typeof shared_1.RefreshTokenRequestDto !== "undefined" && shared_1.RefreshTokenRequestDto) === "function" ? _e : Object]),
@@ -102,6 +113,10 @@ __decorate([
 __decorate([
     (0, common_1.Get)('users/me'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得當前使用者資訊', description: '取得目前登入使用者的詳細資料' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功', }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [typeof (_g = typeof request_types_1.AuthRequest !== "undefined" && request_types_1.AuthRequest) === "function" ? _g : Object]),
@@ -110,6 +125,11 @@ __decorate([
 __decorate([
     (0, common_1.Get)('current-role'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得當前角色', description: '取得使用者的原始角色和臨時角色資訊' }),
+    (0, swagger_1.ApiQuery)({ name: 'temp_role', required: false, description: '臨時角色代碼' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Query)('temp_role')),
     __metadata("design:type", Function),
@@ -119,6 +139,11 @@ __decorate([
 __decorate([
     (0, common_1.Post)('switch-role'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '切換角色', description: '切換到臨時角色（用於測試或特殊權限）' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '切換成功' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: '無權限切換到此角色' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -128,6 +153,10 @@ __decorate([
 __decorate([
     (0, common_1.Post)('reset-role'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '重置角色', description: '將臨時角色重置為原始角色' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '重置成功' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [typeof (_o = typeof request_types_1.AuthRequest !== "undefined" && request_types_1.AuthRequest) === "function" ? _o : Object]),
@@ -145,6 +174,11 @@ __decorate([
 __decorate([
     (0, common_1.Post)('change-password'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '修改密碼', description: '修改當前使用者的密碼' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '密碼修改成功' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '舊密碼錯誤或新密碼不符合規則' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_2.ChangePasswordRequestSchema))),
     __metadata("design:type", Function),
@@ -154,6 +188,12 @@ __decorate([
 __decorate([
     (0, common_1.Get)('users'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得使用者列表', description: '分頁查詢所有使用者' }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false, description: '頁碼', example: 1 }),
+    (0, swagger_1.ApiQuery)({ name: 'page_size', required: false, description: '每頁筆數', example: 10 }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
     __param(1, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
     __metadata("design:type", Function),
@@ -163,6 +203,12 @@ __decorate([
 __decorate([
     (0, common_1.Get)('users/:id'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得單一使用者', description: '根據 ID 查詢使用者詳細資料' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '使用者 ID' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功', }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '使用者不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -171,6 +217,12 @@ __decorate([
 __decorate([
     (0, common_1.Get)('roles'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得角色列表', description: '分頁查詢所有系統角色' }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false, description: '頁碼', example: 1 }),
+    (0, swagger_1.ApiQuery)({ name: 'page_size', required: false, description: '每頁筆數', example: 10 }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
     __param(1, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
     __metadata("design:type", Function),
@@ -180,6 +232,12 @@ __decorate([
 __decorate([
     (0, common_1.Get)('audit-logs'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得審計日誌', description: '分頁查詢系統操作記錄' }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false, description: '頁碼', example: 1 }),
+    (0, swagger_1.ApiQuery)({ name: 'page_size', required: false, description: '每頁筆數', example: 10 }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
     __param(1, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
     __metadata("design:type", Function),
@@ -187,6 +245,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AccountController.prototype, "getAuditLogs", null);
 exports.AccountController = AccountController = __decorate([
+    (0, swagger_1.ApiTags)('account'),
     (0, common_1.Controller)('account'),
     __metadata("design:paramtypes", [typeof (_a = typeof account_service_1.AccountService !== "undefined" && account_service_1.AccountService) === "function" ? _a : Object])
 ], AccountController);
@@ -935,6 +994,7 @@ var _a, _b, _c, _d, _e, _f, _g, _h;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.AttendancesController = void 0;
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const attendances_service_1 = __webpack_require__(/*! ../services/attendances.service */ "./src/cramschool/services/attendances.service.ts");
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
@@ -965,6 +1025,13 @@ let AttendancesController = class AttendancesController {
 exports.AttendancesController = AttendancesController;
 __decorate([
     (0, common_1.Get)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得出席記錄列表', description: '分頁取得學生出席記錄' }),
+    (0, swagger_1.ApiQuery)({ name: 'include_deleted', required: false, description: '是否包含已刪除', example: 'false', type: String }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false, description: '頁碼', example: 1, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'page_size', required: false, description: '每頁筆數', example: 10, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功取得出席記錄列表' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Query)('include_deleted')),
     __param(1, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
     __param(2, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
@@ -974,6 +1041,11 @@ __decorate([
 ], AttendancesController.prototype, "getAttendances", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得單一出席記錄', description: '根據 ID 取得出席記錄詳細資料' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '出席記錄 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功', }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '出席記錄不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -981,6 +1053,10 @@ __decorate([
 ], AttendancesController.prototype, "getAttendance", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '建立出席記錄', description: '新增學生出席記錄（簽到）' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: '建立成功', }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '資料驗證失敗' }),
     __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateAttendanceSchema))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [typeof (_c = typeof shared_1.CreateAttendanceDto !== "undefined" && shared_1.CreateAttendanceDto) === "function" ? _c : Object]),
@@ -988,6 +1064,11 @@ __decorate([
 ], AttendancesController.prototype, "createAttendance", null);
 __decorate([
     (0, common_1.Put)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '更新出席記錄', description: '修改出席記錄資料' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '出席記錄 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '更新成功', }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '出席記錄不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateAttendanceSchema))),
     __metadata("design:type", Function),
@@ -996,6 +1077,11 @@ __decorate([
 ], AttendancesController.prototype, "updateAttendance", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '刪除出席記錄', description: '軟刪除出席記錄' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '出席記錄 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '刪除成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '出席記錄不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -1003,12 +1089,18 @@ __decorate([
 ], AttendancesController.prototype, "deleteAttendance", null);
 __decorate([
     (0, common_1.Post)(':id/restore'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '恢復出席記錄', description: '恢復已刪除的出席記錄' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '出席記錄 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '恢復成功', }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '出席記錄不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
 ], AttendancesController.prototype, "restoreAttendance", null);
 exports.AttendancesController = AttendancesController = __decorate([
+    (0, swagger_1.ApiTags)('attendances'),
     (0, common_1.Controller)('cramschool/attendances'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof attendances_service_1.AttendancesService !== "undefined" && attendances_service_1.AttendancesService) === "function" ? _a : Object])
@@ -1040,6 +1132,7 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ContentTemplatesController = void 0;
 const request_types_1 = __webpack_require__(/*! @/types/request.types */ "./src/types/request.types.ts");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const content_templates_service_1 = __webpack_require__(/*! ../services/content-templates.service */ "./src/cramschool/services/content-templates.service.ts");
 const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
@@ -1083,6 +1176,12 @@ let ContentTemplatesController = class ContentTemplatesController {
 exports.ContentTemplatesController = ContentTemplatesController;
 __decorate([
     (0, common_1.Get)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得內容模板列表', description: '分頁取得內容模板，可查看公開和自己建立的模板' }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false, description: '頁碼', example: 1, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'page_size', required: false, description: '每頁筆數', example: 10, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
     __param(2, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
@@ -1092,6 +1191,11 @@ __decorate([
 ], ContentTemplatesController.prototype, "getContentTemplates", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得單一內容模板', description: '根據模板 ID 取得詳細資料' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '模板 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功', }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '模板不存在' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
@@ -1100,6 +1204,10 @@ __decorate([
 ], ContentTemplatesController.prototype, "getContentTemplate", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '建立內容模板', description: '新增內容模板到系統' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: '建立成功', }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '驗證失敗' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateContentTemplateSchema))),
     __metadata("design:type", Function),
@@ -1108,6 +1216,11 @@ __decorate([
 ], ContentTemplatesController.prototype, "createContentTemplate", null);
 __decorate([
     (0, common_1.Put)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '更新內容模板', description: '修改模板內容和結構' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '模板 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '更新成功', }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '模板不存在' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(2, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateContentTemplateSchema))),
@@ -1117,6 +1230,11 @@ __decorate([
 ], ContentTemplatesController.prototype, "updateContentTemplate", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '刪除內容模板', description: '刪除模板' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '模板 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '刪除成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '模板不存在' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
@@ -1124,6 +1242,7 @@ __decorate([
     __metadata("design:returntype", typeof (_o = typeof Promise !== "undefined" && Promise) === "function" ? _o : Object)
 ], ContentTemplatesController.prototype, "deleteContentTemplate", null);
 exports.ContentTemplatesController = ContentTemplatesController = __decorate([
+    (0, swagger_1.ApiTags)('resources'),
     (0, common_1.Controller)('cramschool/content-templates'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof content_templates_service_1.ContentTemplatesService !== "undefined" && content_templates_service_1.ContentTemplatesService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
@@ -1155,6 +1274,7 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CoursesController = void 0;
 const request_types_1 = __webpack_require__(/*! @/types/request.types */ "./src/types/request.types.ts");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const courses_service_1 = __webpack_require__(/*! ../services/courses.service */ "./src/cramschool/services/courses.service.ts");
 const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
@@ -1195,6 +1315,34 @@ let CoursesController = class CoursesController {
 exports.CoursesController = CoursesController;
 __decorate([
     (0, common_1.Get)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '取得課程列表',
+        description: '分頁取得所有課程資料，包含課程名稱、教師、時間等資訊'
+    }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false, description: '頁碼', example: 1, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'page_size', required: false, description: '每頁筆數', example: 10, type: Number }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '成功取得課程列表',
+        schema: {
+            example: {
+                data: [
+                    {
+                        course_id: 1,
+                        name: '國三數學A班',
+                        subject: '數學',
+                        teacher_name: '李老師',
+                        schedule: '週一 18:00-20:00'
+                    }
+                ],
+                total: 30,
+                page: 1,
+                page_size: 10
+            }
+        }
+    }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
     __param(1, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
     __metadata("design:type", Function),
@@ -1203,6 +1351,18 @@ __decorate([
 ], CoursesController.prototype, "getCourses", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '取得單一課程',
+        description: '根據課程 ID 取得詳細資料，包含學生名單、課堂記錄等'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '課程 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '成功取得課程資料',
+    }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '課程不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -1210,6 +1370,18 @@ __decorate([
 ], CoursesController.prototype, "getCourse", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '建立課程',
+        description: '新增課程到系統，設定課程名稱、教師、上課時間等'
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: 201,
+        description: '建立成功',
+    }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '資料驗證失敗' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: '無權限建立課程' }),
     __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateCourseSchema))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [typeof (_d = typeof shared_1.CreateCourseDto !== "undefined" && shared_1.CreateCourseDto) === "function" ? _d : Object]),
@@ -1217,6 +1389,19 @@ __decorate([
 ], CoursesController.prototype, "createCourse", null);
 __decorate([
     (0, common_1.Put)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '更新課程資料',
+        description: '修改課程的名稱、教師、時間等資訊'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '課程 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '更新成功',
+    }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '資料驗證失敗' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '課程不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateCourseSchema))),
     __metadata("design:type", Function),
@@ -1225,6 +1410,16 @@ __decorate([
 ], CoursesController.prototype, "updateCourse", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '刪除課程',
+        description: '軟刪除課程（設為 is_deleted = true）'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '課程 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '刪除成功' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: '無權限刪除課程' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '課程不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -1232,6 +1427,18 @@ __decorate([
 ], CoursesController.prototype, "deleteCourse", null);
 __decorate([
     (0, common_1.Get)(':id/student-status'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '取得課程學生狀態',
+        description: '查詢課程中所有學生的註冊狀態、出席率等統計資訊'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '課程 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '成功取得學生狀態'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '課程不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -1239,6 +1446,18 @@ __decorate([
 ], CoursesController.prototype, "getStudentStatus", null);
 __decorate([
     (0, common_1.Get)(':id/resources'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '取得課程資源',
+        description: '查詢課程相關的教材、講義等資源列表'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '課程 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '成功取得課程資源列表'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '課程不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -1246,6 +1465,7 @@ __decorate([
     __metadata("design:returntype", typeof (_l = typeof Promise !== "undefined" && Promise) === "function" ? _l : Object)
 ], CoursesController.prototype, "getResources", null);
 exports.CoursesController = CoursesController = __decorate([
+    (0, swagger_1.ApiTags)('courses'),
     (0, common_1.Controller)('cramschool/courses'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof courses_service_1.CoursesService !== "undefined" && courses_service_1.CoursesService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
@@ -1277,6 +1497,7 @@ var _a, _b, _c, _d, _e, _f, _g;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.EnrollmentPeriodsController = void 0;
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const enrollment_periods_service_1 = __webpack_require__(/*! ../services/enrollment-periods.service */ "./src/cramschool/services/enrollment-periods.service.ts");
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
@@ -1304,6 +1525,10 @@ let EnrollmentPeriodsController = class EnrollmentPeriodsController {
 exports.EnrollmentPeriodsController = EnrollmentPeriodsController;
 __decorate([
     (0, common_1.Get)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得註冊期間列表', description: '查詢註冊期間資料' }),
+    (0, swagger_1.ApiQuery)({ name: 'enrollment', required: false, description: '註冊 ID 篩選', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
     __param(0, (0, common_1.Query)('enrollment', new common_1.ParseIntPipe({ optional: true }))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -1311,6 +1536,11 @@ __decorate([
 ], EnrollmentPeriodsController.prototype, "getPeriods", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得單一註冊期間', description: '查詢註冊期間詳細資料' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功', }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '註冊期間不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -1318,6 +1548,10 @@ __decorate([
 ], EnrollmentPeriodsController.prototype, "getPeriod", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '建立註冊期間', description: '新增註冊期間記錄' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: '建立成功', }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '驗證失敗' }),
     __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateEnrollmentPeriodSchema))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [typeof (_c = typeof shared_1.CreateEnrollmentPeriodDto !== "undefined" && shared_1.CreateEnrollmentPeriodDto) === "function" ? _c : Object]),
@@ -1325,6 +1559,11 @@ __decorate([
 ], EnrollmentPeriodsController.prototype, "createPeriod", null);
 __decorate([
     (0, common_1.Put)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '更新註冊期間', description: '修改註冊期間資料' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '更新成功', }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '註冊期間不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateEnrollmentPeriodSchema.partial()))),
     __metadata("design:type", Function),
@@ -1333,12 +1572,18 @@ __decorate([
 ], EnrollmentPeriodsController.prototype, "updatePeriod", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '刪除註冊期間', description: '刪除註冊期間記錄' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '刪除成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '註冊期間不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
 ], EnrollmentPeriodsController.prototype, "deletePeriod", null);
 exports.EnrollmentPeriodsController = EnrollmentPeriodsController = __decorate([
+    (0, swagger_1.ApiTags)('courses'),
     (0, common_1.Controller)('cramschool/enrollment-periods'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof enrollment_periods_service_1.EnrollmentPeriodsService !== "undefined" && enrollment_periods_service_1.EnrollmentPeriodsService) === "function" ? _a : Object])
@@ -1370,6 +1615,7 @@ var _a, _b, _c, _d, _e, _f, _g;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.EnrollmentsController = void 0;
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const enrollments_service_1 = __webpack_require__(/*! ../services/enrollments.service */ "./src/cramschool/services/enrollments.service.ts");
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
@@ -1397,6 +1643,11 @@ let EnrollmentsController = class EnrollmentsController {
 exports.EnrollmentsController = EnrollmentsController;
 __decorate([
     (0, common_1.Get)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得註冊記錄列表', description: '分頁取得學生課程註冊記錄' }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'page_size', required: false, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
     __param(0, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
     __param(1, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
     __metadata("design:type", Function),
@@ -1405,6 +1656,11 @@ __decorate([
 ], EnrollmentsController.prototype, "getEnrollments", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得單一註冊記錄', description: '查詢註冊詳細資料' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '註冊記錄不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -1412,6 +1668,10 @@ __decorate([
 ], EnrollmentsController.prototype, "getEnrollment", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '建立註冊記錄', description: '註冊學生到課程' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: '註冊成功' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '驗證失敗' }),
     __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateStudentEnrollmentSchema))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [typeof (_c = typeof shared_1.CreateStudentEnrollmentDto !== "undefined" && shared_1.CreateStudentEnrollmentDto) === "function" ? _c : Object]),
@@ -1419,6 +1679,11 @@ __decorate([
 ], EnrollmentsController.prototype, "createEnrollment", null);
 __decorate([
     (0, common_1.Put)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '更新註冊記錄', description: '修改註冊資料' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '更新成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '註冊記錄不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateStudentEnrollmentSchema.partial()))),
     __metadata("design:type", Function),
@@ -1427,12 +1692,18 @@ __decorate([
 ], EnrollmentsController.prototype, "updateEnrollment", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '刪除註冊記錄', description: '取消學生註冊' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '刪除成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '註冊記錄不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
 ], EnrollmentsController.prototype, "deleteEnrollment", null);
 exports.EnrollmentsController = EnrollmentsController = __decorate([
+    (0, swagger_1.ApiTags)('courses'),
     (0, common_1.Controller)('cramschool/enrollments'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof enrollments_service_1.EnrollmentsService !== "undefined" && enrollments_service_1.EnrollmentsService) === "function" ? _a : Object])
@@ -1464,6 +1735,7 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ErrorLogImagesController = void 0;
 const request_types_1 = __webpack_require__(/*! @/types/request.types */ "./src/types/request.types.ts");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const error_log_images_service_1 = __webpack_require__(/*! ../services/error-log-images.service */ "./src/cramschool/services/error-log-images.service.ts");
 const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
@@ -1502,6 +1774,12 @@ let ErrorLogImagesController = class ErrorLogImagesController {
 exports.ErrorLogImagesController = ErrorLogImagesController;
 __decorate([
     (0, common_1.Get)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得錯題圖片列表', description: '分頁取得錯題圖片（教師和管理員可用）' }),
+    (0, swagger_1.ApiQuery)({ name: 'error_log', required: false, description: '錯題 ID 篩選', type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false, description: '頁碼', example: 1, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'page_size', required: false, description: '每頁筆數', example: 10, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Query)('error_log', new common_1.ParseIntPipe({ optional: true }))),
     __param(2, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
@@ -1512,6 +1790,11 @@ __decorate([
 ], ErrorLogImagesController.prototype, "getErrorLogImages", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得單一錯題圖片', description: '根據圖片 ID 取得詳細資料' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '圖片不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -1519,6 +1802,10 @@ __decorate([
 ], ErrorLogImagesController.prototype, "getErrorLogImage", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '建立錯題圖片記錄', description: '新增錯題圖片記錄' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: '建立成功' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '驗證失敗' }),
     __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateErrorLogImageSchema))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [typeof (_e = typeof shared_1.CreateErrorLogImageDto !== "undefined" && shared_1.CreateErrorLogImageDto) === "function" ? _e : Object]),
@@ -1526,6 +1813,11 @@ __decorate([
 ], ErrorLogImagesController.prototype, "createErrorLogImage", null);
 __decorate([
     (0, common_1.Put)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '更新錯題圖片', description: '修改圖片排序或資訊' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '更新成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '圖片不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateErrorLogImageSchema))),
     __metadata("design:type", Function),
@@ -1534,12 +1826,18 @@ __decorate([
 ], ErrorLogImagesController.prototype, "updateErrorLogImage", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '刪除錯題圖片', description: '刪除錯題圖片記錄' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '刪除成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '圖片不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
 ], ErrorLogImagesController.prototype, "deleteErrorLogImage", null);
 exports.ErrorLogImagesController = ErrorLogImagesController = __decorate([
+    (0, swagger_1.ApiTags)('error-logs'),
     (0, common_1.Controller)('cramschool/error-log-images'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof error_log_images_service_1.ErrorLogImagesService !== "undefined" && error_log_images_service_1.ErrorLogImagesService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
@@ -1571,6 +1869,7 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ErrorLogsController = void 0;
 const request_types_1 = __webpack_require__(/*! @/types/request.types */ "./src/types/request.types.ts");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const platform_express_1 = __webpack_require__(/*! @nestjs/platform-express */ "@nestjs/platform-express");
 const error_logs_service_1 = __webpack_require__(/*! ../services/error-logs.service */ "./src/cramschool/services/error-logs.service.ts");
@@ -1658,6 +1957,36 @@ let ErrorLogsController = class ErrorLogsController {
 exports.ErrorLogsController = ErrorLogsController;
 __decorate([
     (0, common_1.Get)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '取得錯題列表',
+        description: '根據查詢條件分頁取得錯題記錄，支援按學生篩選、包含已刪除記錄'
+    }),
+    (0, swagger_1.ApiQuery)({ name: 'include_deleted', required: false, description: '是否包含已刪除記錄', example: 'false', type: String }),
+    (0, swagger_1.ApiQuery)({ name: 'student', required: false, description: '學生 ID 篩選', type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false, description: '頁碼', example: 1, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'page_size', required: false, description: '每頁筆數', example: 10, type: Number }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '成功取得錯題列表',
+        schema: {
+            example: {
+                data: [
+                    {
+                        error_log_id: 1,
+                        student_id: 1,
+                        question_id: 1,
+                        notes: '計算錯誤',
+                        created_at: '2026-02-04T00:00:00Z'
+                    }
+                ],
+                total: 50,
+                page: 1,
+                page_size: 10
+            }
+        }
+    }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Query)('include_deleted')),
     __param(2, (0, common_1.Query)('student', new common_1.ParseIntPipe({ optional: true }))),
@@ -1669,6 +1998,18 @@ __decorate([
 ], ErrorLogsController.prototype, "getErrorLogs", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '取得單一錯題',
+        description: '根據錯題 ID 取得詳細資料，包含題目內容、學生資訊、圖片等'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '錯題 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '成功取得錯題資料',
+    }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '錯題不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -1676,6 +2017,17 @@ __decorate([
 ], ErrorLogsController.prototype, "getErrorLog", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '建立錯題記錄',
+        description: '新增學生的錯題記錄到系統，可關聯題目或直接輸入內容'
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: 201,
+        description: '建立成功',
+    }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '資料驗證失敗' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateErrorLogSchema))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [typeof (_e = typeof shared_1.CreateErrorLogDto !== "undefined" && shared_1.CreateErrorLogDto) === "function" ? _e : Object]),
@@ -1683,6 +2035,19 @@ __decorate([
 ], ErrorLogsController.prototype, "createErrorLog", null);
 __decorate([
     (0, common_1.Put)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '更新錯題記錄',
+        description: '修改錯題的內容、備註等資訊'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '錯題 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '更新成功',
+    }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '資料驗證失敗' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '錯題不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateErrorLogSchema))),
     __metadata("design:type", Function),
@@ -1691,6 +2056,15 @@ __decorate([
 ], ErrorLogsController.prototype, "updateErrorLog", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '刪除錯題記錄',
+        description: '軟刪除錯題記錄（設為 is_deleted = true）'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '錯題 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '刪除成功' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '錯題不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -1698,6 +2072,18 @@ __decorate([
 ], ErrorLogsController.prototype, "deleteErrorLog", null);
 __decorate([
     (0, common_1.Post)(':id/restore'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '恢復已刪除的錯題',
+        description: '將已軟刪除的錯題記錄恢復（設為 is_deleted = false）'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '錯題 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '恢復成功',
+    }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '錯題不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -1705,6 +2091,19 @@ __decorate([
 ], ErrorLogsController.prototype, "restoreErrorLog", null);
 __decorate([
     (0, common_1.Post)(':id/import-to-question-bank'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '匯入到題庫',
+        description: '將錯題記錄匯入到題庫系統，建立新的題目（需教師或管理員權限）'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '錯題 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({
+        status: 201,
+        description: '匯入成功，返回新建立的題目資訊'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: '無權限（需教師或管理員）' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '錯題不存在' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
@@ -1714,6 +2113,20 @@ __decorate([
 __decorate([
     (0, common_1.Post)(':id/upload-images'),
     (0, common_1.UseInterceptors)((0, platform_express_1.FilesInterceptor)('images', 10)),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '上傳錯題圖片',
+        description: '為錯題記錄上傳圖片（最多 10 張），需教師、管理員或會計權限'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '錯題 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({
+        status: 201,
+        description: '上傳成功，返回圖片資訊'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '沒有提供圖片或格式錯誤' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: '無權限（學生不可上傳）' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '錯題不存在' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(2, (0, common_1.UploadedFiles)()),
@@ -1723,6 +2136,27 @@ __decorate([
 ], ErrorLogsController.prototype, "uploadImages", null);
 __decorate([
     (0, common_1.Post)(':id/reorder-images'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '重新排序圖片',
+        description: '調整錯題圖片的顯示順序，需教師、管理員或會計權限'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '錯題 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiBody)({
+        schema: {
+            example: {
+                image_ids: [3, 1, 2]
+            }
+        }
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '排序成功'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '未提供 image_ids 或格式錯誤' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: '無權限（學生不可操作）' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '錯題不存在' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(2, (0, common_1.Body)()),
@@ -1731,6 +2165,7 @@ __decorate([
     __metadata("design:returntype", typeof (_r = typeof Promise !== "undefined" && Promise) === "function" ? _r : Object)
 ], ErrorLogsController.prototype, "reorderImages", null);
 exports.ErrorLogsController = ErrorLogsController = __decorate([
+    (0, swagger_1.ApiTags)('error-logs'),
     (0, common_1.Controller)('cramschool/error-logs'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof error_logs_service_1.ErrorLogsService !== "undefined" && error_logs_service_1.ErrorLogsService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
@@ -1762,6 +2197,7 @@ var _a, _b, _c, _d;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.FeesController = void 0;
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const fees_service_1 = __webpack_require__(/*! ../services/fees.service */ "./src/cramschool/services/fees.service.ts");
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
@@ -1793,6 +2229,14 @@ let FeesController = class FeesController {
 exports.FeesController = FeesController;
 __decorate([
     (0, common_1.Get)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得費用列表', description: '分頁取得學費、雜費等費用記錄，可按學生篩選' }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false, description: '頁碼', example: 1, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'page_size', required: false, description: '每頁筆數', example: 10, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'student', required: false, description: '學生 ID 篩選', type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'include_deleted', required: false, description: '是否包含已刪除', example: 'false', type: String }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功取得費用列表' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
     __param(1, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
     __param(2, (0, common_1.Query)('student', new common_1.ParseIntPipe({ optional: true }))),
@@ -1803,6 +2247,11 @@ __decorate([
 ], FeesController.prototype, "getFees", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得單一費用記錄', description: '根據費用 ID 取得詳細資料' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '費用 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '費用記錄不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -1810,6 +2259,10 @@ __decorate([
 ], FeesController.prototype, "getFee", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '建立費用記錄', description: '新增學費或雜費記錄' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: '建立成功' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '資料驗證失敗' }),
     __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateFeeSchema))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [typeof (_b = typeof shared_1.CreateFeeDto !== "undefined" && shared_1.CreateFeeDto) === "function" ? _b : Object]),
@@ -1817,6 +2270,11 @@ __decorate([
 ], FeesController.prototype, "createFee", null);
 __decorate([
     (0, common_1.Put)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '更新費用記錄', description: '修改費用金額、狀態等資訊' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '費用 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '更新成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '費用記錄不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateFeeSchema))),
     __metadata("design:type", Function),
@@ -1825,6 +2283,11 @@ __decorate([
 ], FeesController.prototype, "updateFee", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '刪除費用記錄', description: '刪除費用記錄' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '費用 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '刪除成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '費用記錄不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -1832,12 +2295,17 @@ __decorate([
 ], FeesController.prototype, "deleteFee", null);
 __decorate([
     (0, common_1.Post)('batch-update'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '批次更新費用狀態', description: '批次修改多筆費用的繳費狀態' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '批次更新成功' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '資料驗證失敗' }),
     __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.BatchUpdateFeeStatusSchema))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [typeof (_d = typeof shared_1.BatchUpdateFeeStatusDto !== "undefined" && shared_1.BatchUpdateFeeStatusDto) === "function" ? _d : Object]),
     __metadata("design:returntype", Promise)
 ], FeesController.prototype, "batchUpdateStatus", null);
 exports.FeesController = FeesController = __decorate([
+    (0, swagger_1.ApiTags)('fees'),
     (0, common_1.Controller)('cramschool/fees'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof fees_service_1.FeesService !== "undefined" && fees_service_1.FeesService) === "function" ? _a : Object])
@@ -1869,6 +2337,7 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.GroupOrdersController = void 0;
 const request_types_1 = __webpack_require__(/*! @/types/request.types */ "./src/types/request.types.ts");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const group_orders_service_1 = __webpack_require__(/*! ../services/group-orders.service */ "./src/cramschool/services/group-orders.service.ts");
 const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
@@ -1915,6 +2384,12 @@ let GroupOrdersController = class GroupOrdersController {
 exports.GroupOrdersController = GroupOrdersController;
 __decorate([
     (0, common_1.Get)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得團訂列表', description: '分頁取得所有團訂記錄（管理員無法使用）' }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false, description: '頁碼', example: 1, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'page_size', required: false, description: '每頁筆數', example: 10, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功取得團訂列表' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
     __param(2, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
@@ -1924,6 +2399,11 @@ __decorate([
 ], GroupOrdersController.prototype, "getGroupOrders", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得單一團訂', description: '根據團訂 ID 取得詳細資料和訂單明細' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '團訂 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功', }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '團訂不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -1931,6 +2411,10 @@ __decorate([
 ], GroupOrdersController.prototype, "getGroupOrder", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '建立團訂', description: '新增團訂記錄，設定餐廳、截止時間等' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: '建立成功', }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '資料驗證失敗' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateGroupOrderSchema))),
     __metadata("design:type", Function),
@@ -1939,6 +2423,11 @@ __decorate([
 ], GroupOrdersController.prototype, "createGroupOrder", null);
 __decorate([
     (0, common_1.Put)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '更新團訂', description: '修改團訂資料' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '團訂 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '更新成功', }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '團訂不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateGroupOrderSchema))),
     __metadata("design:type", Function),
@@ -1947,6 +2436,11 @@ __decorate([
 ], GroupOrdersController.prototype, "updateGroupOrder", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '刪除團訂', description: '刪除團訂記錄' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '團訂 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '刪除成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '團訂不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -1954,6 +2448,11 @@ __decorate([
 ], GroupOrdersController.prototype, "deleteGroupOrder", null);
 __decorate([
     (0, common_1.Post)(':id/complete'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '完成團訂', description: '標記團訂為已完成狀態' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '團訂 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '完成成功', }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '團訂不存在' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
@@ -1961,6 +2460,7 @@ __decorate([
     __metadata("design:returntype", typeof (_m = typeof Promise !== "undefined" && Promise) === "function" ? _m : Object)
 ], GroupOrdersController.prototype, "completeGroupOrder", null);
 exports.GroupOrdersController = GroupOrdersController = __decorate([
+    (0, swagger_1.ApiTags)('orders'),
     (0, common_1.Controller)('cramschool/group-orders'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof group_orders_service_1.GroupOrdersService !== "undefined" && group_orders_service_1.GroupOrdersService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
@@ -2086,6 +2586,7 @@ var _a, _b, _c, _d, _e, _f, _g, _h;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.LeavesController = void 0;
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const leaves_service_1 = __webpack_require__(/*! ../services/leaves.service */ "./src/cramschool/services/leaves.service.ts");
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
@@ -2116,6 +2617,13 @@ let LeavesController = class LeavesController {
 exports.LeavesController = LeavesController;
 __decorate([
     (0, common_1.Get)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得請假記錄列表', description: '分頁取得學生請假記錄' }),
+    (0, swagger_1.ApiQuery)({ name: 'include_deleted', required: false, description: '是否包含已刪除', example: 'false', type: String }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false, description: '頁碼', example: 1, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'page_size', required: false, description: '每頁筆數', example: 10, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功取得請假記錄列表' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Query)('include_deleted')),
     __param(1, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
     __param(2, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
@@ -2125,6 +2633,11 @@ __decorate([
 ], LeavesController.prototype, "getLeaves", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得單一請假記錄', description: '根據 ID 取得請假記錄詳細資料' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '請假記錄 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功', }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '請假記錄不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -2132,6 +2645,10 @@ __decorate([
 ], LeavesController.prototype, "getLeave", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '建立請假記錄', description: '新增學生請假申請' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: '建立成功', }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '資料驗證失敗' }),
     __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateLeaveSchema))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [typeof (_c = typeof shared_1.CreateLeaveDto !== "undefined" && shared_1.CreateLeaveDto) === "function" ? _c : Object]),
@@ -2139,6 +2656,11 @@ __decorate([
 ], LeavesController.prototype, "createLeave", null);
 __decorate([
     (0, common_1.Put)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '更新請假記錄', description: '修改請假記錄資料' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '請假記錄 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '更新成功', }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '請假記錄不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateLeaveSchema))),
     __metadata("design:type", Function),
@@ -2147,6 +2669,11 @@ __decorate([
 ], LeavesController.prototype, "updateLeave", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '刪除請假記錄', description: '軟刪除請假記錄' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '請假記錄 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '刪除成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '請假記錄不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -2154,12 +2681,18 @@ __decorate([
 ], LeavesController.prototype, "deleteLeave", null);
 __decorate([
     (0, common_1.Post)(':id/restore'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '恢復請假記錄', description: '恢復已刪除的請假記錄' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '請假記錄 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '恢復成功', }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '請假記錄不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
 ], LeavesController.prototype, "restoreLeave", null);
 exports.LeavesController = LeavesController = __decorate([
+    (0, swagger_1.ApiTags)('attendances'),
     (0, common_1.Controller)('cramschool/leaves'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof leaves_service_1.LeavesService !== "undefined" && leaves_service_1.LeavesService) === "function" ? _a : Object])
@@ -2191,6 +2724,7 @@ var _a, _b, _c;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.MediaController = void 0;
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const platform_express_1 = __webpack_require__(/*! @nestjs/platform-express */ "@nestjs/platform-express");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
 const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
@@ -2325,6 +2859,23 @@ exports.MediaController = MediaController;
 __decorate([
     (0, common_1.Post)('upload-image'),
     (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('image')),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiConsumes)('multipart/form-data'),
+    (0, swagger_1.ApiOperation)({
+        summary: '上傳圖片',
+        description: '上傳圖片到伺服器，支援 jpg, jpeg, png, gif, webp 格式，限制 5MB'
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '上傳成功，返回圖片路徑和 URL',
+        schema: {
+            example: {
+                image_path: 'question_images/2026/02/04/xxx.jpg',
+                image_url: 'http://localhost:3000/media/question_images/2026/02/04/xxx.jpg'
+            }
+        }
+    }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '文件類型不支援或大小超過限制' }),
     __param(0, (0, common_1.UploadedFile)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [typeof (_c = typeof Express !== "undefined" && (_b = Express.Multer) !== void 0 && _b.File) === "function" ? _c : Object]),
@@ -2332,12 +2883,23 @@ __decorate([
 ], MediaController.prototype, "uploadImage", null);
 __decorate([
     (0, common_1.Post)('generate-resource'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '生成學習資源',
+        description: '根據題目自動生成學習資源（講義、考卷等）'
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: 201,
+        description: '生成成功，返回資源 ID'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '參數錯誤' }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], MediaController.prototype, "generateResource", null);
 exports.MediaController = MediaController = __decorate([
+    (0, swagger_1.ApiTags)('media'),
     (0, common_1.Controller)('cramschool'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _a : Object])
@@ -2369,6 +2931,7 @@ var _a, _b, _c, _d, _e, _f, _g;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.OrderItemsController = void 0;
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const order_items_service_1 = __webpack_require__(/*! ../services/order-items.service */ "./src/cramschool/services/order-items.service.ts");
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
@@ -2396,6 +2959,12 @@ let OrderItemsController = class OrderItemsController {
 exports.OrderItemsController = OrderItemsController;
 __decorate([
     (0, common_1.Get)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得訂單項目列表', description: '分頁取得訂單項目' }),
+    (0, swagger_1.ApiQuery)({ name: 'order', required: false, description: '訂單 ID 篩選', type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'page_size', required: false, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
     __param(0, (0, common_1.Query)('order', new common_1.ParseIntPipe({ optional: true }))),
     __param(1, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
     __param(2, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
@@ -2405,6 +2974,11 @@ __decorate([
 ], OrderItemsController.prototype, "getOrderItems", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得單一訂單項目', description: '查詢訂單項目詳細資料' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '訂單項目不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -2412,6 +2986,10 @@ __decorate([
 ], OrderItemsController.prototype, "getOrderItem", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '建立訂單項目', description: '新增訂單項目' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: '建立成功' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '驗證失敗' }),
     __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateOrderItemSchema))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [typeof (_c = typeof shared_1.CreateOrderItemDto !== "undefined" && shared_1.CreateOrderItemDto) === "function" ? _c : Object]),
@@ -2419,6 +2997,11 @@ __decorate([
 ], OrderItemsController.prototype, "createOrderItem", null);
 __decorate([
     (0, common_1.Put)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '更新訂單項目', description: '修改訂單項目資料' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '更新成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '訂單項目不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateOrderItemSchema))),
     __metadata("design:type", Function),
@@ -2427,12 +3010,18 @@ __decorate([
 ], OrderItemsController.prototype, "updateOrderItem", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '刪除訂單項目', description: '刪除訂單項目' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '刪除成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '訂單項目不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
 ], OrderItemsController.prototype, "deleteOrderItem", null);
 exports.OrderItemsController = OrderItemsController = __decorate([
+    (0, swagger_1.ApiTags)('orders'),
     (0, common_1.Controller)('cramschool/order-items'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof order_items_service_1.OrderItemsService !== "undefined" && order_items_service_1.OrderItemsService) === "function" ? _a : Object])
@@ -2464,6 +3053,7 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.OrdersController = void 0;
 const request_types_1 = __webpack_require__(/*! @/types/request.types */ "./src/types/request.types.ts");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const orders_service_1 = __webpack_require__(/*! ../services/orders.service */ "./src/cramschool/services/orders.service.ts");
 const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
@@ -2515,6 +3105,21 @@ let OrdersController = class OrdersController {
 exports.OrdersController = OrdersController;
 __decorate([
     (0, common_1.Get)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '取得訂單列表',
+        description: '分頁取得訂單記錄，學生只能查看自己的訂單，教師和會計可查看所有訂單'
+    }),
+    (0, swagger_1.ApiQuery)({ name: 'include_deleted', required: false, description: '是否包含已刪除', example: 'false', type: String }),
+    (0, swagger_1.ApiQuery)({ name: 'group_order', required: false, description: '團訂 ID 篩選', type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'student', required: false, description: '學生 ID 篩選', type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false, description: '頁碼', example: 1, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'page_size', required: false, description: '每頁筆數', example: 10, type: Number }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '成功取得訂單列表'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Query)('include_deleted')),
     __param(2, (0, common_1.Query)('group_order', new common_1.ParseIntPipe({ optional: true }))),
@@ -2527,6 +3132,11 @@ __decorate([
 ], OrdersController.prototype, "getOrders", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得單一訂單', description: '根據訂單 ID 取得詳細資料' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '訂單 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功', }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '訂單不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -2534,6 +3144,10 @@ __decorate([
 ], OrdersController.prototype, "getOrder", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '建立訂單', description: '新增訂單記錄' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: '建立成功', }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '資料驗證失敗' }),
     __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateOrderSchema))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [typeof (_e = typeof shared_1.CreateOrderDto !== "undefined" && shared_1.CreateOrderDto) === "function" ? _e : Object]),
@@ -2541,6 +3155,11 @@ __decorate([
 ], OrdersController.prototype, "createOrder", null);
 __decorate([
     (0, common_1.Put)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '更新訂單', description: '修改訂單資料' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '訂單 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '更新成功', }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '訂單不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateOrderSchema))),
     __metadata("design:type", Function),
@@ -2549,6 +3168,11 @@ __decorate([
 ], OrdersController.prototype, "updateOrder", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '刪除訂單', description: '軟刪除訂單' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '訂單 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '刪除成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '訂單不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -2556,12 +3180,18 @@ __decorate([
 ], OrdersController.prototype, "deleteOrder", null);
 __decorate([
     (0, common_1.Post)(':id/restore'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '恢復訂單', description: '恢復已刪除的訂單' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '訂單 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '恢復成功', }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '訂單不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", typeof (_k = typeof Promise !== "undefined" && Promise) === "function" ? _k : Object)
 ], OrdersController.prototype, "restoreOrder", null);
 exports.OrdersController = OrdersController = __decorate([
+    (0, swagger_1.ApiTags)('orders'),
     (0, common_1.Controller)('cramschool/orders'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof orders_service_1.OrdersService !== "undefined" && orders_service_1.OrdersService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
@@ -2687,6 +3317,7 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.QuestionsController = void 0;
 const request_types_1 = __webpack_require__(/*! @/types/request.types */ "./src/types/request.types.ts");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const platform_express_1 = __webpack_require__(/*! @nestjs/platform-express */ "@nestjs/platform-express");
 const questions_service_1 = __webpack_require__(/*! ../services/questions/questions.service */ "./src/cramschool/services/questions/questions.service.ts");
@@ -2742,7 +3373,7 @@ let QuestionsController = class QuestionsController {
     async exportToMarkdown(id) {
         return this.questionsService.exportToMarkdown(id);
     }
-    async previewFromWord(req, file, body) {
+    async previewFromWord(_req, file, body) {
         if (!body.subject_id || !body.level || !body.chapter) {
             throw new Error('請提供 subject_id, level, chapter');
         }
@@ -2755,7 +3386,7 @@ let QuestionsController = class QuestionsController {
         }
         return this.questionsService.importFromWord(file, body.subject_id, body.level, body.chapter, user.id);
     }
-    async previewFromMarkdown(req, files, body) {
+    async previewFromMarkdown(_req, files, body) {
         if (!body.subject_id || !body.level || !body.chapter) {
             throw new Error('請提供 subject_id, level, chapter');
         }
@@ -2782,6 +3413,16 @@ let QuestionsController = class QuestionsController {
 exports.QuestionsController = QuestionsController;
 __decorate([
     (0, common_1.Get)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得題目列表', description: '根據查詢條件分頁取得題目，支援科目、難度、章節等篩選' }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false, description: '頁碼', example: 1, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'page_size', required: false, description: '每頁筆數', example: 10, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'subject_id', required: false, description: '科目 ID', type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'level', required: false, description: '年級', example: '國三', type: String }),
+    (0, swagger_1.ApiQuery)({ name: 'chapter', required: false, description: '章節', type: String }),
+    (0, swagger_1.ApiQuery)({ name: 'difficulty', required: false, description: '難度 (1-5)', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功取得題目列表' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Query)(new nestjs_zod_1.ZodValidationPipe(shared_1.QuestionQuerySchema))),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -2790,6 +3431,12 @@ __decorate([
 ], QuestionsController.prototype, "getQuestions", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得單一題目', description: '根據題目 ID 取得詳細內容、解答、標籤等' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '題目 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功', }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '題目不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -2797,6 +3444,11 @@ __decorate([
 ], QuestionsController.prototype, "getQuestion", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '建立題目', description: '新增題目到題庫，可設定科目、難度、標籤等' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: '建立成功', }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '資料驗證失敗' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateQuestionSchema))),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -2805,6 +3457,13 @@ __decorate([
 ], QuestionsController.prototype, "createQuestion", null);
 __decorate([
     (0, common_1.Put)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '更新題目', description: '修改題目內容、解答、難度等資訊' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '題目 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '更新成功', }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '資料驗證失敗' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '題目不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateQuestionSchema))),
     __param(2, (0, common_1.Request)()),
@@ -2814,6 +3473,12 @@ __decorate([
 ], QuestionsController.prototype, "updateQuestion", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '刪除題目', description: '軟刪除題目（設為 is_deleted）' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '題目 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '刪除成功' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '題目不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -2822,6 +3487,13 @@ __decorate([
 ], QuestionsController.prototype, "deleteQuestion", null);
 __decorate([
     (0, common_1.Get)('search-chapters'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '搜尋章節', description: '根據關鍵字搜尋章節名稱，可依科目和年級篩選' }),
+    (0, swagger_1.ApiQuery)({ name: 'q', description: '搜尋關鍵字', example: '一元一次方程式', type: String }),
+    (0, swagger_1.ApiQuery)({ name: 'subject', required: false, description: '科目 ID', type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'level', required: false, description: '年級', example: '國三', type: String }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Query)('q')),
     __param(1, (0, common_1.Query)('subject', new common_1.ParseIntPipe({ optional: true }))),
     __param(2, (0, common_1.Query)('level')),
@@ -2831,12 +3503,22 @@ __decorate([
 ], QuestionsController.prototype, "searchChapters", null);
 __decorate([
     (0, common_1.Get)('source-options'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得來源選項', description: '取得題目來源的可用選項（如：歷屆試題、模擬考、自編等）' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", typeof (_q = typeof Promise !== "undefined" && Promise) === "function" ? _q : Object)
 ], QuestionsController.prototype, "getSourceOptions", null);
 __decorate([
     (0, common_1.Get)(':id/export-to-latex'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '匯出為 LaTeX', description: '將題目匯出為 LaTeX 格式，可用於排版印刷' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '題目 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '題目不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -2844,6 +3526,12 @@ __decorate([
 ], QuestionsController.prototype, "exportToLatex", null);
 __decorate([
     (0, common_1.Get)(':id/export-to-markdown'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '匯出為 Markdown', description: '將題目匯出為 Markdown 格式' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '題目 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '題目不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -2852,6 +3540,11 @@ __decorate([
 __decorate([
     (0, common_1.Post)('preview-from-word'),
     (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '預覽 Word 匯入', description: '上傳 Word 檔案預覽題目內容（不實際匯入到題庫）' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '預覽成功' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '檔案格式錯誤或參數缺失' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.UploadedFile)()),
     __param(2, (0, common_1.Body)()),
@@ -2862,6 +3555,11 @@ __decorate([
 __decorate([
     (0, common_1.Post)('import-from-word'),
     (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '從 Word 匯入題目', description: '上傳 Word 檔案並匯入題目到題庫' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: '匯入成功' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '檔案格式錯誤或參數缺失' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.UploadedFile)()),
     __param(2, (0, common_1.Body)()),
@@ -2874,6 +3572,11 @@ __decorate([
     (0, common_1.UseInterceptors)((0, platform_express_1.AnyFilesInterceptor)({
         limits: { fileSize: 5 * 1024 * 1024 },
     })),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '預覽 Markdown 匯入', description: '上傳 Markdown 檔案和圖片預覽題目內容（不實際匯入）' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '預覽成功' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '檔案格式錯誤或參數缺失' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.UploadedFiles)()),
     __param(2, (0, common_1.Body)()),
@@ -2886,6 +3589,11 @@ __decorate([
     (0, common_1.UseInterceptors)((0, platform_express_1.AnyFilesInterceptor)({
         limits: { fileSize: 5 * 1024 * 1024 },
     })),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '從 Markdown 匯入題目', description: '上傳 Markdown 檔案和圖片並匯入題目到題庫' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: '匯入成功' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '檔案格式錯誤或參數缺失' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.UploadedFiles)()),
     __param(2, (0, common_1.Body)()),
@@ -2894,6 +3602,7 @@ __decorate([
     __metadata("design:returntype", typeof (_4 = typeof Promise !== "undefined" && Promise) === "function" ? _4 : Object)
 ], QuestionsController.prototype, "importFromMarkdown", null);
 exports.QuestionsController = QuestionsController = __decorate([
+    (0, swagger_1.ApiTags)('questions'),
     (0, common_1.Controller)('cramschool/questions'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof questions_service_1.QuestionsService !== "undefined" && questions_service_1.QuestionsService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
@@ -2925,6 +3634,7 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ResourcesController = void 0;
 const request_types_1 = __webpack_require__(/*! @/types/request.types */ "./src/types/request.types.ts");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const resources_service_1 = __webpack_require__(/*! ../services/resources.service */ "./src/cramschool/services/resources.service.ts");
 const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
@@ -2988,6 +3698,20 @@ let ResourcesController = class ResourcesController {
 exports.ResourcesController = ResourcesController;
 __decorate([
     (0, common_1.Get)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '取得資源列表',
+        description: '分頁取得教材、講義等學習資源，可按課程篩選、支援不同檢視模式'
+    }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false, description: '頁碼', example: 1, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'page_size', required: false, description: '每頁筆數', example: 10, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'course', required: false, description: '課程 ID 篩選', type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'mode', required: false, description: '檢視模式', type: String }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '成功取得資源列表'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
     __param(2, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
@@ -2999,6 +3723,18 @@ __decorate([
 ], ResourcesController.prototype, "getResources", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '取得單一資源',
+        description: '根據資源 ID 取得詳細資料，包含檔案路徑、關聯課程等'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '資源 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '成功取得資源資料',
+    }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '資源不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -3006,6 +3742,18 @@ __decorate([
 ], ResourcesController.prototype, "getResource", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '建立學習資源',
+        description: '新增教材、講義等學習資源到系統'
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: 201,
+        description: '建立成功',
+    }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '資料驗證失敗' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: '無權限建立資源' }),
     __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateLearningResourceSchema))),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -3014,6 +3762,19 @@ __decorate([
 ], ResourcesController.prototype, "createResource", null);
 __decorate([
     (0, common_1.Put)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '更新學習資源',
+        description: '修改資源的名稱、描述、檔案等資訊'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '資源 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '更新成功',
+    }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '資料驗證失敗' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '資源不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateLearningResourceSchema))),
     __param(2, (0, common_1.Request)()),
@@ -3023,6 +3784,16 @@ __decorate([
 ], ResourcesController.prototype, "updateResource", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '刪除學習資源',
+        description: '軟刪除學習資源（設為 is_deleted = true）'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '資源 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '刪除成功' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: '無權限刪除資源' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '資源不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -3031,6 +3802,27 @@ __decorate([
 ], ResourcesController.prototype, "deleteResource", null);
 __decorate([
     (0, common_1.Post)(':id/bind-to-course'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '綁定/解除資源與課程',
+        description: '將學習資源關聯到課程或解除關聯（action: add/remove）'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '資源 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiBody)({
+        schema: {
+            example: {
+                course_id: 1,
+                action: 'add'
+            }
+        }
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '操作成功'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '參數錯誤' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '資源或課程不存在' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(2, (0, common_1.Body)()),
@@ -3040,6 +3832,25 @@ __decorate([
 ], ResourcesController.prototype, "bindToCourse", null);
 __decorate([
     (0, common_1.Post)(':id/export'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '匯出資源',
+        description: '將學習資源匯出為指定格式（question_only, with_answers 等）'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '資源 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiBody)({
+        schema: {
+            example: {
+                format_type: 'question_only'
+            }
+        }
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '匯出成功'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '資源不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -3048,6 +3859,28 @@ __decorate([
 ], ResourcesController.prototype, "exportResource", null);
 __decorate([
     (0, common_1.Post)(':id/grade'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '批改資源作業',
+        description: '自動批改學生提交的作業答案'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '資源 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiBody)({
+        schema: {
+            example: {
+                submission: {
+                    answers: ['A', 'B', 'C']
+                }
+            }
+        }
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '批改完成，返回分數和詳細結果'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '提交資料格式錯誤' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '資源不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -3055,6 +3888,7 @@ __decorate([
     __metadata("design:returntype", typeof (_r = typeof Promise !== "undefined" && Promise) === "function" ? _r : Object)
 ], ResourcesController.prototype, "gradeResource", null);
 exports.ResourcesController = ResourcesController = __decorate([
+    (0, swagger_1.ApiTags)('resources'),
     (0, common_1.Controller)('cramschool/resources'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof resources_service_1.ResourcesService !== "undefined" && resources_service_1.ResourcesService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
@@ -3086,6 +3920,7 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.RestaurantsController = void 0;
 const request_types_1 = __webpack_require__(/*! @/types/request.types */ "./src/types/request.types.ts");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const restaurants_service_1 = __webpack_require__(/*! ../services/restaurants.service */ "./src/cramschool/services/restaurants.service.ts");
 const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
@@ -3123,6 +3958,12 @@ let RestaurantsController = class RestaurantsController {
 exports.RestaurantsController = RestaurantsController;
 __decorate([
     (0, common_1.Get)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得餐廳列表', description: '分頁取得所有可訂餐的餐廳資料（管理員無法使用）' }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false, description: '頁碼', example: 1, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'page_size', required: false, description: '每頁筆數', example: 10, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功取得餐廳列表' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
     __param(2, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
@@ -3132,6 +3973,11 @@ __decorate([
 ], RestaurantsController.prototype, "getRestaurants", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得單一餐廳', description: '根據餐廳 ID 取得詳細資料和菜單' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '餐廳 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功', }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '餐廳不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -3139,6 +3985,10 @@ __decorate([
 ], RestaurantsController.prototype, "getRestaurant", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '建立餐廳', description: '新增餐廳資料到系統' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: '建立成功', }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '資料驗證失敗' }),
     __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateRestaurantSchema))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [typeof (_e = typeof shared_1.CreateRestaurantDto !== "undefined" && shared_1.CreateRestaurantDto) === "function" ? _e : Object]),
@@ -3146,6 +3996,11 @@ __decorate([
 ], RestaurantsController.prototype, "createRestaurant", null);
 __decorate([
     (0, common_1.Put)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '更新餐廳', description: '修改餐廳資料和菜單' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '餐廳 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '更新成功', }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '餐廳不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateRestaurantSchema))),
     __metadata("design:type", Function),
@@ -3154,12 +4009,18 @@ __decorate([
 ], RestaurantsController.prototype, "updateRestaurant", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '刪除餐廳', description: '刪除餐廳資料' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '餐廳 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '刪除成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '餐廳不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
 ], RestaurantsController.prototype, "deleteRestaurant", null);
 exports.RestaurantsController = RestaurantsController = __decorate([
+    (0, swagger_1.ApiTags)('orders'),
     (0, common_1.Controller)('cramschool/restaurants'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof restaurants_service_1.RestaurantsService !== "undefined" && restaurants_service_1.RestaurantsService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
@@ -3191,6 +4052,7 @@ var _a, _b, _c, _d, _e, _f, _g;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SessionsController = void 0;
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const sessions_service_1 = __webpack_require__(/*! ../services/sessions.service */ "./src/cramschool/services/sessions.service.ts");
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
@@ -3218,6 +4080,11 @@ let SessionsController = class SessionsController {
 exports.SessionsController = SessionsController;
 __decorate([
     (0, common_1.Get)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得課堂列表', description: '分頁取得課堂記錄' }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'page_size', required: false, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
     __param(0, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
     __param(1, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
     __metadata("design:type", Function),
@@ -3226,6 +4093,11 @@ __decorate([
 ], SessionsController.prototype, "getSessions", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得單一課堂', description: '查詢課堂詳細資料' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功', }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '課堂不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -3233,6 +4105,10 @@ __decorate([
 ], SessionsController.prototype, "getSession", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '建立課堂', description: '新增課堂記錄' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: '建立成功', }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '驗證失敗' }),
     __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateSessionSchema))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [typeof (_c = typeof shared_1.CreateSessionDto !== "undefined" && shared_1.CreateSessionDto) === "function" ? _c : Object]),
@@ -3240,6 +4116,11 @@ __decorate([
 ], SessionsController.prototype, "createSession", null);
 __decorate([
     (0, common_1.Put)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '更新課堂', description: '修改課堂資料' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '更新成功', }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '課堂不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateSessionSchema))),
     __metadata("design:type", Function),
@@ -3248,12 +4129,18 @@ __decorate([
 ], SessionsController.prototype, "updateSession", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '刪除課堂', description: '刪除課堂記錄' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '刪除成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '課堂不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
 ], SessionsController.prototype, "deleteSession", null);
 exports.SessionsController = SessionsController = __decorate([
+    (0, swagger_1.ApiTags)('courses'),
     (0, common_1.Controller)('cramschool/sessions'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof sessions_service_1.SessionsService !== "undefined" && sessions_service_1.SessionsService) === "function" ? _a : Object])
@@ -3285,6 +4172,7 @@ var _a, _b, _c, _d, _e, _f, _g, _h;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.StudentAnswersController = void 0;
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const student_answers_service_1 = __webpack_require__(/*! ../services/student-answers.service */ "./src/cramschool/services/student-answers.service.ts");
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
@@ -3315,6 +4203,12 @@ let StudentAnswersController = class StudentAnswersController {
 exports.StudentAnswersController = StudentAnswersController;
 __decorate([
     (0, common_1.Get)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得學生答題記錄列表', description: '分頁取得學生的答題記錄' }),
+    (0, swagger_1.ApiQuery)({ name: 'include_deleted', required: false, type: String }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'page_size', required: false, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
     __param(0, (0, common_1.Query)('include_deleted')),
     __param(1, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
     __param(2, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
@@ -3324,6 +4218,11 @@ __decorate([
 ], StudentAnswersController.prototype, "getStudentAnswers", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得單一答題記錄', description: '查詢答題記錄詳細資料' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '記錄不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -3331,6 +4230,10 @@ __decorate([
 ], StudentAnswersController.prototype, "getStudentAnswer", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '建立答題記錄', description: '記錄學生的答題結果' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: '建立成功' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '驗證失敗' }),
     __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateStudentAnswerSchema))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [typeof (_c = typeof shared_1.CreateStudentAnswerDto !== "undefined" && shared_1.CreateStudentAnswerDto) === "function" ? _c : Object]),
@@ -3338,6 +4241,11 @@ __decorate([
 ], StudentAnswersController.prototype, "createStudentAnswer", null);
 __decorate([
     (0, common_1.Put)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '更新答題記錄', description: '修改答題記錄' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '更新成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '記錄不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateStudentAnswerSchema))),
     __metadata("design:type", Function),
@@ -3346,6 +4254,11 @@ __decorate([
 ], StudentAnswersController.prototype, "updateStudentAnswer", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '刪除答題記錄', description: '軟刪除答題記錄' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '刪除成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '記錄不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -3353,12 +4266,18 @@ __decorate([
 ], StudentAnswersController.prototype, "deleteStudentAnswer", null);
 __decorate([
     (0, common_1.Post)(':id/restore'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '恢復答題記錄', description: '恢復已刪除的答題記錄' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '恢復成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '記錄不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
 ], StudentAnswersController.prototype, "restoreStudentAnswer", null);
 exports.StudentAnswersController = StudentAnswersController = __decorate([
+    (0, swagger_1.ApiTags)('questions'),
     (0, common_1.Controller)('cramschool/student-answers'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof student_answers_service_1.StudentAnswersService !== "undefined" && student_answers_service_1.StudentAnswersService) === "function" ? _a : Object])
@@ -3390,6 +4309,7 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.StudentGroupsController = void 0;
 const request_types_1 = __webpack_require__(/*! @/types/request.types */ "./src/types/request.types.ts");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const student_groups_service_1 = __webpack_require__(/*! ../services/student-groups.service */ "./src/cramschool/services/student-groups.service.ts");
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
@@ -3425,6 +4345,9 @@ let StudentGroupsController = class StudentGroupsController {
 exports.StudentGroupsController = StudentGroupsController;
 __decorate([
     (0, common_1.Get)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得學生分組列表', description: '查詢所有學生分組' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
     __param(0, (0, common_1.Query)(new nestjs_zod_1.ZodValidationPipe(shared_1.StudentGroupQuerySchema))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [typeof (_b = typeof shared_1.StudentGroupQuery !== "undefined" && shared_1.StudentGroupQuery) === "function" ? _b : Object]),
@@ -3432,6 +4355,11 @@ __decorate([
 ], StudentGroupsController.prototype, "getStudentGroups", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得單一分組', description: '查詢分組詳細資料和成員' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '分組不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -3439,6 +4367,10 @@ __decorate([
 ], StudentGroupsController.prototype, "getStudentGroup", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '建立學生分組', description: '新增學生分組' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: '建立成功' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '驗證失敗' }),
     __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateStudentGroupSchema))),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -3447,6 +4379,11 @@ __decorate([
 ], StudentGroupsController.prototype, "createStudentGroup", null);
 __decorate([
     (0, common_1.Put)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '更新分組', description: '修改分組資料' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '更新成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '分組不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateStudentGroupSchema))),
     __metadata("design:type", Function),
@@ -3455,6 +4392,11 @@ __decorate([
 ], StudentGroupsController.prototype, "updateStudentGroup", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '刪除分組', description: '刪除學生分組' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '刪除成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '分組不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -3462,6 +4404,10 @@ __decorate([
 ], StudentGroupsController.prototype, "deleteStudentGroup", null);
 __decorate([
     (0, common_1.Post)(':id/add-students'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '添加學生到分組', description: '將學生加入分組' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '添加成功' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.AddStudentsToGroupSchema))),
     __metadata("design:type", Function),
@@ -3470,6 +4416,10 @@ __decorate([
 ], StudentGroupsController.prototype, "addStudentsToGroup", null);
 __decorate([
     (0, common_1.Post)(':id/remove-students'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '從分組移除學生', description: '將學生從分組中移除' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '移除成功' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.RemoveStudentsFromGroupSchema))),
     __metadata("design:type", Function),
@@ -3477,6 +4427,7 @@ __decorate([
     __metadata("design:returntype", typeof (_o = typeof Promise !== "undefined" && Promise) === "function" ? _o : Object)
 ], StudentGroupsController.prototype, "removeStudentsFromGroup", null);
 exports.StudentGroupsController = StudentGroupsController = __decorate([
+    (0, swagger_1.ApiTags)('students'),
     (0, common_1.Controller)('cramschool/student-groups'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof student_groups_service_1.StudentGroupsService !== "undefined" && student_groups_service_1.StudentGroupsService) === "function" ? _a : Object])
@@ -3508,6 +4459,7 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.StudentMistakeNoteImagesController = void 0;
 const request_types_1 = __webpack_require__(/*! @/types/request.types */ "./src/types/request.types.ts");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const student_mistake_note_images_service_1 = __webpack_require__(/*! ../services/student-mistake-note-images.service */ "./src/cramschool/services/student-mistake-note-images.service.ts");
 const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
@@ -3563,6 +4515,12 @@ let StudentMistakeNoteImagesController = class StudentMistakeNoteImagesControlle
 exports.StudentMistakeNoteImagesController = StudentMistakeNoteImagesController;
 __decorate([
     (0, common_1.Get)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得訂正本圖片列表', description: '分頁取得訂正本圖片' }),
+    (0, swagger_1.ApiQuery)({ name: 'note', required: false, description: '訂正本 ID 篩選', type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false, description: '頁碼', example: 1, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'page_size', required: false, description: '每頁筆數', example: 10, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Query)('note', new common_1.ParseIntPipe({ optional: true }))),
     __param(2, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
@@ -3573,6 +4531,11 @@ __decorate([
 ], StudentMistakeNoteImagesController.prototype, "getStudentMistakeNoteImages", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得單一訂正本圖片', description: '根據圖片 ID 取得詳細資料' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '圖片不存在' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
@@ -3581,6 +4544,10 @@ __decorate([
 ], StudentMistakeNoteImagesController.prototype, "getStudentMistakeNoteImage", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '建立訂正本圖片記錄', description: '新增訂正本圖片記錄' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: '建立成功' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '驗證失敗' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateStudentMistakeNoteImageSchema))),
     __metadata("design:type", Function),
@@ -3589,6 +4556,11 @@ __decorate([
 ], StudentMistakeNoteImagesController.prototype, "createStudentMistakeNoteImage", null);
 __decorate([
     (0, common_1.Put)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '更新訂正本圖片', description: '修改圖片排序或資訊' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '更新成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '圖片不存在' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(2, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateStudentMistakeNoteImageSchema))),
@@ -3598,6 +4570,11 @@ __decorate([
 ], StudentMistakeNoteImagesController.prototype, "updateStudentMistakeNoteImage", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '刪除訂正本圖片', description: '刪除訂正本圖片記錄' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '刪除成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '圖片不存在' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
@@ -3605,6 +4582,7 @@ __decorate([
     __metadata("design:returntype", typeof (_o = typeof Promise !== "undefined" && Promise) === "function" ? _o : Object)
 ], StudentMistakeNoteImagesController.prototype, "deleteStudentMistakeNoteImage", null);
 exports.StudentMistakeNoteImagesController = StudentMistakeNoteImagesController = __decorate([
+    (0, swagger_1.ApiTags)('mistake-notes'),
     (0, common_1.Controller)('cramschool/student-mistake-note-images'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof student_mistake_note_images_service_1.StudentMistakeNoteImagesService !== "undefined" && student_mistake_note_images_service_1.StudentMistakeNoteImagesService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
@@ -3636,6 +4614,7 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.StudentMistakeNotesController = void 0;
 const request_types_1 = __webpack_require__(/*! @/types/request.types */ "./src/types/request.types.ts");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const platform_express_1 = __webpack_require__(/*! @nestjs/platform-express */ "@nestjs/platform-express");
 const student_mistake_notes_service_1 = __webpack_require__(/*! ../services/student-mistake-notes.service */ "./src/cramschool/services/student-mistake-notes.service.ts");
@@ -3737,6 +4716,15 @@ let StudentMistakeNotesController = class StudentMistakeNotesController {
 exports.StudentMistakeNotesController = StudentMistakeNotesController;
 __decorate([
     (0, common_1.Get)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得訂正本列表', description: '分頁取得學生訂正本記錄，支援搜尋和篩選' }),
+    (0, swagger_1.ApiQuery)({ name: 'include_deleted', required: false, description: '是否包含已刪除', example: 'false', type: String }),
+    (0, swagger_1.ApiQuery)({ name: 'student_id', required: false, description: '學生 ID 篩選', type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'q', required: false, description: '搜尋關鍵字', type: String }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false, description: '頁碼', example: 1, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'page_size', required: false, description: '每頁筆數', example: 10, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功取得訂正本列表' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Query)('include_deleted')),
     __param(2, (0, common_1.Query)('student_id', new common_1.ParseIntPipe({ optional: true }))),
@@ -3749,6 +4737,11 @@ __decorate([
 ], StudentMistakeNotesController.prototype, "getStudentMistakeNotes", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得單一訂正本', description: '根據訂正本 ID 取得詳細資料' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '訂正本 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '訂正本不存在' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
@@ -3757,6 +4750,10 @@ __decorate([
 ], StudentMistakeNotesController.prototype, "getStudentMistakeNote", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '建立訂正本記錄', description: '新增學生訂正本記錄' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: '建立成功' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '資料驗證失敗' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateStudentMistakeNoteSchema))),
     __metadata("design:type", Function),
@@ -3765,6 +4762,11 @@ __decorate([
 ], StudentMistakeNotesController.prototype, "createStudentMistakeNote", null);
 __decorate([
     (0, common_1.Put)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '更新訂正本', description: '修改訂正本記錄內容' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '訂正本 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '更新成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '訂正本不存在' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(2, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateStudentMistakeNoteSchema))),
@@ -3774,6 +4776,11 @@ __decorate([
 ], StudentMistakeNotesController.prototype, "updateStudentMistakeNote", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '刪除訂正本', description: '軟刪除訂正本記錄' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '訂正本 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '刪除成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '訂正本不存在' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
@@ -3782,6 +4789,11 @@ __decorate([
 ], StudentMistakeNotesController.prototype, "deleteStudentMistakeNote", null);
 __decorate([
     (0, common_1.Post)(':id/restore'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '恢復訂正本', description: '恢復已刪除的訂正本記錄' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '訂正本 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '恢復成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '訂正本不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -3789,6 +4801,12 @@ __decorate([
 ], StudentMistakeNotesController.prototype, "restoreStudentMistakeNote", null);
 __decorate([
     (0, common_1.Post)(':id/import-to-question-bank'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '匯入到題庫', description: '將訂正本記錄匯入到題庫（需教師或管理員權限）' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '訂正本 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: '匯入成功' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: '無權限（需教師或管理員）' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '訂正本不存在' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(2, (0, common_1.Body)()),
@@ -3799,6 +4817,12 @@ __decorate([
 __decorate([
     (0, common_1.Post)(':id/upload-images'),
     (0, common_1.UseInterceptors)((0, platform_express_1.FilesInterceptor)('images', 10)),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '上傳訂正本圖片', description: '為訂正本上傳圖片（最多 10 張，僅學生可上傳）' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '訂正本 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: '上傳成功' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '沒有提供圖片' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: '無權限（僅學生可上傳）' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(2, (0, common_1.UploadedFiles)()),
@@ -3808,6 +4832,12 @@ __decorate([
 ], StudentMistakeNotesController.prototype, "uploadImages", null);
 __decorate([
     (0, common_1.Post)(':id/reorder-images'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '重新排序圖片', description: '調整訂正本圖片的顯示順序（僅學生可操作）' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '訂正本 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiBody)({ schema: { example: { image_ids: [3, 1, 2] } } }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '排序成功' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: '無權限（僅學生可操作）' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(2, (0, common_1.Body)()),
@@ -3816,6 +4846,7 @@ __decorate([
     __metadata("design:returntype", typeof (_v = typeof Promise !== "undefined" && Promise) === "function" ? _v : Object)
 ], StudentMistakeNotesController.prototype, "reorderImages", null);
 exports.StudentMistakeNotesController = StudentMistakeNotesController = __decorate([
+    (0, swagger_1.ApiTags)('mistake-notes'),
     (0, common_1.Controller)('cramschool/student-mistake-notes'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof student_mistake_notes_service_1.StudentMistakeNotesService !== "undefined" && student_mistake_notes_service_1.StudentMistakeNotesService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
@@ -3847,6 +4878,7 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.StudentsController = void 0;
 const request_types_1 = __webpack_require__(/*! @/types/request.types */ "./src/types/request.types.ts");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const students_service_1 = __webpack_require__(/*! ../services/students/students.service */ "./src/cramschool/services/students/students.service.ts");
 const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
@@ -3908,6 +4940,40 @@ let StudentsController = class StudentsController {
 exports.StudentsController = StudentsController;
 __decorate([
     (0, common_1.Get)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '取得學生列表',
+        description: '根據查詢條件分頁取得學生資料，支援篩選、排序、搜尋功能'
+    }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false, description: '頁碼', example: 1, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'page_size', required: false, description: '每頁筆數', example: 10, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'search', required: false, description: '搜尋關鍵字（姓名、學校）', type: String }),
+    (0, swagger_1.ApiQuery)({ name: 'grade', required: false, description: '年級篩選', type: String }),
+    (0, swagger_1.ApiQuery)({ name: 'is_deleted', required: false, description: '是否包含已刪除', type: Boolean }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '成功取得學生列表',
+        schema: {
+            example: {
+                data: [
+                    {
+                        student_id: 1,
+                        name: '王小明',
+                        school: '台北市立中山國中',
+                        grade: '國三',
+                        phone: '0912345678',
+                        emergency_contact_name: '王爸爸',
+                        emergency_contact_phone: '0987654321'
+                    }
+                ],
+                total: 100,
+                page: 1,
+                page_size: 10
+            }
+        }
+    }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: '無權限查看學生資料' }),
     __param(0, (0, common_1.Query)(new nestjs_zod_1.ZodValidationPipe(shared_1.StudentQuerySchema))),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -3916,6 +4982,18 @@ __decorate([
 ], StudentsController.prototype, "getStudents", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '取得單一學生',
+        description: '根據學生 ID 取得詳細資料，包含註冊課程、出缺席記錄等'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '學生 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '成功取得學生資料',
+    }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '學生不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -3923,6 +5001,18 @@ __decorate([
 ], StudentsController.prototype, "getStudent", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '建立學生',
+        description: '新增學生資料到系統，可同時建立關聯的使用者帳號'
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: 201,
+        description: '建立成功',
+    }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '資料驗證失敗或學生已存在' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: '無權限建立學生' }),
     __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateStudentSchema))),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -3931,6 +5021,19 @@ __decorate([
 ], StudentsController.prototype, "createStudent", null);
 __decorate([
     (0, common_1.Put)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '更新學生資料',
+        description: '修改指定學生的基本資料、聯絡資訊等'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '學生 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '更新成功',
+    }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '資料驗證失敗' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '學生不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateStudentSchema))),
     __metadata("design:type", Function),
@@ -3939,6 +5042,15 @@ __decorate([
 ], StudentsController.prototype, "updateStudent", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '刪除學生',
+        description: '軟刪除學生資料（設為 is_deleted = true），不會實際刪除資料'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '學生 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '刪除成功' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '學生不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -3946,6 +5058,18 @@ __decorate([
 ], StudentsController.prototype, "deleteStudent", null);
 __decorate([
     (0, common_1.Post)(':id/restore'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '恢復已刪除的學生',
+        description: '將已軟刪除的學生資料恢復（設為 is_deleted = false）'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '學生 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '恢復成功',
+    }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '學生不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -3953,6 +5077,18 @@ __decorate([
 ], StudentsController.prototype, "restoreStudent", null);
 __decorate([
     (0, common_1.Get)(':id/tuition_status'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '取得學生繳費狀態',
+        description: '查詢學生的學費繳納狀態、欠費記錄等'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '學生 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '成功取得繳費狀態'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '學生不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -3960,6 +5096,29 @@ __decorate([
 ], StudentsController.prototype, "getTuitionStatus", null);
 __decorate([
     (0, common_1.Post)(':id/generate_tuition'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '生成學費帳單',
+        description: '為指定學生生成特定月份的學費帳單'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '學生 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiBody)({
+        schema: {
+            example: {
+                year: 2026,
+                month: 2,
+                enrollment_id: 1,
+                weeks: 4
+            }
+        }
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: 201,
+        description: '學費帳單生成成功'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '參數錯誤或帳單已存在' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '學生或註冊記錄不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -3968,6 +5127,25 @@ __decorate([
 ], StudentsController.prototype, "generateTuition", null);
 __decorate([
     (0, common_1.Post)('batch-generate-tuitions'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '批次生成學費帳單',
+        description: '為多個學生批次生成學費帳單，可指定週數'
+    }),
+    (0, swagger_1.ApiBody)({
+        schema: {
+            example: {
+                student_ids: [1, 2, 3],
+                weeks: 4
+            }
+        }
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: 201,
+        description: '批次生成成功，返回成功和失敗的統計'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '參數錯誤' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
@@ -3975,6 +5153,27 @@ __decorate([
 ], StudentsController.prototype, "batchGenerateTuitions", null);
 __decorate([
     (0, common_1.Post)(':id/reset-password'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '重置學生密碼',
+        description: '重置學生帳號的登入密碼（需管理員權限）'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '學生 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiBody)({
+        schema: {
+            example: {
+                password: 'newPassword123'
+            }
+        }
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '密碼重置成功'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '密碼格式不符合規則' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: '無權限重置密碼' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '學生不存在或無關聯帳號' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -3983,6 +5182,19 @@ __decorate([
 ], StudentsController.prototype, "resetPassword", null);
 __decorate([
     (0, common_1.Post)(':id/toggle-account-status'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '切換學生帳號狀態',
+        description: '啟用或停用學生的登入帳號（is_active 切換）'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '學生 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '帳號狀態切換成功'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: '無權限修改帳號狀態' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '學生不存在或無關聯帳號' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -3990,12 +5202,25 @@ __decorate([
 ], StudentsController.prototype, "toggleAccountStatus", null);
 __decorate([
     (0, common_1.Get)(':id/attendance_and_leaves'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '取得出缺席記錄',
+        description: '查詢學生的出席、缺席、請假記錄統計'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '學生 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '成功取得出缺席記錄'
+    }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '學生不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", typeof (_t = typeof Promise !== "undefined" && Promise) === "function" ? _t : Object)
 ], StudentsController.prototype, "getAttendanceAndLeaves", null);
 exports.StudentsController = StudentsController = __decorate([
+    (0, swagger_1.ApiTags)('students'),
     (0, common_1.Controller)('cramschool/students'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof students_service_1.StudentsService !== "undefined" && students_service_1.StudentsService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
@@ -4027,6 +5252,7 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SubjectsController = void 0;
 const request_types_1 = __webpack_require__(/*! @/types/request.types */ "./src/types/request.types.ts");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const subjects_service_1 = __webpack_require__(/*! ../services/subjects.service */ "./src/cramschool/services/subjects.service.ts");
 const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
@@ -4077,6 +5303,9 @@ let SubjectsController = class SubjectsController {
 exports.SubjectsController = SubjectsController;
 __decorate([
     (0, common_1.Get)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得科目列表' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
     __param(0, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
     __param(1, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
     __param(2, (0, common_1.Request)()),
@@ -4086,6 +5315,11 @@ __decorate([
 ], SubjectsController.prototype, "getSubjects", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '取得單一科目' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -4094,6 +5328,10 @@ __decorate([
 ], SubjectsController.prototype, "getSubject", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '建立科目' }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: '建立成功' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '驗證失敗' }),
     __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateSubjectSchema))),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -4102,6 +5340,11 @@ __decorate([
 ], SubjectsController.prototype, "createSubject", null);
 __decorate([
     (0, common_1.Put)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '更新科目' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '更新成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateSubjectSchema))),
     __param(2, (0, common_1.Request)()),
@@ -4111,6 +5354,11 @@ __decorate([
 ], SubjectsController.prototype, "updateSubject", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({ summary: '刪除科目' }),
+    (0, swagger_1.ApiParam)({ name: 'id', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '刪除成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -4118,6 +5366,7 @@ __decorate([
     __metadata("design:returntype", typeof (_o = typeof Promise !== "undefined" && Promise) === "function" ? _o : Object)
 ], SubjectsController.prototype, "deleteSubject", null);
 exports.SubjectsController = SubjectsController = __decorate([
+    (0, swagger_1.ApiTags)('courses'),
     (0, common_1.Controller)('cramschool/subjects'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof subjects_service_1.SubjectsService !== "undefined" && subjects_service_1.SubjectsService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
@@ -4149,6 +5398,7 @@ var _a, _b, _c, _d, _e, _f, _g;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.TeachersController = void 0;
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const teachers_service_1 = __webpack_require__(/*! ../services/teachers.service */ "./src/cramschool/services/teachers.service.ts");
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
@@ -4176,6 +5426,34 @@ let TeachersController = class TeachersController {
 exports.TeachersController = TeachersController;
 __decorate([
     (0, common_1.Get)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '取得教師列表',
+        description: '分頁取得所有教師資料，包含基本資訊和授課科目'
+    }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false, description: '頁碼', example: 1, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'page_size', required: false, description: '每頁筆數', example: 10, type: Number }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '成功取得教師列表',
+        schema: {
+            example: {
+                data: [
+                    {
+                        teacher_id: 1,
+                        name: '李老師',
+                        subject: '數學',
+                        phone: '0912345678',
+                        email: 'teacher@example.com'
+                    }
+                ],
+                total: 20,
+                page: 1,
+                page_size: 10
+            }
+        }
+    }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
     __param(1, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
     __metadata("design:type", Function),
@@ -4184,6 +5462,18 @@ __decorate([
 ], TeachersController.prototype, "getTeachers", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '取得單一教師',
+        description: '根據教師 ID 取得詳細資料，包含授課課程列表'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '教師 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '成功取得教師資料',
+    }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '教師不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -4191,6 +5481,18 @@ __decorate([
 ], TeachersController.prototype, "getTeacher", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '建立教師',
+        description: '新增教師資料到系統，可同時建立關聯的使用者帳號'
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: 201,
+        description: '建立成功',
+    }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '資料驗證失敗或教師已存在' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: '無權限建立教師' }),
     __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateTeacherSchema))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [typeof (_c = typeof shared_1.CreateTeacherDto !== "undefined" && shared_1.CreateTeacherDto) === "function" ? _c : Object]),
@@ -4198,6 +5500,19 @@ __decorate([
 ], TeachersController.prototype, "createTeacher", null);
 __decorate([
     (0, common_1.Put)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '更新教師資料',
+        description: '修改教師的基本資料、授課科目、聯絡資訊等'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '教師 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '更新成功',
+    }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '資料驗證失敗' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '教師不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateTeacherSchema))),
     __metadata("design:type", Function),
@@ -4206,12 +5521,23 @@ __decorate([
 ], TeachersController.prototype, "updateTeacher", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '刪除教師',
+        description: '軟刪除教師資料（設為 is_deleted = true）'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '教師 ID', example: 1, type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '刪除成功' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: '無權限刪除教師' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '教師不存在' }),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
 ], TeachersController.prototype, "deleteTeacher", null);
 exports.TeachersController = TeachersController = __decorate([
+    (0, swagger_1.ApiTags)('teachers'),
     (0, common_1.Controller)('cramschool/teachers'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof teachers_service_1.TeachersService !== "undefined" && teachers_service_1.TeachersService) === "function" ? _a : Object])
@@ -6042,8 +7368,6 @@ let GroupOrdersService = class GroupOrdersService {
         return this.toGroupOrderDto(updatedGroupOrder);
     }
     toGroupOrderDto(groupOrder) {
-        const _ordersCount = groupOrder.orders?.length || 0;
-        const _totalAmount = groupOrder.orders?.reduce((sum, o) => sum + Number(o._totalAmount || 0), 0) || 0;
         return {
             group_order_id: groupOrder.groupOrderId,
             restaurant_id: groupOrder.restaurantId,
@@ -7355,7 +8679,7 @@ let QuestionsQueryService = class QuestionsQueryService {
         this.prisma = prisma;
         this.permissionService = permissionService;
     }
-    async getQuestions(query, userId, userRole) {
+    async getQuestions(query, _userId, userRole) {
         this.permissionService.checkListPermission(userRole);
         if (userRole === 'ADMIN' || userRole === 'ACCOUNTANT') {
             return (0, pagination_util_1.createPaginatedResponse)([], 0, query.page || 1, query.page_size || 10);
@@ -9875,7 +11199,7 @@ let StudentsService = class StudentsService {
             })),
         };
     }
-    async createStudent(createDto, userId, userRole) {
+    async createStudent(createDto, _userId, userRole) {
         this.permissionService.checkCreatePermission(userRole);
         const student = await this.prisma.cramschoolStudent.create({
             data: {
@@ -10402,7 +11726,7 @@ let WordImporterService = class WordImporterService {
             Hard: 5,
         };
     }
-    async importQuestions(fileContent, filename, defaultSubjectId, defaultLevel, defaultChapter, saveImagesFunc) {
+    async importQuestions(fileContent, filename, _defaultSubjectId, _defaultLevel, _defaultChapter, saveImagesFunc) {
         const errors = [];
         const questions = [];
         try {
@@ -10441,7 +11765,7 @@ let WordImporterService = class WordImporterService {
             return { questions, errors };
         }
     }
-    parseDocxContent(rawText, htmlContent, imageMap) {
+    parseDocxContent(rawText, _htmlContent, _imageMap) {
         const questions = [];
         const errors = [];
         const lines = rawText.split('\n').filter((line) => line.trim());
@@ -10723,6 +12047,16 @@ module.exports = require("@nestjs/passport");
 /***/ ((module) => {
 
 module.exports = require("@nestjs/platform-express");
+
+/***/ }),
+
+/***/ "@nestjs/swagger":
+/*!**********************************!*\
+  !*** external "@nestjs/swagger" ***!
+  \**********************************/
+/***/ ((module) => {
+
+module.exports = require("@nestjs/swagger");
 
 /***/ }),
 
@@ -15326,6 +16660,7 @@ const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
 const http_exception_filter_1 = __webpack_require__(/*! ./common/filters/http-exception.filter */ "./src/common/filters/http-exception.filter.ts");
 const audit_log_interceptor_1 = __webpack_require__(/*! ./common/interceptors/audit-log.interceptor */ "./src/common/interceptors/audit-log.interceptor.ts");
 const prisma_service_1 = __webpack_require__(/*! ./prisma/prisma.service */ "./src/prisma/prisma.service.ts");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     const isDevelopment = process.env.NODE_ENV !== 'production';
@@ -15357,9 +16692,44 @@ async function bootstrap() {
     const prismaService = app.get(prisma_service_1.PrismaService);
     app.useGlobalInterceptors(new audit_log_interceptor_1.AuditLogInterceptor(prismaService));
     app.setGlobalPrefix('api');
+    const config = new swagger_1.DocumentBuilder()
+        .setTitle('9Jang 補習班管理系統 API')
+        .setDescription('9Jang Cram School Management System API Documentation')
+        .setVersion('1.0.0')
+        .addBearerAuth({
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'JWT',
+        description: '請輸入 JWT Token',
+        in: 'header',
+    }, 'JWT-auth')
+        .addTag('account', '帳號管理 - 登入、登出、使用者資訊')
+        .addTag('students', '學生管理 - 學生資料、註冊、繳費')
+        .addTag('teachers', '教師管理 - 教師資料、課程')
+        .addTag('courses', '課程管理 - 課程、班級、排課')
+        .addTag('questions', '題庫管理 - 題目、標籤、匯入')
+        .addTag('error-logs', '錯題本 - 學生錯題記錄')
+        .addTag('mistake-notes', '訂正本 - 學生訂正記錄')
+        .addTag('resources', '資源管理 - 教材、講義')
+        .addTag('orders', '訂餐管理 - 團訂、訂單')
+        .addTag('attendances', '出缺席管理 - 簽到、請假')
+        .addTag('fees', '費用管理 - 學費、雜費')
+        .addTag('media', '媒體管理 - 圖片上傳')
+        .build();
+    const document = swagger_1.SwaggerModule.createDocument(app, config);
+    swagger_1.SwaggerModule.setup('api/docs', app, document, {
+        swaggerOptions: {
+            persistAuthorization: true,
+            tagsSorter: 'alpha',
+            operationsSorter: 'alpha',
+        },
+        customSiteTitle: '9Jang API 文檔',
+    });
     const port = process.env.PORT || 3000;
     await app.listen(port);
     console.log(`Application is running on: http://localhost:${port}`);
+    console.log(`Swagger API Docs available at: http://localhost:${port}/api/docs`);
 }
 bootstrap();
 

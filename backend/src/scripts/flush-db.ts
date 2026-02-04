@@ -150,7 +150,7 @@ async function flushDatabase(noinput: boolean, keepAuth: boolean) {
 
   try {
     // 使用事務確保原子性
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (_tx) => {
       for (const modelName of modelsToDelete) {
         const count = await deleteModel(modelName as keyof PrismaClient, keepAuth);
         if (count > 0) {

@@ -36,24 +36,31 @@
 - **修正**：移除 `@shared/*` mapping，保留 `@/*`
 - **說明**：實際使用的是 `@9jang/shared`（透過 pnpm workspace）
 
+#### 5. ✅ TypeScript 版本統一
+- **問題**：根目錄、backend、frontend、shared 都有各自的 TypeScript
+- **影響**：重複安裝、版本管理分散
+- **修正**：
+  - 移除所有子 package 的 TypeScript
+  - 只在根目錄保留 TypeScript 5.9.3
+  - 所有子 package 自動繼承根目錄版本
+- **詳細報告**：請參考 `TYPESCRIPT_UNIFICATION.md`
+
 ### 🟢 建議優化（暫不修正）
 
-#### 5. ⚠️ Backend TypeScript 配置較寬鬆
+#### 6. ⚠️ Backend TypeScript 配置較寬鬆
 - **現狀**：backend 使用較寬鬆的 TypeScript 設定
 - **對比**：frontend 使用 `strict: true`
 - **建議**：視專案需求決定是否統一嚴格度
 - **未修正原因**：需要團隊討論，可能需要修正大量現有程式碼
 
-#### 6. ⚠️ TypeScript 版本分散
-- **現狀**：根目錄、backend、frontend、shared 都有各自的 TypeScript
-- **版本**：都是 `^5.3.3`
-- **建議**：可考慮只在根目錄安裝，子 package 繼承
-- **未修正原因**：目前配置也是可行的，不影響功能
-
-#### 7. ⚠️ Zod 版本分散
-- **現狀**：三個 package 都各自安裝 zod `^3.22.4`
-- **建議**：確保版本一致，避免序列化問題
-- **未修正原因**：版本已經一致，目前沒問題
+#### 7. ✅ Zod 版本統一
+- **問題**：backend、frontend、shared 都各自安裝 zod
+- **影響**：重複安裝、可能版本不一致
+- **修正**：
+  - 在根目錄統一提供 zod 3.25.76
+  - Shared 使用 peerDependencies
+  - Backend 和 Frontend 透過依賴提升自動使用
+- **詳細報告**：請參考 `ZOD_UNIFICATION.md`
 
 ## 修正後需要執行的操作
 

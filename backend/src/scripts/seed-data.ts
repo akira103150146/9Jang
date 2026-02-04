@@ -182,7 +182,7 @@ function convertKeysToCamelCase(obj: Record<string, any>): Record<string, any> {
 }
 
 async function resolveForeignKey(
-  modelPath: string,
+  _modelPath: string,
   fieldName: string,
   value: string
 ): Promise<any> {
@@ -447,7 +447,7 @@ async function seedData(jsonFile: string, clearExisting: boolean, dryRun: boolea
   };
 
   try {
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (_tx) => {
       // 如果指定了 --clear，先清除資料
       if (clearExisting && !dryRun) {
         console.log('清除現有資料...');

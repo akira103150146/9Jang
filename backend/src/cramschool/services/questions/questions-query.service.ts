@@ -3,9 +3,9 @@
  * 處理題目查詢和篩選邏輯
  */
 
-import { Injectable, ForbiddenException } from '@nestjs/common'
+import { Injectable } from '@nestjs/common'
 import { PrismaService } from '../../../prisma/prisma.service'
-import { QuestionQuery, Question } from '@9jang/shared'
+import { QuestionQuery } from '@9jang/shared'
 import { createPaginatedResponse } from '../../../common/utils/pagination.util'
 import { QuestionsPermissionService } from './questions-permission.service'
 
@@ -19,7 +19,7 @@ export class QuestionsQueryService {
   /**
    * 獲取題目列表（帶查詢和分頁）
    */
-  async getQuestions(query: QuestionQuery, userId: number, userRole: string) {
+  async getQuestions(query: QuestionQuery, _userId: number, userRole: string) {
     this.permissionService.checkListPermission(userRole)
 
     // 管理員和會計不可用

@@ -225,8 +225,8 @@ export class GroupOrdersService {
   }
 
   private toGroupOrderDto(groupOrder: any): GroupOrder {
-    const _ordersCount = groupOrder.orders?.length || 0;
-    const _totalAmount = groupOrder.orders?.reduce((sum: number, o: any) => sum + Number(o._totalAmount || 0), 0) || 0;
+    // const _ordersCount = groupOrder.orders?.length || 0;
+    // const _totalAmount = groupOrder.orders?.reduce((sum: number, o: any) => sum + Number(o._totalAmount || 0), 0) || 0;
 
     return {
       group_order_id: groupOrder.groupOrderId,

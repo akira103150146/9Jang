@@ -18,13 +18,7 @@ import { StudentsPermissionService } from './students-permission.service';
 import { StudentsStatsService } from './students-stats.service';
 import type { 
   StudentGroup, 
-  Enrollment,
-  TuitionStatus,
-  AccountStatus,
-  TuitionGenerationResult,
-  BatchTuitionResult,
-  PasswordResetResult,
-  AttendanceAndLeaves
+  Enrollment
 } from '../../types/student.types';
 
 @Injectable()
@@ -162,7 +156,7 @@ export class StudentsService {
     };
   }
 
-  async createStudent(createDto: CreateStudentDto, userId: number, userRole: string): Promise<Student> {
+  async createStudent(createDto: CreateStudentDto, _userId: number, userRole: string): Promise<Student> {
     // 使用 PermissionService 檢查權限
     this.permissionService.checkCreatePermission(userRole);
 

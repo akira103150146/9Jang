@@ -7,6 +7,7 @@ import {
   Body,
   BadRequestException,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../account/guards/jwt-auth.guard';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -14,6 +15,7 @@ import { v4 as uuidv4 } from 'uuid';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 
+@ApiTags('media')
 @Controller('cramschool')
 @UseGuards(JwtAuthGuard)
 export class MediaController {
@@ -21,6 +23,23 @@ export class MediaController {
 
   @Post('upload-image')
   @UseInterceptors(FileInterceptor('image'))
+  @ApiBearerAuth('JWT-auth')
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ 
+    summary: '上傳圖片', 
+    description: '上傳圖片到伺服器，支援 jpg, jpeg, png, gif, webp 格式，限制 5MB'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: '上傳成功，返回圖片路徑和 URL',
+    schema: {
+      example: {
+        image_path: 'question_images/2026/02/04/xxx.jpg',
+        image_url: 'http://localhost:3000/media/question_images/2026/02/04/xxx.jpg'
+      }
+    }
+  })
+  @ApiResponse({ status: 400, description: '文件類型不支援或大小超過限制' })
   async uploadImage(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
       throw new BadRequestException('沒有提供圖片文件');
@@ -71,6 +90,16 @@ export class MediaController {
   }
 
   @Post('generate-resource')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ 
+    summary: '生成學習資源', 
+    description: '根據題目自動生成學習資源（講義、考卷等）'
+  })
+  @ApiResponse({ 
+    status: 201, 
+    description: '生成成功，返回資源 ID'
+  })
+  @ApiResponse({ status: 400, description: '參數錯誤' })
   async generateResource(@Body() body: any) {
     const {
       mode = 'HANDOUT',
