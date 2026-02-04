@@ -21,7 +21,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.AccountController = void 0;
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
@@ -39,7 +39,7 @@ let AccountController = class AccountController {
     async login(loginDto) {
         return this.accountService.login(loginDto);
     }
-    async logout(_req) {
+    async logout() {
         return { message: '登出成功' };
     }
     async refreshToken(refreshTokenDto) {
@@ -95,9 +95,8 @@ __decorate([
     (0, swagger_1.ApiOperation)({ summary: '使用者登出', description: '登出系統（客戶端需刪除 token）' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: '登出成功' }),
     (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
-    __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_d = typeof request_types_1.AuthRequest !== "undefined" && request_types_1.AuthRequest) === "function" ? _d : Object]),
+    __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], AccountController.prototype, "logout", null);
 __decorate([
@@ -107,8 +106,8 @@ __decorate([
     (0, swagger_1.ApiResponse)({ status: 401, description: 'Refresh token 無效或過期' }),
     __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_2.RefreshTokenRequestSchema))),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_e = typeof shared_1.RefreshTokenRequestDto !== "undefined" && shared_1.RefreshTokenRequestDto) === "function" ? _e : Object]),
-    __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
+    __metadata("design:paramtypes", [typeof (_d = typeof shared_1.RefreshTokenRequestDto !== "undefined" && shared_1.RefreshTokenRequestDto) === "function" ? _d : Object]),
+    __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
 ], AccountController.prototype, "refreshToken", null);
 __decorate([
     (0, common_1.Get)('users/me'),
@@ -119,8 +118,8 @@ __decorate([
     (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_g = typeof request_types_1.AuthRequest !== "undefined" && request_types_1.AuthRequest) === "function" ? _g : Object]),
-    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
+    __metadata("design:paramtypes", [typeof (_f = typeof request_types_1.AuthRequest !== "undefined" && request_types_1.AuthRequest) === "function" ? _f : Object]),
+    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
 ], AccountController.prototype, "getCurrentUser", null);
 __decorate([
     (0, common_1.Get)('current-role'),
@@ -133,8 +132,8 @@ __decorate([
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Query)('temp_role')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_j = typeof request_types_1.AuthRequest !== "undefined" && request_types_1.AuthRequest) === "function" ? _j : Object, String]),
-    __metadata("design:returntype", typeof (_k = typeof Promise !== "undefined" && Promise) === "function" ? _k : Object)
+    __metadata("design:paramtypes", [typeof (_h = typeof request_types_1.AuthRequest !== "undefined" && request_types_1.AuthRequest) === "function" ? _h : Object, String]),
+    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
 ], AccountController.prototype, "getCurrentRole", null);
 __decorate([
     (0, common_1.Post)('switch-role'),
@@ -147,8 +146,8 @@ __decorate([
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_l = typeof request_types_1.AuthRequest !== "undefined" && request_types_1.AuthRequest) === "function" ? _l : Object, Object]),
-    __metadata("design:returntype", typeof (_m = typeof Promise !== "undefined" && Promise) === "function" ? _m : Object)
+    __metadata("design:paramtypes", [typeof (_k = typeof request_types_1.AuthRequest !== "undefined" && request_types_1.AuthRequest) === "function" ? _k : Object, Object]),
+    __metadata("design:returntype", typeof (_l = typeof Promise !== "undefined" && Promise) === "function" ? _l : Object)
 ], AccountController.prototype, "switchRole", null);
 __decorate([
     (0, common_1.Post)('reset-role'),
@@ -159,8 +158,8 @@ __decorate([
     (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_o = typeof request_types_1.AuthRequest !== "undefined" && request_types_1.AuthRequest) === "function" ? _o : Object]),
-    __metadata("design:returntype", typeof (_p = typeof Promise !== "undefined" && Promise) === "function" ? _p : Object)
+    __metadata("design:paramtypes", [typeof (_m = typeof request_types_1.AuthRequest !== "undefined" && request_types_1.AuthRequest) === "function" ? _m : Object]),
+    __metadata("design:returntype", typeof (_o = typeof Promise !== "undefined" && Promise) === "function" ? _o : Object)
 ], AccountController.prototype, "resetRole", null);
 __decorate([
     (0, common_1.Post)('impersonate-user'),
@@ -168,8 +167,8 @@ __decorate([
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_q = typeof request_types_1.AuthRequest !== "undefined" && request_types_1.AuthRequest) === "function" ? _q : Object, Object]),
-    __metadata("design:returntype", typeof (_r = typeof Promise !== "undefined" && Promise) === "function" ? _r : Object)
+    __metadata("design:paramtypes", [typeof (_p = typeof request_types_1.AuthRequest !== "undefined" && request_types_1.AuthRequest) === "function" ? _p : Object, Object]),
+    __metadata("design:returntype", typeof (_q = typeof Promise !== "undefined" && Promise) === "function" ? _q : Object)
 ], AccountController.prototype, "impersonateUser", null);
 __decorate([
     (0, common_1.Post)('change-password'),
@@ -182,8 +181,8 @@ __decorate([
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_2.ChangePasswordRequestSchema))),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_s = typeof request_types_1.AuthRequest !== "undefined" && request_types_1.AuthRequest) === "function" ? _s : Object, typeof (_t = typeof shared_1.ChangePasswordRequestDto !== "undefined" && shared_1.ChangePasswordRequestDto) === "function" ? _t : Object]),
-    __metadata("design:returntype", typeof (_u = typeof Promise !== "undefined" && Promise) === "function" ? _u : Object)
+    __metadata("design:paramtypes", [typeof (_r = typeof request_types_1.AuthRequest !== "undefined" && request_types_1.AuthRequest) === "function" ? _r : Object, typeof (_s = typeof shared_1.ChangePasswordRequestDto !== "undefined" && shared_1.ChangePasswordRequestDto) === "function" ? _s : Object]),
+    __metadata("design:returntype", typeof (_t = typeof Promise !== "undefined" && Promise) === "function" ? _t : Object)
 ], AccountController.prototype, "changePassword", null);
 __decorate([
     (0, common_1.Get)('users'),
@@ -212,7 +211,7 @@ __decorate([
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
-    __metadata("design:returntype", typeof (_v = typeof Promise !== "undefined" && Promise) === "function" ? _v : Object)
+    __metadata("design:returntype", typeof (_u = typeof Promise !== "undefined" && Promise) === "function" ? _u : Object)
 ], AccountController.prototype, "getUser", null);
 __decorate([
     (0, common_1.Get)('roles'),

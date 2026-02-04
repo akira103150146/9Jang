@@ -31,11 +31,11 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 @ApiTags('account')
 @Controller('account')
 export class AccountController {
-  constructor(private readonly accountService: AccountService) {}
+  constructor(private readonly accountService: AccountService) { }
 
   @Post('login')
   @ApiOperation({ summary: '使用者登入', description: '使用帳號密碼登入系統，返回 JWT token' })
-  @ApiResponse({ status: 200, description: '登入成功',  })
+  @ApiResponse({ status: 200, description: '登入成功', })
   @ApiResponse({ status: 401, description: '帳號或密碼錯誤' })
   async login(
     @Body(new ZodValidationPipe(LoginRequestSchema)) loginDto: LoginRequestDto,
@@ -49,15 +49,30 @@ export class AccountController {
   @ApiOperation({ summary: '使用者登出', description: '登出系統（客戶端需刪除 token）' })
   @ApiResponse({ status: 200, description: '登出成功' })
   @ApiResponse({ status: 401, description: '未授權' })
-  async logout(@Request() _req: AuthRequest) {
-    // JWT 是無狀態的，登出主要是客戶端刪除 token
-    // 如果需要 token 黑名單，可以在這裡實現
+  async logout() {
+    /**
+     * JWT 登出流程說明：
+     * 
+     * 1. 前端呼叫此 API（authAPI.logout()）
+     * 2. JwtAuthGuard 驗證使用者身分（確保是已登入用戶）
+     * 3. 後端回傳成功訊息
+     * 4. 前端在 finally 區塊執行 clearTokens()，刪除：
+     *    - localStorage 中的 access_token
+     *    - localStorage 中的 refresh_token
+     *    - localStorage 中的 user 資訊
+     * 
+     * 注意：
+     * - Token 的刪除完全由前端（瀏覽器）處理
+     * - 後端不維護 token 黑名單（保持無狀態設計）
+     * - Token 在過期前仍然有效（access: 1小時, refresh: 7天）
+     * - 如需更高安全性，可實作 Redis 黑名單機制
+     */
     return { message: '登出成功' };
   }
 
   @Post('token/refresh')
   @ApiOperation({ summary: '刷新 Token', description: '使用 refresh token 獲取新的 access token' })
-  @ApiResponse({ status: 200, description: '刷新成功',  })
+  @ApiResponse({ status: 200, description: '刷新成功', })
   @ApiResponse({ status: 401, description: 'Refresh token 無效或過期' })
   async refreshToken(
     @Body(new ZodValidationPipe(RefreshTokenRequestSchema))
@@ -70,7 +85,7 @@ export class AccountController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得當前使用者資訊', description: '取得目前登入使用者的詳細資料' })
-  @ApiResponse({ status: 200, description: '成功',  })
+  @ApiResponse({ status: 200, description: '成功', })
   @ApiResponse({ status: 401, description: '未授權' })
   async getCurrentUser(@Request() req: AuthRequest): Promise<User> {
     return this.accountService.getCurrentUser(req.user.id);
@@ -173,7 +188,7 @@ export class AccountController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得單一使用者', description: '根據 ID 查詢使用者詳細資料' })
   @ApiParam({ name: 'id', description: '使用者 ID' })
-  @ApiResponse({ status: 200, description: '成功',  })
+  @ApiResponse({ status: 200, description: '成功', })
   @ApiResponse({ status: 401, description: '未授權' })
   @ApiResponse({ status: 404, description: '使用者不存在' })
   async getUser(@Param('id', ParseIntPipe) id: number): Promise<User> {
