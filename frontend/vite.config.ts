@@ -30,7 +30,7 @@ export default defineConfig(({ mode }): UserConfig => {
     },
     server: {
       port: parseInt(env.VITE_FRONTEND_PORT || '5173', 10),
-      host: env.VITE_FRONTEND_HOST || 'localhost',
+      host: env.VITE_FRONTEND_HOST || '0.0.0.0', // 監聽所有網路介面
       proxy: {
         '/api': {
           target: env.VITE_BACKEND_URL || 'http://localhost:8000',

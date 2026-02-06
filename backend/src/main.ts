@@ -114,8 +114,9 @@ async function bootstrap() {
   });
 
   const port = process.env.PORT || 3000;
-  await app.listen(port);
-  console.log(`Application is running on: http://localhost:${port}`);
+  const host = process.env.HOST || '0.0.0.0'; // 監聽所有網路介面
+  await app.listen(port, host);
+  console.log(`Application is running on: http://${host}:${port}`);
   console.log(`Swagger API Docs available at: http://localhost:${port}/api/docs`);
 }
 bootstrap();
