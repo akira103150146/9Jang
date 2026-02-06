@@ -28,6 +28,7 @@ __exportStar(require("./student.schema"), exports);
 __exportStar(require("./teacher.schema"), exports);
 // 課程
 __exportStar(require("./course.schema"), exports);
+__exportStar(require("./course-pdf.schema"), exports);
 // 題目
 __exportStar(require("./question.schema"), exports);
 // 教學資源和模板

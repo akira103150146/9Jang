@@ -145,6 +145,7 @@ model CramschoolCourse {
   sessions      CramschoolSessionRecord[]
   leaves        CramschoolLeave[]
   learningResources CramschoolLearningResourceCourse[]
+  pdfs          CramschoolCoursePdf[]
 
   @@map("cramschool_course")
 }
@@ -462,6 +463,7 @@ model CramschoolStudentGroup {
 
   students    CramschoolStudentGroupStudent[]
   learningResources CramschoolLearningResourceStudentGroup[]
+  coursePdfs  CramschoolCoursePdfStudentGroup[]
 
   @@map("cramschool_studentgroup")
 }
@@ -560,4 +562,39 @@ model CramschoolLearningResourceTag {
 
   @@unique([resourceId, tagId])
   @@map("cramschool_learningresource_tags")
+}
+
+model CramschoolCoursePdf {
+  pdfId           Int       @id @default(autoincrement()) @map("pdf_id")
+  title           String    @map("title")
+  description     String?   @map("description")
+  filePath        String    @map("file_path")
+  fileSize        Int       @map("file_size")
+  courseId        Int       @map("course_id")
+  uploadedById    Int       @map("uploaded_by_id")
+  allowDownload   Boolean   @default(false) @map("allow_download")
+  isVisibleToAll  Boolean   @default(false) @map("is_visible_to_all")
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  course          CramschoolCourse @relation(fields: [courseId], references: [courseId], onDelete: Cascade)
+  studentGroups   CramschoolCoursePdfStudentGroup[]
+
+  @@index([courseId])
+  @@index([uploadedById])
+  @@index([isActive])
+  @@map("cramschool_course_pdf")
+}
+
+model CramschoolCoursePdfStudentGroup {
+  id          Int @id @default(autoincrement())
+  pdfId       Int @map("pdf_id")
+  groupId     Int @map("student_group_id")
+
+  pdf         CramschoolCoursePdf @relation(fields: [pdfId], references: [pdfId], onDelete: Cascade)
+  group       CramschoolStudentGroup @relation(fields: [groupId], references: [groupId], onDelete: Cascade)
+
+  @@unique([pdfId, groupId])
+  @@map("cramschool_course_pdf_student_groups")
 }

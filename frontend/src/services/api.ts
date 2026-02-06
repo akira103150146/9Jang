@@ -49,6 +49,8 @@ export { userAPI } from './user/user.api'
 export { studentGroupAPI } from './student-group/student-group.api'
 export { generationAPI } from './generation/generation.api'
 export { roleSwitchAPI } from './role-switch/role-switch.api'
+export { coursePdfAPI } from './course-pdf/course-pdf.api'
+export type { CoursePdf, UploadPdfData, UpdatePdfData } from './course-pdf/course-pdf.api'
 
 // 導出 api 實例作為默認導出（向後兼容）
 import apiInstance from './api/index'

@@ -5,15 +5,9 @@ import { createPaginatedResponse } from '../../common/utils/pagination.util';
 
 @Injectable()
 export class CoursesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async getCourses(page: number = 1, pageSize: number = 10, userId?: number, userRole?: string) {
-    // #region agent log
-    const fs = require('fs');
-    const logEntry1 = JSON.stringify({location:'courses.service.ts:getCourses:entry',message:'getCourses service called',data:{page,pageSize,userId,userRole},timestamp:Date.now(),sessionId:'debug-session',runId:'verification',hypothesisId:'F,G'}) + '\n';
-    fs.appendFileSync('/home/akira/github/9Jang/.cursor/debug.log', logEntry1);
-    // #endregion
-
     const skip = (page - 1) * pageSize;
 
     // 如果是學生角色,需要找到對應的 studentId
@@ -23,28 +17,19 @@ export class CoursesService {
         where: { userId },
       });
       studentId = studentProfile?.studentId;
-      // #region agent log
-      const logEntry2 = JSON.stringify({location:'courses.service.ts:getCourses:studentLookup',message:'Student profile lookup',data:{userId,studentId,found:!!studentProfile},timestamp:Date.now(),sessionId:'debug-session',runId:'verification',hypothesisId:'F,G'}) + '\n';
-      fs.appendFileSync('/home/akira/github/9Jang/.cursor/debug.log', logEntry2);
-      // #endregion
     }
 
     // 構建查詢條件:學生只能看到自己報名的課程
     const whereCondition = userRole === 'STUDENT' && studentId
       ? {
-          enrollments: {
-            some: {
-              studentId: studentId,
-              isDeleted: false,
-            },
+        enrollments: {
+          some: {
+            studentId: studentId,
+            isDeleted: false,
           },
-        }
+        },
+      }
       : {};
-
-    // #region agent log
-    const logEntry2_5 = JSON.stringify({location:'courses.service.ts:getCourses:whereCondition',message:'Query where condition',data:{userRole,studentId,whereCondition},timestamp:Date.now(),sessionId:'debug-session',runId:'verification',hypothesisId:'F,G'}) + '\n';
-    fs.appendFileSync('/home/akira/github/9Jang/.cursor/debug.log', logEntry2_5);
-    // #endregion
 
     const [results, count] = await Promise.all([
       this.prisma.cramschoolCourse.findMany({
@@ -68,11 +53,6 @@ export class CoursesService {
       }),
       this.prisma.cramschoolCourse.count(userRole === 'STUDENT' && studentId ? { where: whereCondition } : {}),
     ]);
-
-    // #region agent log
-    const logEntry3 = JSON.stringify({location:'courses.service.ts:getCourses:afterQuery',message:'Courses fetched from DB',data:{totalCourses:results.length,totalCount:count,userRole,studentId},timestamp:Date.now(),sessionId:'debug-session',runId:'verification',hypothesisId:'F,G'}) + '\n';
-    fs.appendFileSync('/home/akira/github/9Jang/.cursor/debug.log', logEntry3);
-    // #endregion
 
     return createPaginatedResponse(
       results.map((c) => this.toCourseDto(c)),
@@ -164,8 +144,8 @@ export class CoursesService {
 
   private toCourseDto(course: any): Course & { enrollments_count?: number } {
     // 計算報名人數（排除已刪除的報名）
-    const enrollmentsCount = course.enrollments 
-      ? course.enrollments.filter((e: any) => !e.isDeleted).length 
+    const enrollmentsCount = course.enrollments
+      ? course.enrollments.filter((e: any) => !e.isDeleted).length
       : 0;
 
     const result: any = {

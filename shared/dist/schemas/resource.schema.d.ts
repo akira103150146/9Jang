@@ -35,9 +35,9 @@ export declare const LearningResourceSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     title: string;
     resource_id: number;
+    student_group_ids: number[];
     mode: "HANDOUT" | "ONLINE_QUIZ" | "LEETCODE" | "LISTENING_TEST" | "FLASHCARD";
     course_ids: number[];
-    student_group_ids: number[];
     structure: any[];
     settings: Record<string, any>;
     tag_ids: number[];
@@ -56,10 +56,10 @@ export declare const LearningResourceSchema: z.ZodObject<{
     resource_id: number;
     created_at?: string | undefined;
     updated_at?: string | undefined;
+    student_group_ids?: number[] | undefined;
     created_by?: number | null | undefined;
     mode?: "HANDOUT" | "ONLINE_QUIZ" | "LEETCODE" | "LISTENING_TEST" | "FLASHCARD" | undefined;
     course_ids?: number[] | undefined;
-    student_group_ids?: number[] | undefined;
     structure?: any[] | undefined;
     tiptap_structure?: {
         type: "doc";
@@ -77,10 +77,10 @@ export type LearningResource = z.infer<typeof LearningResourceSchema>;
  */
 export declare const CreateLearningResourceSchema: z.ZodObject<{
     title: z.ZodString;
+    student_group_ids: z.ZodOptional<z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodNumber, "many">>>>;
     created_by: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodNumber>>>;
     mode: z.ZodDefault<z.ZodEnum<["HANDOUT", "ONLINE_QUIZ", "LEETCODE", "LISTENING_TEST", "FLASHCARD"]>>;
     course_ids: z.ZodOptional<z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodNumber, "many">>>>;
-    student_group_ids: z.ZodOptional<z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodNumber, "many">>>>;
     structure: z.ZodOptional<z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodAny, "many">>>>;
     tiptap_structure: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodObject<{
         type: z.ZodLiteral<"doc">;
@@ -101,9 +101,9 @@ export declare const CreateLearningResourceSchema: z.ZodObject<{
     title: string;
     mode: "HANDOUT" | "ONLINE_QUIZ" | "LEETCODE" | "LISTENING_TEST" | "FLASHCARD";
     is_individualized: boolean;
+    student_group_ids?: number[] | undefined;
     created_by?: number | null | undefined;
     course_ids?: number[] | undefined;
-    student_group_ids?: number[] | undefined;
     structure?: any[] | undefined;
     tiptap_structure?: {
         type: "doc";
@@ -115,10 +115,10 @@ export declare const CreateLearningResourceSchema: z.ZodObject<{
     available_until?: string | null | undefined;
 }, {
     title: string;
+    student_group_ids?: number[] | undefined;
     created_by?: number | null | undefined;
     mode?: "HANDOUT" | "ONLINE_QUIZ" | "LEETCODE" | "LISTENING_TEST" | "FLASHCARD" | undefined;
     course_ids?: number[] | undefined;
-    student_group_ids?: number[] | undefined;
     structure?: any[] | undefined;
     tiptap_structure?: {
         type: "doc";
@@ -161,10 +161,10 @@ export declare const UpdateLearningResourceSchema: z.ZodObject<Omit<{
     updated_at: z.ZodOptional<z.ZodOptional<z.ZodString>>;
 }, "created_at" | "updated_at" | "resource_id">, "strip", z.ZodTypeAny, {
     title?: string | undefined;
+    student_group_ids?: number[] | undefined;
     created_by?: number | null | undefined;
     mode?: "HANDOUT" | "ONLINE_QUIZ" | "LEETCODE" | "LISTENING_TEST" | "FLASHCARD" | undefined;
     course_ids?: number[] | undefined;
-    student_group_ids?: number[] | undefined;
     structure?: any[] | undefined;
     tiptap_structure?: {
         type: "doc";
@@ -177,10 +177,10 @@ export declare const UpdateLearningResourceSchema: z.ZodObject<Omit<{
     available_until?: string | null | undefined;
 }, {
     title?: string | undefined;
+    student_group_ids?: number[] | undefined;
     created_by?: number | null | undefined;
     mode?: "HANDOUT" | "ONLINE_QUIZ" | "LEETCODE" | "LISTENING_TEST" | "FLASHCARD" | undefined;
     course_ids?: number[] | undefined;
-    student_group_ids?: number[] | undefined;
     structure?: any[] | undefined;
     tiptap_structure?: {
         type: "doc";

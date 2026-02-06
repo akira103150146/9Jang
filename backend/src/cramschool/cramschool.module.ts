@@ -60,6 +60,8 @@ import { StudentMistakeNoteImagesController } from './controllers/student-mistak
 import { StudentMistakeNoteImagesService } from './services/student-mistake-note-images.service';
 import { WordImporterService } from './services/word-importer.service';
 import { MarkdownImporterService } from './services/markdown-importer.service';
+import { CoursePdfsController } from './controllers/course-pdfs.controller';
+import { CoursePdfsService } from './services/course-pdfs.service';
 
 @Module({
   controllers: [
@@ -89,6 +91,7 @@ import { MarkdownImporterService } from './services/markdown-importer.service';
     StudentMistakeNotesController,
     ErrorLogImagesController,
     StudentMistakeNoteImagesController,
+    CoursePdfsController,
   ],
   providers: [
     StudentsService,
@@ -126,6 +129,7 @@ import { MarkdownImporterService } from './services/markdown-importer.service';
     StudentMistakeNoteImagesService,
     WordImporterService,
     MarkdownImporterService,
+    CoursePdfsService,
   ],
   exports: [
     StudentsService,

@@ -58,5 +58,32 @@ export const courseAPI = {
 
   getResources: async (id: number): Promise<AxiosResponse<unknown>> => {
     return api.get(`/cramschool/courses/${id}/resources/`)
+  },
+
+  // PDF 相關方法
+  getPdfs: async (id: number): Promise<AxiosResponse<unknown>> => {
+    return api.get(`/cramschool/courses/${id}/pdfs`)
+  },
+
+  uploadPdf: async (id: number, formData: FormData): Promise<AxiosResponse<unknown>> => {
+    return api.post(`/cramschool/courses/${id}/pdfs/upload`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+  },
+
+  togglePdfDownload: async (courseId: number, pdfId: number, allowDownload: boolean): Promise<AxiosResponse<unknown>> => {
+    return api.put(`/cramschool/courses/${courseId}/pdfs/${pdfId}/download`, {
+      allow_download: allowDownload
+    })
+  },
+
+  updatePdf: async (courseId: number, pdfId: number, data: unknown): Promise<AxiosResponse<unknown>> => {
+    return api.put(`/cramschool/courses/${courseId}/pdfs/${pdfId}`, data)
+  },
+
+  deletePdf: async (courseId: number, pdfId: number): Promise<AxiosResponse<unknown>> => {
+    return api.delete(`/cramschool/courses/${courseId}/pdfs/${pdfId}`)
   }
 }

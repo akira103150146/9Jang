@@ -5,22 +5,41 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
 import { PrismaService } from './prisma/prisma.service';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import * as cors from 'cors';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
-  // 啟用 CORS
+  // 啟用 CORS - 使用原生 cors 中間件
   const isDevelopment = process.env.NODE_ENV !== 'production';
-  const corsOrigins = process.env.CORS_ORIGINS
-    ? process.env.CORS_ORIGINS.split(',').map((origin) => origin.trim())
-    : isDevelopment
-    ? true // 開發環境允許所有來源
-    : ['http://localhost:5173'];
-
-  app.enableCors({
-    origin: corsOrigins,
+  
+  // CORS 設定
+  const corsOptions: cors.CorsOptions = {
+    origin: (origin, callback) => {
+      // 開發環境允許所有來源，生產環境只允許配置的來源
+      if (isDevelopment) {
+        // 開發環境：允許所有來源
+        callback(null, true);
+      } else if (process.env.CORS_ORIGINS) {
+        // 生產環境：使用環境變數中的來源
+        const allowed = process.env.CORS_ORIGINS.split(',').map((o) => o.trim());
+        if (!origin || allowed.includes(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      } else {
+        // 預設：只允許 localhost
+        const allowed = ['http://localhost:5173', 'http://127.0.0.1:5173'];
+        if (!origin || allowed.includes(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      }
+    },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
     allowedHeaders: [
       'accept',
       'accept-encoding',
@@ -34,7 +53,12 @@ async function bootstrap() {
       'x-temp-role',
       'x-impersonated-by',
     ],
-  });
+    exposedHeaders: ['content-length', 'content-type'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+  };
+  
+  app.use(cors(corsOptions));
 
   // 使用 Zod 驗證（從共享 schema）
   app.useGlobalPipes(new ZodValidationPipe());

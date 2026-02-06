@@ -7,6 +7,7 @@ export * from './user.schema';
 export * from './student.schema';
 export * from './teacher.schema';
 export * from './course.schema';
+export * from './course-pdf.schema';
 export * from './question.schema';
 export * from './resource.schema';
 export * from './enrollment.schema';

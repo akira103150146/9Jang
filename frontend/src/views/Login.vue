@@ -86,6 +86,7 @@ import { ref, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { authAPI } from '../services/api'
 import ChangePasswordModal from '../components/ChangePasswordModal.vue'
+import { useToast } from '../composables/useToast'
 
 interface LoginForm {
   email: string
@@ -93,6 +94,7 @@ interface LoginForm {
 }
 
 const router = useRouter()
+const toast = useToast()
 
 const form: Ref<LoginForm> = ref({
   email: '',
@@ -124,20 +126,29 @@ const handleLogin = async (): Promise<void> => {
         localStorage.setItem('temp_password', form.value.password)
         showChangePasswordModal.value = true
       } else {
+        // 顯示登入成功訊息
+        toast.success('登入成功！')
         // 跳轉到首頁
         router.push('/')
       }
     } else {
-      error.value = '登入失敗，請檢查帳號和密碼'
+      const errorMsg = '登入失敗，請檢查帳號和密碼'
+      error.value = errorMsg
+      toast.error(errorMsg)
     }
   } catch (err) {
     console.error('登入錯誤:', err)
-    const axiosError = err as { response?: { data?: { detail?: string } } }
+    const axiosError = err as { response?: { data?: { detail?: string; message?: string } } }
+    let errorMsg = '登入失敗，請稍後再試'
+    
     if (axiosError.response?.data?.detail) {
-      error.value = axiosError.response.data.detail
-    } else {
-      error.value = '登入失敗，請稍後再試'
+      errorMsg = axiosError.response.data.detail
+    } else if (axiosError.response?.data?.message) {
+      errorMsg = axiosError.response.data.message
     }
+    
+    error.value = errorMsg
+    toast.error(errorMsg, 5000) // 錯誤訊息顯示 5 秒
   } finally {
     loading.value = false
   }

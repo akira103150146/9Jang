@@ -17,6 +17,7 @@ export * from './teacher.schema'
 
 // 課程
 export * from './course.schema'
+export * from './course-pdf.schema'
 
 // 題目
 export * from './question.schema'

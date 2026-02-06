@@ -21,31 +21,84 @@
                 </div>
 
                 <!-- All Resources -->
-                <div v-else class="space-y-4">
-                  <!-- Debug Info (temporary) -->
-                  <div class="text-xs text-gray-400 p-2 bg-gray-50 rounded mb-2">
-                    調試信息: 資源數量 = {{ allResources.length }}
-                  </div>
-                  <div v-if="allResources.length === 0" class="text-center text-gray-500 py-8">
-                    暫無學習資源
-                  </div>
-                  <div v-for="resource in allResources" :key="resource.resource_id" class="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                    <div class="flex justify-between items-start">
-                      <div class="flex-1">
-                        <div class="flex items-center gap-2">
-                          <h4 class="text-lg font-medium text-gray-900">{{ resource.title }}</h4>
-                          <span class="px-2 py-1 text-xs font-medium rounded-full" :class="getModeClass(resource.mode)">
-                            {{ getModeLabel(resource.mode) }}
-                          </span>
+                <div v-else class="space-y-6">
+                  <!-- PDF 講義區域 -->
+                  <div v-if="pdfs.length > 0">
+                    <h4 class="text-md font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                      <svg class="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd" />
+                      </svg>
+                      PDF 講義
+                    </h4>
+                    <div class="space-y-3">
+                      <div v-for="pdf in pdfs" :key="pdf.pdf_id" class="border border-red-200 rounded-lg p-4 bg-red-50 hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-start">
+                          <div class="flex-1">
+                            <div class="flex items-center gap-2">
+                              <h5 class="text-lg font-medium text-gray-900">{{ pdf.title }}</h5>
+                              <span class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
+                                PDF
+                              </span>
+                              <span v-if="pdf.allow_download" class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                                可下載
+                              </span>
+                            </div>
+                            <p v-if="pdf.description" class="text-sm text-gray-600 mt-1">
+                              {{ pdf.description }}
+                            </p>
+                            <p class="text-sm text-gray-500 mt-1">
+                              檔案大小：{{ (pdf.file_size / 1024 / 1024).toFixed(2) }} MB
+                            </p>
+                          </div>
+                          <button @click="viewPdf(pdf)" class="bg-red-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-600 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            查看 PDF
+                          </button>
                         </div>
-                        <p class="text-sm text-gray-500 mt-1">
-                          上傳時間：{{ formatDate(resource.created_at) }}
-                        </p>
                       </div>
-                      <button @click="viewResource(resource)" class="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-100">
-                        查看內容
-                      </button>
                     </div>
+                  </div>
+
+                  <!-- 學習資源區域 -->
+                  <div v-if="allResources.length > 0">
+                    <h4 class="text-md font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                      <svg class="w-5 h-5 text-indigo-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
+                      </svg>
+                      學習資源
+                    </h4>
+                    <div class="space-y-3">
+                      <div v-for="resource in allResources" :key="resource.resource_id" class="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-start">
+                          <div class="flex-1">
+                            <div class="flex items-center gap-2">
+                              <h5 class="text-lg font-medium text-gray-900">{{ resource.title }}</h5>
+                              <span class="px-2 py-1 text-xs font-medium rounded-full" :class="getModeClass(resource.mode)">
+                                {{ getModeLabel(resource.mode) }}
+                              </span>
+                            </div>
+                            <p class="text-sm text-gray-500 mt-1">
+                              上傳時間：{{ formatDate(resource.created_at) }}
+                            </p>
+                          </div>
+                          <button @click="viewResource(resource)" class="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-100">
+                            查看內容
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 空狀態 -->
+                  <div v-if="pdfs.length === 0 && allResources.length === 0" class="text-center text-gray-500 py-8">
+                    <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <p class="text-lg font-medium">暫無學習資源</p>
+                    <p class="text-sm text-gray-400 mt-1">老師尚未上傳任何講義或資源</p>
                   </div>
                 </div>
               </div>
@@ -137,19 +190,29 @@
       </div>
     </div>
 
+    <!-- PDF 檢視器 Modal -->
+    <PdfViewerModal
+      :is-open="showPdfViewerModal"
+      :pdf="selectedPdf"
+      :course-id="course?.course_id || course?.id"
+      @close="closePdfViewer"
+    />
+
   </div>
 </template>
 
 <script>
 import { ref, watch, provide } from 'vue'
-import { learningResourceAPI } from '../services/api'
+import { learningResourceAPI, coursePdfAPI } from '../services/api'
 import BlockEditor from './BlockEditor/BlockEditor.vue'
+import PdfViewerModal from './PdfViewerModal.vue'
 import { useEditorEventsProvider } from '../composables/useEditorEvents'
 
 export default {
   name: 'StudentCourseDetailModal',
   components: {
-    BlockEditor
+    BlockEditor,
+    PdfViewerModal
   },
   props: {
     isOpen: {
@@ -168,9 +231,14 @@ export default {
     
     const loading = ref(false)
     const allResources = ref([])
+    const pdfs = ref([])
     
     // Material View State
     const currentMaterial = ref(null)
+    
+    // PDF Viewer State
+    const showPdfViewerModal = ref(false)
+    const selectedPdf = ref(null)
     
     // 顯示模式選項
     const displayModes = [
@@ -193,22 +261,20 @@ export default {
       try {
         const courseId = props.course.course_id || props.course.id
         
-        // #region agent log
-        fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'StudentCourseDetailModal.vue:fetchData:start',message:'Fetching course resources',data:{courseId:courseId,courseName:props.course?.course_name},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix-2',hypothesisId:'F,G'})}).catch(()=>{});
-        // #endregion
-        
         // 獲取該課程的所有學習資源
         const resourcesRes = await learningResourceAPI.getAll({ course: courseId })
         const resourcesData = resourcesRes.data.results || resourcesRes.data
         allResources.value = Array.isArray(resourcesData) ? resourcesData : []
         
-        // #region agent log
-        fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'StudentCourseDetailModal.vue:fetchData:success',message:'Resources fetched',data:{resourcesCount:allResources.value.length,resources:allResources.value.map(r=>({id:r.resource_id,title:r.title,mode:r.mode,hasTiptapStructure:!!r.tiptap_structure,tiptapStructureType:typeof r.tiptap_structure,tiptapStructurePreview:r.tiptap_structure?JSON.stringify(r.tiptap_structure).substring(0,200):null}))},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix-2',hypothesisId:'B,E'})}).catch(()=>{});
-        // #endregion
+        // 獲取該課程的 PDF 講義
+        try {
+          const pdfsRes = await coursePdfAPI.getAll(courseId)
+          pdfs.value = Array.isArray(pdfsRes.data) ? pdfsRes.data : []
+        } catch (error) {
+          console.error('Error fetching PDFs:', error)
+          pdfs.value = []
+        }
       } catch (error) {
-        // #region agent log
-        fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'StudentCourseDetailModal.vue:fetchData:error',message:'Error fetching resources',data:{errorMessage:error.message,errorResponse:error.response?.data},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix-2',hypothesisId:'G,I'})}).catch(()=>{});
-        // #endregion
         console.error('Error fetching course data:', error)
         allResources.value = []
       } finally {
@@ -217,14 +283,12 @@ export default {
     }
 
     watch(() => props.isOpen, (newVal) => {
-      // #region agent log
-      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'StudentCourseDetailModal.vue:watch:isOpen',message:'Modal open state changed',data:{isOpen:newVal,hasCourse:!!props.course,courseId:props.course?.course_id||props.course?.id,courseName:props.course?.course_name},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix-2',hypothesisId:'F,J'})}).catch(()=>{});
-      // #endregion
       if (newVal) {
         fetchData()
       } else {
         // Reset state when closed
         allResources.value = []
+        pdfs.value = []
       }
     }, { immediate: true })
 
@@ -244,9 +308,6 @@ export default {
     }
 
     const viewResource = (resource) => {
-      // #region agent log
-      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'StudentCourseDetailModal.vue:viewResource',message:'Opening resource modal',data:{resourceId:resource.resource_id,title:resource.title,mode:resource.mode,hasTiptapStructure:!!resource.tiptap_structure,tiptapStructureType:typeof resource.tiptap_structure,tiptapStructureKeys:resource.tiptap_structure?Object.keys(resource.tiptap_structure):null},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix-2',hypothesisId:'A,B,D'})}).catch(()=>{});
-      // #endregion
       currentMaterial.value = resource
       // 重置顯示模式為純題目
       currentDisplayMode.value = 'question-only'
@@ -265,13 +326,7 @@ export default {
     
     // 列印功能
     const handlePrint = () => {
-      // #region agent log
-      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'StudentCourseDetailModal.vue:handlePrint:before',message:'Print triggered',data:{currentDisplayMode:currentDisplayMode.value,hasMaterial:!!currentMaterial.value,materialTitle:currentMaterial.value?.title},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug',hypothesisId:'B,D'})}).catch(()=>{});
-      // #endregion
       window.print()
-      // #region agent log
-      fetch('http://127.0.0.1:1839/ingest/9404a257-940d-4c9b-801f-942831841c9e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'StudentCourseDetailModal.vue:handlePrint:after',message:'Print dialog closed',data:{currentDisplayMode:currentDisplayMode.value},timestamp:Date.now(),sessionId:'debug-session',runId:'print-css-debug',hypothesisId:'B,D'})}).catch(()=>{});
-      // #endregion
     }
 
     const getModeLabel = (mode) => {
@@ -295,10 +350,22 @@ export default {
       }
       return classes[mode] || 'bg-gray-100 text-gray-800'
     }
+    
+    // PDF 相關操作
+    const viewPdf = (pdf) => {
+      selectedPdf.value = pdf
+      showPdfViewerModal.value = true
+    }
+    
+    const closePdfViewer = () => {
+      showPdfViewerModal.value = false
+      selectedPdf.value = null
+    }
 
     return {
       loading,
       allResources,
+      pdfs,
       close,
       formatDate,
       currentMaterial,
@@ -308,7 +375,11 @@ export default {
       getModeLabel,
       getModeClass,
       toggleFullscreen,
-      handlePrint
+      handlePrint,
+      showPdfViewerModal,
+      selectedPdf,
+      viewPdf,
+      closePdfViewer
     }
   }
 }
