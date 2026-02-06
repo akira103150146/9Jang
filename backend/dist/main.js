@@ -356,7 +356,7 @@ let AccountService = class AccountService {
         if (!user.isActive) {
             throw new common_1.UnauthorizedException('帳號已被停用');
         }
-        const payload = { sub: user.id, username: user.username };
+        const payload = { sub: user.id, username: user.username, role: user.role };
         const access = this.jwtService.sign(payload, { expiresIn: '1h' });
         const refresh = this.jwtService.sign(payload, { expiresIn: '7d' });
         return {
@@ -624,7 +624,7 @@ let AccountService = class AccountService {
         if (!targetUser) {
             throw new common_1.NotFoundException('目標用戶不存在');
         }
-        const payload = { sub: targetUser.id, username: targetUser.username };
+        const payload = { sub: targetUser.id, username: targetUser.username, role: targetUser.role };
         const access = this.jwtService.sign(payload, { expiresIn: '1h' });
         const refresh = this.jwtService.sign(payload, { expiresIn: '7d' });
         const userDto = {
@@ -721,7 +721,7 @@ let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(pas
         if (!payload.sub || !payload.username) {
             throw new common_1.UnauthorizedException('Invalid token payload');
         }
-        return { id: payload.sub, username: payload.username };
+        return { id: payload.sub, username: payload.username, role: payload.role };
     }
 };
 exports.JwtStrategy = JwtStrategy;
@@ -1269,7 +1269,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CoursesController = void 0;
 const request_types_1 = __webpack_require__(/*! @/types/request.types */ "./src/types/request.types.ts");
@@ -1285,8 +1285,8 @@ let CoursesController = class CoursesController {
         this.coursesService = coursesService;
         this.prisma = prisma;
     }
-    async getCourses(page = 1, pageSize = 10) {
-        return this.coursesService.getCourses(page, pageSize);
+    async getCourses(page = 1, pageSize = 10, req) {
+        return this.coursesService.getCourses(page, pageSize, req.user?.id, req.user?.role);
     }
     async getCourse(id) {
         return this.coursesService.getCourse(id);
@@ -1344,8 +1344,9 @@ __decorate([
     (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
     __param(0, (0, common_1.Query)('page', new common_1.ParseIntPipe({ optional: true }))),
     __param(1, (0, common_1.Query)('page_size', new common_1.ParseIntPipe({ optional: true }))),
+    __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, Number]),
+    __metadata("design:paramtypes", [Number, Number, typeof (_c = typeof request_types_1.AuthRequest !== "undefined" && request_types_1.AuthRequest) === "function" ? _c : Object]),
     __metadata("design:returntype", Promise)
 ], CoursesController.prototype, "getCourses", null);
 __decorate([
@@ -1365,7 +1366,7 @@ __decorate([
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
-    __metadata("design:returntype", typeof (_c = typeof Promise !== "undefined" && Promise) === "function" ? _c : Object)
+    __metadata("design:returntype", typeof (_d = typeof Promise !== "undefined" && Promise) === "function" ? _d : Object)
 ], CoursesController.prototype, "getCourse", null);
 __decorate([
     (0, common_1.Post)(),
@@ -1383,8 +1384,8 @@ __decorate([
     (0, swagger_1.ApiResponse)({ status: 403, description: '無權限建立課程' }),
     __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateCourseSchema))),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_d = typeof shared_1.CreateCourseDto !== "undefined" && shared_1.CreateCourseDto) === "function" ? _d : Object]),
-    __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
+    __metadata("design:paramtypes", [typeof (_e = typeof shared_1.CreateCourseDto !== "undefined" && shared_1.CreateCourseDto) === "function" ? _e : Object]),
+    __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
 ], CoursesController.prototype, "createCourse", null);
 __decorate([
     (0, common_1.Put)(':id'),
@@ -1404,8 +1405,8 @@ __decorate([
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateCourseSchema))),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, typeof (_f = typeof shared_1.UpdateCourseDto !== "undefined" && shared_1.UpdateCourseDto) === "function" ? _f : Object]),
-    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+    __metadata("design:paramtypes", [Number, typeof (_g = typeof shared_1.UpdateCourseDto !== "undefined" && shared_1.UpdateCourseDto) === "function" ? _g : Object]),
+    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
 ], CoursesController.prototype, "updateCourse", null);
 __decorate([
     (0, common_1.Delete)(':id'),
@@ -1422,7 +1423,7 @@ __decorate([
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
-    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
+    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
 ], CoursesController.prototype, "deleteCourse", null);
 __decorate([
     (0, common_1.Get)(':id/student-status'),
@@ -1441,7 +1442,7 @@ __decorate([
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
-    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
+    __metadata("design:returntype", typeof (_k = typeof Promise !== "undefined" && Promise) === "function" ? _k : Object)
 ], CoursesController.prototype, "getStudentStatus", null);
 __decorate([
     (0, common_1.Get)(':id/resources'),
@@ -1460,8 +1461,8 @@ __decorate([
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, typeof (_k = typeof request_types_1.AuthRequest !== "undefined" && request_types_1.AuthRequest) === "function" ? _k : Object]),
-    __metadata("design:returntype", typeof (_l = typeof Promise !== "undefined" && Promise) === "function" ? _l : Object)
+    __metadata("design:paramtypes", [Number, typeof (_l = typeof request_types_1.AuthRequest !== "undefined" && request_types_1.AuthRequest) === "function" ? _l : Object]),
+    __metadata("design:returntype", typeof (_m = typeof Promise !== "undefined" && Promise) === "function" ? _m : Object)
 ], CoursesController.prototype, "getResources", null);
 exports.CoursesController = CoursesController = __decorate([
     (0, swagger_1.ApiTags)('courses'),
@@ -6077,10 +6078,35 @@ let CoursesService = class CoursesService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    async getCourses(page = 1, pageSize = 10) {
+    async getCourses(page = 1, pageSize = 10, userId, userRole) {
+        const fs = __webpack_require__(/*! fs */ "fs");
+        const logEntry1 = JSON.stringify({ location: 'courses.service.ts:getCourses:entry', message: 'getCourses service called', data: { page, pageSize, userId, userRole }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'verification', hypothesisId: 'F,G' }) + '\n';
+        fs.appendFileSync('/home/akira/github/9Jang/.cursor/debug.log', logEntry1);
         const skip = (page - 1) * pageSize;
+        let studentId;
+        if (userRole === 'STUDENT' && userId) {
+            const studentProfile = await this.prisma.cramschoolStudent.findFirst({
+                where: { userId },
+            });
+            studentId = studentProfile?.studentId;
+            const logEntry2 = JSON.stringify({ location: 'courses.service.ts:getCourses:studentLookup', message: 'Student profile lookup', data: { userId, studentId, found: !!studentProfile }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'verification', hypothesisId: 'F,G' }) + '\n';
+            fs.appendFileSync('/home/akira/github/9Jang/.cursor/debug.log', logEntry2);
+        }
+        const whereCondition = userRole === 'STUDENT' && studentId
+            ? {
+                enrollments: {
+                    some: {
+                        studentId: studentId,
+                        isDeleted: false,
+                    },
+                },
+            }
+            : {};
+        const logEntry2_5 = JSON.stringify({ location: 'courses.service.ts:getCourses:whereCondition', message: 'Query where condition', data: { userRole, studentId, whereCondition }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'verification', hypothesisId: 'F,G' }) + '\n';
+        fs.appendFileSync('/home/akira/github/9Jang/.cursor/debug.log', logEntry2_5);
         const [results, count] = await Promise.all([
             this.prisma.cramschoolCourse.findMany({
+                where: whereCondition,
                 skip,
                 take: pageSize,
                 include: {
@@ -6098,8 +6124,10 @@ let CoursesService = class CoursesService {
                 },
                 orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
             }),
-            this.prisma.cramschoolCourse.count(),
+            this.prisma.cramschoolCourse.count(userRole === 'STUDENT' && studentId ? { where: whereCondition } : {}),
         ]);
+        const logEntry3 = JSON.stringify({ location: 'courses.service.ts:getCourses:afterQuery', message: 'Courses fetched from DB', data: { totalCourses: results.length, totalCount: count, userRole, studentId }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'verification', hypothesisId: 'F,G' }) + '\n';
+        fs.appendFileSync('/home/akira/github/9Jang/.cursor/debug.log', logEntry3);
         return (0, pagination_util_1.createPaginatedResponse)(results.map((c) => this.toCourseDto(c)), count, page, pageSize);
     }
     async getCourse(id) {
@@ -12126,6 +12154,16 @@ module.exports = require("rxjs/operators");
 /***/ ((module) => {
 
 module.exports = require("uuid");
+
+/***/ }),
+
+/***/ "fs":
+/*!*********************!*\
+  !*** external "fs" ***!
+  \*********************/
+/***/ ((module) => {
+
+module.exports = require("fs");
 
 /***/ }),
 

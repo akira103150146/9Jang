@@ -45,7 +45,7 @@ export class AccountService {
     }
 
     // 生成 JWT token
-    const payload = { sub: user.id, username: user.username };
+    const payload = { sub: user.id, username: user.username, role: user.role };
     const access = this.jwtService.sign(payload, { expiresIn: '1h' });
     const refresh = this.jwtService.sign(payload, { expiresIn: '7d' });
 
@@ -376,8 +376,8 @@ export class AccountService {
       throw new NotFoundException('目標用戶不存在');
     }
 
-    // 生成目標用戶的 token
-    const payload = { sub: targetUser.id, username: targetUser.username };
+    // 生成目標用戶的 token (包含角色資訊)
+    const payload = { sub: targetUser.id, username: targetUser.username, role: targetUser.role };
     const access = this.jwtService.sign(payload, { expiresIn: '1h' });
     const refresh = this.jwtService.sign(payload, { expiresIn: '7d' });
 

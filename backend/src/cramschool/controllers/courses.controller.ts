@@ -66,8 +66,9 @@ export class CoursesController {
   async getCourses(
     @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
     @Query('page_size', new ParseIntPipe({ optional: true })) pageSize: number = 10,
+    @Request() req: AuthRequest,
   ) {
-    return this.coursesService.getCourses(page, pageSize);
+    return this.coursesService.getCourses(page, pageSize, req.user?.id, req.user?.role);
   }
 
   @Get(':id')

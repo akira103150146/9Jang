@@ -7,10 +7,48 @@ import { createPaginatedResponse } from '../../common/utils/pagination.util';
 export class CoursesService {
   constructor(private prisma: PrismaService) {}
 
-  async getCourses(page: number = 1, pageSize: number = 10) {
+  async getCourses(page: number = 1, pageSize: number = 10, userId?: number, userRole?: string) {
+    // #region agent log
+    const fs = require('fs');
+    const logEntry1 = JSON.stringify({location:'courses.service.ts:getCourses:entry',message:'getCourses service called',data:{page,pageSize,userId,userRole},timestamp:Date.now(),sessionId:'debug-session',runId:'verification',hypothesisId:'F,G'}) + '\n';
+    fs.appendFileSync('/home/akira/github/9Jang/.cursor/debug.log', logEntry1);
+    // #endregion
+
     const skip = (page - 1) * pageSize;
+
+    // 如果是學生角色,需要找到對應的 studentId
+    let studentId: number | undefined;
+    if (userRole === 'STUDENT' && userId) {
+      const studentProfile = await this.prisma.cramschoolStudent.findFirst({
+        where: { userId },
+      });
+      studentId = studentProfile?.studentId;
+      // #region agent log
+      const logEntry2 = JSON.stringify({location:'courses.service.ts:getCourses:studentLookup',message:'Student profile lookup',data:{userId,studentId,found:!!studentProfile},timestamp:Date.now(),sessionId:'debug-session',runId:'verification',hypothesisId:'F,G'}) + '\n';
+      fs.appendFileSync('/home/akira/github/9Jang/.cursor/debug.log', logEntry2);
+      // #endregion
+    }
+
+    // 構建查詢條件:學生只能看到自己報名的課程
+    const whereCondition = userRole === 'STUDENT' && studentId
+      ? {
+          enrollments: {
+            some: {
+              studentId: studentId,
+              isDeleted: false,
+            },
+          },
+        }
+      : {};
+
+    // #region agent log
+    const logEntry2_5 = JSON.stringify({location:'courses.service.ts:getCourses:whereCondition',message:'Query where condition',data:{userRole,studentId,whereCondition},timestamp:Date.now(),sessionId:'debug-session',runId:'verification',hypothesisId:'F,G'}) + '\n';
+    fs.appendFileSync('/home/akira/github/9Jang/.cursor/debug.log', logEntry2_5);
+    // #endregion
+
     const [results, count] = await Promise.all([
       this.prisma.cramschoolCourse.findMany({
+        where: whereCondition,
         skip,
         take: pageSize,
         include: {
@@ -28,8 +66,13 @@ export class CoursesService {
         },
         orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
       }),
-      this.prisma.cramschoolCourse.count(),
+      this.prisma.cramschoolCourse.count(userRole === 'STUDENT' && studentId ? { where: whereCondition } : {}),
     ]);
+
+    // #region agent log
+    const logEntry3 = JSON.stringify({location:'courses.service.ts:getCourses:afterQuery',message:'Courses fetched from DB',data:{totalCourses:results.length,totalCount:count,userRole,studentId},timestamp:Date.now(),sessionId:'debug-session',runId:'verification',hypothesisId:'F,G'}) + '\n';
+    fs.appendFileSync('/home/akira/github/9Jang/.cursor/debug.log', logEntry3);
+    // #endregion
 
     return createPaginatedResponse(
       results.map((c) => this.toCourseDto(c)),
