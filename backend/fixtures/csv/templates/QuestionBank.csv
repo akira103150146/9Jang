@@ -1,0 +1,7 @@
+# QuestionBank.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+question_id,subject_id,level,chapter,content,correct_answer,difficulty,question_type,source
+1,@Subject:subject_id:1,國中,一元二次方程式,{},{},3,SINGLE_CHOICE,九章自命題
+2,@Subject:subject_id:2,國中,一元二次方程式,{},{},3,SINGLE_CHOICE,九章自命題

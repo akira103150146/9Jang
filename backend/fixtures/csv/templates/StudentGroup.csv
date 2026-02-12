@@ -1,0 +1,7 @@
+# StudentGroup.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+group_id,name,description,group_type
+1,資優班,數學資優學生群組,teaching
+2,資優班,數學資優學生群組,teaching

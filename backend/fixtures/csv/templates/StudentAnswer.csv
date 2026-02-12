@@ -1,0 +1,7 @@
+# StudentAnswer.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+answer_id,student_id,question_id,test_name,is_correct
+1,@Student:student_id:1,@QuestionBank:question_id:1,第一次段考,false
+2,@Student:student_id:2,@QuestionBank:question_id:2,第一次段考,false

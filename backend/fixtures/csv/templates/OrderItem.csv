@@ -1,0 +1,7 @@
+# OrderItem.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+order_item_id,order_id,item_name,quantity,unit_price,subtotal
+1,@Order:order_id:1,排骨便當,1,80,80
+2,@Order:order_id:2,排骨便當,2,80,80

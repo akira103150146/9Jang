@@ -1,0 +1,7 @@
+# Restaurant.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+restaurant_id,name,phone,address,is_active
+1,便當店,02-12345678,台北市某某路123號,true
+2,便當店,02-12345678,台北市某某路123號,true

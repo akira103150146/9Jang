@@ -1,0 +1,45 @@
+# Student.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id                         ,@CustomUser:username:student001
+
+student_id                            ,name                            ,school  ,grade ,phone      ,emergency_contact_name ,emergency_contact_phone ,notes ,user_id
+1                                     ,洪郁婷                             ,高雄科技大學  ,大三    ,0912345678 ,張爸爸                    ,0987654321              ,數學很好  ,@CustomUser:username:student001
+2                                     ,廖健皓                             ,東仁國小    ,小六    ,0912345678 ,張爸爸                    ,0987654322              ,數學很好  ,@CustomUser:username:student002
+3                                     ,蔡藍恩                             ,東仁國小    ,小六    ,0912345678 ,張爸爸                    ,0987654323              ,數學很好  ,@CustomUser:username:student003
+4                                     ,黃智                              ,嘉義高工電機科 ,高一    ,0912345678 ,張爸爸                    ,0987654324              ,數學很好  ,@CustomUser:username:student004
+5                                     ,曾政穎                             ,正心高中    ,高一    ,0912345678 ,張爸爸                    ,0987654325              ,數學很好  ,@CustomUser:username:student005
+6                                     ,廖沄婕                             ,虎尾高中    ,高一    ,0912345678 ,張爸爸                    ,0987654326              ,數學很好  ,@CustomUser:username:student006
+7                                     ,林以晴                             ,嘉義高工空調科 ,高一    ,0912345678 ,張爸爸                    ,0987654327              ,數學很好  ,@CustomUser:username:student007
+8                                     ,魏子殷                             ,西螺農工電機科 ,高一    ,0912345678 ,張爸爸                    ,0987654328              ,數學很好  ,@CustomUser:username:student008
+9                                     ,吳玉翔                             ,巨人高中    ,高一    ,0912345678 ,張爸爸                    ,0987654329              ,數學很好  ,@CustomUser:username:student009
+10                                    ,黃子宧                             ,嘉義高工空調科 ,高一    ,0912345678 ,張爸爸                    ,0987654330              ,數學很好  ,@CustomUser:username:student010
+11                                    ,劉雅昕                             ,巨人高中    ,高一    ,0912345678 ,張爸爸                    ,0987654331              ,數學很好  ,@CustomUser:username:student011
+12                                    ,張和宸                             ,嘉義高工電子科 ,高三    ,0912345678 ,張爸爸                    ,0987654332              ,數學很好  ,@CustomUser:username:student012
+13                                    ,林軾修                             ,嘉義高工電子科 ,高三    ,0912345678 ,張爸爸                    ,0987654333              ,數學很好  ,@CustomUser:username:student013
+14                                    ,羅予君                             ,嘉義高工電子科 ,高三    ,0912345678 ,張爸爸                    ,0987654334              ,數學很好  ,@CustomUser:username:student014
+15                                    ,陳松慶                             ,嘉義高工電子科 ,高三    ,0912345678 ,張爸爸                    ,0987654335              ,數學很好  ,@CustomUser:username:student015
+16                                    ,林皓陽                             ,嘉義高工電子科 ,高三    ,0912345678 ,張爸爸                    ,0987654336              ,數學很好  ,@CustomUser:username:student016
+17                                    ,洪秉澤                             ,嘉義高工電子科 ,高三    ,0912345678 ,張爸爸                    ,0987654337              ,數學很好  ,@CustomUser:username:student017
+18                                    ,陳彥霖                             ,嘉義高工電子科 ,高三    ,0912345678 ,張爸爸                    ,0987654338              ,數學很好  ,@CustomUser:username:student018
+19                                    ,劉楷豪                             ,嘉義高工電子科 ,高三    ,0912345678 ,張爸爸                    ,0987654339              ,數學很好  ,@CustomUser:username:student019
+20                                    ,呂哲安                             ,嘉義高工電子科 ,高三    ,0912345678 ,張爸爸                    ,0987654340              ,數學很好  ,@CustomUser:username:student020
+21                                    ,李秉軒                             ,西螺農工電機科 ,高三    ,0912345678 ,張爸爸                    ,0987654341              ,數學很好  ,@CustomUser:username:student021
+22                                    ,許皓銓                             ,西螺農工電機科 ,高三    ,0912345678 ,張爸爸                    ,0987654342              ,數學很好  ,@CustomUser:username:student022
+23                                    ,江東晏                             ,虎尾農工電機科 ,高三    ,0912345678 ,張爸爸                    ,0987654343              ,數學很好  ,@CustomUser:username:student023
+24                                    ,蔡念澄                             ,虎尾高中    ,高三    ,0912345678 ,張爸爸                    ,0987654344              ,數學很好  ,@CustomUser:username:student024
+25                                    ,闕嘉佑                             ,永年高中    ,高三    ,0912345678 ,張爸爸                    ,0987654345              ,數學很好  ,@CustomUser:username:student025
+26                                    ,許語軒                             ,土庫商工    ,高三    ,0912345678 ,張爸爸                    ,0987654346              ,數學很好  ,@CustomUser:username:student026
+27                                    ,廖沛鈊                             ,斗六家商    ,高三    ,0912345678 ,張爸爸                    ,0987654347              ,數學很好  ,@CustomUser:username:student027
+28                                    ,詹婷涵                             ,斗六家商    ,高三    ,0912345678 ,張爸爸                    ,0987654348              ,數學很好  ,@CustomUser:username:student028
+29                                    ,林羿坊                             ,楊子國中    ,國一    ,0912345678 ,張爸爸                    ,0987654349              ,數學很好  ,@CustomUser:username:student029
+30                                    ,丁苡融                             ,正心國中    ,國二    ,0912345678 ,張爸爸                    ,0987654350              ,數學很好  ,@CustomUser:username:student030
+31                                    ,曾渝琁                             ,正心國中    ,國二    ,0912345678 ,張爸爸                    ,0987654351              ,數學很好  ,@CustomUser:username:student031
+32                                    ,曾政鼎                             ,正心國中    ,國二    ,0912345678 ,張爸爸                    ,0987654352              ,數學很好  ,@CustomUser:username:student032
+33                                    ,李勝騰                             ,東仁國中    ,國二    ,0912345678 ,張爸爸                    ,0987654353              ,數學很好  ,@CustomUser:username:student033
+34                                    ,王建勳                             ,崇德國中    ,國二    ,0912345678 ,張爸爸                    ,0987654354              ,數學很好  ,@CustomUser:username:student034
+35                                    ,陳旻勳                             ,雲林國中    ,國二    ,0912345678 ,張爸爸                    ,0987654355              ,數學很好  ,@CustomUser:username:student035
+36                                    ,吳承頤                             ,虎尾高中    ,高二    ,0912345678 ,張爸爸                    ,0987654356              ,數學很好  ,@CustomUser:username:student036
+37                                    ,林奕筑                             ,虎尾高中    ,高二    ,0912345678 ,張爸爸                    ,0987654357              ,數學很好  ,@CustomUser:username:student037
+38                                    ,吳京樺                             ,楊子高中    ,高二    ,0912345678 ,張爸爸                    ,0987654358              ,數學很好  ,@CustomUser:username:student038
+39                                    ,劉冠緯                             ,虎尾高中    ,高二    ,0912345678 ,張爸爸                    ,0987654359              ,數學很好  ,@CustomUser:username:student039
+40                                    ,李云雅                             ,大仁科技大學  ,大一    ,0912345678 ,張爸爸                    ,0987654360              ,數學很好  ,@CustomUser:username:student040

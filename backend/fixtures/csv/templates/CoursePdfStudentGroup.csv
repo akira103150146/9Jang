@@ -1,0 +1,7 @@
+# CoursePdfStudentGroup.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+id,pdf_id,group_id
+1,@CoursePdf:pdf_id:1,@StudentGroup:group_id:1
+2,@CoursePdf:pdf_id:2,@StudentGroup:group_id:1

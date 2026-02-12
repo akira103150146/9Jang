@@ -1,0 +1,7 @@
+# EnrollmentPeriod.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+period_id,enrollment_id,start_date,end_date,is_active,notes
+1,@StudentEnrollment:enrollment_id:1,2024-01-01,2024-06-30,true,上學期
+2,@StudentEnrollment:enrollment_id:2,2024-01-02,2024-06-30,true,上學期

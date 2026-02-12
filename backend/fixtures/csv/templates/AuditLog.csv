@@ -1,0 +1,7 @@
+# AuditLog.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+id,user_id,action_type,resource_type,resource_id,resource_name,description,ip_address
+1,@CustomUser:username:admin001,CREATE,Student,1,張小明,新增學生,192.168.1.1
+2,@CustomUser:username:admin002,CREATE,Student,2,李小華,新增學生,192.168.1.1

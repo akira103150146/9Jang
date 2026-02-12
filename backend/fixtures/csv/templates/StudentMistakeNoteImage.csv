@@ -1,0 +1,7 @@
+# StudentMistakeNoteImage.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+image_id,note_id,image_path,caption,sort_order
+1,@StudentMistakeNote:note_id:1,/uploads/mistake_notes/image1.jpg,錯題照片,0
+2,@StudentMistakeNote:note_id:2,/uploads/mistake_notes/image1.jpg,錯題照片,0

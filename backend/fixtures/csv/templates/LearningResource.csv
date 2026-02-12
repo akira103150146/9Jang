@@ -1,0 +1,7 @@
+# LearningResource.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+resource_id,title,mode,structure,settings,is_individualized
+1,一元二次方程式講義,HANDOUT,[],{},false
+2,一元二次方程式講義,HANDOUT,[],{},false

@@ -1,0 +1,7 @@
+# Leave.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+leave_id,student_id,course_id,leave_date,reason,approval_status
+1,@Student:student_id:1,@Course:course_id:1,2024-01-15,生病,Approved
+2,@Student:student_id:2,@Course:course_id:2,2024-01-15,生病,Approved

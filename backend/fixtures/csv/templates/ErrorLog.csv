@@ -1,0 +1,7 @@
+# ErrorLog.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+error_log_id,student_id,question_id,error_count,review_status
+1,@Student:student_id:1,@QuestionBank:question_id:1,1,New
+2,@Student:student_id:2,@QuestionBank:question_id:2,2,New

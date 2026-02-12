@@ -1,0 +1,7 @@
+# Attendance.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+attendance_id,session_id,student_id,status
+1,@SessionRecord:session_id:1,@Student:student_id:1,Present
+2,@SessionRecord:session_id:2,@Student:student_id:2,Present

@@ -1,0 +1,7 @@
+# QuestionTag.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+question_tag_id,question_id,tag_id
+1,@QuestionBank:question_id:1,@Hashtag:tag_id:1
+2,@QuestionBank:question_id:2,@Hashtag:tag_id:1

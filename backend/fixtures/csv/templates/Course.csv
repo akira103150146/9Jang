@@ -1,0 +1,7 @@
+# Course.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+course_id,course_name,teacher_id,start_time,end_time,day_of_week,fee_per_session,status
+1,國三數學A班,@Teacher:teacher_id:1,18:00,20:00,Mon,800,Active
+2,國三數學B班,@Teacher:teacher_id:2,18:00,20:00,Mon,800,Active

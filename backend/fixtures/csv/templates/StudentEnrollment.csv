@@ -1,0 +1,7 @@
+# StudentEnrollment.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+enrollment_id,student_id,course_id,enroll_date,discount_rate,is_active
+1,@Student:student_id:1,@Course:course_id:1,2024-01-01,0,true
+2,@Student:student_id:2,@Course:course_id:2,2024-01-02,0,true

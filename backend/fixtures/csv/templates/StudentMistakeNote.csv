@@ -1,0 +1,7 @@
+# StudentMistakeNote.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+note_id,student_id,title,subject,content
+1,@Student:student_id:1,一元二次方程式錯誤,數學,忘記檢查判別式
+2,@Student:student_id:2,一元二次方程式錯誤,數學,忘記檢查判別式

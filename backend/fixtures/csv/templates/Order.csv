@@ -1,0 +1,7 @@
+# Order.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+order_id,group_order_id,student_id,status,total_amount,notes
+1,@GroupOrder:group_order_id:1,@Student:student_id:1,Pending,80,不要蔥
+2,@GroupOrder:group_order_id:2,@Student:student_id:2,Pending,80,不要蔥

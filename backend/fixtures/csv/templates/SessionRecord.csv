@@ -1,0 +1,7 @@
+# SessionRecord.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+session_id,course_id,session_date
+1,@Course:course_id:1,2024-01-08
+2,@Course:course_id:2,2024-01-08

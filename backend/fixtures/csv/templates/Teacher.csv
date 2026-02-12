@@ -1,0 +1,7 @@
+# Teacher.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+teacher_id,name,phone,email,specialization,notes,user_id
+1,王老師,0912345678,wang@example.com,數學,經驗豐富,@CustomUser:username:teacher001
+2,李老師,0912345678,wang@example.com,數學,經驗豐富,@CustomUser:username:teacher002

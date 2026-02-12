@@ -1,0 +1,7 @@
+# RolePermission.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+id,role_id,permission_type,resource,method
+1,@Role:code:TEACHER,page,/courses,GET
+2,@Role:code:TEACHER,page,/courses,GET

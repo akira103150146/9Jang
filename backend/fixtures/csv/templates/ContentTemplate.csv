@@ -1,0 +1,7 @@
+# ContentTemplate.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+template_id,title,structure,is_public
+1,數學講義模板,[],true
+2,數學講義模板,[],true

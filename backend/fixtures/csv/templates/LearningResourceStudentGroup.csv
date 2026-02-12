@@ -1,0 +1,7 @@
+# LearningResourceStudentGroup.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+id,resource_id,group_id
+1,@LearningResource:resource_id:1,@StudentGroup:group_id:1
+2,@LearningResource:resource_id:2,@StudentGroup:group_id:1

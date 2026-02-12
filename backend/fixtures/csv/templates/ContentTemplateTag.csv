@@ -1,0 +1,7 @@
+# ContentTemplateTag.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+id,template_id,tag_id
+1,@ContentTemplate:template_id:1,@Hashtag:tag_id:1
+2,@ContentTemplate:template_id:2,@Hashtag:tag_id:1

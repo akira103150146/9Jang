@@ -1,0 +1,30 @@
+# Subject.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 科目資料
+
+subject_id,code,name,description
+1,MATH_JR1,國一數學,國中一年級數學課程
+2,MATH_JR2,國二數學,國中二年級數學課程
+3,MATH_JR3,國三數學,國中三年級數學課程
+4,SCIENCE_JR,國中理化,國中理化課程
+5,MATH_SR1,高一數學,高中一年級數學課程
+6,MATH_SR2,高二數學A,高中二年級數學課程
+7,MATH_SR2,高二數學B,高中二年級數學課程
+8,MATH_SR3,高三數學A,高中三年級數學課程
+9,MATH_SR3,高三數學B,高中三年級數學課程
+10,PHYSICS_SR,高中物理,高中物理課程
+11,CHEMISTRY_SR,高中化學,高中化學課程
+12,ENGLISH,英文,英文課程
+13,MATH_VOC,高職數學,高職數學課程
+14,VOCATIONAL,高職專業,高職專業科目
+15,PROGRAMMING,初級程式設計,程式設計課程
+16,INTERMEDIATE_PROGRAMMING,中級程式設計,程式設計課程
+17,ADVANCED_PROGRAMMING,高級程式設計,程式設計課程
+18,DATABASE,資料庫,資料庫課程
+19,WEB_DEVELOPMENT,網頁設計,網頁設計課程
+20,MOBILE_DEVELOPMENT,行動應用程式,行動應用程式課程
+21,GAME_DEVELOPMENT,遊戲程式設計,遊戲程式設計課程
+22,ARTIFICIAL_INTELLIGENCE,人工智慧,人工智慧課程
+23,DATA_SCIENCE,資料科學,資料科學課程
+24,BLOCKCHAIN,區塊鏈,區塊鏈課程
+25,ROBOTICS,機器人學,機器人學課程

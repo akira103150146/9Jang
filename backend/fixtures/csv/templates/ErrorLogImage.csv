@@ -1,0 +1,7 @@
+# ErrorLogImage.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+image_id,error_log_id,image_path,caption,sort_order
+1,@ErrorLog:error_log_id:1,/uploads/error_logs/image1.jpg,錯誤解答,0
+2,@ErrorLog:error_log_id:2,/uploads/error_logs/image1.jpg,錯誤解答,0

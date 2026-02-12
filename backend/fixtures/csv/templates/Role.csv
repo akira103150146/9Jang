@@ -1,0 +1,7 @@
+# Role.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+id,code,name,description,is_active
+1,TEACHER,教師,補習班教師角色,true
+2,TEACHER,教師,補習班教師角色,true

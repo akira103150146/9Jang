@@ -1,0 +1,7 @@
+# CoursePdf.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+pdf_id,title,description,file_path,file_size,course_id,uploaded_by_id,allow_download,is_visible_to_all,is_active
+1,數學講義PDF,第一章講義,/uploads/pdfs/math_chapter1.pdf,1024000,@Course:course_id:1,1,true,false,true
+2,數學講義PDF,第一章講義,/uploads/pdfs/math_chapter1.pdf,1024000,@Course:course_id:2,2,true,false,true

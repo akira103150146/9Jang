@@ -1,0 +1,7 @@
+# Subject.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+subject_id,code,name,description
+1,MATH,數學,國高中數學課程
+2,MATH,數學,國高中數學課程

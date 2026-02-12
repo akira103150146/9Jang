@@ -1,0 +1,7 @@
+# CustomUser.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+username,password,first_name,last_name,email,role
+student001,password123,小明,張,student001@example.com,STUDENT
+student002,password123,小明,張,student002@example.com,STUDENT

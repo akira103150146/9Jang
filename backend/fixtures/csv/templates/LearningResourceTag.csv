@@ -1,0 +1,7 @@
+# LearningResourceTag.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+id,resource_id,tag_id
+1,@LearningResource:resource_id:1,@Hashtag:tag_id:1
+2,@LearningResource:resource_id:2,@Hashtag:tag_id:1

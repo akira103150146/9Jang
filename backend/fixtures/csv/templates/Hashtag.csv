@@ -1,0 +1,7 @@
+# Hashtag.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+tag_id,tag_name,creator_id
+1,重要,@Teacher:teacher_id:1
+2,重要,@Teacher:teacher_id:1

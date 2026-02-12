@@ -1,0 +1,7 @@
+# ExtraFee.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+fee_id,student_id,item,amount,fee_date,payment_status,notes
+1,@Student:student_id:1,講義費,300,2024-01-01,Unpaid,數學講義
+2,@Student:student_id:2,講義費,300,2024-01-02,Unpaid,數學講義

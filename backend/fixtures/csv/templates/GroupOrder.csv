@@ -1,0 +1,7 @@
+# GroupOrder.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 範例: user_id,@CustomUser:username:student001
+
+group_order_id,restaurant_id,title,order_link,status,deadline
+1,@Restaurant:restaurant_id:1,週一午餐團購,lunch-order-20240108,Open,2024-01-08 10:00:00
+2,@Restaurant:restaurant_id:2,週一午餐團購,lunch-order-20240108,Open,2024-01-08 10:00:00
