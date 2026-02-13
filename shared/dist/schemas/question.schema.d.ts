@@ -78,8 +78,8 @@ export declare const QuestionSchema: z.ZodObject<{
         content: any[];
     };
     level: "JHS" | "SHS" | "VCS";
-    question_id: number;
     subject_id: number;
+    question_id: number;
     chapter: string;
     correct_answer: {
         type: "doc";
@@ -115,8 +115,8 @@ export declare const QuestionSchema: z.ZodObject<{
         content?: any[] | undefined;
     };
     level: "JHS" | "SHS" | "VCS";
-    question_id: number;
     subject_id: number;
+    question_id: number;
     chapter: string;
     correct_answer: {
         type: "doc";

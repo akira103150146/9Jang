@@ -8,6 +8,7 @@ import * as path from 'path';
 import * as Papa from 'papaparse';
 import type { ParsedCsvData } from './types';
 import { convertKeysToCamelCase, SIMPLE_MODEL_MAP } from './utils';
+import { sortModelsByDependencies, getDefaultSchemaPath } from './dependency-analyzer';
 
 /**
  * 解析 CSV 檔案
@@ -110,6 +111,7 @@ function extractModelName(fileName: string): string {
 
 /**
  * 批次解析 CSV 檔案
+ * 自動根據模型依賴關係排序
  */
 export async function parseCsvFiles(csvDir: string, tableNames?: string[]): Promise<ParsedCsvData[]> {
   // 檢查目錄是否存在
@@ -133,9 +135,36 @@ export async function parseCsvFiles(csvDir: string, tableNames?: string[]): Prom
     throw new Error(`在 ${csvDir} 中找不到 CSV 檔案`);
   }
 
-  // 解析所有檔案
-  const results: ParsedCsvData[] = [];
+  // 建立檔案名稱到模型名稱的映射
+  const fileToModel = new Map<string, string>();
+  const modelToFile = new Map<string, string>();
+  
   for (const file of files) {
+    const modelName = extractModelName(path.basename(file, '.csv'));
+    fileToModel.set(file, modelName);
+    modelToFile.set(modelName, file);
+  }
+
+  // 取得所有模型名稱
+  const modelNames = Array.from(fileToModel.values());
+
+  // 根據依賴關係排序模型
+  let sortedModelNames: string[];
+  try {
+    const schemaPath = getDefaultSchemaPath();
+    sortedModelNames = sortModelsByDependencies(modelNames, schemaPath);
+    console.log('✓ 已根據依賴關係自動排序');
+  } catch (error: any) {
+    console.warn(`警告: 無法分析依賴關係 (${error.message})，使用原始順序`);
+    sortedModelNames = modelNames;
+  }
+
+  // 按照排序後的順序解析檔案
+  const results: ParsedCsvData[] = [];
+  for (const modelName of sortedModelNames) {
+    const file = modelToFile.get(modelName);
+    if (!file) continue;
+
     const filePath = path.join(csvDir, file);
     try {
       const parsed = await parseCsvFile(filePath);

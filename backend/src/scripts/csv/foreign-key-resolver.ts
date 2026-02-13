@@ -120,8 +120,19 @@ export async function resolveForeignKey(
     const model = getPrismaModel(prisma, reference.modelName);
     const camelField = snakeToCamel(reference.fieldName);
     
+    // 嘗試將值轉換為適當的類型
+    let searchValue: any = reference.value;
+    
+    // 如果值看起來像數字，嘗試轉換
+    if (/^\d+$/.test(reference.value)) {
+      const numValue = parseInt(reference.value, 10);
+      if (!isNaN(numValue)) {
+        searchValue = numValue;
+      }
+    }
+    
     const where: Record<string, any> = {};
-    where[camelField] = reference.value;
+    where[camelField] = searchValue;
     
     const found = await model.findFirst({ where });
     if (!found) {
@@ -155,13 +166,25 @@ export async function resolveAllForeignKeys(
       
       // 如果解析成功（不是原值），處理欄位名稱
       if (resolved !== value) {
-        // Prisma 外鍵欄位通常以 Id 結尾
-        if (fieldName.endsWith('Id')) {
-          // 字段名已經是 ID 格式，直接使用 ID
+        // 檢查欄位名稱格式 (支援 snake_case 和 camelCase)
+        // snake_case: subject_id, teacher_id
+        // camelCase: subjectId, teacherId
+        const endsWithId = fieldName.endsWith('_id') || fieldName.endsWith('Id');
+        
+        if (endsWithId) {
+          // 字段名已經是 ID 格式，直接替換值
           result[fieldName] = resolved;
         } else {
-          // 字段名是關係名，轉換為 ID 字段
-          const idFieldName = `${fieldName}Id`;
+          // 字段名是關係名，需要轉換為 ID 字段
+          // 根據原欄位格式決定 ID 欄位格式
+          let idFieldName: string;
+          if (fieldName.includes('_')) {
+            // snake_case: user → user_id
+            idFieldName = `${fieldName}_id`;
+          } else {
+            // camelCase: user → userId
+            idFieldName = `${fieldName}Id`;
+          }
           result[idFieldName] = resolved;
           // 刪除原字段名
           delete result[fieldName];

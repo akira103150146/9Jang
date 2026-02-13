@@ -82,14 +82,15 @@ async function seedCsv(
           // 驗證 CSV 資料格式
           validateCsvData(parsed);
 
-          // 轉換為 Prisma 格式（snake_case → camelCase）
-          const prismaRows = convertCsvDataToPrismaFormat(parsed.rows);
+          // CSV 資料已經是 snake_case，schema 也是 snake_case，不需要轉換
+          // 直接使用原始資料
+          const rows = parsed.rows;
 
           // 解析外鍵引用
           console.log('  解析外鍵引用...');
           const resolvedRows = await resolveAllForeignKeysInBatch(
             tx as PrismaClient,
-            prismaRows
+            rows
           );
 
           // 驗證資料
@@ -109,12 +110,16 @@ async function seedCsv(
             }
           }
 
+          // 驗證通過後，轉換為 Prisma 格式（snake_case → camelCase）
+          // Prisma 使用 camelCase 欄位名稱
+          const prismaRows = convertCsvDataToPrismaFormat(validRows);
+
           // Upsert 資料
           console.log('  匯入資料...');
           const result = await upsertRecordsBatch(
             tx as PrismaClient,
             parsed.modelName,
-            validRows,
+            prismaRows,
             undefined,
             dryRun,
             continueOnError

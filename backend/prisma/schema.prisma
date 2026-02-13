@@ -133,6 +133,7 @@ model CramschoolTeacher {
 model CramschoolCourse {
   courseId      Int       @id @default(autoincrement()) @map("course_id")
   courseName    String    @map("course_name")
+  subjectId     Int       @map("subject_id")
   teacherId     Int       @map("teacher_id")
   startTime     String    @map("start_time") // Time as string
   endTime       String    @map("end_time") // Time as string
@@ -140,6 +141,7 @@ model CramschoolCourse {
   feePerSession Decimal   @db.Decimal(10, 2) @map("fee_per_session")
   status        String    @default("Active") @map("status")
 
+  subject       CramschoolSubject @relation(fields: [subjectId], references: [subjectId], onDelete: Restrict)
   teacher       CramschoolTeacher @relation(fields: [teacherId], references: [teacherId], onDelete: Restrict)
   enrollments  CramschoolStudentEnrollment[]
   sessions      CramschoolSessionRecord[]
@@ -249,6 +251,7 @@ model CramschoolSubject {
   createdAt   DateTime  @default(now()) @map("created_at")
 
   questions   CramschoolQuestionBank[]
+  courses     CramschoolCourse[]
 
   @@map("cramschool_subject")
 }

@@ -64,6 +64,41 @@
 35. `CoursePdf.csv` - 課程 PDF
 36. `CoursePdfStudentGroup.csv` - 課程 PDF 群組關聯
 
+## 重要：Subject 和 Course 的關聯
+
+### 資料庫關係
+從 2024-02-12 開始，Course（課程）模型已經與 Subject（科目）建立關聯：
+
+```
+Subject (科目) ──→ Course (課程)
+    │                  │
+    └──→ QuestionBank  └──→ StudentEnrollment
+         (題庫)             (學生報名)
+```
+
+### 關聯說明
+- **Subject（科目）**：抽象的學科分類，用於組織題庫和教學內容
+  - 例如：國一數學、國二數學、高中物理
+  
+- **Course（課程）**：實際開設的班級，包含時間、老師、費用等資訊
+  - 例如：國一數學週三班、國一數學週日班
+  
+- **一個 Subject 可以對應多個 Course**
+  - 「國一數學」科目 → 週三班、週日班（多個課程）
+
+### CSV 中的使用
+在 Course.csv 中，必須指定 `subject_id` 欄位：
+
+```csv
+course_id,course_name,subject_id,teacher_id,start_time,end_time,day_of_week,fee_per_session,status
+1,國一數學週三班,@Subject:code:MATH_JR1,1,18:00,20:00,3,3000.00,Active
+```
+
+### 好處
+1. **題庫推薦**：可以自動推薦該課程適合的題目
+2. **統計報表**：可以統計某科目的所有學生、收入等
+3. **資料一致性**：不依賴課程名稱的字串比對
+
 ## 如何使用
 
 ### 1. 查看模板

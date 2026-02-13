@@ -15,15 +15,16 @@ exports.CourseStatusEnum = zod_1.z.enum(['Active', 'Pending', 'Closed']);
  * 對應後端 Course 模型
  */
 exports.CourseSchema = zod_1.z.object({
-    course_id: zod_1.z.number().int().positive(),
+    course_id: zod_1.z.coerce.number().int().positive(),
     course_name: zod_1.z.string().min(1).max(100),
-    teacher_id: zod_1.z.number().int().positive(),
+    subject_id: zod_1.z.coerce.number().int().positive(),
+    teacher_id: zod_1.z.coerce.number().int().positive(),
     start_time: zod_1.z.string(), // TimeField 在 JSON 中為字符串格式 "HH:MM:SS"
     end_time: zod_1.z.string(), // TimeField 在 JSON 中為字符串格式 "HH:MM:SS"
     day_of_week: exports.CourseDayEnum,
-    fee_per_session: zod_1.z.number().nonnegative(), // DecimalField 轉換為數字
+    fee_per_session: zod_1.z.coerce.number().nonnegative(), // DecimalField 轉換為數字
     status: exports.CourseStatusEnum.default('Active'),
-    enrollments_count: zod_1.z.number().int().nonnegative().optional() // 報名該課程的學生人數（排除已刪除的報名）
+    enrollments_count: zod_1.z.coerce.number().int().nonnegative().optional() // 報名該課程的學生人數（排除已刪除的報名）
 });
 /**
  * 創建課程 DTO Schema

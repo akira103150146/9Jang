@@ -35,6 +35,7 @@ const EXAMPLE_DATA: Record<string, Record<string, any>> = {
   'Course': {
     course_id: 1,
     course_name: '國三數學A班',
+    subject_id: '@Subject:code:MATH_JR3',
     teacher_id: '@Teacher:teacher_id:1',
     start_time: '18:00',
     end_time: '20:00',

@@ -14,6 +14,7 @@ export declare const CourseStatusEnum: z.ZodEnum<["Active", "Pending", "Closed"]
 export declare const CourseSchema: z.ZodObject<{
     course_id: z.ZodNumber;
     course_name: z.ZodString;
+    subject_id: z.ZodNumber;
     teacher_id: z.ZodNumber;
     start_time: z.ZodString;
     end_time: z.ZodString;
@@ -26,6 +27,7 @@ export declare const CourseSchema: z.ZodObject<{
     teacher_id: number;
     course_id: number;
     course_name: string;
+    subject_id: number;
     start_time: string;
     end_time: string;
     day_of_week: "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun";
@@ -35,6 +37,7 @@ export declare const CourseSchema: z.ZodObject<{
     teacher_id: number;
     course_id: number;
     course_name: string;
+    subject_id: number;
     start_time: string;
     end_time: string;
     day_of_week: "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun";
@@ -49,6 +52,7 @@ export type Course = z.infer<typeof CourseSchema>;
 export declare const CreateCourseSchema: z.ZodObject<Omit<{
     course_id: z.ZodNumber;
     course_name: z.ZodString;
+    subject_id: z.ZodNumber;
     teacher_id: z.ZodNumber;
     start_time: z.ZodString;
     end_time: z.ZodString;
@@ -60,6 +64,7 @@ export declare const CreateCourseSchema: z.ZodObject<Omit<{
     status: "Active" | "Pending" | "Closed";
     teacher_id: number;
     course_name: string;
+    subject_id: number;
     start_time: string;
     end_time: string;
     day_of_week: "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun";
@@ -68,6 +73,7 @@ export declare const CreateCourseSchema: z.ZodObject<Omit<{
 }, {
     teacher_id: number;
     course_name: string;
+    subject_id: number;
     start_time: string;
     end_time: string;
     day_of_week: "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun";
@@ -82,6 +88,7 @@ export type CreateCourseDto = z.infer<typeof CreateCourseSchema>;
 export declare const UpdateCourseSchema: z.ZodObject<Omit<{
     course_id: z.ZodOptional<z.ZodNumber>;
     course_name: z.ZodOptional<z.ZodString>;
+    subject_id: z.ZodOptional<z.ZodNumber>;
     teacher_id: z.ZodOptional<z.ZodNumber>;
     start_time: z.ZodOptional<z.ZodString>;
     end_time: z.ZodOptional<z.ZodString>;
@@ -94,6 +101,7 @@ export declare const UpdateCourseSchema: z.ZodObject<Omit<{
     enrollments_count?: number | undefined;
     teacher_id?: number | undefined;
     course_name?: string | undefined;
+    subject_id?: number | undefined;
     start_time?: string | undefined;
     end_time?: string | undefined;
     day_of_week?: "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun" | undefined;
@@ -103,6 +111,7 @@ export declare const UpdateCourseSchema: z.ZodObject<Omit<{
     enrollments_count?: number | undefined;
     teacher_id?: number | undefined;
     course_name?: string | undefined;
+    subject_id?: number | undefined;
     start_time?: string | undefined;
     end_time?: string | undefined;
     day_of_week?: "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun" | undefined;

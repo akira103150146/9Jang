@@ -2,46 +2,46 @@
 # 外鍵引用格式: @ModelName:field_name:value
 # 根據補習班收費表生成的課程資料
 # 注意: teacher_id 需要先建立 Teacher 資料
-# dayOfWeek: 1=週一                     ,2=週二        ,3=週三       ,4=週四       ,5=週五     ,6=週六        ,7=週日
+# day_of_week: Mon=週一, Tue=週二, Wed=週三, Thu=週四, Fri=週五, Sat=週六, Sun=週日
 
-course_id                             ,course_name ,teacher_id ,start_time ,end_time ,day_of_week ,fee_per_session ,status
-1                                     ,國一數學週三班     ,1          ,18:00      ,20:00    ,3           ,3000.00         ,Active
-2                                     ,國一數學週日班     ,1          ,09:00      ,11:00    ,7           ,3000.00         ,Active
-3                                     ,國二數學週三班     ,1          ,18:00      ,20:00    ,3           ,3000.00         ,Active
-4                                     ,國二數學週四班     ,1          ,18:00      ,20:00    ,4           ,3000.00         ,Active
-5                                     ,國二數學週五班     ,1          ,18:00      ,20:00    ,5           ,3000.00         ,Active
-6                                     ,國三數學週三班     ,1          ,18:00      ,20:00    ,3           ,3000.00         ,Active
-7                                     ,國三數學週四班     ,1          ,18:00      ,20:00    ,4           ,3000.00         ,Active
-8                                     ,國中理化週三班     ,1          ,20:00      ,22:00    ,3           ,3000.00         ,Active
-9                                     ,國中理化週四班     ,1          ,20:00      ,22:00    ,4           ,3000.00         ,Active
-10                                    ,國中理化週六班     ,1          ,14:00      ,16:00    ,6           ,3000.00         ,Active
-11                                    ,高中數學週二班     ,1          ,18:00      ,20:00    ,2           ,4000.00         ,Active
-12                                    ,高中數學週三班     ,1          ,18:00      ,20:00    ,3           ,4000.00         ,Active
-13                                    ,高中數學週四班     ,1          ,18:00      ,20:00    ,4           ,4000.00         ,Active
-14                                    ,高中數學週五班     ,1          ,18:00      ,20:00    ,5           ,4000.00         ,Active
-15                                    ,高中數學週六班     ,1          ,14:00      ,16:00    ,6           ,4000.00         ,Active
-16                                    ,高中數學週日班     ,1          ,09:00      ,11:00    ,7           ,4000.00         ,Active
-17                                    ,高中物理週三班     ,1          ,20:00      ,22:00    ,3           ,4000.00         ,Active
-18                                    ,高中物理週五班     ,1          ,20:00      ,22:00    ,5           ,4000.00         ,Active
-19                                    ,高職化學週一班     ,1          ,18:00      ,20:00    ,1           ,4000.00         ,Active
-20                                    ,高職化學週四班     ,1          ,18:00      ,20:00    ,4           ,4000.00         ,Active
-21                                    ,英文週二班       ,1          ,20:00      ,22:00    ,2           ,4000.00         ,Active
-22                                    ,英文週三班       ,1          ,20:00      ,22:00    ,3           ,3000.00         ,Active
-23                                    ,英文週五班       ,1          ,20:00      ,22:00    ,5           ,4000.00         ,Active
-24                                    ,英文週六班       ,1          ,16:00      ,18:00    ,6           ,4000.00         ,Active
-25                                    ,英文週日班       ,1          ,11:00      ,13:00    ,7           ,4000.00         ,Active
-26                                    ,高職數學週一班     ,1          ,18:00      ,20:00    ,1           ,4000.00         ,Active
-27                                    ,高職數學週二班     ,1          ,18:00      ,20:00    ,2           ,4000.00         ,Active
-28                                    ,高職數學週三班     ,1          ,18:00      ,20:00    ,3           ,4000.00         ,Active
-29                                    ,高職數學週四班     ,1          ,18:00      ,20:00    ,4           ,4000.00         ,Active
-30                                    ,高職數學週五班     ,1          ,18:00      ,20:00    ,5           ,4000.00         ,Active
-31                                    ,高職數學週六班     ,1          ,09:00      ,11:00    ,6           ,4000.00         ,Active
-32                                    ,高職專業週一班     ,1          ,20:00      ,22:00    ,1           ,4000.00         ,Active
-33                                    ,高職專業週二班     ,1          ,20:00      ,22:00    ,2           ,3000.00         ,Active
-34                                    ,高職專業週三班     ,1          ,20:00      ,22:00    ,3           ,4000.00         ,Active
-35                                    ,高職專業週五班     ,1          ,20:00      ,22:00    ,5           ,4000.00         ,Active
-36                                    ,高職專業週六班     ,1          ,11:00      ,13:00    ,6           ,4000.00         ,Active
-37                                    ,程式設計週二班     ,1          ,18:00      ,20:00    ,2           ,6000.00         ,Active
-38                                    ,程式設計週五班     ,1          ,18:00      ,20:00    ,5           ,6000.00         ,Active
-39                                    ,程式設計週六班     ,1          ,16:00      ,18:00    ,6           ,8000.00         ,Active
-40                                    ,程式設計週日班     ,1          ,14:00      ,16:00    ,7           ,8000.00         ,Active
+course_id,course_name,subject_id,teacher_id,start_time,end_time,day_of_week,fee_per_session,status
+1,國一數學週三班,@Subject:code:MATH_JR1,@Teacher:name:郭永明,18:00,20:00,Wed,3000.00,Active
+2,國一數學週日班,@Subject:code:MATH_JR1,@Teacher:name:郭永明,09:00,11:00,Sun,3000.00,Active
+3,國二數學週三班,@Subject:code:MATH_JR2,@Teacher:name:郭永明,18:00,20:00,Wed,3000.00,Active
+4,國二數學週四班,@Subject:code:MATH_JR2,@Teacher:name:郭永明,18:00,20:00,Thu,3000.00,Active
+5,國二數學週五班,@Subject:code:MATH_JR2,@Teacher:name:郭永明,18:00,20:00,Fri,3000.00,Active
+6,國三數學週三班,@Subject:code:MATH_JR3,@Teacher:name:郭永明,18:00,20:00,Wed,3000.00,Active
+7,國三數學週四班,@Subject:code:MATH_JR3,@Teacher:name:郭永明,18:00,20:00,Thu,3000.00,Active
+8,國中理化週三班,@Subject:code:SCIENCE_JR,@Teacher:name:郭永明,20:00,22:00,Wed,3000.00,Active
+9,國中理化週四班,@Subject:code:SCIENCE_JR,@Teacher:name:郭永明,20:00,22:00,Thu,3000.00,Active
+10,國中理化週六班,@Subject:code:SCIENCE_JR,@Teacher:name:郭永明,14:00,16:00,Sat,3000.00,Active
+11,高中數學週二班,@Subject:code:MATH_SR1,@Teacher:name:郭永明,18:00,20:00,Tue,4000.00,Active
+12,高中數學週三班,@Subject:code:MATH_SR1,@Teacher:name:郭永明,18:00,20:00,Wed,4000.00,Active
+13,高中數學週四班,@Subject:code:MATH_SR1,@Teacher:name:郭永明,18:00,20:00,Thu,4000.00,Active
+14,高中數學週五班,@Subject:code:MATH_SR1,@Teacher:name:郭永明,18:00,20:00,Fri,4000.00,Active
+15,高中數學週六班,@Subject:code:MATH_SR1,@Teacher:name:郭永明,14:00,16:00,Sat,4000.00,Active
+16,高中數學週日班,@Subject:code:MATH_SR1,@Teacher:name:郭永明,09:00,11:00,Sun,4000.00,Active
+17,高中物理週三班,@Subject:code:PHYSICS_SR,@Teacher:name:郭永明,20:00,22:00,Wed,4000.00,Active
+18,高中物理週五班,@Subject:code:PHYSICS_SR,@Teacher:name:郭永明,20:00,22:00,Fri,4000.00,Active
+19,高職化學週一班,@Subject:code:CHEMISTRY_SR,@Teacher:name:陳如吟,18:00,20:00,Mon,4000.00,Active
+20,高職化學週四班,@Subject:code:CHEMISTRY_SR,@Teacher:name:陳如吟,18:00,20:00,Thu,4000.00,Active
+21,英文週二班,@Subject:code:ENGLISH,@Teacher:name:莊智凱,20:00,22:00,Tue,4000.00,Active
+22,英文週三班,@Subject:code:ENGLISH,@Teacher:name:莊智凱,20:00,22:00,Wed,3000.00,Active
+23,英文週五班,@Subject:code:ENGLISH,@Teacher:name:莊智凱,20:00,22:00,Fri,4000.00,Active
+24,英文週六班,@Subject:code:ENGLISH,@Teacher:name:莊智凱,16:00,18:00,Sat,4000.00,Active
+25,英文週日班,@Subject:code:ENGLISH,@Teacher:name:莊智凱,11:00,13:00,Sun,4000.00,Active
+26,高職數學週一班,@Subject:code:MATH_VOC,@Teacher:name:陳如吟,18:00,20:00,Mon,4000.00,Active
+27,高職數學週二班,@Subject:code:MATH_VOC,@Teacher:name:陳如吟,18:00,20:00,Tue,4000.00,Active
+28,高職數學週三班,@Subject:code:MATH_VOC,@Teacher:name:陳如吟,18:00,20:00,Wed,4000.00,Active
+29,高職數學週四班,@Subject:code:MATH_VOC,@Teacher:name:陳如吟,18:00,20:00,Thu,4000.00,Active
+30,高職數學週五班,@Subject:code:MATH_VOC,@Teacher:name:陳如吟,18:00,20:00,Fri,4000.00,Active
+31,高職數學週六班,@Subject:code:MATH_VOC,@Teacher:name:陳如吟,09:00,11:00,Sat,4000.00,Active
+32,高職專業週一班,@Subject:code:VOCATIONAL,@Teacher:name:陳如吟,20:00,22:00,Mon,4000.00,Active
+33,高職專業週二班,@Subject:code:VOCATIONAL,@Teacher:name:陳如吟,20:00,22:00,Tue,3000.00,Active
+34,高職專業週三班,@Subject:code:VOCATIONAL,@Teacher:name:陳如吟,20:00,22:00,Wed,4000.00,Active
+35,高職專業週五班,@Subject:code:VOCATIONAL,@Teacher:name:陳如吟,20:00,22:00,Fri,4000.00,Active
+36,高職專業週六班,@Subject:code:VOCATIONAL,@Teacher:name:陳如吟,11:00,13:00,Sat,4000.00,Active
+37,程式設計週二班,@Subject:code:PROGRAMMING,@Teacher:name:郭永明,18:00,20:00,Tue,6000.00,Active
+38,程式設計週五班,@Subject:code:PROGRAMMING,@Teacher:name:郭永明,18:00,20:00,Fri,6000.00,Active
+39,程式設計週六班,@Subject:code:PROGRAMMING,@Teacher:name:郭永明,16:00,18:00,Sat,8000.00,Active
+40,程式設計週日班,@Subject:code:PROGRAMMING,@Teacher:name:郭永明,14:00,16:00,Sun,8000.00,Active

@@ -15,15 +15,16 @@ export const CourseStatusEnum = z.enum(['Active', 'Pending', 'Closed'])
  * 對應後端 Course 模型
  */
 export const CourseSchema = z.object({
-  course_id: z.number().int().positive(),
+  course_id: z.coerce.number().int().positive(),
   course_name: z.string().min(1).max(100),
-  teacher_id: z.number().int().positive(),
+  subject_id: z.coerce.number().int().positive(),
+  teacher_id: z.coerce.number().int().positive(),
   start_time: z.string(), // TimeField 在 JSON 中為字符串格式 "HH:MM:SS"
   end_time: z.string(), // TimeField 在 JSON 中為字符串格式 "HH:MM:SS"
   day_of_week: CourseDayEnum,
-  fee_per_session: z.number().nonnegative(), // DecimalField 轉換為數字
+  fee_per_session: z.coerce.number().nonnegative(), // DecimalField 轉換為數字
   status: CourseStatusEnum.default('Active'),
-  enrollments_count: z.number().int().nonnegative().optional() // 報名該課程的學生人數（排除已刪除的報名）
+  enrollments_count: z.coerce.number().int().nonnegative().optional() // 報名該課程的學生人數（排除已刪除的報名）
 })
 
 export type Course = z.infer<typeof CourseSchema>

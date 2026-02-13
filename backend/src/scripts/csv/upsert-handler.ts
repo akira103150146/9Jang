@@ -243,6 +243,7 @@ export async function clearModel(
 
 /**
  * 批次清空多個模型的資料
+ * 按照依賴關係反向刪除（先刪除依賴者，再刪除被依賴者）
  */
 export async function clearModels(
   prisma: PrismaClient,
@@ -250,7 +251,8 @@ export async function clearModels(
 ): Promise<number> {
   let totalDeleted = 0;
   
-  for (const modelName of modelNames) {
+  // 反向遍歷，先刪除依賴的表格
+  for (const modelName of [...modelNames].reverse()) {
     const deleted = await clearModel(prisma, modelName);
     totalDeleted += deleted;
   }
