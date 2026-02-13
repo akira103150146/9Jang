@@ -18,7 +18,8 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiParam, ApiBody } from '@nestjs/swagger';
 import { Response } from 'express';
-import { JwtAuthGuard } from '../../account/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../account/guards/jwt-auth.guard'
+import { PermissionGuard, Permission } from '../../common/guards/permission.guard';;
 import { CoursePdfsService } from '../services/course-pdfs.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthRequest } from '@/types/request.types';
@@ -26,7 +27,7 @@ import { CreateCoursePdfDto, UpdateCoursePdfDto, CoursePdf } from '@9jang/shared
 
 @ApiTags('course-pdfs')
 @Controller('cramschool/courses/:courseId/pdfs')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionGuard)
 export class CoursePdfsController {
   constructor(
     private readonly coursePdfsService: CoursePdfsService,

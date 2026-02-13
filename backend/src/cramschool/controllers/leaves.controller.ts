@@ -20,11 +20,12 @@ import {
   UpdateLeaveSchema,
 } from '@9jang/shared';
 import { ZodValidationPipe } from 'nestjs-zod';
-import { JwtAuthGuard } from '../../account/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../account/guards/jwt-auth.guard'
+import { PermissionGuard, Permission } from '../../common/guards/permission.guard';;
 
 @ApiTags('attendances')
 @Controller('cramschool/leaves')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionGuard)
 export class LeavesController {
   constructor(private readonly leavesService: LeavesService) {}
 

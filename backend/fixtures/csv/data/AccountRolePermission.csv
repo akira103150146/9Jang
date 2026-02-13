@@ -1,0 +1,102 @@
+# AccountRolePermission.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# role_id 對應 AccountRole.id
+# permission_type: 'api' | 'page'
+# method: GET, POST, PUT, DELETE 或組合 (GET,POST) 或 * (所有方法)
+# resource 支援萬用字元: /path/* (單層) 或 /path/** (多層)
+
+id,role_id,permission_type,resource,method
+# === SUPERADMIN 不需要設定權限,程式碼中已經處理 ===
+
+# === 教師(完整權限) - TEACHER_FULL ===
+# 學生管理
+1,2,api,/cramschool/students,GET,POST
+2,2,api,/cramschool/students/*,GET,PUT
+# 課程管理 (只能查看)
+3,2,api,/cramschool/courses,GET
+4,2,api,/cramschool/courses/*,GET
+# 出缺席管理 (完整權限)
+5,2,api,/cramschool/attendances,*
+6,2,api,/cramschool/attendances/*,*
+7,2,api,/cramschool/sessions,*
+8,2,api,/cramschool/sessions/*,*
+9,2,api,/cramschool/leaves,*
+10,2,api,/cramschool/leaves/*,*
+# 題庫管理
+11,2,api,/cramschool/questions/**,*
+12,2,api,/cramschool/error-logs/**,*
+13,2,api,/cramschool/hashtags/**,*
+14,2,api,/cramschool/subjects/**,GET
+# 教學資源
+15,2,api,/cramschool/resources/**,GET,POST,PUT
+16,2,api,/cramschool/courses/*/pdfs/**,*
+17,2,api,/cramschool/student-groups/**,GET,POST,PUT
+# 訂正本
+18,2,api,/cramschool/student-mistake-notes/**,GET
+19,2,api,/cramschool/student-answers/**,GET
+
+# === 教師(受限) - TEACHER_LIMITED ===
+# 學生查看
+20,3,api,/cramschool/students,GET
+21,3,api,/cramschool/students/*,GET
+# 課程查看
+22,3,api,/cramschool/courses,GET
+23,3,api,/cramschool/courses/*,GET
+# 出缺席記錄
+24,3,api,/cramschool/attendances,GET,POST
+25,3,api,/cramschool/attendances/*,GET,PUT
+26,3,api,/cramschool/sessions,GET
+27,3,api,/cramschool/sessions/*,GET
+
+# === 行政人員 - STAFF_ADMIN ===
+# 學生管理 (完整)
+28,4,api,/cramschool/students/**,*
+# 課程管理
+29,4,api,/cramschool/courses/**,GET,POST,PUT
+# 報名管理
+30,4,api,/cramschool/enrollments/**,*
+31,4,api,/cramschool/enrollment-periods/**,*
+# 財務管理
+32,4,api,/cramschool/fees/**,*
+33,4,api,/cramschool/orders/**,*
+34,4,api,/cramschool/group-orders/**,*
+35,4,api,/cramschool/order-items/**,*
+# 出缺席查看
+36,4,api,/cramschool/attendances,GET
+37,4,api,/cramschool/attendances/*,GET
+38,4,api,/cramschool/sessions,GET
+39,4,api,/cramschool/sessions/*,GET
+
+# === 學生家長 - PARENT ===
+# 學生資料 (只能查看特定學生,需要在 service 層額外檢查)
+40,5,api,/cramschool/students/*,GET
+41,5,api,/cramschool/students/*/attendance_and_leaves,GET
+42,5,api,/cramschool/students/*/tuition_status,GET
+# 財務查詢
+43,5,api,/cramschool/fees,GET
+44,5,api,/cramschool/fees/*,GET
+# 出缺席查詢
+45,5,api,/cramschool/attendances,GET
+46,5,api,/cramschool/leaves,GET
+# 課程查看
+47,5,api,/cramschool/courses,GET
+48,5,api,/cramschool/courses/*,GET
+
+# === 學生 - STUDENT ===
+# 課程查看
+49,6,api,/cramschool/courses,GET
+50,6,api,/cramschool/courses/*,GET
+# 教學資源查看
+51,6,api,/cramschool/resources,GET
+52,6,api,/cramschool/resources/*,GET
+53,6,api,/cramschool/courses/*/pdfs,GET
+54,6,api,/cramschool/courses/*/pdfs/*,GET
+# 題庫練習
+55,6,api,/cramschool/questions,GET
+56,6,api,/cramschool/questions/*,GET
+57,6,api,/cramschool/student-answers,GET,POST
+58,6,api,/cramschool/student-answers/*,GET
+# 訂正本
+59,6,api,/cramschool/student-mistake-notes,GET,POST
+60,6,api,/cramschool/student-mistake-notes/*,GET,PUT,DELETE
+61,6,api,/cramschool/student-mistake-note-images/**,*

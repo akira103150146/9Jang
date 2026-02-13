@@ -45,7 +45,13 @@ export class AccountService {
     }
 
     // 生成 JWT token
-    const payload = { sub: user.id, username: user.username, role: user.role };
+    const payload = { 
+      sub: user.id, 
+      username: user.username, 
+      role: user.customRole?.code || user.role, // 優先使用角色代碼
+      roleId: user.customRoleId,
+      isSuperadmin: user.customRole?.code === 'SUPERADMIN',
+    };
     const access = this.jwtService.sign(payload, { expiresIn: '1h' });
     const refresh = this.jwtService.sign(payload, { expiresIn: '7d' });
 

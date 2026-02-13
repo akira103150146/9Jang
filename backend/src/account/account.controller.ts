@@ -27,13 +27,16 @@ import {
 } from '@9jang/shared';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { PermissionGuard, Permission, Public } from '../common/guards/permission.guard';
 
 @ApiTags('account')
 @Controller('account')
+@UseGuards(JwtAuthGuard, PermissionGuard)
 export class AccountController {
   constructor(private readonly accountService: AccountService) { }
 
   @Post('login')
+  @Public()
   @ApiOperation({ summary: '使用者登入', description: '使用帳號密碼登入系統，返回 JWT token' })
   @ApiResponse({ status: 200, description: '登入成功', })
   @ApiResponse({ status: 401, description: '帳號或密碼錯誤' })
@@ -44,7 +47,7 @@ export class AccountController {
   }
 
   @Post('logout')
-  @UseGuards(JwtAuthGuard)
+  @Permission({ resource: '/account/logout' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '使用者登出', description: '登出系統（客戶端需刪除 token）' })
   @ApiResponse({ status: 200, description: '登出成功' })
@@ -71,6 +74,7 @@ export class AccountController {
   }
 
   @Post('token/refresh')
+  @Public()
   @ApiOperation({ summary: '刷新 Token', description: '使用 refresh token 獲取新的 access token' })
   @ApiResponse({ status: 200, description: '刷新成功', })
   @ApiResponse({ status: 401, description: 'Refresh token 無效或過期' })
@@ -82,7 +86,7 @@ export class AccountController {
   }
 
   @Get('users/me')
-  @UseGuards(JwtAuthGuard)
+  @Permission({ resource: '/account/users/me' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得當前使用者資訊', description: '取得目前登入使用者的詳細資料' })
   @ApiResponse({ status: 200, description: '成功', })
@@ -92,7 +96,7 @@ export class AccountController {
   }
 
   @Get('current-role')
-  @UseGuards(JwtAuthGuard)
+  @Permission({ resource: '/account/current-role' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得當前角色', description: '取得使用者的原始角色和臨時角色資訊' })
   @ApiQuery({ name: 'temp_role', required: false, description: '臨時角色代碼' })
@@ -113,7 +117,7 @@ export class AccountController {
   }
 
   @Post('switch-role')
-  @UseGuards(JwtAuthGuard)
+  @Permission({ resource: '/account/switch-role' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '切換角色', description: '切換到臨時角色（用於測試或特殊權限）' })
   @ApiResponse({ status: 200, description: '切換成功' })
@@ -127,7 +131,7 @@ export class AccountController {
   }
 
   @Post('reset-role')
-  @UseGuards(JwtAuthGuard)
+  @Permission({ resource: '/account/reset-role' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '重置角色', description: '將臨時角色重置為原始角色' })
   @ApiResponse({ status: 200, description: '重置成功' })
@@ -139,7 +143,7 @@ export class AccountController {
   }
 
   @Post('impersonate-user')
-  @UseGuards(JwtAuthGuard)
+  @Permission({ resource: '/account/impersonate-user' })
   async impersonateUser(
     @Request() req: AuthRequest,
     @Body() body: { user_id: number },
@@ -153,7 +157,7 @@ export class AccountController {
   }
 
   @Post('change-password')
-  @UseGuards(JwtAuthGuard)
+  @Permission({ resource: '/account/change-password' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '修改密碼', description: '修改當前使用者的密碼' })
   @ApiResponse({ status: 200, description: '密碼修改成功' })
@@ -169,7 +173,7 @@ export class AccountController {
   }
 
   @Get('users')
-  @UseGuards(JwtAuthGuard)
+  @Permission({ resource: '/account/users' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得使用者列表', description: '分頁查詢所有使用者' })
   @ApiQuery({ name: 'page', required: false, description: '頁碼', example: 1 })
@@ -184,7 +188,7 @@ export class AccountController {
   }
 
   @Get('users/:id')
-  @UseGuards(JwtAuthGuard)
+  @Permission({ resource: '/account/users' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得單一使用者', description: '根據 ID 查詢使用者詳細資料' })
   @ApiParam({ name: 'id', description: '使用者 ID' })
@@ -196,7 +200,7 @@ export class AccountController {
   }
 
   @Get('roles')
-  @UseGuards(JwtAuthGuard)
+  @Permission({ resource: '/account/roles' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得角色列表', description: '分頁查詢所有系統角色' })
   @ApiQuery({ name: 'page', required: false, description: '頁碼', example: 1 })
@@ -211,7 +215,7 @@ export class AccountController {
   }
 
   @Get('audit-logs')
-  @UseGuards(JwtAuthGuard)
+  @Permission({ resource: '/account/audit-logs' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得審計日誌', description: '分頁查詢系統操作記錄' })
   @ApiQuery({ name: 'page', required: false, description: '頁碼', example: 1 })

@@ -26,11 +26,12 @@ import {
   UpdateStudentMistakeNoteSchema,
 } from '@9jang/shared';
 import { ZodValidationPipe } from 'nestjs-zod';
-import { JwtAuthGuard } from '../../account/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../account/guards/jwt-auth.guard'
+import { PermissionGuard, Permission } from '../../common/guards/permission.guard';;
 
 @ApiTags('mistake-notes')
 @Controller('cramschool/student-mistake-notes')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionGuard)
 export class StudentMistakeNotesController {
   constructor(
     private readonly studentMistakeNotesService: StudentMistakeNotesService,

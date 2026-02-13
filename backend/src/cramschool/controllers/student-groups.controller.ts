@@ -28,11 +28,12 @@ import {
   RemoveStudentsFromGroupSchema,
 } from '@9jang/shared';
 import { ZodValidationPipe } from 'nestjs-zod';
-import { JwtAuthGuard } from '../../account/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../account/guards/jwt-auth.guard'
+import { PermissionGuard, Permission } from '../../common/guards/permission.guard';;
 
 @ApiTags('students')
 @Controller('cramschool/student-groups')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionGuard)
 export class StudentGroupsController {
   constructor(private readonly studentGroupsService: StudentGroupsService) { }
 

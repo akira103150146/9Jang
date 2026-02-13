@@ -9,7 +9,8 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { JwtAuthGuard } from '../../account/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../account/guards/jwt-auth.guard'
+import { PermissionGuard, Permission } from '../../common/guards/permission.guard';;
 import { PrismaService } from '../../prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import * as path from 'path';
@@ -17,7 +18,7 @@ import * as fs from 'fs/promises';
 
 @ApiTags('media')
 @Controller('cramschool')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionGuard)
 export class MediaController {
   constructor(private prisma: PrismaService) {}
 

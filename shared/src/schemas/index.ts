@@ -9,6 +9,9 @@ export * from '../types/tiptap'
 // 用戶和認證
 export * from './user.schema'
 
+// 角色和權限
+export * from './role.schema'
+
 // 學生
 export * from './student.schema'
 

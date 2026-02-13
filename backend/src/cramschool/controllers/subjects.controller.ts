@@ -23,11 +23,12 @@ import {
   UpdateSubjectSchema,
 } from '@9jang/shared';
 import { ZodValidationPipe } from 'nestjs-zod';
-import { JwtAuthGuard } from '../../account/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../account/guards/jwt-auth.guard'
+import { PermissionGuard, Permission } from '../../common/guards/permission.guard';;
 
 @ApiTags('courses')
 @Controller('cramschool/subjects')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionGuard)
 export class SubjectsController {
   constructor(
     private readonly subjectsService: SubjectsService,

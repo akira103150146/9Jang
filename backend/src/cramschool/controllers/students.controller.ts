@@ -26,6 +26,7 @@ import {
 } from '@9jang/shared';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { JwtAuthGuard } from '../../account/guards/jwt-auth.guard';
+import { PermissionGuard, Permission } from '../../common/guards/permission.guard';
 import type { 
   TuitionStatus, 
   AccountStatus, 
@@ -37,7 +38,7 @@ import type {
 
 @ApiTags('students')
 @Controller('cramschool/students')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionGuard)
 export class StudentsController {
   constructor(
     private readonly studentsService: StudentsService,
@@ -45,6 +46,7 @@ export class StudentsController {
   ) {}
 
   @Get()
+  @Permission({ resource: '/cramschool/students' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '取得學生列表', 
@@ -93,6 +95,7 @@ export class StudentsController {
   }
 
   @Get(':id')
+  @Permission({ resource: '/cramschool/students' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '取得單一學生', 
@@ -111,6 +114,7 @@ export class StudentsController {
   }
 
   @Post()
+  @Permission({ resource: '/cramschool/students' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '建立學生', 
@@ -136,6 +140,7 @@ export class StudentsController {
   }
 
   @Put(':id')
+  @Permission({ resource: '/cramschool/students' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '更新學生資料', 
@@ -158,6 +163,7 @@ export class StudentsController {
   }
 
   @Delete(':id')
+  @Permission({ resource: '/cramschool/students' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '刪除學生', 
@@ -172,6 +178,7 @@ export class StudentsController {
   }
 
   @Post(':id/restore')
+  @Permission({ resource: '/cramschool/students' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '恢復已刪除的學生', 
@@ -190,6 +197,7 @@ export class StudentsController {
   }
 
   @Get(':id/tuition_status')
+  @Permission({ resource: '/cramschool/students' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '取得學生繳費狀態', 
@@ -207,6 +215,7 @@ export class StudentsController {
   }
 
   @Post(':id/generate_tuition')
+  @Permission({ resource: '/cramschool/students' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '生成學費帳單', 
@@ -238,6 +247,7 @@ export class StudentsController {
   }
 
   @Post('batch-generate-tuitions')
+  @Permission({ resource: '/cramschool/students/batch-generate-tuitions' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '批次生成學費帳單', 
@@ -266,6 +276,7 @@ export class StudentsController {
   }
 
   @Post(':id/reset-password')
+  @Permission({ resource: '/cramschool/students' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '重置學生密碼', 
@@ -295,6 +306,7 @@ export class StudentsController {
   }
 
   @Post(':id/toggle-account-status')
+  @Permission({ resource: '/cramschool/students' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '切換學生帳號狀態', 
@@ -313,6 +325,7 @@ export class StudentsController {
   }
 
   @Get(':id/attendance_and_leaves')
+  @Permission({ resource: '/cramschool/students' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '取得出缺席記錄', 

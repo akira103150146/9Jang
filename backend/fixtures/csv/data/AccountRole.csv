@@ -1,0 +1,11 @@
+# AccountRole.csv
+# 外鍵引用格式: @ModelName:field_name:value
+# 角色定義
+
+id,code,name,description,is_active
+1,SUPERADMIN,超級管理員,系統最高權限擁有者,true
+2,TEACHER_FULL,教師(完整權限),可管理學生、課程、出缺席、題庫,true
+3,TEACHER_LIMITED,教師(受限),只能查看和記錄出缺席,true
+4,STAFF_ADMIN,行政人員,可管理學生資料和財務,true
+5,PARENT,學生家長,可查看學生資料和繳費記錄,true
+6,STUDENT,學生,只能查看自己的資料,true

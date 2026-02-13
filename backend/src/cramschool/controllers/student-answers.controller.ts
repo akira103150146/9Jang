@@ -20,11 +20,12 @@ import {
   UpdateStudentAnswerSchema,
 } from '@9jang/shared';
 import { ZodValidationPipe } from 'nestjs-zod';
-import { JwtAuthGuard } from '../../account/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../account/guards/jwt-auth.guard'
+import { PermissionGuard, Permission } from '../../common/guards/permission.guard';;
 
 @ApiTags('questions')
 @Controller('cramschool/student-answers')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionGuard)
 export class StudentAnswersController {
   constructor(private readonly studentAnswersService: StudentAnswersService) {}
 

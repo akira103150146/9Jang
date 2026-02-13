@@ -21848,6 +21848,7 @@ const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const shared_2 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
 const jwt_auth_guard_1 = __webpack_require__(/*! ./guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
 let AccountController = class AccountController {
     constructor(accountService) {
         this.accountService = accountService;
@@ -21896,6 +21897,7 @@ let AccountController = class AccountController {
 exports.AccountController = AccountController;
 __decorate([
     (0, common_1.Post)('login'),
+    (0, permission_guard_1.Public)(),
     (0, swagger_1.ApiOperation)({ summary: '使用者登入', description: '使用帳號密碼登入系統，返回 JWT token' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: '登入成功', }),
     (0, swagger_1.ApiResponse)({ status: 401, description: '帳號或密碼錯誤' }),
@@ -21906,7 +21908,7 @@ __decorate([
 ], AccountController.prototype, "login", null);
 __decorate([
     (0, common_1.Post)('logout'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, permission_guard_1.Permission)({ resource: '/account/logout' }),
     (0, swagger_1.ApiBearerAuth)('JWT-auth'),
     (0, swagger_1.ApiOperation)({ summary: '使用者登出', description: '登出系統（客戶端需刪除 token）' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: '登出成功' }),
@@ -21917,6 +21919,7 @@ __decorate([
 ], AccountController.prototype, "logout", null);
 __decorate([
     (0, common_1.Post)('token/refresh'),
+    (0, permission_guard_1.Public)(),
     (0, swagger_1.ApiOperation)({ summary: '刷新 Token', description: '使用 refresh token 獲取新的 access token' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: '刷新成功', }),
     (0, swagger_1.ApiResponse)({ status: 401, description: 'Refresh token 無效或過期' }),
@@ -21927,7 +21930,7 @@ __decorate([
 ], AccountController.prototype, "refreshToken", null);
 __decorate([
     (0, common_1.Get)('users/me'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, permission_guard_1.Permission)({ resource: '/account/users/me' }),
     (0, swagger_1.ApiBearerAuth)('JWT-auth'),
     (0, swagger_1.ApiOperation)({ summary: '取得當前使用者資訊', description: '取得目前登入使用者的詳細資料' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: '成功', }),
@@ -21939,7 +21942,7 @@ __decorate([
 ], AccountController.prototype, "getCurrentUser", null);
 __decorate([
     (0, common_1.Get)('current-role'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, permission_guard_1.Permission)({ resource: '/account/current-role' }),
     (0, swagger_1.ApiBearerAuth)('JWT-auth'),
     (0, swagger_1.ApiOperation)({ summary: '取得當前角色', description: '取得使用者的原始角色和臨時角色資訊' }),
     (0, swagger_1.ApiQuery)({ name: 'temp_role', required: false, description: '臨時角色代碼' }),
@@ -21953,7 +21956,7 @@ __decorate([
 ], AccountController.prototype, "getCurrentRole", null);
 __decorate([
     (0, common_1.Post)('switch-role'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, permission_guard_1.Permission)({ resource: '/account/switch-role' }),
     (0, swagger_1.ApiBearerAuth)('JWT-auth'),
     (0, swagger_1.ApiOperation)({ summary: '切換角色', description: '切換到臨時角色（用於測試或特殊權限）' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: '切換成功' }),
@@ -21967,7 +21970,7 @@ __decorate([
 ], AccountController.prototype, "switchRole", null);
 __decorate([
     (0, common_1.Post)('reset-role'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, permission_guard_1.Permission)({ resource: '/account/reset-role' }),
     (0, swagger_1.ApiBearerAuth)('JWT-auth'),
     (0, swagger_1.ApiOperation)({ summary: '重置角色', description: '將臨時角色重置為原始角色' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: '重置成功' }),
@@ -21979,7 +21982,7 @@ __decorate([
 ], AccountController.prototype, "resetRole", null);
 __decorate([
     (0, common_1.Post)('impersonate-user'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, permission_guard_1.Permission)({ resource: '/account/impersonate-user' }),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -21988,7 +21991,7 @@ __decorate([
 ], AccountController.prototype, "impersonateUser", null);
 __decorate([
     (0, common_1.Post)('change-password'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, permission_guard_1.Permission)({ resource: '/account/change-password' }),
     (0, swagger_1.ApiBearerAuth)('JWT-auth'),
     (0, swagger_1.ApiOperation)({ summary: '修改密碼', description: '修改當前使用者的密碼' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: '密碼修改成功' }),
@@ -22002,7 +22005,7 @@ __decorate([
 ], AccountController.prototype, "changePassword", null);
 __decorate([
     (0, common_1.Get)('users'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, permission_guard_1.Permission)({ resource: '/account/users' }),
     (0, swagger_1.ApiBearerAuth)('JWT-auth'),
     (0, swagger_1.ApiOperation)({ summary: '取得使用者列表', description: '分頁查詢所有使用者' }),
     (0, swagger_1.ApiQuery)({ name: 'page', required: false, description: '頁碼', example: 1 }),
@@ -22017,7 +22020,7 @@ __decorate([
 ], AccountController.prototype, "getUsers", null);
 __decorate([
     (0, common_1.Get)('users/:id'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, permission_guard_1.Permission)({ resource: '/account/users' }),
     (0, swagger_1.ApiBearerAuth)('JWT-auth'),
     (0, swagger_1.ApiOperation)({ summary: '取得單一使用者', description: '根據 ID 查詢使用者詳細資料' }),
     (0, swagger_1.ApiParam)({ name: 'id', description: '使用者 ID' }),
@@ -22031,7 +22034,7 @@ __decorate([
 ], AccountController.prototype, "getUser", null);
 __decorate([
     (0, common_1.Get)('roles'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, permission_guard_1.Permission)({ resource: '/account/roles' }),
     (0, swagger_1.ApiBearerAuth)('JWT-auth'),
     (0, swagger_1.ApiOperation)({ summary: '取得角色列表', description: '分頁查詢所有系統角色' }),
     (0, swagger_1.ApiQuery)({ name: 'page', required: false, description: '頁碼', example: 1 }),
@@ -22046,7 +22049,7 @@ __decorate([
 ], AccountController.prototype, "getRoles", null);
 __decorate([
     (0, common_1.Get)('audit-logs'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, permission_guard_1.Permission)({ resource: '/account/audit-logs' }),
     (0, swagger_1.ApiBearerAuth)('JWT-auth'),
     (0, swagger_1.ApiOperation)({ summary: '取得審計日誌', description: '分頁查詢系統操作記錄' }),
     (0, swagger_1.ApiQuery)({ name: 'page', required: false, description: '頁碼', example: 1 }),
@@ -22062,6 +22065,7 @@ __decorate([
 exports.AccountController = AccountController = __decorate([
     (0, swagger_1.ApiTags)('account'),
     (0, common_1.Controller)('account'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof account_service_1.AccountService !== "undefined" && account_service_1.AccountService) === "function" ? _a : Object])
 ], AccountController);
 
@@ -22088,9 +22092,14 @@ const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const jwt_1 = __webpack_require__(/*! @nestjs/jwt */ "@nestjs/jwt");
 const passport_1 = __webpack_require__(/*! @nestjs/passport */ "@nestjs/passport");
 const config_1 = __webpack_require__(/*! @nestjs/config */ "@nestjs/config");
+const core_1 = __webpack_require__(/*! @nestjs/core */ "@nestjs/core");
 const account_controller_1 = __webpack_require__(/*! ./account.controller */ "./src/account/account.controller.ts");
 const account_service_1 = __webpack_require__(/*! ./account.service */ "./src/account/account.service.ts");
 const jwt_strategy_1 = __webpack_require__(/*! ./strategies/jwt.strategy */ "./src/account/strategies/jwt.strategy.ts");
+const roles_controller_1 = __webpack_require__(/*! ./roles.controller */ "./src/account/roles.controller.ts");
+const roles_service_1 = __webpack_require__(/*! ./roles.service */ "./src/account/roles.service.ts");
+const api_resources_controller_1 = __webpack_require__(/*! ./api-resources.controller */ "./src/account/api-resources.controller.ts");
+const api_resources_service_1 = __webpack_require__(/*! ./api-resources.service */ "./src/account/api-resources.service.ts");
 let AccountModule = class AccountModule {
 };
 exports.AccountModule = AccountModule;
@@ -22098,6 +22107,7 @@ exports.AccountModule = AccountModule = __decorate([
     (0, common_1.Module)({
         imports: [
             passport_1.PassportModule,
+            core_1.DiscoveryModule,
             jwt_1.JwtModule.registerAsync({
                 imports: [config_1.ConfigModule],
                 useFactory: async (configService) => ({
@@ -22109,9 +22119,18 @@ exports.AccountModule = AccountModule = __decorate([
                 inject: [config_1.ConfigService],
             }),
         ],
-        controllers: [account_controller_1.AccountController],
-        providers: [account_service_1.AccountService, jwt_strategy_1.JwtStrategy],
-        exports: [account_service_1.AccountService],
+        controllers: [
+            account_controller_1.AccountController,
+            roles_controller_1.RolesController,
+            api_resources_controller_1.ApiResourcesController,
+        ],
+        providers: [
+            account_service_1.AccountService,
+            roles_service_1.RolesService,
+            api_resources_service_1.ApiResourcesService,
+            jwt_strategy_1.JwtStrategy,
+        ],
+        exports: [account_service_1.AccountService, roles_service_1.RolesService],
     })
 ], AccountModule);
 
@@ -22174,7 +22193,13 @@ let AccountService = class AccountService {
         if (!user.isActive) {
             throw new common_1.UnauthorizedException('帳號已被停用');
         }
-        const payload = { sub: user.id, username: user.username, role: user.role };
+        const payload = {
+            sub: user.id,
+            username: user.username,
+            role: user.customRole?.code || user.role,
+            roleId: user.customRoleId,
+            isSuperadmin: user.customRole?.code === 'SUPERADMIN',
+        };
         const access = this.jwtService.sign(payload, { expiresIn: '1h' });
         const refresh = this.jwtService.sign(payload, { expiresIn: '7d' });
         return {
@@ -22476,6 +22501,277 @@ exports.AccountService = AccountService = __decorate([
 
 /***/ }),
 
+/***/ "./src/account/api-resources.controller.ts":
+/*!*************************************************!*\
+  !*** ./src/account/api-resources.controller.ts ***!
+  \*************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ApiResourcesController = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
+const jwt_auth_guard_1 = __webpack_require__(/*! ../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
+const api_resources_service_1 = __webpack_require__(/*! ./api-resources.service */ "./src/account/api-resources.service.ts");
+let ApiResourcesController = class ApiResourcesController {
+    constructor(apiResourcesService) {
+        this.apiResourcesService = apiResourcesService;
+    }
+    async getApiResources() {
+        return this.apiResourcesService.discoverApiResources();
+    }
+    async getApiResourcesTree() {
+        return this.apiResourcesService.getApiResourcesTree();
+    }
+};
+exports.ApiResourcesController = ApiResourcesController;
+__decorate([
+    (0, common_1.Get)(),
+    (0, permission_guard_1.Permission)({ resource: '/account/api-resources' }),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '取得所有 API 資源',
+        description: '列出系統中所有可用的 API 端點及其 HTTP 方法'
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '成功返回 API 資源列表',
+        schema: {
+            example: [
+                {
+                    path: '/cramschool/students',
+                    method: 'GET',
+                    controller: 'StudentsController',
+                    handler: 'getStudents'
+                },
+                {
+                    path: '/cramschool/students',
+                    method: 'POST',
+                    controller: 'StudentsController',
+                    handler: 'createStudent'
+                }
+            ]
+        }
+    }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: '無權限' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], ApiResourcesController.prototype, "getApiResources", null);
+__decorate([
+    (0, common_1.Get)('tree'),
+    (0, permission_guard_1.Permission)({ resource: '/account/api-resources' }),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '取得 API 資源樹狀結構',
+        description: '以模組分組的樹狀結構呈現所有 API 資源,方便管理權限'
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: '成功返回樹狀結構',
+        schema: {
+            example: [
+                {
+                    module: 'cramschool',
+                    resources: [
+                        {
+                            path: '/cramschool/students',
+                            methods: ['GET', 'POST'],
+                            controller: 'StudentsController'
+                        },
+                        {
+                            path: '/cramschool/students/*',
+                            methods: ['GET', 'PUT', 'DELETE'],
+                            controller: 'StudentsController'
+                        }
+                    ]
+                },
+                {
+                    module: 'account',
+                    resources: [
+                        {
+                            path: '/account/login',
+                            methods: ['POST'],
+                            controller: 'AccountController'
+                        }
+                    ]
+                }
+            ]
+        }
+    }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: '無權限' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], ApiResourcesController.prototype, "getApiResourcesTree", null);
+exports.ApiResourcesController = ApiResourcesController = __decorate([
+    (0, swagger_1.ApiTags)('api-resources'),
+    (0, common_1.Controller)('account/api-resources'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
+    __metadata("design:paramtypes", [typeof (_a = typeof api_resources_service_1.ApiResourcesService !== "undefined" && api_resources_service_1.ApiResourcesService) === "function" ? _a : Object])
+], ApiResourcesController);
+
+
+/***/ }),
+
+/***/ "./src/account/api-resources.service.ts":
+/*!**********************************************!*\
+  !*** ./src/account/api-resources.service.ts ***!
+  \**********************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var ApiResourcesService_1;
+var _a, _b, _c;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ApiResourcesService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const core_1 = __webpack_require__(/*! @nestjs/core */ "@nestjs/core");
+const constants_1 = __webpack_require__(/*! @nestjs/common/constants */ "@nestjs/common/constants");
+let ApiResourcesService = ApiResourcesService_1 = class ApiResourcesService {
+    constructor(discoveryService, metadataScanner, reflector) {
+        this.discoveryService = discoveryService;
+        this.metadataScanner = metadataScanner;
+        this.reflector = reflector;
+        this.logger = new common_1.Logger(ApiResourcesService_1.name);
+    }
+    async discoverApiResources() {
+        const controllers = this.discoveryService.getControllers();
+        const apiResources = [];
+        for (const wrapper of controllers) {
+            if (!wrapper.metatype)
+                continue;
+            const controllerPath = this.getControllerPath(wrapper.metatype);
+            if (!controllerPath)
+                continue;
+            const controllerName = wrapper.metatype.name;
+            const prototype = Object.getPrototypeOf(wrapper.instance);
+            const methodNames = this.metadataScanner.getAllMethodNames(prototype);
+            for (const methodName of methodNames) {
+                const methodPath = this.getMethodPath(prototype, methodName);
+                const httpMethod = this.getHttpMethod(prototype, methodName);
+                if (!httpMethod)
+                    continue;
+                const fullPath = this.normalizePath(`/${controllerPath}/${methodPath}`);
+                apiResources.push({
+                    path: fullPath,
+                    method: httpMethod,
+                    controller: controllerName,
+                    handler: methodName,
+                });
+            }
+        }
+        apiResources.sort((a, b) => {
+            if (a.path === b.path) {
+                return this.compareHttpMethod(a.method, b.method);
+            }
+            return a.path.localeCompare(b.path);
+        });
+        this.logger.log(`發現 ${apiResources.length} 個 API 資源`);
+        return apiResources;
+    }
+    async getApiResourcesTree() {
+        const resources = await this.discoverApiResources();
+        const treeMap = new Map();
+        for (const resource of resources) {
+            const pathParts = resource.path.split('/').filter(p => p);
+            const moduleName = pathParts[0] || 'root';
+            if (!treeMap.has(moduleName)) {
+                treeMap.set(moduleName, new Map());
+            }
+            const moduleMap = treeMap.get(moduleName);
+            const normalizedPath = this.normalizeRoutePath(resource.path);
+            if (!moduleMap.has(normalizedPath)) {
+                moduleMap.set(normalizedPath, new Set());
+            }
+            moduleMap.get(normalizedPath).add(resource.method);
+        }
+        const tree = [];
+        for (const [moduleName, moduleMap] of treeMap) {
+            const resources = Array.from(moduleMap.entries()).map(([path, methods]) => ({
+                path,
+                methods: Array.from(methods).sort(this.compareHttpMethod),
+                controller: '',
+            }));
+            resources.sort((a, b) => a.path.localeCompare(b.path));
+            tree.push({
+                module: moduleName,
+                resources,
+            });
+        }
+        tree.sort((a, b) => a.module.localeCompare(b.module));
+        return tree;
+    }
+    getControllerPath(controller) {
+        const path = Reflect.getMetadata(constants_1.PATH_METADATA, controller);
+        return path || null;
+    }
+    getMethodPath(prototype, methodName) {
+        const path = Reflect.getMetadata(constants_1.PATH_METADATA, prototype[methodName]);
+        return path || '';
+    }
+    getHttpMethod(prototype, methodName) {
+        const method = Reflect.getMetadata(constants_1.METHOD_METADATA, prototype[methodName]);
+        return method || null;
+    }
+    normalizePath(path) {
+        let normalized = path.replace(/\/+/g, '/');
+        if (!normalized.startsWith('/')) {
+            normalized = '/' + normalized;
+        }
+        if (normalized.endsWith('/') && normalized.length > 1) {
+            normalized = normalized.slice(0, -1);
+        }
+        return normalized;
+    }
+    normalizeRoutePath(path) {
+        return path.replace(/:\w+/g, '*');
+    }
+    compareHttpMethod(a, b) {
+        const order = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'];
+        const indexA = order.indexOf(a);
+        const indexB = order.indexOf(b);
+        if (indexA === -1)
+            return 1;
+        if (indexB === -1)
+            return -1;
+        return indexA - indexB;
+    }
+};
+exports.ApiResourcesService = ApiResourcesService;
+exports.ApiResourcesService = ApiResourcesService = ApiResourcesService_1 = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof core_1.DiscoveryService !== "undefined" && core_1.DiscoveryService) === "function" ? _a : Object, typeof (_b = typeof core_1.MetadataScanner !== "undefined" && core_1.MetadataScanner) === "function" ? _b : Object, typeof (_c = typeof core_1.Reflector !== "undefined" && core_1.Reflector) === "function" ? _c : Object])
+], ApiResourcesService);
+
+
+/***/ }),
+
 /***/ "./src/account/guards/jwt-auth.guard.ts":
 /*!**********************************************!*\
   !*** ./src/account/guards/jwt-auth.guard.ts ***!
@@ -22500,6 +22796,679 @@ exports.JwtAuthGuard = JwtAuthGuard;
 exports.JwtAuthGuard = JwtAuthGuard = __decorate([
     (0, common_1.Injectable)()
 ], JwtAuthGuard);
+
+
+/***/ }),
+
+/***/ "./src/account/roles.controller.ts":
+/*!*****************************************!*\
+  !*** ./src/account/roles.controller.ts ***!
+  \*****************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c, _d, _e, _f;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.RolesController = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
+const jwt_auth_guard_1 = __webpack_require__(/*! ../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
+const roles_service_1 = __webpack_require__(/*! ./roles.service */ "./src/account/roles.service.ts");
+const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
+const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
+let RolesController = class RolesController {
+    constructor(rolesService) {
+        this.rolesService = rolesService;
+    }
+    async getRoles(query) {
+        return this.rolesService.findAll(query);
+    }
+    async getRole(id) {
+        return this.rolesService.findOne(id);
+    }
+    async createRole(data) {
+        return this.rolesService.create(data);
+    }
+    async updateRole(id, data) {
+        return this.rolesService.update(id, data);
+    }
+    async deleteRole(id) {
+        return this.rolesService.delete(id);
+    }
+    async setPermissions(id, data) {
+        return this.rolesService.setPermissions(id, data.permissions);
+    }
+    async addPermissions(id, data) {
+        return this.rolesService.addPermissions(id, data.permissions);
+    }
+    async removePermission(id, permissionId) {
+        return this.rolesService.removePermission(id, permissionId);
+    }
+    async cloneRole(id, data) {
+        return this.rolesService.clone(id, data.name, data.code);
+    }
+    async getRoleUsers(id) {
+        return this.rolesService.getRoleUsers(id);
+    }
+};
+exports.RolesController = RolesController;
+__decorate([
+    (0, common_1.Get)(),
+    (0, permission_guard_1.Permission)({ resource: '/account/roles' }),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '取得角色列表',
+        description: '分頁取得所有角色及權限統計'
+    }),
+    (0, swagger_1.ApiQuery)({ name: 'page', required: false, type: Number, example: 1 }),
+    (0, swagger_1.ApiQuery)({ name: 'page_size', required: false, type: Number, example: 10 }),
+    (0, swagger_1.ApiQuery)({ name: 'search', required: false, type: String }),
+    (0, swagger_1.ApiQuery)({ name: 'is_active', required: false, type: Boolean }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
+    (0, swagger_1.ApiResponse)({ status: 401, description: '未授權' }),
+    (0, swagger_1.ApiResponse)({ status: 403, description: '無權限' }),
+    __param(0, (0, common_1.Query)(new nestjs_zod_1.ZodValidationPipe(shared_1.RoleQuerySchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_b = typeof shared_1.RoleQueryDto !== "undefined" && shared_1.RoleQueryDto) === "function" ? _b : Object]),
+    __metadata("design:returntype", Promise)
+], RolesController.prototype, "getRoles", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    (0, permission_guard_1.Permission)({ resource: '/account/roles' }),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '取得角色詳情',
+        description: '取得角色及其完整權限列表和使用者列表'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '角色 ID', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '角色不存在' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
+], RolesController.prototype, "getRole", null);
+__decorate([
+    (0, common_1.Post)(),
+    (0, permission_guard_1.Permission)({ resource: '/account/roles' }),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '建立角色',
+        description: '建立新角色,可同時指定初始權限'
+    }),
+    (0, swagger_1.ApiBody)({
+        schema: {
+            example: {
+                code: 'CUSTOM_ROLE',
+                name: '自訂角色',
+                description: '角色說明',
+                is_active: true,
+                permissions: [
+                    {
+                        permission_type: 'api',
+                        resource: '/cramschool/students',
+                        method: 'GET'
+                    }
+                ]
+            }
+        }
+    }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: '建立成功' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '參數錯誤或角色已存在' }),
+    __param(0, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.CreateRoleSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_c = typeof shared_1.CreateRoleDto !== "undefined" && shared_1.CreateRoleDto) === "function" ? _c : Object]),
+    __metadata("design:returntype", Promise)
+], RolesController.prototype, "createRole", null);
+__decorate([
+    (0, common_1.Put)(':id'),
+    (0, permission_guard_1.Permission)({ resource: '/account/roles' }),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '更新角色',
+        description: '更新角色基本資訊 (不含權限)'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '角色 ID', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '更新成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '角色不存在' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '參數錯誤' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.UpdateRoleSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, typeof (_d = typeof shared_1.UpdateRoleDto !== "undefined" && shared_1.UpdateRoleDto) === "function" ? _d : Object]),
+    __metadata("design:returntype", Promise)
+], RolesController.prototype, "updateRole", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    (0, permission_guard_1.Permission)({ resource: '/account/roles' }),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '刪除角色',
+        description: '刪除角色及其所有權限設定'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '角色 ID', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '刪除成功' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '角色仍被使用中,無法刪除或嘗試刪除 SUPERADMIN' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '角色不存在' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
+], RolesController.prototype, "deleteRole", null);
+__decorate([
+    (0, common_1.Put)(':id/permissions'),
+    (0, permission_guard_1.Permission)({ resource: '/account/roles' }),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '設定角色權限',
+        description: '完全覆蓋角色的權限設定 (會刪除原有權限)'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '角色 ID', type: Number }),
+    (0, swagger_1.ApiBody)({
+        schema: {
+            example: {
+                permissions: [
+                    {
+                        permission_type: 'api',
+                        resource: '/cramschool/students',
+                        method: 'GET,POST'
+                    },
+                    {
+                        permission_type: 'api',
+                        resource: '/cramschool/courses',
+                        method: 'GET'
+                    }
+                ]
+            }
+        }
+    }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '設定成功' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.AddPermissionsSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, typeof (_e = typeof shared_1.AddPermissionsDto !== "undefined" && shared_1.AddPermissionsDto) === "function" ? _e : Object]),
+    __metadata("design:returntype", Promise)
+], RolesController.prototype, "setPermissions", null);
+__decorate([
+    (0, common_1.Post)(':id/permissions'),
+    (0, permission_guard_1.Permission)({ resource: '/account/roles' }),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '新增角色權限',
+        description: '在現有權限基礎上追加新權限'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '角色 ID', type: Number }),
+    (0, swagger_1.ApiBody)({
+        schema: {
+            example: {
+                permissions: [
+                    {
+                        permission_type: 'api',
+                        resource: '/cramschool/questions',
+                        method: 'GET'
+                    }
+                ]
+            }
+        }
+    }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: '新增成功' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_1.AddPermissionsSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, typeof (_f = typeof shared_1.AddPermissionsDto !== "undefined" && shared_1.AddPermissionsDto) === "function" ? _f : Object]),
+    __metadata("design:returntype", Promise)
+], RolesController.prototype, "addPermissions", null);
+__decorate([
+    (0, common_1.Delete)(':id/permissions/:permissionId'),
+    (0, permission_guard_1.Permission)({ resource: '/account/roles' }),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '刪除權限',
+        description: '從角色中移除特定權限'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '角色 ID', type: Number }),
+    (0, swagger_1.ApiParam)({ name: 'permissionId', description: '權限 ID', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '刪除成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '權限不存在' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '權限不屬於此角色' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Param)('permissionId', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Number]),
+    __metadata("design:returntype", Promise)
+], RolesController.prototype, "removePermission", null);
+__decorate([
+    (0, common_1.Post)(':id/clone'),
+    (0, permission_guard_1.Permission)({ resource: '/account/roles' }),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '複製角色',
+        description: '複製現有角色及其所有權限設定'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '要複製的角色 ID', type: Number }),
+    (0, swagger_1.ApiBody)({
+        schema: {
+            example: {
+                name: '教師(自訂)',
+                code: 'TEACHER_CUSTOM'
+            }
+        }
+    }),
+    (0, swagger_1.ApiResponse)({ status: 201, description: '複製成功' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: '名稱或代碼已存在' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '來源角色不存在' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", Promise)
+], RolesController.prototype, "cloneRole", null);
+__decorate([
+    (0, common_1.Get)(':id/users'),
+    (0, permission_guard_1.Permission)({ resource: '/account/roles' }),
+    (0, swagger_1.ApiBearerAuth)('JWT-auth'),
+    (0, swagger_1.ApiOperation)({
+        summary: '取得角色使用者',
+        description: '查詢使用此角色的所有使用者'
+    }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: '角色 ID', type: Number }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: '成功' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: '角色不存在' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
+], RolesController.prototype, "getRoleUsers", null);
+exports.RolesController = RolesController = __decorate([
+    (0, swagger_1.ApiTags)('roles'),
+    (0, common_1.Controller)('account/roles'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
+    __metadata("design:paramtypes", [typeof (_a = typeof roles_service_1.RolesService !== "undefined" && roles_service_1.RolesService) === "function" ? _a : Object])
+], RolesController);
+
+
+/***/ }),
+
+/***/ "./src/account/roles.service.ts":
+/*!**************************************!*\
+  !*** ./src/account/roles.service.ts ***!
+  \**************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.RolesService = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const prisma_service_1 = __webpack_require__(/*! ../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
+let RolesService = class RolesService {
+    constructor(prisma) {
+        this.prisma = prisma;
+    }
+    async findAll(query) {
+        const { page, page_size, search, is_active } = query;
+        const skip = (page - 1) * page_size;
+        const where = {};
+        if (search) {
+            where.OR = [
+                { name: { contains: search, mode: 'insensitive' } },
+                { code: { contains: search, mode: 'insensitive' } },
+                { description: { contains: search, mode: 'insensitive' } },
+            ];
+        }
+        if (is_active !== undefined) {
+            where.isActive = is_active;
+        }
+        const [roles, total] = await Promise.all([
+            this.prisma.accountRole.findMany({
+                where,
+                include: {
+                    permissions: true,
+                    _count: {
+                        select: { users: true },
+                    },
+                },
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: page_size,
+            }),
+            this.prisma.accountRole.count({ where }),
+        ]);
+        return {
+            data: roles.map(role => ({
+                id: role.id,
+                code: role.code,
+                name: role.name,
+                description: role.description,
+                is_active: role.isActive,
+                created_at: role.createdAt.toISOString(),
+                updated_at: role.updatedAt.toISOString(),
+                permissions_count: role.permissions.length,
+                users_count: role._count.users,
+            })),
+            total,
+            page,
+            page_size,
+        };
+    }
+    async findOne(id) {
+        const role = await this.prisma.accountRole.findUnique({
+            where: { id },
+            include: {
+                permissions: {
+                    orderBy: [
+                        { permissionType: 'asc' },
+                        { resource: 'asc' },
+                    ],
+                },
+                users: {
+                    select: {
+                        id: true,
+                        username: true,
+                        email: true,
+                        firstName: true,
+                        lastName: true,
+                        isActive: true,
+                    },
+                },
+            },
+        });
+        if (!role) {
+            throw new common_1.NotFoundException(`角色 ID ${id} 不存在`);
+        }
+        return {
+            id: role.id,
+            code: role.code,
+            name: role.name,
+            description: role.description,
+            is_active: role.isActive,
+            created_at: role.createdAt.toISOString(),
+            updated_at: role.updatedAt.toISOString(),
+            permissions: role.permissions.map(p => ({
+                id: p.id,
+                role_id: p.roleId,
+                permission_type: p.permissionType,
+                resource: p.resource,
+                method: p.method,
+                created_at: p.createdAt.toISOString(),
+            })),
+            users: role.users.map(u => ({
+                id: u.id,
+                username: u.username,
+                email: u.email,
+                first_name: u.firstName,
+                last_name: u.lastName,
+                is_active: u.isActive,
+            })),
+        };
+    }
+    async create(data) {
+        if (data.code) {
+            const existing = await this.prisma.accountRole.findUnique({
+                where: { code: data.code },
+            });
+            if (existing) {
+                throw new common_1.BadRequestException(`角色代碼 "${data.code}" 已存在`);
+            }
+        }
+        const existingName = await this.prisma.accountRole.findUnique({
+            where: { name: data.name },
+        });
+        if (existingName) {
+            throw new common_1.BadRequestException(`角色名稱 "${data.name}" 已存在`);
+        }
+        const role = await this.prisma.accountRole.create({
+            data: {
+                code: data.code || null,
+                name: data.name,
+                description: data.description || '',
+                isActive: data.is_active ?? true,
+                permissions: data.permissions
+                    ? {
+                        create: data.permissions.map(p => ({
+                            permissionType: p.permission_type,
+                            resource: p.resource,
+                            method: p.method || null,
+                        })),
+                    }
+                    : undefined,
+            },
+            include: { permissions: true },
+        });
+        return this.findOne(role.id);
+    }
+    async update(id, data) {
+        const role = await this.prisma.accountRole.findUnique({ where: { id } });
+        if (!role) {
+            throw new common_1.NotFoundException(`角色 ID ${id} 不存在`);
+        }
+        if (data.code && data.code !== role.code) {
+            const existing = await this.prisma.accountRole.findUnique({
+                where: { code: data.code },
+            });
+            if (existing) {
+                throw new common_1.BadRequestException(`角色代碼 "${data.code}" 已存在`);
+            }
+        }
+        if (data.name && data.name !== role.name) {
+            const existingName = await this.prisma.accountRole.findUnique({
+                where: { name: data.name },
+            });
+            if (existingName) {
+                throw new common_1.BadRequestException(`角色名稱 "${data.name}" 已存在`);
+            }
+        }
+        await this.prisma.accountRole.update({
+            where: { id },
+            data: {
+                code: data.code !== undefined ? data.code : undefined,
+                name: data.name,
+                description: data.description,
+                isActive: data.is_active,
+            },
+        });
+        return this.findOne(id);
+    }
+    async delete(id) {
+        const role = await this.prisma.accountRole.findUnique({
+            where: { id },
+            include: {
+                _count: {
+                    select: { users: true },
+                },
+            },
+        });
+        if (!role) {
+            throw new common_1.NotFoundException(`角色 ID ${id} 不存在`);
+        }
+        if (role.code === 'SUPERADMIN') {
+            throw new common_1.BadRequestException('無法刪除超級管理員角色');
+        }
+        if (role._count.users > 0) {
+            throw new common_1.BadRequestException(`無法刪除角色 "${role.name}",還有 ${role._count.users} 個用戶使用此角色`);
+        }
+        await this.prisma.accountRole.delete({
+            where: { id },
+        });
+        return { message: '角色已刪除', id };
+    }
+    async setPermissions(id, permissions) {
+        const role = await this.prisma.accountRole.findUnique({ where: { id } });
+        if (!role) {
+            throw new common_1.NotFoundException(`角色 ID ${id} 不存在`);
+        }
+        await this.prisma.$transaction([
+            this.prisma.accountRolePermission.deleteMany({
+                where: { roleId: id },
+            }),
+            this.prisma.accountRolePermission.createMany({
+                data: permissions.map(p => ({
+                    roleId: id,
+                    permissionType: p.permission_type,
+                    resource: p.resource,
+                    method: p.method || null,
+                })),
+            }),
+        ]);
+        return this.findOne(id);
+    }
+    async addPermissions(id, permissions) {
+        const role = await this.prisma.accountRole.findUnique({ where: { id } });
+        if (!role) {
+            throw new common_1.NotFoundException(`角色 ID ${id} 不存在`);
+        }
+        await this.prisma.accountRolePermission.createMany({
+            data: permissions.map(p => ({
+                roleId: id,
+                permissionType: p.permission_type,
+                resource: p.resource,
+                method: p.method || null,
+            })),
+            skipDuplicates: true,
+        });
+        return this.findOne(id);
+    }
+    async removePermission(roleId, permissionId) {
+        const permission = await this.prisma.accountRolePermission.findUnique({
+            where: { id: permissionId },
+        });
+        if (!permission) {
+            throw new common_1.NotFoundException(`權限 ID ${permissionId} 不存在`);
+        }
+        if (permission.roleId !== roleId) {
+            throw new common_1.BadRequestException('權限不屬於此角色');
+        }
+        await this.prisma.accountRolePermission.delete({
+            where: { id: permissionId },
+        });
+        return { message: '權限已移除', id: permissionId };
+    }
+    async clone(id, newName, newCode) {
+        const sourceRole = await this.prisma.accountRole.findUnique({
+            where: { id },
+            include: { permissions: true },
+        });
+        if (!sourceRole) {
+            throw new common_1.NotFoundException(`角色 ID ${id} 不存在`);
+        }
+        const existingName = await this.prisma.accountRole.findUnique({
+            where: { name: newName },
+        });
+        if (existingName) {
+            throw new common_1.BadRequestException(`角色名稱 "${newName}" 已存在`);
+        }
+        if (newCode) {
+            const existingCode = await this.prisma.accountRole.findUnique({
+                where: { code: newCode },
+            });
+            if (existingCode) {
+                throw new common_1.BadRequestException(`角色代碼 "${newCode}" 已存在`);
+            }
+        }
+        const newRole = await this.prisma.accountRole.create({
+            data: {
+                code: newCode || null,
+                name: newName,
+                description: `${sourceRole.description} (複製自 ${sourceRole.name})`,
+                isActive: true,
+                permissions: {
+                    create: sourceRole.permissions.map(p => ({
+                        permissionType: p.permissionType,
+                        resource: p.resource,
+                        method: p.method,
+                    })),
+                },
+            },
+            include: { permissions: true },
+        });
+        return this.findOne(newRole.id);
+    }
+    async getRoleUsers(id) {
+        const role = await this.prisma.accountRole.findUnique({
+            where: { id },
+            include: {
+                users: {
+                    select: {
+                        id: true,
+                        username: true,
+                        email: true,
+                        firstName: true,
+                        lastName: true,
+                        isActive: true,
+                        isStaff: true,
+                        dateJoined: true,
+                        lastLogin: true,
+                        studentProfile: {
+                            select: {
+                                studentId: true,
+                                name: true,
+                                grade: true,
+                            },
+                        },
+                        teacherProfile: {
+                            select: {
+                                teacherId: true,
+                                name: true,
+                            },
+                        },
+                    },
+                    orderBy: { dateJoined: 'desc' },
+                },
+            },
+        });
+        if (!role) {
+            throw new common_1.NotFoundException(`角色 ID ${id} 不存在`);
+        }
+        return {
+            role_id: role.id,
+            role_name: role.name,
+            role_code: role.code,
+            users: role.users.map(u => ({
+                id: u.id,
+                username: u.username,
+                email: u.email,
+                first_name: u.firstName,
+                last_name: u.lastName,
+                is_active: u.isActive,
+                is_staff: u.isStaff,
+                date_joined: u.dateJoined.toISOString(),
+                last_login: u.lastLogin?.toISOString() || null,
+                student_profile: u.studentProfile,
+                teacher_profile: u.teacherProfile,
+            })),
+            total_users: role.users.length,
+        };
+    }
+};
+exports.RolesService = RolesService;
+exports.RolesService = RolesService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _a : Object])
+], RolesService);
 
 
 /***/ }),
@@ -22652,6 +23621,158 @@ exports.HttpExceptionFilter = HttpExceptionFilter;
 exports.HttpExceptionFilter = HttpExceptionFilter = __decorate([
     (0, common_1.Catch)()
 ], HttpExceptionFilter);
+
+
+/***/ }),
+
+/***/ "./src/common/guards/permission.guard.ts":
+/*!***********************************************!*\
+  !*** ./src/common/guards/permission.guard.ts ***!
+  \***********************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var PermissionGuard_1;
+var _a, _b;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PermissionGuard = exports.Public = exports.Permission = exports.PUBLIC_KEY = exports.PERMISSION_KEY = void 0;
+const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
+const core_1 = __webpack_require__(/*! @nestjs/core */ "@nestjs/core");
+const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
+exports.PERMISSION_KEY = 'permission_config';
+exports.PUBLIC_KEY = 'is_public';
+const Permission = (config = {}) => {
+    return (target, key, _descriptor) => {
+        Reflect.defineMetadata(exports.PERMISSION_KEY, config, target, key);
+    };
+};
+exports.Permission = Permission;
+const Public = () => {
+    return (target, key, _descriptor) => {
+        Reflect.defineMetadata(exports.PUBLIC_KEY, true, target, key);
+    };
+};
+exports.Public = Public;
+let PermissionGuard = PermissionGuard_1 = class PermissionGuard {
+    constructor(reflector, prisma) {
+        this.reflector = reflector;
+        this.prisma = prisma;
+        this.logger = new common_1.Logger(PermissionGuard_1.name);
+    }
+    async canActivate(context) {
+        const isPublic = this.reflector.get(exports.PUBLIC_KEY, context.getHandler());
+        if (isPublic) {
+            return true;
+        }
+        const request = context.switchToHttp().getRequest();
+        const user = request.user;
+        const permissionConfig = this.reflector.get(exports.PERMISSION_KEY, context.getHandler());
+        if (permissionConfig?.allowPublic) {
+            return true;
+        }
+        const requireAuth = permissionConfig?.requireAuth !== false;
+        if (requireAuth && !user) {
+            throw new common_1.ForbiddenException('請先登入');
+        }
+        if (!requireAuth) {
+            return true;
+        }
+        const userRecord = await this.prisma.accountCustomUser.findUnique({
+            where: { id: user.id },
+            include: {
+                customRole: {
+                    include: {
+                        permissions: true,
+                    },
+                },
+            },
+        });
+        if (!userRecord) {
+            throw new common_1.ForbiddenException('用戶不存在');
+        }
+        if (userRecord.customRole?.code === 'SUPERADMIN') {
+            this.logger.debug(`超級管理員 ${userRecord.username} 存取 ${request.method} ${request.path}`);
+            return true;
+        }
+        if (!userRecord.customRole) {
+            throw new common_1.ForbiddenException('用戶未分配角色,無法存取系統');
+        }
+        if (!userRecord.customRole.isActive) {
+            throw new common_1.ForbiddenException('角色已被停用');
+        }
+        const resource = permissionConfig?.resource || this.normalizeRoutePath(request.route.path);
+        const method = request.method.toUpperCase();
+        const hasPermission = this.checkPermission(userRecord.customRole.permissions, resource, method);
+        if (!hasPermission) {
+            this.logger.warn(`用戶 ${userRecord.username} (角色: ${userRecord.customRole.name}) ` +
+                `無權限存取 ${method} ${resource}`);
+            throw new common_1.ForbiddenException(`無權限執行此操作 [${method} ${resource}]`);
+        }
+        this.logger.debug(`用戶 ${userRecord.username} (角色: ${userRecord.customRole.name}) ` +
+            `成功存取 ${method} ${resource}`);
+        return true;
+    }
+    checkPermission(permissions, resource, method) {
+        return permissions.some(permission => {
+            if (permission.permissionType !== 'api') {
+                return false;
+            }
+            if (!this.matchResource(permission.resource, resource)) {
+                return false;
+            }
+            if (!this.matchMethod(permission.method, method)) {
+                return false;
+            }
+            return true;
+        });
+    }
+    matchResource(permissionResource, requestResource) {
+        if (permissionResource === requestResource) {
+            return true;
+        }
+        if (permissionResource.endsWith('/*')) {
+            const baseResource = permissionResource.slice(0, -2);
+            const regex = new RegExp(`^${this.escapeRegex(baseResource)}/[^/]+$`);
+            return regex.test(requestResource);
+        }
+        if (permissionResource.endsWith('/**')) {
+            const baseResource = permissionResource.slice(0, -3);
+            return requestResource.startsWith(baseResource + '/');
+        }
+        return false;
+    }
+    matchMethod(permissionMethod, requestMethod) {
+        if (!permissionMethod) {
+            return true;
+        }
+        const methods = permissionMethod.split(',').map(m => m.trim().toUpperCase());
+        if (methods.includes('*')) {
+            return true;
+        }
+        return methods.includes(requestMethod.toUpperCase());
+    }
+    normalizeRoutePath(path) {
+        return path.replace(/\/:[^/]+/g, '');
+    }
+    escapeRegex(str) {
+        return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+};
+exports.PermissionGuard = PermissionGuard;
+exports.PermissionGuard = PermissionGuard = PermissionGuard_1 = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof core_1.Reflector !== "undefined" && core_1.Reflector) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
+], PermissionGuard);
 
 
 /***/ }),
@@ -22823,6 +23944,8 @@ const attendances_service_1 = __webpack_require__(/*! ../services/attendances.se
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
+;
 let AttendancesController = class AttendancesController {
     constructor(attendancesService) {
         this.attendancesService = attendancesService;
@@ -22926,7 +24049,7 @@ __decorate([
 exports.AttendancesController = AttendancesController = __decorate([
     (0, swagger_1.ApiTags)('attendances'),
     (0, common_1.Controller)('cramschool/attendances'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof attendances_service_1.AttendancesService !== "undefined" && attendances_service_1.AttendancesService) === "function" ? _a : Object])
 ], AttendancesController);
 
@@ -22964,6 +24087,8 @@ const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ 
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
+;
 let ContentTemplatesController = class ContentTemplatesController {
     constructor(contentTemplatesService, prisma) {
         this.contentTemplatesService = contentTemplatesService;
@@ -23069,7 +24194,7 @@ __decorate([
 exports.ContentTemplatesController = ContentTemplatesController = __decorate([
     (0, swagger_1.ApiTags)('resources'),
     (0, common_1.Controller)('cramschool/content-templates'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof content_templates_service_1.ContentTemplatesService !== "undefined" && content_templates_service_1.ContentTemplatesService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
 ], ContentTemplatesController);
 
@@ -23104,6 +24229,8 @@ const platform_express_1 = __webpack_require__(/*! @nestjs/platform-express */ "
 const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const express_1 = __webpack_require__(/*! express */ "../node_modules/.pnpm/express@4.21.2/node_modules/express/index.js");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
+;
 const course_pdfs_service_1 = __webpack_require__(/*! ../services/course-pdfs.service */ "./src/cramschool/services/course-pdfs.service.ts");
 const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
 const request_types_1 = __webpack_require__(/*! @/types/request.types */ "./src/types/request.types.ts");
@@ -23415,7 +24542,7 @@ __decorate([
 exports.CoursePdfsController = CoursePdfsController = __decorate([
     (0, swagger_1.ApiTags)('course-pdfs'),
     (0, common_1.Controller)('cramschool/courses/:courseId/pdfs'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof course_pdfs_service_1.CoursePdfsService !== "undefined" && course_pdfs_service_1.CoursePdfsService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
 ], CoursePdfsController);
 
@@ -23453,6 +24580,8 @@ const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ 
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
+;
 let CoursesController = class CoursesController {
     constructor(coursesService, prisma) {
         this.coursesService = coursesService;
@@ -23640,7 +24769,7 @@ __decorate([
 exports.CoursesController = CoursesController = __decorate([
     (0, swagger_1.ApiTags)('courses'),
     (0, common_1.Controller)('cramschool/courses'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof courses_service_1.CoursesService !== "undefined" && courses_service_1.CoursesService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
 ], CoursesController);
 
@@ -23676,6 +24805,8 @@ const enrollment_periods_service_1 = __webpack_require__(/*! ../services/enrollm
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
+;
 let EnrollmentPeriodsController = class EnrollmentPeriodsController {
     constructor(enrollmentPeriodsService) {
         this.enrollmentPeriodsService = enrollmentPeriodsService;
@@ -23759,7 +24890,7 @@ __decorate([
 exports.EnrollmentPeriodsController = EnrollmentPeriodsController = __decorate([
     (0, swagger_1.ApiTags)('courses'),
     (0, common_1.Controller)('cramschool/enrollment-periods'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof enrollment_periods_service_1.EnrollmentPeriodsService !== "undefined" && enrollment_periods_service_1.EnrollmentPeriodsService) === "function" ? _a : Object])
 ], EnrollmentPeriodsController);
 
@@ -23795,6 +24926,8 @@ const enrollments_service_1 = __webpack_require__(/*! ../services/enrollments.se
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
+;
 let EnrollmentsController = class EnrollmentsController {
     constructor(enrollmentsService) {
         this.enrollmentsService = enrollmentsService;
@@ -23880,7 +25013,7 @@ __decorate([
 exports.EnrollmentsController = EnrollmentsController = __decorate([
     (0, swagger_1.ApiTags)('courses'),
     (0, common_1.Controller)('cramschool/enrollments'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof enrollments_service_1.EnrollmentsService !== "undefined" && enrollments_service_1.EnrollmentsService) === "function" ? _a : Object])
 ], EnrollmentsController);
 
@@ -23918,6 +25051,8 @@ const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ 
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
+;
 let ErrorLogImagesController = class ErrorLogImagesController {
     constructor(errorLogImagesService, prisma) {
         this.errorLogImagesService = errorLogImagesService;
@@ -24015,7 +25150,7 @@ __decorate([
 exports.ErrorLogImagesController = ErrorLogImagesController = __decorate([
     (0, swagger_1.ApiTags)('error-logs'),
     (0, common_1.Controller)('cramschool/error-log-images'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof error_log_images_service_1.ErrorLogImagesService !== "undefined" && error_log_images_service_1.ErrorLogImagesService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
 ], ErrorLogImagesController);
 
@@ -24054,6 +25189,8 @@ const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ 
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
+;
 let ErrorLogsController = class ErrorLogsController {
     constructor(errorLogsService, prisma) {
         this.errorLogsService = errorLogsService;
@@ -24344,7 +25481,7 @@ __decorate([
 exports.ErrorLogsController = ErrorLogsController = __decorate([
     (0, swagger_1.ApiTags)('error-logs'),
     (0, common_1.Controller)('cramschool/error-logs'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof error_logs_service_1.ErrorLogsService !== "undefined" && error_logs_service_1.ErrorLogsService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
 ], ErrorLogsController);
 
@@ -24380,6 +25517,8 @@ const fees_service_1 = __webpack_require__(/*! ../services/fees.service */ "./sr
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
+;
 let FeesController = class FeesController {
     constructor(feesService) {
         this.feesService = feesService;
@@ -24485,7 +25624,7 @@ __decorate([
 exports.FeesController = FeesController = __decorate([
     (0, swagger_1.ApiTags)('fees'),
     (0, common_1.Controller)('cramschool/fees'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof fees_service_1.FeesService !== "undefined" && fees_service_1.FeesService) === "function" ? _a : Object])
 ], FeesController);
 
@@ -24523,6 +25662,8 @@ const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ 
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
+;
 let GroupOrdersController = class GroupOrdersController {
     constructor(groupOrdersService, prisma) {
         this.groupOrdersService = groupOrdersService;
@@ -24641,7 +25782,7 @@ __decorate([
 exports.GroupOrdersController = GroupOrdersController = __decorate([
     (0, swagger_1.ApiTags)('orders'),
     (0, common_1.Controller)('cramschool/group-orders'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof group_orders_service_1.GroupOrdersService !== "undefined" && group_orders_service_1.GroupOrdersService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
 ], GroupOrdersController);
 
@@ -24676,6 +25817,8 @@ const hashtags_service_1 = __webpack_require__(/*! ../services/hashtags.service 
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
+;
 let HashtagsController = class HashtagsController {
     constructor(hashtagsService) {
         this.hashtagsService = hashtagsService;
@@ -24736,7 +25879,7 @@ __decorate([
 ], HashtagsController.prototype, "deleteHashtag", null);
 exports.HashtagsController = HashtagsController = __decorate([
     (0, common_1.Controller)('cramschool/hashtags'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof hashtags_service_1.HashtagsService !== "undefined" && hashtags_service_1.HashtagsService) === "function" ? _a : Object])
 ], HashtagsController);
 
@@ -24772,6 +25915,8 @@ const leaves_service_1 = __webpack_require__(/*! ../services/leaves.service */ "
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
+;
 let LeavesController = class LeavesController {
     constructor(leavesService) {
         this.leavesService = leavesService;
@@ -24875,7 +26020,7 @@ __decorate([
 exports.LeavesController = LeavesController = __decorate([
     (0, swagger_1.ApiTags)('attendances'),
     (0, common_1.Controller)('cramschool/leaves'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof leaves_service_1.LeavesService !== "undefined" && leaves_service_1.LeavesService) === "function" ? _a : Object])
 ], LeavesController);
 
@@ -24909,6 +26054,8 @@ const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
 const swagger_1 = __webpack_require__(/*! @nestjs/swagger */ "@nestjs/swagger");
 const platform_express_1 = __webpack_require__(/*! @nestjs/platform-express */ "@nestjs/platform-express");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
+;
 const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ "./src/prisma/prisma.service.ts");
 const uuid_1 = __webpack_require__(/*! uuid */ "uuid");
 const path = __webpack_require__(/*! path */ "path");
@@ -25083,7 +26230,7 @@ __decorate([
 exports.MediaController = MediaController = __decorate([
     (0, swagger_1.ApiTags)('media'),
     (0, common_1.Controller)('cramschool'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _a : Object])
 ], MediaController);
 
@@ -25119,6 +26266,8 @@ const order_items_service_1 = __webpack_require__(/*! ../services/order-items.se
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
+;
 let OrderItemsController = class OrderItemsController {
     constructor(orderItemsService) {
         this.orderItemsService = orderItemsService;
@@ -25206,7 +26355,7 @@ __decorate([
 exports.OrderItemsController = OrderItemsController = __decorate([
     (0, swagger_1.ApiTags)('orders'),
     (0, common_1.Controller)('cramschool/order-items'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof order_items_service_1.OrderItemsService !== "undefined" && order_items_service_1.OrderItemsService) === "function" ? _a : Object])
 ], OrderItemsController);
 
@@ -25244,6 +26393,8 @@ const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ 
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
+;
 let OrdersController = class OrdersController {
     constructor(ordersService, prisma) {
         this.ordersService = ordersService;
@@ -25377,7 +26528,7 @@ __decorate([
 exports.OrdersController = OrdersController = __decorate([
     (0, swagger_1.ApiTags)('orders'),
     (0, common_1.Controller)('cramschool/orders'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof orders_service_1.OrdersService !== "undefined" && orders_service_1.OrdersService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
 ], OrdersController);
 
@@ -25412,6 +26563,8 @@ const question_tags_service_1 = __webpack_require__(/*! ../services/question-tag
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
+;
 let QuestionTagsController = class QuestionTagsController {
     constructor(questionTagsService) {
         this.questionTagsService = questionTagsService;
@@ -25472,7 +26625,7 @@ __decorate([
 ], QuestionTagsController.prototype, "deleteQuestionTag", null);
 exports.QuestionTagsController = QuestionTagsController = __decorate([
     (0, common_1.Controller)('cramschool/question-tags'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof question_tags_service_1.QuestionTagsService !== "undefined" && question_tags_service_1.QuestionTagsService) === "function" ? _a : Object])
 ], QuestionTagsController);
 
@@ -25511,6 +26664,8 @@ const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ 
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
+;
 let QuestionsController = class QuestionsController {
     constructor(questionsService, prisma) {
         this.questionsService = questionsService;
@@ -25790,7 +26945,7 @@ __decorate([
 exports.QuestionsController = QuestionsController = __decorate([
     (0, swagger_1.ApiTags)('questions'),
     (0, common_1.Controller)('cramschool/questions'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof questions_service_1.QuestionsService !== "undefined" && questions_service_1.QuestionsService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
 ], QuestionsController);
 
@@ -25828,6 +26983,8 @@ const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ 
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
+;
 let ResourcesController = class ResourcesController {
     constructor(resourcesService, prisma) {
         this.resourcesService = resourcesService;
@@ -26077,7 +27234,7 @@ __decorate([
 exports.ResourcesController = ResourcesController = __decorate([
     (0, swagger_1.ApiTags)('resources'),
     (0, common_1.Controller)('cramschool/resources'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof resources_service_1.ResourcesService !== "undefined" && resources_service_1.ResourcesService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
 ], ResourcesController);
 
@@ -26115,6 +27272,8 @@ const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ 
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
+;
 let RestaurantsController = class RestaurantsController {
     constructor(restaurantsService, prisma) {
         this.restaurantsService = restaurantsService;
@@ -26210,7 +27369,7 @@ __decorate([
 exports.RestaurantsController = RestaurantsController = __decorate([
     (0, swagger_1.ApiTags)('orders'),
     (0, common_1.Controller)('cramschool/restaurants'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof restaurants_service_1.RestaurantsService !== "undefined" && restaurants_service_1.RestaurantsService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
 ], RestaurantsController);
 
@@ -26246,6 +27405,8 @@ const sessions_service_1 = __webpack_require__(/*! ../services/sessions.service 
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
+;
 let SessionsController = class SessionsController {
     constructor(sessionsService) {
         this.sessionsService = sessionsService;
@@ -26331,7 +27492,7 @@ __decorate([
 exports.SessionsController = SessionsController = __decorate([
     (0, swagger_1.ApiTags)('courses'),
     (0, common_1.Controller)('cramschool/sessions'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof sessions_service_1.SessionsService !== "undefined" && sessions_service_1.SessionsService) === "function" ? _a : Object])
 ], SessionsController);
 
@@ -26367,6 +27528,8 @@ const student_answers_service_1 = __webpack_require__(/*! ../services/student-an
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
+;
 let StudentAnswersController = class StudentAnswersController {
     constructor(studentAnswersService) {
         this.studentAnswersService = studentAnswersService;
@@ -26469,7 +27632,7 @@ __decorate([
 exports.StudentAnswersController = StudentAnswersController = __decorate([
     (0, swagger_1.ApiTags)('questions'),
     (0, common_1.Controller)('cramschool/student-answers'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof student_answers_service_1.StudentAnswersService !== "undefined" && student_answers_service_1.StudentAnswersService) === "function" ? _a : Object])
 ], StudentAnswersController);
 
@@ -26506,6 +27669,8 @@ const student_groups_service_1 = __webpack_require__(/*! ../services/student-gro
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
+;
 let StudentGroupsController = class StudentGroupsController {
     constructor(studentGroupsService) {
         this.studentGroupsService = studentGroupsService;
@@ -26620,7 +27785,7 @@ __decorate([
 exports.StudentGroupsController = StudentGroupsController = __decorate([
     (0, swagger_1.ApiTags)('students'),
     (0, common_1.Controller)('cramschool/student-groups'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof student_groups_service_1.StudentGroupsService !== "undefined" && student_groups_service_1.StudentGroupsService) === "function" ? _a : Object])
 ], StudentGroupsController);
 
@@ -26658,6 +27823,8 @@ const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ 
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
+;
 let StudentMistakeNoteImagesController = class StudentMistakeNoteImagesController {
     constructor(studentMistakeNoteImagesService, prisma) {
         this.studentMistakeNoteImagesService = studentMistakeNoteImagesService;
@@ -26776,7 +27943,7 @@ __decorate([
 exports.StudentMistakeNoteImagesController = StudentMistakeNoteImagesController = __decorate([
     (0, swagger_1.ApiTags)('mistake-notes'),
     (0, common_1.Controller)('cramschool/student-mistake-note-images'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof student_mistake_note_images_service_1.StudentMistakeNoteImagesService !== "undefined" && student_mistake_note_images_service_1.StudentMistakeNoteImagesService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
 ], StudentMistakeNoteImagesController);
 
@@ -26815,6 +27982,8 @@ const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ 
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
+;
 let StudentMistakeNotesController = class StudentMistakeNotesController {
     constructor(studentMistakeNotesService, prisma) {
         this.studentMistakeNotesService = studentMistakeNotesService;
@@ -27041,7 +28210,7 @@ __decorate([
 exports.StudentMistakeNotesController = StudentMistakeNotesController = __decorate([
     (0, swagger_1.ApiTags)('mistake-notes'),
     (0, common_1.Controller)('cramschool/student-mistake-notes'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof student_mistake_notes_service_1.StudentMistakeNotesService !== "undefined" && student_mistake_notes_service_1.StudentMistakeNotesService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
 ], StudentMistakeNotesController);
 
@@ -27079,6 +28248,7 @@ const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ 
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
 let StudentsController = class StudentsController {
     constructor(studentsService, prisma) {
         this.studentsService = studentsService;
@@ -27134,6 +28304,7 @@ let StudentsController = class StudentsController {
 exports.StudentsController = StudentsController;
 __decorate([
     (0, common_1.Get)(),
+    (0, permission_guard_1.Permission)({ resource: '/cramschool/students' }),
     (0, swagger_1.ApiBearerAuth)('JWT-auth'),
     (0, swagger_1.ApiOperation)({
         summary: '取得學生列表',
@@ -27176,6 +28347,7 @@ __decorate([
 ], StudentsController.prototype, "getStudents", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, permission_guard_1.Permission)({ resource: '/cramschool/students' }),
     (0, swagger_1.ApiBearerAuth)('JWT-auth'),
     (0, swagger_1.ApiOperation)({
         summary: '取得單一學生',
@@ -27195,6 +28367,7 @@ __decorate([
 ], StudentsController.prototype, "getStudent", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, permission_guard_1.Permission)({ resource: '/cramschool/students' }),
     (0, swagger_1.ApiBearerAuth)('JWT-auth'),
     (0, swagger_1.ApiOperation)({
         summary: '建立學生',
@@ -27215,6 +28388,7 @@ __decorate([
 ], StudentsController.prototype, "createStudent", null);
 __decorate([
     (0, common_1.Put)(':id'),
+    (0, permission_guard_1.Permission)({ resource: '/cramschool/students' }),
     (0, swagger_1.ApiBearerAuth)('JWT-auth'),
     (0, swagger_1.ApiOperation)({
         summary: '更新學生資料',
@@ -27236,6 +28410,7 @@ __decorate([
 ], StudentsController.prototype, "updateStudent", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, permission_guard_1.Permission)({ resource: '/cramschool/students' }),
     (0, swagger_1.ApiBearerAuth)('JWT-auth'),
     (0, swagger_1.ApiOperation)({
         summary: '刪除學生',
@@ -27252,6 +28427,7 @@ __decorate([
 ], StudentsController.prototype, "deleteStudent", null);
 __decorate([
     (0, common_1.Post)(':id/restore'),
+    (0, permission_guard_1.Permission)({ resource: '/cramschool/students' }),
     (0, swagger_1.ApiBearerAuth)('JWT-auth'),
     (0, swagger_1.ApiOperation)({
         summary: '恢復已刪除的學生',
@@ -27271,6 +28447,7 @@ __decorate([
 ], StudentsController.prototype, "restoreStudent", null);
 __decorate([
     (0, common_1.Get)(':id/tuition_status'),
+    (0, permission_guard_1.Permission)({ resource: '/cramschool/students' }),
     (0, swagger_1.ApiBearerAuth)('JWT-auth'),
     (0, swagger_1.ApiOperation)({
         summary: '取得學生繳費狀態',
@@ -27290,6 +28467,7 @@ __decorate([
 ], StudentsController.prototype, "getTuitionStatus", null);
 __decorate([
     (0, common_1.Post)(':id/generate_tuition'),
+    (0, permission_guard_1.Permission)({ resource: '/cramschool/students' }),
     (0, swagger_1.ApiBearerAuth)('JWT-auth'),
     (0, swagger_1.ApiOperation)({
         summary: '生成學費帳單',
@@ -27321,6 +28499,7 @@ __decorate([
 ], StudentsController.prototype, "generateTuition", null);
 __decorate([
     (0, common_1.Post)('batch-generate-tuitions'),
+    (0, permission_guard_1.Permission)({ resource: '/cramschool/students/batch-generate-tuitions' }),
     (0, swagger_1.ApiBearerAuth)('JWT-auth'),
     (0, swagger_1.ApiOperation)({
         summary: '批次生成學費帳單',
@@ -27347,6 +28526,7 @@ __decorate([
 ], StudentsController.prototype, "batchGenerateTuitions", null);
 __decorate([
     (0, common_1.Post)(':id/reset-password'),
+    (0, permission_guard_1.Permission)({ resource: '/cramschool/students' }),
     (0, swagger_1.ApiBearerAuth)('JWT-auth'),
     (0, swagger_1.ApiOperation)({
         summary: '重置學生密碼',
@@ -27376,6 +28556,7 @@ __decorate([
 ], StudentsController.prototype, "resetPassword", null);
 __decorate([
     (0, common_1.Post)(':id/toggle-account-status'),
+    (0, permission_guard_1.Permission)({ resource: '/cramschool/students' }),
     (0, swagger_1.ApiBearerAuth)('JWT-auth'),
     (0, swagger_1.ApiOperation)({
         summary: '切換學生帳號狀態',
@@ -27396,6 +28577,7 @@ __decorate([
 ], StudentsController.prototype, "toggleAccountStatus", null);
 __decorate([
     (0, common_1.Get)(':id/attendance_and_leaves'),
+    (0, permission_guard_1.Permission)({ resource: '/cramschool/students' }),
     (0, swagger_1.ApiBearerAuth)('JWT-auth'),
     (0, swagger_1.ApiOperation)({
         summary: '取得出缺席記錄',
@@ -27416,7 +28598,7 @@ __decorate([
 exports.StudentsController = StudentsController = __decorate([
     (0, swagger_1.ApiTags)('students'),
     (0, common_1.Controller)('cramschool/students'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof students_service_1.StudentsService !== "undefined" && students_service_1.StudentsService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
 ], StudentsController);
 
@@ -27454,6 +28636,8 @@ const prisma_service_1 = __webpack_require__(/*! ../../prisma/prisma.service */ 
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
+;
 let SubjectsController = class SubjectsController {
     constructor(subjectsService, prisma) {
         this.subjectsService = subjectsService;
@@ -27563,7 +28747,7 @@ __decorate([
 exports.SubjectsController = SubjectsController = __decorate([
     (0, swagger_1.ApiTags)('courses'),
     (0, common_1.Controller)('cramschool/subjects'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof subjects_service_1.SubjectsService !== "undefined" && subjects_service_1.SubjectsService) === "function" ? _a : Object, typeof (_b = typeof prisma_service_1.PrismaService !== "undefined" && prisma_service_1.PrismaService) === "function" ? _b : Object])
 ], SubjectsController);
 
@@ -27599,6 +28783,8 @@ const teachers_service_1 = __webpack_require__(/*! ../services/teachers.service 
 const shared_1 = __webpack_require__(/*! @9jang/shared */ "@9jang/shared");
 const nestjs_zod_1 = __webpack_require__(/*! nestjs-zod */ "nestjs-zod");
 const jwt_auth_guard_1 = __webpack_require__(/*! ../../account/guards/jwt-auth.guard */ "./src/account/guards/jwt-auth.guard.ts");
+const permission_guard_1 = __webpack_require__(/*! ../../common/guards/permission.guard */ "./src/common/guards/permission.guard.ts");
+;
 let TeachersController = class TeachersController {
     constructor(teachersService) {
         this.teachersService = teachersService;
@@ -27735,7 +28921,7 @@ __decorate([
 exports.TeachersController = TeachersController = __decorate([
     (0, swagger_1.ApiTags)('teachers'),
     (0, common_1.Controller)('cramschool/teachers'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permission_guard_1.PermissionGuard),
     __metadata("design:paramtypes", [typeof (_a = typeof teachers_service_1.TeachersService !== "undefined" && teachers_service_1.TeachersService) === "function" ? _a : Object])
 ], TeachersController);
 
@@ -35237,6 +36423,17 @@ module.exports = require("@9jang/shared");
 
 "use strict";
 module.exports = require("@nestjs/common");
+
+/***/ }),
+
+/***/ "@nestjs/common/constants":
+/*!*******************************************!*\
+  !*** external "@nestjs/common/constants" ***!
+  \*******************************************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("@nestjs/common/constants");
 
 /***/ }),
 

@@ -64,12 +64,26 @@ const EXAMPLE_DATA: Record<string, Record<string, any>> = {
     description: '補習班教師角色',
     is_active: true,
   },
+  'AccountRole': {
+    id: 1,
+    code: 'TEACHER_FULL',
+    name: '教師(完整權限)',
+    description: '可管理學生、課程、出缺席、題庫',
+    is_active: true,
+  },
   'RolePermission': {
     id: 1,
     role_id: '@Role:code:TEACHER',
     permission_type: 'page',
     resource: '/courses',
     method: 'GET',
+  },
+  'AccountRolePermission': {
+    id: 1,
+    role_id: '@AccountRole:code:TEACHER_FULL',
+    permission_type: 'api',
+    resource: '/cramschool/students',
+    method: 'GET,POST',
   },
   'AuditLog': {
     id: 1,

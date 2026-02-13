@@ -31,6 +31,7 @@
     "seed:data": "ts-node --project tsconfig.json src/scripts/seed-data.ts",
     "seed:csv": "ts-node --project tsconfig.json src/scripts/seed-csv.ts",
     "seed:csv:templates": "ts-node --project tsconfig.json src/scripts/generate-csv-templates.ts",
+    "init:superadmin": "ts-node --project tsconfig.json src/scripts/init-superadmin.ts",
     "docker:postgres:up": "cd .. && docker-compose up -d postgres",
     "docker:postgres:down": "cd .. && docker-compose stop postgres",
     "docker:postgres:logs": "cd .. && docker-compose logs -f postgres"

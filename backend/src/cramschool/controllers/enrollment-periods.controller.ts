@@ -18,11 +18,12 @@ import {
   CreateEnrollmentPeriodSchema,
 } from '@9jang/shared';
 import { ZodValidationPipe } from 'nestjs-zod';
-import { JwtAuthGuard } from '../../account/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../account/guards/jwt-auth.guard'
+import { PermissionGuard, Permission } from '../../common/guards/permission.guard';;
 
 @ApiTags('courses')
 @Controller('cramschool/enrollment-periods')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionGuard)
 export class EnrollmentPeriodsController {
   constructor(private readonly enrollmentPeriodsService: EnrollmentPeriodsService) {}
 

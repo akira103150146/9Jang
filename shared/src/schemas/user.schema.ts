@@ -74,30 +74,9 @@ export type ChangePasswordRequestDto = z.infer<typeof ChangePasswordRequestSchem
 
 /**
  * 角色 Schema
+ * Re-export from role.schema for backward compatibility
  */
-export const RoleSchema = z.object({
-  id: z.number().int().positive(),
-  code: z.string().nullable().optional(),
-  name: z.string().min(1),
-  description: z.string().optional().default(''),
-  is_active: z.boolean().default(true),
-  created_at: z.string().datetime().optional(),
-  updated_at: z.string().datetime().optional()
-})
-export type Role = z.infer<typeof RoleSchema>
-
-/**
- * 角色權限 Schema
- */
-export const RolePermissionSchema = z.object({
-  id: z.number().int().positive(),
-  role: z.number().int().positive(),
-  permission_type: z.enum(['page', 'api']),
-  resource: z.string().min(1),
-  method: z.string().nullable().optional(),
-  created_at: z.string().datetime().optional()
-})
-export type RolePermission = z.infer<typeof RolePermissionSchema>
+export { RoleSchema, RolePermissionSchema, Role, RolePermission } from './role.schema'
 
 /**
  * 審計日誌 Schema

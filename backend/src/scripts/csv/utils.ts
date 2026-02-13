@@ -89,7 +89,9 @@ export const MODEL_MAP: Record<string, PrismaModelName> = {
 export const SIMPLE_MODEL_MAP: Record<string, PrismaModelName> = {
   'CustomUser': 'accountCustomUser',
   'Role': 'accountRole',
+  'AccountRole': 'accountRole', // 新增別名
   'RolePermission': 'accountRolePermission',
+  'AccountRolePermission': 'accountRolePermission', // 新增別名
   'AuditLog': 'accountAuditLog',
   'Student': 'cramschoolStudent',
   'Teacher': 'cramschoolTeacher',
