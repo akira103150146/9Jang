@@ -98,27 +98,21 @@ export class PermissionGuard implements CanActivate {
       throw new ForbiddenException('用戶不存在');
     }
 
-    // 5. SUPERADMIN 角色通行證 (繞過所有權限檢查)
-    if (userRecord.customRole?.code === 'SUPERADMIN') {
-      this.logger.debug(`超級管理員 ${userRecord.username} 存取 ${request.method} ${request.path}`);
-      return true;
-    }
-
-    // 6. 檢查是否有角色
+    // 5. 檢查是否有角色
     if (!userRecord.customRole) {
       throw new ForbiddenException('用戶未分配角色,無法存取系統');
     }
 
-    // 7. 檢查角色是否啟用
+    // 6. 檢查角色是否啟用
     if (!userRecord.customRole.isActive) {
       throw new ForbiddenException('角色已被停用');
     }
 
-    // 8. 取得要檢查的資源路徑
+    // 7. 取得要檢查的資源路徑
     const resource = permissionConfig?.resource || this.normalizeRoutePath(request.route.path);
     const method = request.method.toUpperCase();
 
-    // 9. 檢查 API 權限
+    // 8. 檢查 API 權限
     const hasPermission = this.checkPermission(
       userRecord.customRole.permissions,
       resource,
@@ -180,9 +174,21 @@ export class PermissionGuard implements CanActivate {
       return true;
     }
 
+    // 匹配根路徑 /** (允許所有路徑)
+    if (permissionResource === '/**') {
+      return true;
+    }
+
     // 匹配 /cramschool/students/* (單層萬用字元)
     if (permissionResource.endsWith('/*')) {
       const baseResource = permissionResource.slice(0, -2);
+      
+      // 允許完全匹配基礎路徑（路由有參數但已被 normalize）
+      if (requestResource === baseResource) {
+        return true;
+      }
+      
+      // 匹配帶 ID 的路徑（例如 /cramschool/students/94）
       const regex = new RegExp(`^${this.escapeRegex(baseResource)}/[^/]+$`);
       return regex.test(requestResource);
     }
@@ -190,6 +196,17 @@ export class PermissionGuard implements CanActivate {
     // 匹配 /cramschool/students/** (多層萬用字元)
     if (permissionResource.endsWith('/**')) {
       const baseResource = permissionResource.slice(0, -3);
+      // 如果是根路徑,已在上面處理
+      if (baseResource === '') {
+        return true;
+      }
+      
+      // 允許完全匹配基礎路徑（路由有參數但已被 normalize）
+      if (requestResource === baseResource) {
+        return true;
+      }
+      
+      // 匹配以基礎路徑開頭的所有子路徑
       return requestResource.startsWith(baseResource + '/');
     }
 

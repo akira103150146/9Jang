@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { RolePermissionSchema } from './role.schema'
 
 /**
  * 用戶角色枚舉
@@ -19,6 +20,7 @@ export const UserSchema = z.object({
   role_display: z.string().optional(), // 人類可讀的角色顯示名稱
   custom_role: z.number().int().positive().nullable().optional(),
   custom_role_name: z.string().nullable().optional(),
+  permissions: z.array(RolePermissionSchema).optional().default([]),
   is_staff: z.boolean().default(false),
   is_active: z.boolean().default(true),
   must_change_password: z.boolean().default(false),

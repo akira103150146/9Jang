@@ -307,13 +307,8 @@ const fetchUserInfo = async (): Promise<void> => {
         localStorage.setItem('user', JSON.stringify(currentUser.value))
       }
 
-      // 如果用戶有自訂角色，獲取權限
-      if (currentUser.value.custom_role) {
-        const { roleAPI } = await import('../services/api')
-        const response = await roleAPI.getById(currentUser.value.custom_role)
-        const role = response.data as { permissions?: Permission[] }
-        userPermissions.value = role.permissions || []
-      }
+      // 從用戶資料中讀取權限（已在登入時包含）
+      userPermissions.value = currentUser.value.permissions || []
     } else {
       // 嘗試從 API 獲取
       const { authAPI } = await import('../services/api')
@@ -325,12 +320,8 @@ const fetchUserInfo = async (): Promise<void> => {
       }
       localStorage.setItem('user', JSON.stringify(currentUser.value))
 
-      if (currentUser.value.custom_role) {
-        const { roleAPI } = await import('../services/api')
-        const roleResponse = await roleAPI.getById(currentUser.value.custom_role)
-        const role = roleResponse.data as { permissions?: Permission[] }
-        userPermissions.value = role.permissions || []
-      }
+      // 從用戶資料中讀取權限（已在 API 回應中包含）
+      userPermissions.value = currentUser.value.permissions || []
     }
   } catch (error) {
     const axiosError = error as { response?: { status?: number } }

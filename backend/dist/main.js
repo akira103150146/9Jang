@@ -559,6 +559,14 @@ let AccountService = class AccountService {
             role_display: this.getRoleDisplay(user.role),
             custom_role: user.customRoleId,
             custom_role_name: user.customRole?.name || null,
+            permissions: (user.customRole?.permissions || []).map((p) => ({
+                id: p.id,
+                role_id: p.roleId,
+                permission_type: p.permissionType,
+                resource: p.resource,
+                method: p.method,
+                created_at: p.createdAt?.toISOString(),
+            })),
             is_staff: user.isStaff,
             is_active: user.isActive,
             must_change_password: user.mustChangePassword,
@@ -1887,10 +1895,6 @@ let PermissionGuard = PermissionGuard_1 = class PermissionGuard {
         if (!userRecord) {
             throw new common_1.ForbiddenException('用戶不存在');
         }
-        if (userRecord.customRole?.code === 'SUPERADMIN') {
-            this.logger.debug(`超級管理員 ${userRecord.username} 存取 ${request.method} ${request.path}`);
-            return true;
-        }
         if (!userRecord.customRole) {
             throw new common_1.ForbiddenException('用戶未分配角色,無法存取系統');
         }
@@ -1927,13 +1931,25 @@ let PermissionGuard = PermissionGuard_1 = class PermissionGuard {
         if (permissionResource === requestResource) {
             return true;
         }
+        if (permissionResource === '/**') {
+            return true;
+        }
         if (permissionResource.endsWith('/*')) {
             const baseResource = permissionResource.slice(0, -2);
+            if (requestResource === baseResource) {
+                return true;
+            }
             const regex = new RegExp(`^${this.escapeRegex(baseResource)}/[^/]+$`);
             return regex.test(requestResource);
         }
         if (permissionResource.endsWith('/**')) {
             const baseResource = permissionResource.slice(0, -3);
+            if (baseResource === '') {
+                return true;
+            }
+            if (requestResource === baseResource) {
+                return true;
+            }
             return requestResource.startsWith(baseResource + '/');
         }
         return false;

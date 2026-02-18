@@ -41,7 +41,7 @@ export async function parseCsvFile(filePath: string): Promise<ParsedCsvData> {
       // 移除前後空白
       return header.trim();
     },
-    transform: (value: string, _field: string) => {
+    transform: (value: string, field: string) => {
       // 移除前後空白
       const trimmed = value.trim();
       
@@ -58,9 +58,13 @@ export async function parseCsvFile(filePath: string): Promise<ParsedCsvData> {
         return false;
       }
       
-      // 不自動轉換數字，保持為字串
-      // 這樣可以保留前導零和電話號碼格式
-      // 如果需要數字，Zod schema 會自動轉換
+      // 自動轉換數字（如果欄位名稱包含 id 或 _id，或者是純數字）
+      if (field.toLowerCase().includes('id') || field.toLowerCase().endsWith('_id') || /^\d+$/.test(trimmed)) {
+        const num = Number(trimmed);
+        if (!isNaN(num) && trimmed === num.toString()) {
+          return num;
+        }
+      }
       
       return trimmed;
     },
