@@ -154,6 +154,7 @@ export class CoursesService {
     const result: any = {
       course_id: course.courseId,
       course_name: course.courseName,
+      subject_id: course.subjectId,
       teacher_id: course.teacherId,
       start_time: course.startTime,
       end_time: course.endTime,

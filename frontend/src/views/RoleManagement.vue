@@ -24,7 +24,7 @@
       <div
         v-for="role in roles"
         :key="role.id"
-        class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition"
+        class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition flex flex-col"
       >
         <div class="flex items-start justify-between mb-4">
           <div>
@@ -32,16 +32,16 @@
             <p class="text-sm text-slate-500 mt-1">{{ role.description || '無描述' }}</p>
           </div>
           <span
-            class="rounded-full px-3 py-1 text-xs font-semibold"
+            class="rounded-full px-3 py-1 text-xs font-semibold flex-shrink-0"
             :class="role.is_active ? 'bg-green-50 text-green-600' : 'bg-slate-100 text-slate-600'"
           >
             {{ role.is_active ? '啟用' : '停用' }}
           </span>
         </div>
         
-        <div class="mb-4">
+        <div class="mb-4 flex-1">
           <p class="text-xs text-slate-500 mb-2">權限數量：{{ role.permission_count || 0 }}</p>
-          <div class="space-y-1">
+          <div class="space-y-1 min-h-[60px]">
             <div
               v-for="perm in role.permissions.slice(0, 3)"
               :key="perm.id"
@@ -57,7 +57,7 @@
           </div>
         </div>
 
-        <div class="flex gap-2">
+        <div class="flex gap-2 mt-auto">
           <button
             @click="openEditModal(role)"
             class="flex-1 rounded-full bg-sky-500 px-4 py-2 text-xs font-semibold text-white hover:bg-sky-600"
@@ -185,38 +185,119 @@
             <div
               v-for="page in availablePages"
               :key="page.path"
-              class="flex items-center justify-between rounded-lg border border-slate-200 p-3"
+              class="flex items-center justify-between rounded-lg border p-3 transition-all"
+              :class="isPageSelected(page.path) 
+                ? 'border-green-300 bg-green-50' 
+                : 'border-slate-200 bg-white hover:border-slate-300'"
             >
-              <div>
+              <div class="flex-1">
                 <p class="font-semibold text-slate-900">{{ page.title }}</p>
                 <p class="text-xs text-slate-500">{{ page.path }}</p>
               </div>
-              <input
-                type="checkbox"
-                :checked="isPageSelected(page.path)"
-                @change="togglePagePermission(page.path)"
-                class="rounded border-slate-300"
-              />
+              <button
+                @click="togglePagePermission(page.path)"
+                class="relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2"
+                :class="isPageSelected(page.path) ? 'bg-green-500' : 'bg-slate-300'"
+              >
+                <span
+                  class="inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition-transform"
+                  :class="isPageSelected(page.path) ? 'translate-x-7' : 'translate-x-1'"
+                />
+              </button>
+              <span 
+                class="ml-3 text-sm font-semibold min-w-[48px] text-right"
+                :class="isPageSelected(page.path) ? 'text-green-600' : 'text-slate-400'"
+              >
+                {{ isPageSelected(page.path) ? '啟用' : '停用' }}
+              </span>
             </div>
           </div>
 
           <!-- API 權限 -->
-          <div v-if="activeTab === 'api'" class="space-y-3">
+          <div v-if="activeTab === 'api'" class="space-y-4">
+            <!-- 按群組顯示 API -->
             <div
-              v-for="api in availableAPIs"
-              :key="`${api.path}-${api.method}`"
-              class="flex items-center justify-between rounded-lg border border-slate-200 p-3"
+              v-for="group in groupedAPIs"
+              :key="group.name"
+              class="rounded-lg border border-slate-200 overflow-hidden"
             >
-              <div>
-                <p class="font-semibold text-slate-900">{{ api.name }}</p>
-                <p class="text-xs text-slate-500">{{ api.path }}</p>
+              <!-- 群組標題（可點擊摺疊） -->
+              <button
+                @click="toggleGroup(group.name)"
+                class="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 transition-colors"
+              >
+                <div class="flex items-center gap-3">
+                  <!-- 摺疊圖示 -->
+                  <svg
+                    class="w-5 h-5 text-slate-600 transition-transform"
+                    :class="isGroupCollapsed(group.name) ? '' : 'rotate-90'"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                  <span class="font-semibold text-slate-900">{{ group.displayName }}</span>
+                  <span class="text-xs text-slate-500">
+                    ({{ getGroupEnabledCount(group) }}/{{ group.apis.length }})
+                  </span>
+                </div>
+                <span 
+                  class="text-xs font-semibold px-2 py-1 rounded"
+                  :class="getGroupEnabledCount(group) > 0 ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-600'"
+                >
+                  {{ getGroupEnabledCount(group) > 0 ? '部分啟用' : '全部停用' }}
+                </span>
+              </button>
+
+              <!-- API 列表（可摺疊） -->
+              <div
+                v-show="!isGroupCollapsed(group.name)"
+                class="divide-y divide-slate-100"
+              >
+                <div
+                  v-for="api in group.apis"
+                  :key="`${api.path}-${api.method}`"
+                  class="flex items-center justify-between p-3 transition-all"
+                  :class="isAPISelected(api.path, api.method) 
+                    ? 'bg-green-50' 
+                    : 'bg-white hover:bg-slate-50'"
+                >
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2">
+                      <span 
+                        class="rounded px-2 py-0.5 text-xs font-bold"
+                        :class="{
+                          'bg-blue-100 text-blue-700': api.method === 'GET',
+                          'bg-green-100 text-green-700': api.method === 'POST',
+                          'bg-yellow-100 text-yellow-700': api.method === 'PUT',
+                          'bg-red-100 text-red-700': api.method === 'DELETE'
+                        }"
+                      >
+                        {{ api.method }}
+                      </span>
+                      <p class="font-semibold text-slate-900 text-sm">{{ api.name }}</p>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-1 ml-14">{{ api.path }}</p>
+                  </div>
+                  <button
+                    @click="toggleAPIPermission(api.path, api.method)"
+                    class="relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2"
+                    :class="isAPISelected(api.path, api.method) ? 'bg-green-500' : 'bg-slate-300'"
+                  >
+                    <span
+                      class="inline-block h-5 w-5 transform rounded-full bg-white shadow-lg transition-transform"
+                      :class="isAPISelected(api.path, api.method) ? 'translate-x-6' : 'translate-x-1'"
+                    />
+                  </button>
+                  <span 
+                    class="ml-3 text-xs font-semibold min-w-[48px] text-right"
+                    :class="isAPISelected(api.path, api.method) ? 'text-green-600' : 'text-slate-400'"
+                  >
+                    {{ isAPISelected(api.path, api.method) ? '啟用' : '停用' }}
+                  </span>
+                </div>
               </div>
-              <input
-                type="checkbox"
-                :checked="isAPISelected(api.path, api.method)"
-                @change="toggleAPIPermission(api.path, api.method)"
-                class="rounded border-slate-300"
-              />
             </div>
           </div>
         </div>
@@ -241,7 +322,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { roleAPI } from '../services/api'
 
 const roles = ref([])
@@ -287,6 +368,68 @@ const availableAPIs = ref([
 ])
 
 const selectedPermissions = ref([])
+
+// API 群組摺疊狀態
+const collapsedGroups = ref(new Set())
+
+// 根據 API 路徑分組
+const groupedAPIs = computed(() => {
+  const groups = {}
+  
+  availableAPIs.value.forEach(api => {
+    // 提取 API 群組名稱（例如：/api/cramschool/students/ -> students）
+    const pathParts = api.path.split('/').filter(p => p)
+    const groupName = pathParts.length >= 3 ? pathParts[2] : 'other'
+    
+    if (!groups[groupName]) {
+      groups[groupName] = {
+        name: groupName,
+        displayName: getGroupDisplayName(groupName),
+        apis: []
+      }
+    }
+    groups[groupName].apis.push(api)
+  })
+  
+  return Object.values(groups)
+})
+
+// 獲取群組顯示名稱
+const getGroupDisplayName = (groupName) => {
+  const displayMap = {
+    'students': '學生管理',
+    'teachers': '老師管理',
+    'courses': '課程管理',
+    'enrollments': '課程報名',
+    'attendance': '出缺勤',
+    'fees': '費用管理',
+    'questions': '題庫系統',
+    'group-orders': '團訂管理',
+    'orders': '訂單管理',
+    'restaurants': '餐廳管理',
+    'other': '其他'
+  }
+  return displayMap[groupName] || groupName
+}
+
+// 切換群組摺疊狀態
+const toggleGroup = (groupName) => {
+  if (collapsedGroups.value.has(groupName)) {
+    collapsedGroups.value.delete(groupName)
+  } else {
+    collapsedGroups.value.add(groupName)
+  }
+}
+
+// 檢查群組是否摺疊
+const isGroupCollapsed = (groupName) => {
+  return collapsedGroups.value.has(groupName)
+}
+
+// 獲取群組中已啟用的權限數量
+const getGroupEnabledCount = (group) => {
+  return group.apis.filter(api => isAPISelected(api.path, api.method)).length
+}
 
 const fetchRoles = async () => {
   loading.value = true

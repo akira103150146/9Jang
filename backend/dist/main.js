@@ -8347,6 +8347,7 @@ let CoursesService = class CoursesService {
         const result = {
             course_id: course.courseId,
             course_name: course.courseName,
+            subject_id: course.subjectId,
             teacher_id: course.teacherId,
             start_time: course.startTime,
             end_time: course.endTime,
