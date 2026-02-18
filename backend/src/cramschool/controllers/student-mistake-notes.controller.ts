@@ -39,6 +39,7 @@ export class StudentMistakeNotesController {
   ) { }
 
   @Get()
+  @Permission({ resource: '/cramschool/student-mistake-notes' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得訂正本列表', description: '分頁取得學生訂正本記錄，支援搜尋和篩選' })
   @ApiQuery({ name: 'include_deleted', required: false, description: '是否包含已刪除', example: 'false', type: String })
@@ -73,6 +74,7 @@ export class StudentMistakeNotesController {
   }
 
   @Get(':id')
+  @Permission({ resource: '/cramschool/student-mistake-notes' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得單一訂正本', description: '根據訂正本 ID 取得詳細資料' })
   @ApiParam({ name: 'id', description: '訂正本 ID', example: 1, type: Number })
@@ -91,6 +93,7 @@ export class StudentMistakeNotesController {
   }
 
   @Post()
+  @Permission({ resource: '/cramschool/student-mistake-notes' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '建立訂正本記錄', description: '新增學生訂正本記錄' })
   @ApiResponse({ status: 201, description: '建立成功' })
@@ -108,6 +111,7 @@ export class StudentMistakeNotesController {
   }
 
   @Put(':id')
+  @Permission({ resource: '/cramschool/student-mistake-notes' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '更新訂正本', description: '修改訂正本記錄內容' })
   @ApiParam({ name: 'id', description: '訂正本 ID', example: 1, type: Number })
@@ -127,6 +131,7 @@ export class StudentMistakeNotesController {
   }
 
   @Delete(':id')
+  @Permission({ resource: '/cramschool/student-mistake-notes' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '刪除訂正本', description: '軟刪除訂正本記錄' })
   @ApiParam({ name: 'id', description: '訂正本 ID', example: 1, type: Number })
@@ -145,6 +150,7 @@ export class StudentMistakeNotesController {
   }
 
   @Post(':id/restore')
+  @Permission({ resource: '/cramschool/student-mistake-notes' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '恢復訂正本', description: '恢復已刪除的訂正本記錄' })
   @ApiParam({ name: 'id', description: '訂正本 ID', example: 1, type: Number })
@@ -155,6 +161,7 @@ export class StudentMistakeNotesController {
   }
 
   @Post(':id/import-to-question-bank')
+  @Permission({ resource: '/cramschool/student-mistake-notes' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '匯入到題庫', description: '將訂正本記錄匯入到題庫（需教師或管理員權限）' })
   @ApiParam({ name: 'id', description: '訂正本 ID', example: 1, type: Number })
@@ -199,6 +206,7 @@ export class StudentMistakeNotesController {
   }
 
   @Post(':id/upload-images')
+  @Permission({ resource: '/cramschool/student-mistake-notes' })
   @UseInterceptors(FilesInterceptor('images', 10))
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '上傳訂正本圖片', description: '為訂正本上傳圖片（最多 10 張，僅學生可上傳）' })
@@ -230,6 +238,7 @@ export class StudentMistakeNotesController {
   }
 
   @Post(':id/reorder-images')
+  @Permission({ resource: '/cramschool/student-mistake-notes' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '重新排序圖片', description: '調整訂正本圖片的顯示順序（僅學生可操作）' })
   @ApiParam({ name: 'id', description: '訂正本 ID', example: 1, type: Number })

@@ -30,6 +30,7 @@ export class LeavesController {
   constructor(private readonly leavesService: LeavesService) {}
 
   @Get()
+  @Permission({ resource: '/cramschool/leaves' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得請假記錄列表', description: '分頁取得學生請假記錄' })
   @ApiQuery({ name: 'include_deleted', required: false, description: '是否包含已刪除', example: 'false', type: String })
@@ -46,6 +47,7 @@ export class LeavesController {
   }
 
   @Get(':id')
+  @Permission({ resource: '/cramschool/leaves' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得單一請假記錄', description: '根據 ID 取得請假記錄詳細資料' })
   @ApiParam({ name: 'id', description: '請假記錄 ID', example: 1, type: Number })
@@ -56,6 +58,7 @@ export class LeavesController {
   }
 
   @Post()
+  @Permission({ resource: '/cramschool/leaves' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '建立請假記錄', description: '新增學生請假申請' })
   @ApiResponse({ status: 201, description: '建立成功',  })
@@ -67,6 +70,7 @@ export class LeavesController {
   }
 
   @Put(':id')
+  @Permission({ resource: '/cramschool/leaves' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '更新請假記錄', description: '修改請假記錄資料' })
   @ApiParam({ name: 'id', description: '請假記錄 ID', example: 1, type: Number })
@@ -80,6 +84,7 @@ export class LeavesController {
   }
 
   @Delete(':id')
+  @Permission({ resource: '/cramschool/leaves' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '刪除請假記錄', description: '軟刪除請假記錄' })
   @ApiParam({ name: 'id', description: '請假記錄 ID', example: 1, type: Number })
@@ -90,6 +95,7 @@ export class LeavesController {
   }
 
   @Post(':id/restore')
+  @Permission({ resource: '/cramschool/leaves' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '恢復請假記錄', description: '恢復已刪除的請假記錄' })
   @ApiParam({ name: 'id', description: '請假記錄 ID', example: 1, type: Number })

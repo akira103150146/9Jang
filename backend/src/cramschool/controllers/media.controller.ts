@@ -23,6 +23,7 @@ export class MediaController {
   constructor(private prisma: PrismaService) {}
 
   @Post('upload-image')
+  @Permission({ resource: '/cramschool' })
   @UseInterceptors(FileInterceptor('image'))
   @ApiBearerAuth('JWT-auth')
   @ApiConsumes('multipart/form-data')
@@ -86,11 +87,13 @@ export class MediaController {
         image_url: imageUrl,
       };
     } catch (error) {
-      throw new BadRequestException(`保存文件失敗：${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : '未知錯誤';
+      throw new BadRequestException(`保存文件失敗：${errorMessage}`);
     }
   }
 
   @Post('generate-resource')
+  @Permission({ resource: '/cramschool' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '生成學習資源', 

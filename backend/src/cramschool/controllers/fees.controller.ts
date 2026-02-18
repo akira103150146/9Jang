@@ -31,6 +31,7 @@ export class FeesController {
   constructor(private readonly feesService: FeesService) {}
 
   @Get()
+  @Permission({ resource: '/cramschool/fees' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得費用列表', description: '分頁取得學費、雜費等費用記錄，可按學生篩選' })
   @ApiQuery({ name: 'page', required: false, description: '頁碼', example: 1, type: Number })
@@ -54,6 +55,7 @@ export class FeesController {
   }
 
   @Get(':id')
+  @Permission({ resource: '/cramschool/fees' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得單一費用記錄', description: '根據費用 ID 取得詳細資料' })
   @ApiParam({ name: 'id', description: '費用 ID', example: 1, type: Number })
@@ -64,6 +66,7 @@ export class FeesController {
   }
 
   @Post()
+  @Permission({ resource: '/cramschool/fees' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '建立費用記錄', description: '新增學費或雜費記錄' })
   @ApiResponse({ status: 201, description: '建立成功' })
@@ -75,6 +78,7 @@ export class FeesController {
   }
 
   @Put(':id')
+  @Permission({ resource: '/cramschool/fees' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '更新費用記錄', description: '修改費用金額、狀態等資訊' })
   @ApiParam({ name: 'id', description: '費用 ID', example: 1, type: Number })
@@ -88,6 +92,7 @@ export class FeesController {
   }
 
   @Delete(':id')
+  @Permission({ resource: '/cramschool/fees' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '刪除費用記錄', description: '刪除費用記錄' })
   @ApiParam({ name: 'id', description: '費用 ID', example: 1, type: Number })
@@ -99,6 +104,7 @@ export class FeesController {
   }
 
   @Post('batch-update')
+  @Permission({ resource: '/cramschool/fees' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '批次更新費用狀態', description: '批次修改多筆費用的繳費狀態' })
   @ApiResponse({ status: 200, description: '批次更新成功' })

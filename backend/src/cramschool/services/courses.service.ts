@@ -51,7 +51,9 @@ export class CoursesService {
         },
         orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
       }),
-      this.prisma.cramschoolCourse.count(userRole === 'STUDENT' && studentId ? { where: whereCondition } : {}),
+      userRole === 'STUDENT' && studentId 
+        ? this.prisma.cramschoolCourse.count({ where: whereCondition })
+        : this.prisma.cramschoolCourse.count(),
     ]);
 
     return createPaginatedResponse(
@@ -91,6 +93,7 @@ export class CoursesService {
     const course = await this.prisma.cramschoolCourse.create({
       data: {
         courseName: createDto.course_name,
+        subjectId: createDto.subject_id,
         teacherId: createDto.teacher_id,
         startTime: createDto.start_time,
         endTime: createDto.end_time,

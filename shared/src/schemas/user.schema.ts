@@ -73,12 +73,6 @@ export const ChangePasswordRequestSchema = z.object({
 export type ChangePasswordRequestDto = z.infer<typeof ChangePasswordRequestSchema>
 
 /**
- * 角色 Schema
- * Re-export from role.schema for backward compatibility
- */
-export { RoleSchema, RolePermissionSchema, Role, RolePermission } from './role.schema'
-
-/**
  * 審計日誌 Schema
  */
 export const AuditLogSchema = z.object({

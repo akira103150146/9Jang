@@ -21,8 +21,6 @@ export class AuditLogInterceptor implements NestInterceptor {
       return next.handle();
     }
 
-    const _startTime = Date.now();
-
     return next.handle().pipe(
       tap({
         next: async (response) => {

@@ -42,6 +42,7 @@ export class QuestionsController {
   ) {}
 
   @Get()
+  @Permission({ resource: '/cramschool/questions' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得題目列表', description: '根據查詢條件分頁取得題目，支援科目、難度、章節等篩選' })
   @ApiQuery({ name: 'page', required: false, description: '頁碼', example: 1, type: Number })
@@ -64,6 +65,7 @@ export class QuestionsController {
   }
 
   @Get(':id')
+  @Permission({ resource: '/cramschool/questions' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得單一題目', description: '根據題目 ID 取得詳細內容、解答、標籤等' })
   @ApiParam({ name: 'id', description: '題目 ID', example: 1, type: Number })
@@ -75,6 +77,7 @@ export class QuestionsController {
   }
 
   @Post()
+  @Permission({ resource: '/cramschool/questions' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '建立題目', description: '新增題目到題庫，可設定科目、難度、標籤等' })
   @ApiResponse({ status: 201, description: '建立成功',  })
@@ -92,6 +95,7 @@ export class QuestionsController {
   }
 
   @Put(':id')
+  @Permission({ resource: '/cramschool/questions' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '更新題目', description: '修改題目內容、解答、難度等資訊' })
   @ApiParam({ name: 'id', description: '題目 ID', example: 1, type: Number })
@@ -112,6 +116,7 @@ export class QuestionsController {
   }
 
   @Delete(':id')
+  @Permission({ resource: '/cramschool/questions' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '刪除題目', description: '軟刪除題目（設為 is_deleted）' })
   @ApiParam({ name: 'id', description: '題目 ID', example: 1, type: Number })
@@ -127,6 +132,7 @@ export class QuestionsController {
   }
 
   @Get('search-chapters')
+  @Permission({ resource: '/cramschool/questions' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '搜尋章節', description: '根據關鍵字搜尋章節名稱，可依科目和年級篩選' })
   @ApiQuery({ name: 'q', description: '搜尋關鍵字', example: '一元一次方程式', type: String })
@@ -143,6 +149,7 @@ export class QuestionsController {
   }
 
   @Get('source-options')
+  @Permission({ resource: '/cramschool/questions' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得來源選項', description: '取得題目來源的可用選項（如：歷屆試題、模擬考、自編等）' })
   @ApiResponse({ status: 200, description: '成功' })
@@ -152,6 +159,7 @@ export class QuestionsController {
   }
 
   @Get(':id/export-to-latex')
+  @Permission({ resource: '/cramschool/questions' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '匯出為 LaTeX', description: '將題目匯出為 LaTeX 格式，可用於排版印刷' })
   @ApiParam({ name: 'id', description: '題目 ID', example: 1, type: Number })
@@ -163,6 +171,7 @@ export class QuestionsController {
   }
 
   @Get(':id/export-to-markdown')
+  @Permission({ resource: '/cramschool/questions' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '匯出為 Markdown', description: '將題目匯出為 Markdown 格式' })
   @ApiParam({ name: 'id', description: '題目 ID', example: 1, type: Number })
@@ -174,6 +183,7 @@ export class QuestionsController {
   }
 
   @Post('preview-from-word')
+  @Permission({ resource: '/cramschool/questions' })
   @UseInterceptors(FileInterceptor('file'))
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '預覽 Word 匯入', description: '上傳 Word 檔案預覽題目內容（不實際匯入到題庫）' })
@@ -193,6 +203,7 @@ export class QuestionsController {
   }
 
   @Post('import-from-word')
+  @Permission({ resource: '/cramschool/questions' })
   @UseInterceptors(FileInterceptor('file'))
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '從 Word 匯入題目', description: '上傳 Word 檔案並匯入題目到題庫' })
@@ -219,6 +230,7 @@ export class QuestionsController {
   }
 
   @Post('preview-from-markdown')
+  @Permission({ resource: '/cramschool/questions' })
   @UseInterceptors(
     AnyFilesInterceptor({
       limits: { fileSize: 5 * 1024 * 1024 }, // 5MB per file
@@ -258,6 +270,7 @@ export class QuestionsController {
   }
 
   @Post('import-from-markdown')
+  @Permission({ resource: '/cramschool/questions' })
   @UseInterceptors(
     AnyFilesInterceptor({
       limits: { fileSize: 5 * 1024 * 1024 }, // 5MB per file

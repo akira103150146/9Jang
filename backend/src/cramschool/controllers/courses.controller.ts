@@ -36,6 +36,7 @@ export class CoursesController {
   ) {}
 
   @Get()
+  @Permission({ resource: '/cramschool/courses' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '取得課程列表', 
@@ -73,6 +74,7 @@ export class CoursesController {
   }
 
   @Get(':id')
+  @Permission({ resource: '/cramschool/courses' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '取得單一課程', 
@@ -91,6 +93,7 @@ export class CoursesController {
   }
 
   @Post()
+  @Permission({ resource: '/cramschool/courses' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '建立課程', 
@@ -111,6 +114,7 @@ export class CoursesController {
   }
 
   @Put(':id')
+  @Permission({ resource: '/cramschool/courses' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '更新課程資料', 
@@ -133,6 +137,7 @@ export class CoursesController {
   }
 
   @Delete(':id')
+  @Permission({ resource: '/cramschool/courses' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '刪除課程', 
@@ -148,6 +153,7 @@ export class CoursesController {
   }
 
   @Get(':id/student-status')
+  @Permission({ resource: '/cramschool/courses' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '取得課程學生狀態', 
@@ -165,6 +171,7 @@ export class CoursesController {
   }
 
   @Get(':id/resources')
+  @Permission({ resource: '/cramschool/courses' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '取得課程資源', 

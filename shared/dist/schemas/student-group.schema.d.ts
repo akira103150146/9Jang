@@ -12,16 +12,16 @@ export declare const StudentGroupSchema: z.ZodObject<{
     created_at: z.ZodString;
     updated_at: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    name: string;
     created_at: string;
+    name: string;
     updated_at: string;
     group_id: number;
     group_type: string;
     description?: string | null | undefined;
     created_by_id?: number | null | undefined;
 }, {
-    name: string;
     created_at: string;
+    name: string;
     updated_at: string;
     group_id: number;
     description?: string | null | undefined;
@@ -62,13 +62,13 @@ export declare const UpdateStudentGroupSchema: z.ZodObject<Omit<{
     created_at: z.ZodOptional<z.ZodString>;
     updated_at: z.ZodOptional<z.ZodString>;
 }, "created_at" | "updated_at" | "group_id">, "strip", z.ZodTypeAny, {
-    name?: string | undefined;
     description?: string | null | undefined;
+    name?: string | undefined;
     group_type?: string | undefined;
     created_by_id?: number | null | undefined;
 }, {
-    name?: string | undefined;
     description?: string | null | undefined;
+    name?: string | undefined;
     group_type?: string | undefined;
     created_by_id?: number | null | undefined;
 }>;
@@ -88,8 +88,8 @@ export declare const StudentGroupQuerySchema: z.ZodObject<{
     group_type?: string | undefined;
 }, {
     page?: number | undefined;
-    search?: string | undefined;
     page_size?: number | undefined;
+    search?: string | undefined;
     group_type?: string | undefined;
 }>;
 export type StudentGroupQuery = z.infer<typeof StudentGroupQuerySchema>;

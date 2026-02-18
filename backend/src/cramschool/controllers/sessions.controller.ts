@@ -30,6 +30,7 @@ export class SessionsController {
   constructor(private readonly sessionsService: SessionsService) {}
 
   @Get()
+  @Permission({ resource: '/cramschool/sessions' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得課堂列表', description: '分頁取得課堂記錄' })
   @ApiQuery({ name: 'page', required: false, type: Number })
@@ -43,6 +44,7 @@ export class SessionsController {
   }
 
   @Get(':id')
+  @Permission({ resource: '/cramschool/sessions' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得單一課堂', description: '查詢課堂詳細資料' })
   @ApiParam({ name: 'id', type: Number })
@@ -53,6 +55,7 @@ export class SessionsController {
   }
 
   @Post()
+  @Permission({ resource: '/cramschool/sessions' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '建立課堂', description: '新增課堂記錄' })
   @ApiResponse({ status: 201, description: '建立成功',  })
@@ -64,6 +67,7 @@ export class SessionsController {
   }
 
   @Put(':id')
+  @Permission({ resource: '/cramschool/sessions' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '更新課堂', description: '修改課堂資料' })
   @ApiParam({ name: 'id', type: Number })
@@ -77,6 +81,7 @@ export class SessionsController {
   }
 
   @Delete(':id')
+  @Permission({ resource: '/cramschool/sessions' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '刪除課堂', description: '刪除課堂記錄' })
   @ApiParam({ name: 'id', type: Number })

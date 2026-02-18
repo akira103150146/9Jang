@@ -35,6 +35,7 @@ export class CoursePdfsController {
   ) {}
 
   @Post('upload')
+  @Permission({ resource: '/cramschool/courses/:courseId/pdfs' })
   @UseInterceptors(FileInterceptor('file'))
   @ApiBearerAuth('JWT-auth')
   @ApiConsumes('multipart/form-data')
@@ -118,6 +119,7 @@ export class CoursePdfsController {
   }
 
   @Get()
+  @Permission({ resource: '/cramschool/courses/:courseId/pdfs' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: '取得課程 PDF 列表',
@@ -170,6 +172,7 @@ export class CoursePdfsController {
   }
 
   @Get(':pdfId/view')
+  @Permission({ resource: '/cramschool/courses/:courseId/pdfs' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: '檢視 PDF',
@@ -206,6 +209,7 @@ export class CoursePdfsController {
   }
 
   @Get(':pdfId/download')
+  @Permission({ resource: '/cramschool/courses/:courseId/pdfs' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: '下載 PDF',
@@ -242,6 +246,7 @@ export class CoursePdfsController {
   }
 
   @Put(':pdfId/download')
+  @Permission({ resource: '/cramschool/courses/:courseId/pdfs' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: '切換下載權限',
@@ -282,6 +287,7 @@ export class CoursePdfsController {
   }
 
   @Put(':pdfId')
+  @Permission({ resource: '/cramschool/courses/:courseId/pdfs' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: '更新 PDF 資訊',
@@ -317,6 +323,7 @@ export class CoursePdfsController {
   }
 
   @Delete(':pdfId')
+  @Permission({ resource: '/cramschool/courses/:courseId/pdfs' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: '刪除 PDF',

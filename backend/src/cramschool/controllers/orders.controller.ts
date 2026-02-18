@@ -36,6 +36,7 @@ export class OrdersController {
   ) {}
 
   @Get()
+  @Permission({ resource: '/cramschool/orders' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '取得訂單列表', 
@@ -90,6 +91,7 @@ export class OrdersController {
   }
 
   @Get(':id')
+  @Permission({ resource: '/cramschool/orders' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得單一訂單', description: '根據訂單 ID 取得詳細資料' })
   @ApiParam({ name: 'id', description: '訂單 ID', example: 1, type: Number })
@@ -100,6 +102,7 @@ export class OrdersController {
   }
 
   @Post()
+  @Permission({ resource: '/cramschool/orders' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '建立訂單', description: '新增訂單記錄' })
   @ApiResponse({ status: 201, description: '建立成功',  })
@@ -111,6 +114,7 @@ export class OrdersController {
   }
 
   @Put(':id')
+  @Permission({ resource: '/cramschool/orders' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '更新訂單', description: '修改訂單資料' })
   @ApiParam({ name: 'id', description: '訂單 ID', example: 1, type: Number })
@@ -124,6 +128,7 @@ export class OrdersController {
   }
 
   @Delete(':id')
+  @Permission({ resource: '/cramschool/orders' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '刪除訂單', description: '軟刪除訂單' })
   @ApiParam({ name: 'id', description: '訂單 ID', example: 1, type: Number })
@@ -134,6 +139,7 @@ export class OrdersController {
   }
 
   @Post(':id/restore')
+  @Permission({ resource: '/cramschool/orders' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '恢復訂單', description: '恢復已刪除的訂單' })
   @ApiParam({ name: 'id', description: '訂單 ID', example: 1, type: Number })

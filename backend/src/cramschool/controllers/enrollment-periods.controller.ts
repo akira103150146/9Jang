@@ -28,6 +28,7 @@ export class EnrollmentPeriodsController {
   constructor(private readonly enrollmentPeriodsService: EnrollmentPeriodsService) {}
 
   @Get()
+  @Permission({ resource: '/cramschool/enrollment-periods' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得註冊期間列表', description: '查詢註冊期間資料' })
   @ApiQuery({ name: 'enrollment', required: false, description: '註冊 ID 篩選', type: Number })
@@ -37,6 +38,7 @@ export class EnrollmentPeriodsController {
   }
 
   @Get(':id')
+  @Permission({ resource: '/cramschool/enrollment-periods' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得單一註冊期間', description: '查詢註冊期間詳細資料' })
   @ApiParam({ name: 'id', type: Number })
@@ -47,6 +49,7 @@ export class EnrollmentPeriodsController {
   }
 
   @Post()
+  @Permission({ resource: '/cramschool/enrollment-periods' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '建立註冊期間', description: '新增註冊期間記錄' })
   @ApiResponse({ status: 201, description: '建立成功',  })
@@ -58,6 +61,7 @@ export class EnrollmentPeriodsController {
   }
 
   @Put(':id')
+  @Permission({ resource: '/cramschool/enrollment-periods' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '更新註冊期間', description: '修改註冊期間資料' })
   @ApiParam({ name: 'id', type: Number })
@@ -71,6 +75,7 @@ export class EnrollmentPeriodsController {
   }
 
   @Delete(':id')
+  @Permission({ resource: '/cramschool/enrollment-periods' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '刪除註冊期間', description: '刪除註冊期間記錄' })
   @ApiParam({ name: 'id', type: Number })

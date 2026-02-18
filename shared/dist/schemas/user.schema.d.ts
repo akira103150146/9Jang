@@ -190,61 +190,6 @@ export declare const ChangePasswordRequestSchema: z.ZodObject<{
 }>;
 export type ChangePasswordRequestDto = z.infer<typeof ChangePasswordRequestSchema>;
 /**
- * 角色 Schema
- */
-export declare const RoleSchema: z.ZodObject<{
-    id: z.ZodNumber;
-    code: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    name: z.ZodString;
-    description: z.ZodDefault<z.ZodOptional<z.ZodString>>;
-    is_active: z.ZodDefault<z.ZodBoolean>;
-    created_at: z.ZodOptional<z.ZodString>;
-    updated_at: z.ZodOptional<z.ZodString>;
-}, "strip", z.ZodTypeAny, {
-    id: number;
-    is_active: boolean;
-    name: string;
-    description: string;
-    code?: string | null | undefined;
-    created_at?: string | undefined;
-    updated_at?: string | undefined;
-}, {
-    id: number;
-    name: string;
-    code?: string | null | undefined;
-    is_active?: boolean | undefined;
-    description?: string | undefined;
-    created_at?: string | undefined;
-    updated_at?: string | undefined;
-}>;
-export type Role = z.infer<typeof RoleSchema>;
-/**
- * 角色權限 Schema
- */
-export declare const RolePermissionSchema: z.ZodObject<{
-    id: z.ZodNumber;
-    role: z.ZodNumber;
-    permission_type: z.ZodEnum<["page", "api"]>;
-    resource: z.ZodString;
-    method: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    created_at: z.ZodOptional<z.ZodString>;
-}, "strip", z.ZodTypeAny, {
-    id: number;
-    role: number;
-    permission_type: "page" | "api";
-    resource: string;
-    created_at?: string | undefined;
-    method?: string | null | undefined;
-}, {
-    id: number;
-    role: number;
-    permission_type: "page" | "api";
-    resource: string;
-    created_at?: string | undefined;
-    method?: string | null | undefined;
-}>;
-export type RolePermission = z.infer<typeof RolePermissionSchema>;
-/**
  * 審計日誌 Schema
  */
 export declare const AuditLogSchema: z.ZodObject<{
@@ -264,11 +209,11 @@ export declare const AuditLogSchema: z.ZodObject<{
     created_at: z.ZodString;
 }, "strip", z.ZodTypeAny, {
     id: number;
-    description: string;
-    created_at: string;
     action_type: "create" | "update" | "delete" | "view" | "login" | "logout" | "other";
     resource_type: string;
+    description: string;
     request_data: Record<string, any>;
+    created_at: string;
     role?: number | null | undefined;
     user?: number | null | undefined;
     impersonated_by?: number | null | undefined;
@@ -279,15 +224,15 @@ export declare const AuditLogSchema: z.ZodObject<{
     response_status?: number | null | undefined;
 }, {
     id: number;
-    created_at: string;
     action_type: "create" | "update" | "delete" | "view" | "login" | "logout" | "other";
     resource_type: string;
+    created_at: string;
     role?: number | null | undefined;
     user?: number | null | undefined;
-    description?: string | undefined;
     impersonated_by?: number | null | undefined;
     resource_id?: string | null | undefined;
     resource_name?: string | null | undefined;
+    description?: string | undefined;
     ip_address?: string | null | undefined;
     user_agent?: string | null | undefined;
     request_data?: Record<string, any> | undefined;

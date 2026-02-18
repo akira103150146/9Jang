@@ -58,6 +58,7 @@ describe('CoursesService', () => {
     it('應該成功建立課程', async () => {
       const createDto = {
         course_name: '數學基礎班',
+        subject_id: 1,
         teacher_id: 1,
         status: 'Active' as const,
         start_time: '18:00',

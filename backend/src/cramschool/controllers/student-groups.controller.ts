@@ -38,6 +38,7 @@ export class StudentGroupsController {
   constructor(private readonly studentGroupsService: StudentGroupsService) { }
 
   @Get()
+  @Permission({ resource: '/cramschool/student-groups' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得學生分組列表', description: '查詢所有學生分組' })
   @ApiResponse({ status: 200, description: '成功' })
@@ -48,6 +49,7 @@ export class StudentGroupsController {
   }
 
   @Get(':id')
+  @Permission({ resource: '/cramschool/student-groups' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得單一分組', description: '查詢分組詳細資料和成員' })
   @ApiParam({ name: 'id', type: Number })
@@ -58,6 +60,7 @@ export class StudentGroupsController {
   }
 
   @Post()
+  @Permission({ resource: '/cramschool/student-groups' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '建立學生分組', description: '新增學生分組' })
   @ApiResponse({ status: 201, description: '建立成功' })
@@ -71,6 +74,7 @@ export class StudentGroupsController {
   }
 
   @Put(':id')
+  @Permission({ resource: '/cramschool/student-groups' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '更新分組', description: '修改分組資料' })
   @ApiParam({ name: 'id', type: Number })
@@ -84,6 +88,7 @@ export class StudentGroupsController {
   }
 
   @Delete(':id')
+  @Permission({ resource: '/cramschool/student-groups' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '刪除分組', description: '刪除學生分組' })
   @ApiParam({ name: 'id', type: Number })
@@ -94,6 +99,7 @@ export class StudentGroupsController {
   }
 
   @Post(':id/add-students')
+  @Permission({ resource: '/cramschool/student-groups' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '添加學生到分組', description: '將學生加入分組' })
   @ApiParam({ name: 'id', type: Number })
@@ -106,6 +112,7 @@ export class StudentGroupsController {
   }
 
   @Post(':id/remove-students')
+  @Permission({ resource: '/cramschool/student-groups' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '從分組移除學生', description: '將學生從分組中移除' })
   @ApiParam({ name: 'id', type: Number })

@@ -36,6 +36,7 @@ export class ErrorLogImagesController {
   ) {}
 
   @Get()
+  @Permission({ resource: '/cramschool/error-log-images' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得錯題圖片列表', description: '分頁取得錯題圖片（教師和管理員可用）' })
   @ApiQuery({ name: 'error_log', required: false, description: '錯題 ID 篩選', type: Number })
@@ -63,6 +64,7 @@ export class ErrorLogImagesController {
   }
 
   @Get(':id')
+  @Permission({ resource: '/cramschool/error-log-images' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得單一錯題圖片', description: '根據圖片 ID 取得詳細資料' })
   @ApiParam({ name: 'id', type: Number })
@@ -73,6 +75,7 @@ export class ErrorLogImagesController {
   }
 
   @Post()
+  @Permission({ resource: '/cramschool/error-log-images' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '建立錯題圖片記錄', description: '新增錯題圖片記錄' })
   @ApiResponse({ status: 201, description: '建立成功' })
@@ -84,6 +87,7 @@ export class ErrorLogImagesController {
   }
 
   @Put(':id')
+  @Permission({ resource: '/cramschool/error-log-images' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '更新錯題圖片', description: '修改圖片排序或資訊' })
   @ApiParam({ name: 'id', type: Number })
@@ -97,6 +101,7 @@ export class ErrorLogImagesController {
   }
 
   @Delete(':id')
+  @Permission({ resource: '/cramschool/error-log-images' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '刪除錯題圖片', description: '刪除錯題圖片記錄' })
   @ApiParam({ name: 'id', type: Number })

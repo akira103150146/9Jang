@@ -30,6 +30,7 @@ export class StudentAnswersController {
   constructor(private readonly studentAnswersService: StudentAnswersService) {}
 
   @Get()
+  @Permission({ resource: '/cramschool/student-answers' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得學生答題記錄列表', description: '分頁取得學生的答題記錄' })
   @ApiQuery({ name: 'include_deleted', required: false, type: String })
@@ -45,6 +46,7 @@ export class StudentAnswersController {
   }
 
   @Get(':id')
+  @Permission({ resource: '/cramschool/student-answers' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得單一答題記錄', description: '查詢答題記錄詳細資料' })
   @ApiParam({ name: 'id', type: Number })
@@ -55,6 +57,7 @@ export class StudentAnswersController {
   }
 
   @Post()
+  @Permission({ resource: '/cramschool/student-answers' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '建立答題記錄', description: '記錄學生的答題結果' })
   @ApiResponse({ status: 201, description: '建立成功' })
@@ -66,6 +69,7 @@ export class StudentAnswersController {
   }
 
   @Put(':id')
+  @Permission({ resource: '/cramschool/student-answers' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '更新答題記錄', description: '修改答題記錄' })
   @ApiParam({ name: 'id', type: Number })
@@ -79,6 +83,7 @@ export class StudentAnswersController {
   }
 
   @Delete(':id')
+  @Permission({ resource: '/cramschool/student-answers' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '刪除答題記錄', description: '軟刪除答題記錄' })
   @ApiParam({ name: 'id', type: Number })
@@ -89,6 +94,7 @@ export class StudentAnswersController {
   }
 
   @Post(':id/restore')
+  @Permission({ resource: '/cramschool/student-answers' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '恢復答題記錄', description: '恢復已刪除的答題記錄' })
   @ApiParam({ name: 'id', type: Number })

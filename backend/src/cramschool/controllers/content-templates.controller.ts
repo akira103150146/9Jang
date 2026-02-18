@@ -36,6 +36,7 @@ export class ContentTemplatesController {
   ) {}
 
   @Get()
+  @Permission({ resource: '/cramschool/content-templates' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得內容模板列表', description: '分頁取得內容模板，可查看公開和自己建立的模板' })
   @ApiQuery({ name: 'page', required: false, description: '頁碼', example: 1, type: Number })
@@ -56,6 +57,7 @@ export class ContentTemplatesController {
   }
 
   @Get(':id')
+  @Permission({ resource: '/cramschool/content-templates' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得單一內容模板', description: '根據模板 ID 取得詳細資料' })
   @ApiParam({ name: 'id', description: '模板 ID', example: 1, type: Number })
@@ -74,6 +76,7 @@ export class ContentTemplatesController {
   }
 
   @Post()
+  @Permission({ resource: '/cramschool/content-templates' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '建立內容模板', description: '新增內容模板到系統' })
   @ApiResponse({ status: 201, description: '建立成功',  })
@@ -87,6 +90,7 @@ export class ContentTemplatesController {
   }
 
   @Put(':id')
+  @Permission({ resource: '/cramschool/content-templates' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '更新內容模板', description: '修改模板內容和結構' })
   @ApiParam({ name: 'id', description: '模板 ID', example: 1, type: Number })
@@ -102,6 +106,7 @@ export class ContentTemplatesController {
   }
 
   @Delete(':id')
+  @Permission({ resource: '/cramschool/content-templates' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '刪除內容模板', description: '刪除模板' })
   @ApiParam({ name: 'id', description: '模板 ID', example: 1, type: Number })

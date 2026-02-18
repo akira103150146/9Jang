@@ -43,6 +43,14 @@ export const CreateRoleSchema = RoleSchema.omit({
   id: true, 
   created_at: true, 
   updated_at: true 
+}).extend({
+  permissions: z.array(
+    z.object({
+      permission_type: PermissionTypeEnum,
+      resource: z.string().min(1).max(255),
+      method: z.string().nullable().optional(),
+    })
+  ).optional(),
 })
 
 export type CreateRoleDto = z.infer<typeof CreateRoleSchema>

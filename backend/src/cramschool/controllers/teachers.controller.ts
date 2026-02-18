@@ -30,6 +30,7 @@ export class TeachersController {
   constructor(private readonly teachersService: TeachersService) {}
 
   @Get()
+  @Permission({ resource: '/cramschool/teachers' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '取得教師列表', 
@@ -66,6 +67,7 @@ export class TeachersController {
   }
 
   @Get(':id')
+  @Permission({ resource: '/cramschool/teachers' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '取得單一教師', 
@@ -84,6 +86,7 @@ export class TeachersController {
   }
 
   @Post()
+  @Permission({ resource: '/cramschool/teachers' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '建立教師', 
@@ -104,6 +107,7 @@ export class TeachersController {
   }
 
   @Put(':id')
+  @Permission({ resource: '/cramschool/teachers' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '更新教師資料', 
@@ -126,6 +130,7 @@ export class TeachersController {
   }
 
   @Delete(':id')
+  @Permission({ resource: '/cramschool/teachers' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '刪除教師', 

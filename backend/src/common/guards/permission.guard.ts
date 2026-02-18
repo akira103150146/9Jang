@@ -4,6 +4,7 @@ import {
   ExecutionContext, 
   ForbiddenException,
   Logger,
+  SetMetadata,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -16,28 +17,21 @@ export const PUBLIC_KEY = 'is_public';
  * 權限配置接口
  */
 export interface PermissionConfig {
-  resource?: string;      // 資源路徑,不指定則自動使用路由路徑
-  requireAuth?: boolean;  // 是否需要認證,預設 true
-  allowPublic?: boolean;  // 是否允許公開存取
+  resource?: string;           // 資源路徑,不指定則自動使用路由路徑
+  requireAuth?: boolean;       // 是否需要認證,預設 true
+  allowPublic?: boolean;       // 是否允許公開存取
+  skipPermissionCheck?: boolean; // 只檢查認證,跳過權限檢查
 }
 
 /**
  * Permission 裝飾器 - 設定權限配置
  */
-export const Permission = (config: PermissionConfig = {}) => {
-  return (target: any, key?: string, _descriptor?: PropertyDescriptor) => {
-    Reflect.defineMetadata(PERMISSION_KEY, config, target, key);
-  };
-};
+export const Permission = (config: PermissionConfig = {}) => SetMetadata(PERMISSION_KEY, config);
 
 /**
  * Public 裝飾器 - 標記公開 API (不需要權限)
  */
-export const Public = () => {
-  return (target: any, key?: string, _descriptor?: PropertyDescriptor) => {
-    Reflect.defineMetadata(PUBLIC_KEY, true, target, key);
-  };
-};
+export const Public = () => SetMetadata(PUBLIC_KEY, true);
 
 /**
  * Permission Guard - 動態權限檢查
@@ -80,6 +74,11 @@ export class PermissionGuard implements CanActivate {
 
     // 如果不需要認證,直接通過
     if (!requireAuth) {
+      return true;
+    }
+
+    // 3.5. 如果只需要認證,不需要權限檢查,直接通過
+    if (permissionConfig?.skipPermissionCheck) {
       return true;
     }
 

@@ -39,6 +39,7 @@ export class ErrorLogsController {
   ) {}
 
   @Get()
+  @Permission({ resource: '/cramschool/error-logs' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '取得錯題列表', 
@@ -92,6 +93,7 @@ export class ErrorLogsController {
   }
 
   @Get(':id')
+  @Permission({ resource: '/cramschool/error-logs' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '取得單一錯題', 
@@ -110,6 +112,7 @@ export class ErrorLogsController {
   }
 
   @Post()
+  @Permission({ resource: '/cramschool/error-logs' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '建立錯題記錄', 
@@ -129,6 +132,7 @@ export class ErrorLogsController {
   }
 
   @Put(':id')
+  @Permission({ resource: '/cramschool/error-logs' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '更新錯題記錄', 
@@ -151,6 +155,7 @@ export class ErrorLogsController {
   }
 
   @Delete(':id')
+  @Permission({ resource: '/cramschool/error-logs' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '刪除錯題記錄', 
@@ -165,6 +170,7 @@ export class ErrorLogsController {
   }
 
   @Post(':id/restore')
+  @Permission({ resource: '/cramschool/error-logs' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '恢復已刪除的錯題', 
@@ -183,6 +189,7 @@ export class ErrorLogsController {
   }
 
   @Post(':id/import-to-question-bank')
+  @Permission({ resource: '/cramschool/error-logs' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '匯入到題庫', 
@@ -220,6 +227,7 @@ export class ErrorLogsController {
   }
 
   @Post(':id/upload-images')
+  @Permission({ resource: '/cramschool/error-logs' })
   @UseInterceptors(FilesInterceptor('images', 10))
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
@@ -264,6 +272,7 @@ export class ErrorLogsController {
   }
 
   @Post(':id/reorder-images')
+  @Permission({ resource: '/cramschool/error-logs' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '重新排序圖片', 

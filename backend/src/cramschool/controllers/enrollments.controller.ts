@@ -28,6 +28,7 @@ export class EnrollmentsController {
   constructor(private readonly enrollmentsService: EnrollmentsService) {}
 
   @Get()
+  @Permission({ resource: '/cramschool/enrollments' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得註冊記錄列表', description: '分頁取得學生課程註冊記錄' })
   @ApiQuery({ name: 'page', required: false, type: Number })
@@ -41,6 +42,7 @@ export class EnrollmentsController {
   }
 
   @Get(':id')
+  @Permission({ resource: '/cramschool/enrollments' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得單一註冊記錄', description: '查詢註冊詳細資料' })
   @ApiParam({ name: 'id', type: Number })
@@ -51,6 +53,7 @@ export class EnrollmentsController {
   }
 
   @Post()
+  @Permission({ resource: '/cramschool/enrollments' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '建立註冊記錄', description: '註冊學生到課程' })
   @ApiResponse({ status: 201, description: '註冊成功' })
@@ -63,6 +66,7 @@ export class EnrollmentsController {
   }
 
   @Put(':id')
+  @Permission({ resource: '/cramschool/enrollments' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '更新註冊記錄', description: '修改註冊資料' })
   @ApiParam({ name: 'id', type: Number })
@@ -77,6 +81,7 @@ export class EnrollmentsController {
   }
 
   @Delete(':id')
+  @Permission({ resource: '/cramschool/enrollments' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '刪除註冊記錄', description: '取消學生註冊' })
   @ApiParam({ name: 'id', type: Number })

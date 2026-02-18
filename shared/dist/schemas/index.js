@@ -22,6 +22,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("../types/tiptap"), exports);
 // 用戶和認證
 __exportStar(require("./user.schema"), exports);
+// 角色和權限
+__exportStar(require("./role.schema"), exports);
 // 學生
 __exportStar(require("./student.schema"), exports);
 // 老師

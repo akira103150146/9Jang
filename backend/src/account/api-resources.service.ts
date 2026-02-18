@@ -1,7 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { DiscoveryService, MetadataScanner, Reflector } from '@nestjs/core';
-import { InstanceWrapper } from '@nestjs/core/injector/instance-wrapper';
-import { Controller } from '@nestjs/common/interfaces';
+import { DiscoveryService, MetadataScanner } from '@nestjs/core';
 import { PATH_METADATA, METHOD_METADATA } from '@nestjs/common/constants';
 
 /**
@@ -33,7 +31,6 @@ export class ApiResourcesService {
   constructor(
     private discoveryService: DiscoveryService,
     private metadataScanner: MetadataScanner,
-    private reflector: Reflector,
   ) {}
 
   /**

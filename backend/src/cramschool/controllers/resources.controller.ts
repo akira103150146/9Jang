@@ -36,6 +36,7 @@ export class ResourcesController {
   ) {}
 
   @Get()
+  @Permission({ resource: '/cramschool/resources' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '取得資源列表', 
@@ -72,6 +73,7 @@ export class ResourcesController {
   }
 
   @Get(':id')
+  @Permission({ resource: '/cramschool/resources' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '取得單一資源', 
@@ -90,6 +92,7 @@ export class ResourcesController {
   }
 
   @Post()
+  @Permission({ resource: '/cramschool/resources' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '建立學習資源', 
@@ -116,6 +119,7 @@ export class ResourcesController {
   }
 
   @Put(':id')
+  @Permission({ resource: '/cramschool/resources' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '更新學習資源', 
@@ -144,6 +148,7 @@ export class ResourcesController {
   }
 
   @Delete(':id')
+  @Permission({ resource: '/cramschool/resources' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '刪除學習資源', 
@@ -163,6 +168,7 @@ export class ResourcesController {
   }
 
   @Post(':id/bind-to-course')
+  @Permission({ resource: '/cramschool/resources' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '綁定/解除資源與課程', 
@@ -203,6 +209,7 @@ export class ResourcesController {
   }
 
   @Post(':id/export')
+  @Permission({ resource: '/cramschool/resources' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '匯出資源', 
@@ -230,6 +237,7 @@ export class ResourcesController {
   }
 
   @Post(':id/grade')
+  @Permission({ resource: '/cramschool/resources' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: '批改資源作業', 

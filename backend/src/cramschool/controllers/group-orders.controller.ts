@@ -36,6 +36,7 @@ export class GroupOrdersController {
   ) {}
 
   @Get()
+  @Permission({ resource: '/cramschool/group-orders' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得團訂列表', description: '分頁取得所有團訂記錄（管理員無法使用）' })
   @ApiQuery({ name: 'page', required: false, description: '頁碼', example: 1, type: Number })
@@ -59,6 +60,7 @@ export class GroupOrdersController {
   }
 
   @Get(':id')
+  @Permission({ resource: '/cramschool/group-orders' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得單一團訂', description: '根據團訂 ID 取得詳細資料和訂單明細' })
   @ApiParam({ name: 'id', description: '團訂 ID', example: 1, type: Number })
@@ -69,6 +71,7 @@ export class GroupOrdersController {
   }
 
   @Post()
+  @Permission({ resource: '/cramschool/group-orders' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '建立團訂', description: '新增團訂記錄，設定餐廳、截止時間等' })
   @ApiResponse({ status: 201, description: '建立成功',  })
@@ -82,6 +85,7 @@ export class GroupOrdersController {
   }
 
   @Put(':id')
+  @Permission({ resource: '/cramschool/group-orders' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '更新團訂', description: '修改團訂資料' })
   @ApiParam({ name: 'id', description: '團訂 ID', example: 1, type: Number })
@@ -95,6 +99,7 @@ export class GroupOrdersController {
   }
 
   @Delete(':id')
+  @Permission({ resource: '/cramschool/group-orders' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '刪除團訂', description: '刪除團訂記錄' })
   @ApiParam({ name: 'id', description: '團訂 ID', example: 1, type: Number })
@@ -105,6 +110,7 @@ export class GroupOrdersController {
   }
 
   @Post(':id/complete')
+  @Permission({ resource: '/cramschool/group-orders' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '完成團訂', description: '標記團訂為已完成狀態' })
   @ApiParam({ name: 'id', description: '團訂 ID', example: 1, type: Number })

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AuditLogSchema = exports.RolePermissionSchema = exports.RoleSchema = exports.ChangePasswordRequestSchema = exports.RefreshTokenResponseSchema = exports.RefreshTokenRequestSchema = exports.LoginResponseSchema = exports.LoginRequestSchema = exports.UserSchema = exports.UserRoleEnum = void 0;
+exports.AuditLogSchema = exports.ChangePasswordRequestSchema = exports.RefreshTokenResponseSchema = exports.RefreshTokenRequestSchema = exports.LoginResponseSchema = exports.LoginRequestSchema = exports.UserSchema = exports.UserRoleEnum = void 0;
 const zod_1 = require("zod");
 /**
  * 用戶角色枚舉
@@ -59,29 +59,6 @@ exports.RefreshTokenResponseSchema = zod_1.z.object({
 exports.ChangePasswordRequestSchema = zod_1.z.object({
     old_password: zod_1.z.string().min(1),
     new_password: zod_1.z.string().min(1)
-});
-/**
- * 角色 Schema
- */
-exports.RoleSchema = zod_1.z.object({
-    id: zod_1.z.number().int().positive(),
-    code: zod_1.z.string().nullable().optional(),
-    name: zod_1.z.string().min(1),
-    description: zod_1.z.string().optional().default(''),
-    is_active: zod_1.z.boolean().default(true),
-    created_at: zod_1.z.string().datetime().optional(),
-    updated_at: zod_1.z.string().datetime().optional()
-});
-/**
- * 角色權限 Schema
- */
-exports.RolePermissionSchema = zod_1.z.object({
-    id: zod_1.z.number().int().positive(),
-    role: zod_1.z.number().int().positive(),
-    permission_type: zod_1.z.enum(['page', 'api']),
-    resource: zod_1.z.string().min(1),
-    method: zod_1.z.string().nullable().optional(),
-    created_at: zod_1.z.string().datetime().optional()
 });
 /**
  * 審計日誌 Schema

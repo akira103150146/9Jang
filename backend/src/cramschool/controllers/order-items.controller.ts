@@ -30,6 +30,7 @@ export class OrderItemsController {
   constructor(private readonly orderItemsService: OrderItemsService) {}
 
   @Get()
+  @Permission({ resource: '/cramschool/order-items' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得訂單項目列表', description: '分頁取得訂單項目' })
   @ApiQuery({ name: 'order', required: false, description: '訂單 ID 篩選', type: Number })
@@ -45,6 +46,7 @@ export class OrderItemsController {
   }
 
   @Get(':id')
+  @Permission({ resource: '/cramschool/order-items' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得單一訂單項目', description: '查詢訂單項目詳細資料' })
   @ApiParam({ name: 'id', type: Number })
@@ -55,6 +57,7 @@ export class OrderItemsController {
   }
 
   @Post()
+  @Permission({ resource: '/cramschool/order-items' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '建立訂單項目', description: '新增訂單項目' })
   @ApiResponse({ status: 201, description: '建立成功' })
@@ -66,6 +69,7 @@ export class OrderItemsController {
   }
 
   @Put(':id')
+  @Permission({ resource: '/cramschool/order-items' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '更新訂單項目', description: '修改訂單項目資料' })
   @ApiParam({ name: 'id', type: Number })
@@ -79,6 +83,7 @@ export class OrderItemsController {
   }
 
   @Delete(':id')
+  @Permission({ resource: '/cramschool/order-items' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '刪除訂單項目', description: '刪除訂單項目' })
   @ApiParam({ name: 'id', type: Number })

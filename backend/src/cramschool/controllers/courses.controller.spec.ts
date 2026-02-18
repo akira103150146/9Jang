@@ -45,9 +45,10 @@ describe('CoursesController', () => {
       const mockResponse = createMockPaginatedResponse(mockCourses, 20, 1, 10);
       jest.spyOn(service, 'getCourses').mockResolvedValue(mockResponse);
 
-      const result = await controller.getCourses();
+      const mockReq = { user: { id: 1, role: 'TEACHER' } } as any;
+      const result = await controller.getCourses(1, 10, mockReq);
 
-      expect(service.getCourses).toHaveBeenCalledWith(1, 10);
+      expect(service.getCourses).toHaveBeenCalledWith(1, 10, 1, 'TEACHER');
       expect(result).toEqual(mockResponse);
     });
   });
@@ -69,6 +70,7 @@ describe('CoursesController', () => {
       const createDto = {
         course_name: '數學班',
         teacher_id: 1,
+        subject_id: 1,
         status: 'Active' as const,
         start_time: '18:00',
         end_time: '20:00',

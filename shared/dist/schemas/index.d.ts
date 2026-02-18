@@ -4,6 +4,7 @@
  */
 export * from '../types/tiptap';
 export * from './user.schema';
+export * from './role.schema';
 export * from './student.schema';
 export * from './teacher.schema';
 export * from './course.schema';

@@ -159,7 +159,7 @@ export declare const UpdateLearningResourceSchema: z.ZodObject<Omit<{
     available_until: z.ZodOptional<z.ZodOptional<z.ZodNullable<z.ZodString>>>;
     created_at: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     updated_at: z.ZodOptional<z.ZodOptional<z.ZodString>>;
-}, "created_at" | "updated_at" | "resource_id">, "strip", z.ZodTypeAny, {
+}, "resource_id" | "created_at" | "updated_at">, "strip", z.ZodTypeAny, {
     title?: string | undefined;
     student_group_ids?: number[] | undefined;
     created_by?: number | null | undefined;

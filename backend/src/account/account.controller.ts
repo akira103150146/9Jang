@@ -86,7 +86,7 @@ export class AccountController {
   }
 
   @Get('users/me')
-  @Permission({ resource: '/account/users/me' })
+  @Permission({ skipPermissionCheck: true })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得當前使用者資訊', description: '取得目前登入使用者的詳細資料' })
   @ApiResponse({ status: 200, description: '成功', })

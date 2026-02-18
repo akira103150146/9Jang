@@ -72,7 +72,7 @@ async function initSuperAdmin() {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // 5. 建立帳號
-    const superAdmin = await prisma.accountCustomUser.create({
+    await prisma.accountCustomUser.create({
       data: {
         username,
         password: hashedPassword,
@@ -131,7 +131,7 @@ initSuperAdmin()
     console.log('');
     process.exit(0);
   })
-  .catch((error) => {
+  .catch(() => {
     console.error('❌ 執行失敗');
     process.exit(1);
   });

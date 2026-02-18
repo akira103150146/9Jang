@@ -30,6 +30,7 @@ export class AttendancesController {
   constructor(private readonly attendancesService: AttendancesService) {}
 
   @Get()
+  @Permission({ resource: '/cramschool/attendances' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得出席記錄列表', description: '分頁取得學生出席記錄' })
   @ApiQuery({ name: 'include_deleted', required: false, description: '是否包含已刪除', example: 'false', type: String })
@@ -46,6 +47,7 @@ export class AttendancesController {
   }
 
   @Get(':id')
+  @Permission({ resource: '/cramschool/attendances' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得單一出席記錄', description: '根據 ID 取得出席記錄詳細資料' })
   @ApiParam({ name: 'id', description: '出席記錄 ID', example: 1, type: Number })
@@ -56,6 +58,7 @@ export class AttendancesController {
   }
 
   @Post()
+  @Permission({ resource: '/cramschool/attendances' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '建立出席記錄', description: '新增學生出席記錄（簽到）' })
   @ApiResponse({ status: 201, description: '建立成功',  })
@@ -67,6 +70,7 @@ export class AttendancesController {
   }
 
   @Put(':id')
+  @Permission({ resource: '/cramschool/attendances' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '更新出席記錄', description: '修改出席記錄資料' })
   @ApiParam({ name: 'id', description: '出席記錄 ID', example: 1, type: Number })
@@ -80,6 +84,7 @@ export class AttendancesController {
   }
 
   @Delete(':id')
+  @Permission({ resource: '/cramschool/attendances' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '刪除出席記錄', description: '軟刪除出席記錄' })
   @ApiParam({ name: 'id', description: '出席記錄 ID', example: 1, type: Number })
@@ -90,6 +95,7 @@ export class AttendancesController {
   }
 
   @Post(':id/restore')
+  @Permission({ resource: '/cramschool/attendances' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '恢復出席記錄', description: '恢復已刪除的出席記錄' })
   @ApiParam({ name: 'id', description: '出席記錄 ID', example: 1, type: Number })

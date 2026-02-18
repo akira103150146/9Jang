@@ -28,6 +28,7 @@ export class QuestionTagsController {
   constructor(private readonly questionTagsService: QuestionTagsService) {}
 
   @Get()
+  @Permission({ resource: '/cramschool/question-tags' })
   async getQuestionTags(
     @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
     @Query('page_size', new ParseIntPipe({ optional: true })) pageSize: number = 10,
@@ -36,11 +37,13 @@ export class QuestionTagsController {
   }
 
   @Get(':id')
+  @Permission({ resource: '/cramschool/question-tags' })
   async getQuestionTag(@Param('id', ParseIntPipe) id: number): Promise<QuestionTag> {
     return this.questionTagsService.getQuestionTag(id);
   }
 
   @Post()
+  @Permission({ resource: '/cramschool/question-tags' })
   async createQuestionTag(
     @Body(new ZodValidationPipe(CreateQuestionTagSchema)) createDto: CreateQuestionTagDto,
   ): Promise<QuestionTag> {
@@ -48,6 +51,7 @@ export class QuestionTagsController {
   }
 
   @Put(':id')
+  @Permission({ resource: '/cramschool/question-tags' })
   async updateQuestionTag(
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(UpdateQuestionTagSchema)) updateDto: UpdateQuestionTagDto,
@@ -56,6 +60,7 @@ export class QuestionTagsController {
   }
 
   @Delete(':id')
+  @Permission({ resource: '/cramschool/question-tags' })
   async deleteQuestionTag(@Param('id', ParseIntPipe) id: number): Promise<void> {
     return this.questionTagsService.deleteQuestionTag(id);
   }

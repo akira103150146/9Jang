@@ -36,6 +36,7 @@ export class StudentMistakeNoteImagesController {
   ) {}
 
   @Get()
+  @Permission({ resource: '/cramschool/student-mistake-note-images' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得訂正本圖片列表', description: '分頁取得訂正本圖片' })
   @ApiQuery({ name: 'note', required: false, description: '訂正本 ID 篩選', type: Number })
@@ -57,6 +58,7 @@ export class StudentMistakeNoteImagesController {
   }
 
   @Get(':id')
+  @Permission({ resource: '/cramschool/student-mistake-note-images' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得單一訂正本圖片', description: '根據圖片 ID 取得詳細資料' })
   @ApiParam({ name: 'id', type: Number })
@@ -75,6 +77,7 @@ export class StudentMistakeNoteImagesController {
   }
 
   @Post()
+  @Permission({ resource: '/cramschool/student-mistake-note-images' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '建立訂正本圖片記錄', description: '新增訂正本圖片記錄' })
   @ApiResponse({ status: 201, description: '建立成功' })
@@ -92,6 +95,7 @@ export class StudentMistakeNoteImagesController {
   }
 
   @Put(':id')
+  @Permission({ resource: '/cramschool/student-mistake-note-images' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '更新訂正本圖片', description: '修改圖片排序或資訊' })
   @ApiParam({ name: 'id', type: Number })
@@ -111,6 +115,7 @@ export class StudentMistakeNoteImagesController {
   }
 
   @Delete(':id')
+  @Permission({ resource: '/cramschool/student-mistake-note-images' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '刪除訂正本圖片', description: '刪除訂正本圖片記錄' })
   @ApiParam({ name: 'id', type: Number })

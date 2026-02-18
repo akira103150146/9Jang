@@ -170,26 +170,26 @@ export declare const StudentQuerySchema: z.ZodObject<{
     page_size: z.ZodDefault<z.ZodNumber>;
 }, "strip", z.ZodTypeAny, {
     page: number;
-    include_deleted: boolean;
     page_size: number;
+    include_deleted: boolean;
+    search?: string | undefined;
     school?: string | undefined;
     grade?: string | undefined;
-    search?: string | undefined;
     tag?: string | undefined;
     course?: string | undefined;
     has_unpaid_fees?: "yes" | "no" | undefined;
     has_leave?: "yes" | "no" | undefined;
 }, {
     page?: number | undefined;
+    page_size?: number | undefined;
+    search?: string | undefined;
     school?: string | undefined;
     grade?: string | undefined;
-    search?: string | undefined;
     tag?: string | undefined;
     course?: string | undefined;
     has_unpaid_fees?: "yes" | "no" | undefined;
     has_leave?: "yes" | "no" | undefined;
     include_deleted?: boolean | undefined;
-    page_size?: number | undefined;
 }>;
 export type StudentQuery = z.infer<typeof StudentQuerySchema>;
 /**

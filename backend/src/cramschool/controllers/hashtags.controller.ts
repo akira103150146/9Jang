@@ -28,6 +28,7 @@ export class HashtagsController {
   constructor(private readonly hashtagsService: HashtagsService) {}
 
   @Get()
+  @Permission({ resource: '/cramschool/hashtags' })
   async getHashtags(
     @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
     @Query('page_size', new ParseIntPipe({ optional: true })) pageSize: number = 10,
@@ -36,11 +37,13 @@ export class HashtagsController {
   }
 
   @Get(':id')
+  @Permission({ resource: '/cramschool/hashtags' })
   async getHashtag(@Param('id', ParseIntPipe) id: number): Promise<Hashtag> {
     return this.hashtagsService.getHashtag(id);
   }
 
   @Post()
+  @Permission({ resource: '/cramschool/hashtags' })
   async createHashtag(
     @Body(new ZodValidationPipe(CreateHashtagSchema)) createDto: CreateHashtagDto,
   ): Promise<Hashtag> {
@@ -48,6 +51,7 @@ export class HashtagsController {
   }
 
   @Put(':id')
+  @Permission({ resource: '/cramschool/hashtags' })
   async updateHashtag(
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(UpdateHashtagSchema)) updateDto: UpdateHashtagDto,
@@ -56,6 +60,7 @@ export class HashtagsController {
   }
 
   @Delete(':id')
+  @Permission({ resource: '/cramschool/hashtags' })
   async deleteHashtag(@Param('id', ParseIntPipe) id: number): Promise<void> {
     return this.hashtagsService.deleteHashtag(id);
   }

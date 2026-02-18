@@ -53,11 +53,11 @@ export declare const UpdateSubjectSchema: z.ZodObject<Omit<{
     created_at: z.ZodOptional<z.ZodOptional<z.ZodString>>;
 }, "created_at" | "subject_id">, "strip", z.ZodTypeAny, {
     code?: string | null | undefined;
-    name?: string | undefined;
     description?: string | null | undefined;
+    name?: string | undefined;
 }, {
     code?: string | null | undefined;
-    name?: string | undefined;
     description?: string | null | undefined;
+    name?: string | undefined;
 }>;
 export type UpdateSubjectDto = z.infer<typeof UpdateSubjectSchema>;

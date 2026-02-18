@@ -36,6 +36,7 @@ export class SubjectsController {
   ) {}
 
   @Get()
+  @Permission({ resource: '/cramschool/subjects' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得科目列表' })
   @ApiResponse({ status: 200, description: '成功' })
@@ -52,6 +53,7 @@ export class SubjectsController {
   }
 
   @Get(':id')
+  @Permission({ resource: '/cramschool/subjects' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '取得單一科目' })
   @ApiParam({ name: 'id', type: Number })
@@ -66,6 +68,7 @@ export class SubjectsController {
   }
 
   @Post()
+  @Permission({ resource: '/cramschool/subjects' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '建立科目' })
   @ApiResponse({ status: 201, description: '建立成功' })
@@ -82,6 +85,7 @@ export class SubjectsController {
   }
 
   @Put(':id')
+  @Permission({ resource: '/cramschool/subjects' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '更新科目' })
   @ApiParam({ name: 'id', type: Number })
@@ -100,6 +104,7 @@ export class SubjectsController {
   }
 
   @Delete(':id')
+  @Permission({ resource: '/cramschool/subjects' })
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: '刪除科目' })
   @ApiParam({ name: 'id', type: Number })

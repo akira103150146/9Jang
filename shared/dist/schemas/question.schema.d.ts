@@ -426,8 +426,8 @@ export declare const QuestionQuerySchema: z.ZodObject<{
 }, {
     level?: "JHS" | "SHS" | "VCS" | undefined;
     page?: number | undefined;
-    search?: string | undefined;
     page_size?: number | undefined;
+    search?: string | undefined;
     chapter?: string | undefined;
     difficulty?: number | undefined;
     question_type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "FILL_IN_BLANK" | "PROGRAMMING" | "LISTENING" | undefined;

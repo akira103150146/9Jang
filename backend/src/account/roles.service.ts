@@ -157,7 +157,7 @@ export class RolesService {
         isActive: data.is_active ?? true,
         permissions: data.permissions
           ? {
-              create: data.permissions.map(p => ({
+              create: data.permissions.map((p: { permission_type: string; resource: string; method?: string | null }) => ({
                 permissionType: p.permission_type,
                 resource: p.resource,
                 method: p.method || null,
