@@ -1,37 +1,30 @@
 #!/bin/bash
 
-# 9Jang 區域網路部署快速啟動腳本
-
 echo "🚀 9Jang 補習班管理系統 - 區域網路部署"
 echo "========================================="
 echo ""
 
-# 獲取 WSL IP 地址
 WSL_IP=$(hostname -I | awk '{print $1}')
 echo "📡 WSL IP 地址: $WSL_IP"
 echo ""
 
-# 提示用戶在 Windows 中執行端口轉發
 echo "⚠️  請先在 Windows PowerShell (系統管理員) 中執行:"
 echo "   .\wsl-port-forward.ps1"
 echo ""
 echo "按 Enter 繼續啟動應用程式..."
 read
 
-# 檢查是否在專案根目錄
 if [ ! -f "package.json" ]; then
     echo "❌ 錯誤: 請在專案根目錄執行此腳本"
     exit 1
 fi
 
-# 檢查 pnpm 是否安裝
 if ! command -v pnpm &> /dev/null; then
     echo "❌ 錯誤: pnpm 未安裝"
     echo "請執行: npm install -g pnpm"
     exit 1
 fi
 
-# 檢查依賴是否安裝
 if [ ! -d "node_modules" ]; then
     echo "📦 正在安裝依賴..."
     pnpm install
@@ -56,8 +49,8 @@ echo ""
 echo "💡 啟動方式:"
 echo ""
 echo "方法 1: 使用兩個終端機 (推薦)"
-echo "   終端機 1: ./start-backend.sh"
-echo "   終端機 2: ./start-frontend.sh"
+echo "   終端機 1: ./scripts/development/start-backend.sh"
+echo "   終端機 2: ./scripts/development/start-frontend.sh"
 echo ""
 echo "方法 2: 手動啟動"
 echo "   終端機 1: pnpm run dev:backend"

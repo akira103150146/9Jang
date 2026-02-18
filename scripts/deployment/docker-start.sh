@@ -1,23 +1,17 @@
 #!/bin/bash
-
-# Docker 快速啟動腳本
-# 自動檢查環境並啟動 Docker Compose
-
 set -e
 
-# 顏色定義
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 echo -e "${BLUE}============================================${NC}"
 echo -e "${BLUE}九章補習班管理系統 - Docker 啟動腳本${NC}"
 echo -e "${BLUE}============================================${NC}"
 echo ""
 
-# 檢查 Docker
 echo -e "${BLUE}步驟 1: 檢查 Docker 環境${NC}"
 if ! command -v docker &> /dev/null; then
     echo -e "${RED}✗ Docker 未安裝${NC}"
@@ -33,7 +27,6 @@ if ! command -v docker-compose &> /dev/null; then
 fi
 echo -e "${GREEN}✓ Docker Compose 已安裝: $(docker-compose --version)${NC}"
 
-# 檢查 Docker 服務
 if ! docker info &> /dev/null; then
     echo -e "${RED}✗ Docker 服務未運行${NC}"
     echo "請啟動 Docker 服務"
@@ -42,7 +35,6 @@ fi
 echo -e "${GREEN}✓ Docker 服務正在運行${NC}"
 echo ""
 
-# 檢查 .env 文件
 echo -e "${BLUE}步驟 2: 檢查環境變數配置${NC}"
 if [ ! -f ".env" ]; then
     echo -e "${YELLOW}⚠ .env 文件不存在，正在創建...${NC}"
@@ -57,7 +49,6 @@ fi
 echo -e "${GREEN}✓ .env 文件存在${NC}"
 echo ""
 
-# 選擇模式
 echo -e "${BLUE}步驟 3: 選擇啟動模式${NC}"
 echo "1) 開發模式（Development）- 支持熱重載"
 echo "2) 生產模式（Production）- 優化性能"
@@ -99,7 +90,6 @@ case $mode in
         ;;
 esac
 
-# 檢查端口占用
 echo -e "${BLUE}步驟 4: 檢查端口占用${NC}"
 PORTS_TO_CHECK=(3000 5173 5432)
 PORTS_BUSY=false
@@ -123,7 +113,6 @@ if [ "$PORTS_BUSY" = true ]; then
 fi
 echo ""
 
-# 構建並啟動服務
 echo -e "${BLUE}步驟 5: 啟動服務${NC}"
 echo "正在構建並啟動容器..."
 docker-compose $COMPOSE_FILES $PROFILES up -d --build
@@ -132,7 +121,6 @@ echo ""
 echo -e "${GREEN}✓ 容器已啟動${NC}"
 echo ""
 
-# 等待服務就緒
 echo -e "${BLUE}步驟 6: 等待服務就緒${NC}"
 echo "等待資料庫啟動..."
 sleep 5
@@ -152,7 +140,6 @@ echo ""
 echo -e "${GREEN}✓ 資料庫已就緒${NC}"
 echo ""
 
-# 初始化資料庫
 echo -e "${BLUE}步驟 7: 初始化資料庫${NC}"
 read -p "是否要初始化資料庫結構？(y/n) [y]: " -n 1 -r
 echo
@@ -167,12 +154,10 @@ if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
 fi
 echo ""
 
-# 顯示狀態
 echo -e "${BLUE}步驟 8: 查看服務狀態${NC}"
 docker-compose ps
 echo ""
 
-# 顯示訪問資訊
 echo -e "${GREEN}============================================${NC}"
 echo -e "${GREEN}啟動完成！${NC}"
 echo -e "${GREEN}============================================${NC}"

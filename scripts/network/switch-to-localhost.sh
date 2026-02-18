@@ -1,12 +1,8 @@
 #!/bin/bash
 
-# 切換回本機模式
-# 僅在本機測試使用
-
 echo "🏠 切換回本機模式..."
 echo "========================================="
 
-# 檢查是否有備份
 if [ -f "frontend/.env.localhost" ]; then
     echo "📦 恢復本機配置..."
     cp frontend/.env.localhost frontend/.env
@@ -24,7 +20,7 @@ echo ""
 echo "📝 下一步:"
 echo "   重啟 Frontend 服務:"
 echo "   按 Ctrl+C 停止當前的 Frontend"
-echo "   ./start-frontend.sh"
+echo "   ./scripts/development/start-frontend.sh"
 echo ""
 echo "   本機訪問網址:"
 echo "   http://localhost:5173"
