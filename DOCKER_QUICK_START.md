@@ -11,7 +11,7 @@
 ### 1. 快速啟動（互動式）
 
 ```bash
-./docker-start.sh
+./scripts/deployment/docker-start.sh
 ```
 
 這個腳本會引導您：
@@ -195,4 +195,4 @@ docker-compose ps
 
 ---
 
-**現在就開始**: `./docker-start.sh` 🚀
+**現在就開始**: `./scripts/deployment/docker-start.sh` 🚀

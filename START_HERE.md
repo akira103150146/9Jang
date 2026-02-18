@@ -12,7 +12,7 @@
 
 ```bash
 cd ~/github/9Jang
-./switch-to-lan.sh
+./scripts/network/switch-to-lan.sh
 ```
 
 這會將 Frontend 配置為使用您的 Windows IP (192.168.200.137)
@@ -37,13 +37,13 @@ cd C:\Users\<你的使用者名稱>\github\9Jang
 **WSL 終端機 1:**
 ```bash
 cd ~/github/9Jang
-./start-backend.sh
+./scripts/development/start-backend.sh
 ```
 
 **WSL 終端機 2:**
 ```bash
 cd ~/github/9Jang
-./start-frontend.sh
+./scripts/development/start-frontend.sh
 ```
 
 ---
@@ -61,7 +61,7 @@ http://192.168.1.100:5173
 ## ✅ 驗證部署
 
 ```bash
-./check-network.sh
+./scripts/network/check-network.sh
 ```
 
 應該看到:
@@ -91,7 +91,7 @@ chmod +x *.sh
 **檢查:**
 1. ✅ 學生和您的電腦連到同一個 WiFi
 2. ✅ 在 Windows 中重新執行 `.\wsl-port-forward.ps1`
-3. ✅ 執行 `./check-network.sh` 確認服務運行中
+3. ✅ 執行 `./scripts/network/check-network.sh` 確認服務運行中
 
 ### 問題 3: WSL 重啟後無法訪問
 
@@ -107,10 +107,10 @@ chmod +x *.sh
 
 | 文件 | 說明 |
 |------|------|
-| **[QUICK_START_LAN.md](./QUICK_START_LAN.md)** | 快速開始指南 |
-| **[SCRIPTS_USAGE.md](./SCRIPTS_USAGE.md)** | 腳本使用說明 |
+| **[DOCS_INDEX.md](./DOCS_INDEX.md)** | 完整文檔索引 |
+| **[scripts/README.md](./scripts/README.md)** | 腳本使用說明 |
 | **[LAN_DEPLOYMENT_GUIDE.md](./LAN_DEPLOYMENT_GUIDE.md)** | 完整部署文檔 |
-| **[LAN_DEPLOYMENT_README.md](./LAN_DEPLOYMENT_README.md)** | 文件索引 |
+| **[ENV_CONFIGURATION_GUIDE.md](./ENV_CONFIGURATION_GUIDE.md)** | 環境配置指南 |
 
 ---
 
@@ -119,10 +119,10 @@ chmod +x *.sh
 ### WSL 腳本
 
 ```bash
-./start-backend.sh      # 啟動 Backend
-./start-frontend.sh     # 啟動 Frontend
-./check-network.sh      # 檢查配置
-./start-lan-server.sh   # 顯示啟動說明
+./scripts/development/start-backend.sh   # 啟動 Backend
+./scripts/development/start-frontend.sh  # 啟動 Frontend
+./scripts/network/check-network.sh       # 檢查配置
+./scripts/network/start-lan-server.sh    # 顯示啟動說明
 ```
 
 ### Windows 腳本
@@ -147,15 +147,15 @@ chmod +x *.sh
 2. **啟動服務**:
    ```bash
    # WSL 終端機 1
-   ./start-backend.sh
+   ./scripts/development/start-backend.sh
    
    # WSL 終端機 2
-   ./start-frontend.sh
+   ./scripts/development/start-frontend.sh
    ```
 
 3. **驗證**:
    ```bash
-   ./check-network.sh
+   ./scripts/network/check-network.sh
    ```
 
 4. **用手機測試連接**
@@ -207,12 +207,12 @@ wsl --shutdown
 
 ```bash
 # 3. 重新啟動服務 (WSL)
-./start-backend.sh    # 終端機 1
-./start-frontend.sh   # 終端機 2
+./scripts/development/start-backend.sh    # 終端機 1
+./scripts/development/start-frontend.sh   # 終端機 2
 ```
 
 ---
 
 **準備好了！開始使用吧！** 🚀
 
-有問題請查看 [QUICK_START_LAN.md](./QUICK_START_LAN.md) 或 [SCRIPTS_USAGE.md](./SCRIPTS_USAGE.md)
+有問題請查看 [DOCS_INDEX.md](./DOCS_INDEX.md) 或 [scripts/README.md](./scripts/README.md)
