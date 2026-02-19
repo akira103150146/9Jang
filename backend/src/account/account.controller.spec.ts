@@ -21,7 +21,6 @@ describe('AccountController', () => {
             switchRole: jest.fn(),
             resetRole: jest.fn(),
             getCurrentRole: jest.fn(),
-            impersonateUser: jest.fn(),
             getUsers: jest.fn(),
             getUserById: jest.fn(),
             getRoles: jest.fn(),
@@ -295,51 +294,6 @@ describe('AccountController', () => {
 
       // Assert
       expect(resetSpy).toHaveBeenCalledWith(10);
-    });
-  });
-
-  describe('impersonateUser', () => {
-    it('應該呼叫 AccountService.impersonateUser 並回傳模擬結果', async () => {
-      // Arrange
-      const mockRequest = createMockAuthRequest({ user: { id: 1, username: 'admin' } });
-      const body = { user_id: 2 };
-      const mockResponse = {
-        user: createMockUser({ id: 2, username: 'targetuser' }),
-        access: 'target_access_token',
-        refresh: 'target_refresh_token',
-        message: '已切換為 targetuser 身分',
-      };
-      jest.spyOn(service, 'impersonateUser').mockResolvedValue(mockResponse);
-
-      // Act
-      const result = await controller.impersonateUser(mockRequest, body);
-
-      // Assert
-      expect(service.impersonateUser).toHaveBeenCalledWith(1, 2);
-      expect(result).toEqual(mockResponse);
-      expect(result).toHaveProperty('user');
-      expect(result).toHaveProperty('access');
-      expect(result).toHaveProperty('refresh');
-      expect(result).toHaveProperty('message');
-    });
-
-    it('應該正確傳遞管理員 ID 和目標用戶 ID', async () => {
-      // Arrange
-      const mockRequest = createMockAuthRequest({ user: { id: 5 } });
-      const body = { user_id: 10 };
-      const mockResponse = {
-        user: createMockUser({ id: 10 }),
-        access: 'token',
-        refresh: 'refresh',
-        message: '已切換為 user 身分',
-      };
-      const impersonateSpy = jest.spyOn(service, 'impersonateUser').mockResolvedValue(mockResponse);
-
-      // Act
-      await controller.impersonateUser(mockRequest, body);
-
-      // Assert
-      expect(impersonateSpy).toHaveBeenCalledWith(5, 10);
     });
   });
 

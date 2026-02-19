@@ -51,7 +51,6 @@ async function bootstrap() {
       'x-csrftoken',
       'x-requested-with',
       'x-temp-role',
-      'x-impersonated-by',
     ],
     exposedHeaders: ['content-length', 'content-type'],
     preflightContinue: false,

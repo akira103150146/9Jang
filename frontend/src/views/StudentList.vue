@@ -36,23 +36,23 @@
     <section class="grid gap-4 md:grid-cols-4">
       <div class="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
         <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">在籍學生</p>
-        <p class="mt-2 text-3xl font-bold text-slate-900">{{ students.length }}</p>
-        <p class="text-sm text-slate-500">含高三升學衝刺班 3 人</p>
+        <p class="mt-2 text-3xl font-bold text-slate-900">{{ totalCount }}</p>
+        <p class="text-sm text-slate-500">總學生人數</p>
       </div>
       <div v-if="canSeeAccountingFeatures" class="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
         <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">總費用</p>
         <p class="mt-2 text-3xl font-bold text-slate-900">${{ totalFees.toLocaleString() }}</p>
-        <p class="text-sm text-slate-500">所有學生費用總和</p>
+        <p class="text-sm text-slate-500">當前頁面費用總和</p>
       </div>
       <div v-if="canSeeAccountingFeatures" class="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
         <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">待繳費用</p>
         <p class="mt-2 text-3xl font-bold text-amber-600">${{ unpaidFees.toLocaleString() }}</p>
-        <p class="text-sm text-slate-500">未繳費用總和</p>
+        <p class="text-sm text-slate-500">當前頁面未繳費用</p>
       </div>
       <div v-if="canSeeAccountingFeatures" class="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
         <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">需要生成學費</p>
         <p class="mt-2 text-3xl font-bold text-red-600">{{ studentsWithTuitionNeeded.length }}</p>
-        <p class="text-sm text-slate-500">學生人數</p>
+        <p class="text-sm text-slate-500">當前頁面學生人數</p>
         <button
           v-if="studentsWithTuitionNeeded.length > 0"
           @click="handleBatchGenerateTuitions"
@@ -110,6 +110,16 @@
       @open-tuition-modal="openTuitionModal"
       @open-enrollment-modal="openEnrollmentModal"
       @open-leave-modal="openLeaveModal"
+    />
+
+    <!-- 分頁控制 -->
+    <Pagination
+      v-if="!loading"
+      :current-page="currentPage"
+      :total-pages="totalPages"
+      :total-count="totalCount"
+      :page-size="pageSize"
+      @update:current-page="handlePageChange"
     />
 
     <!-- 標籤管理模態框 -->
@@ -232,6 +242,7 @@ import StudentTuitionModal from '../components/StudentTuitionModal.vue'
 import StudentLeaveModal from '../components/StudentLeaveModal.vue'
 import StudentFilters from '../components/student-list/StudentFilters.vue'
 import StudentTable from '../components/student-list/StudentTable.vue'
+import Pagination from '../components/Pagination.vue'
 
 const route = useRoute()
 
@@ -253,6 +264,13 @@ const {
   unpaidFees,
   studentsWithTuitionNeeded,
   fetchStudents,
+  
+  // 分頁
+  currentPage,
+  pageSize,
+  totalCount,
+  totalPages,
+  setCurrentPage,
 
   // 課程
   courses,
@@ -355,6 +373,27 @@ const {
   // 表格
   tableColspan,
 } = useStudentListComposables()
+
+/**
+ * 處理頁碼變化
+ */
+const handlePageChange = async (page: number) => {
+  setCurrentPage(page)
+  
+  // 重新獲取學生列表
+  const queryParams: Record<string, string> = {}
+  Object.keys(route.query).forEach(key => {
+    const value = route.query[key]
+    if (typeof value === 'string') {
+      queryParams[key] = value
+    }
+  })
+  const queryString = new URLSearchParams(queryParams).toString()
+  await fetchStudents(queryString)
+  
+  // 滾動到頁面頂部
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
 
 onMounted(() => {
   fetchCurrentUser()

@@ -29,19 +29,6 @@ export function setupRequestInterceptor(api: AxiosInstance): void {
         config.headers['X-Temp-Role'] = tempRole
       }
 
-      // 添加原始管理員 ID header（如果存在，表示當前處於模擬狀態）
-      const originalUser = localStorage.getItem('original_user')
-      if (originalUser) {
-        try {
-          const adminUser = JSON.parse(originalUser) as { id?: number }
-          if (adminUser.id) {
-            config.headers['X-Impersonated-By'] = adminUser.id.toString()
-          }
-        } catch (e) {
-          // 如果解析失敗，忽略
-        }
-      }
-
       return config
     },
     (error) => {
@@ -134,18 +121,6 @@ export function setupResponseInterceptor(api: AxiosInstance): void {
                 if (tempRole) {
                   originalRequest.headers['X-Temp-Role'] = tempRole
                 }
-                // 重新設置原始管理員 header（如果存在）
-                const originalUser = localStorage.getItem('original_user')
-                if (originalUser) {
-                  try {
-                    const adminUser = JSON.parse(originalUser) as { id?: number }
-                    if (adminUser.id) {
-                      originalRequest.headers['X-Impersonated-By'] = adminUser.id.toString()
-                    }
-                  } catch (e) {
-                    // 如果解析失敗，忽略
-                  }
-                }
               }
               return api(originalRequest)
             })
@@ -166,18 +141,6 @@ export function setupResponseInterceptor(api: AxiosInstance): void {
             const tempRole = localStorage.getItem('temp_role')
             if (tempRole) {
               originalRequest.headers['X-Temp-Role'] = tempRole
-            }
-            // 重新設置原始管理員 header（如果存在）
-            const originalUser = localStorage.getItem('original_user')
-            if (originalUser) {
-              try {
-                const adminUser = JSON.parse(originalUser) as { id?: number }
-                if (adminUser.id) {
-                  originalRequest.headers['X-Impersonated-By'] = adminUser.id.toString()
-                }
-              } catch (e) {
-                // 如果解析失敗，忽略
-              }
             }
           }
           return api(originalRequest)

@@ -11,6 +11,12 @@ export function useStudentList() {
   const loading = ref(false)
   const usingMock = ref(false)
   const showDeleted = ref(false)
+  
+  // 分頁相關狀態
+  const currentPage = ref(1)
+  const pageSize = ref(10)
+  const totalCount = ref(0)
+  const totalPages = computed(() => Math.ceil(totalCount.value / pageSize.value))
 
   /**
    * 獲取學生列表
@@ -18,17 +24,52 @@ export function useStudentList() {
   const fetchStudents = async (queryParams = ''): Promise<void> => {
     loading.value = true
     try {
-      const response = await studentAPI.getAll(showDeleted.value, queryParams)
-      const data = response.data.results || response.data
-      students.value = data.map((item: unknown) => normalizeStudent(item as any))
+      // 添加分頁參數
+      const params = new URLSearchParams(queryParams)
+      params.append('page', currentPage.value.toString())
+      params.append('page_size', pageSize.value.toString())
+      
+      const response = await studentAPI.getAll(showDeleted.value, params.toString())
+      
+      // 判斷是否為分頁響應
+      if (response.data && typeof response.data === 'object' && 'results' in response.data) {
+        // 分頁響應
+        const paginatedData = response.data
+        students.value = paginatedData.results.map((item: unknown) => normalizeStudent(item as any))
+        totalCount.value = paginatedData.count
+      } else {
+        // 非分頁響應（向後兼容）
+        const data = Array.isArray(response.data) ? response.data : []
+        students.value = data.map((item: unknown) => normalizeStudent(item as any))
+        totalCount.value = students.value.length
+      }
+      
       usingMock.value = false
     } catch (error) {
       console.warn('獲取學生資料失敗，使用 mock 資料：', error)
       students.value = mockStudents.map(item => normalizeStudent(item as any))
+      totalCount.value = students.value.length
       usingMock.value = true
     } finally {
       loading.value = false
     }
+  }
+  
+  /**
+   * 設置當前頁碼
+   */
+  const setCurrentPage = (page: number): void => {
+    if (page >= 1 && (totalPages.value === 0 || page <= totalPages.value)) {
+      currentPage.value = page
+    }
+  }
+  
+  /**
+   * 設置每頁顯示數量
+   */
+  const setPageSize = (size: number): void => {
+    pageSize.value = size
+    currentPage.value = 1 // 重置到第一頁
   }
 
   /**
@@ -115,6 +156,13 @@ export function useStudentList() {
     deleteStudent,
     restoreStudent,
     updateStudent,
+    // 分頁相關
+    currentPage,
+    pageSize,
+    totalCount,
+    totalPages,
+    setCurrentPage,
+    setPageSize,
   }
 }
 

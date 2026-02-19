@@ -267,7 +267,7 @@ export class AccountService {
       is_active: user.isActive,
       must_change_password: user.mustChangePassword,
       student_id: user.studentProfile?.studentId || null,
-    };
+    } as User;
   }
 
   private getRoleDisplay(role: string): string {
@@ -357,66 +357,6 @@ export class AccountService {
       temp_role_display: effectiveTempRole ? this.getRoleDisplay(effectiveTempRole) : null,
       effective_role: effectiveRole,
       effective_role_display: this.getRoleDisplay(effectiveRole),
-    };
-  }
-
-  async impersonateUser(adminUserId: number, targetUserId: number): Promise<{
-    user: User;
-    access: string;
-    refresh: string;
-    message: string;
-  }> {
-    const adminUser = await this.prisma.accountCustomUser.findUnique({
-      where: { id: adminUserId },
-    });
-
-    if (!adminUser || adminUser.role !== 'ADMIN') {
-      throw new ForbiddenException('只有管理員可以模擬其他用戶');
-    }
-
-    const targetUser = await this.prisma.accountCustomUser.findUnique({
-      where: { id: targetUserId },
-      include: {
-        customRole: {
-          include: {
-            permissions: true,
-          },
-        },
-        studentProfile: true,
-      },
-    });
-
-    if (!targetUser) {
-      throw new NotFoundException('目標用戶不存在');
-    }
-
-    // 生成目標用戶的 token (包含角色資訊)
-    const payload = { sub: targetUser.id, username: targetUser.username, role: targetUser.role };
-    const access = this.jwtService.sign(payload, { expiresIn: '1h' });
-    const refresh = this.jwtService.sign(payload, { expiresIn: '7d' });
-
-    // TODO: 記錄操作到 audit log
-
-    const userDto: User = {
-      id: targetUser.id,
-      username: targetUser.username,
-      email: targetUser.email,
-      first_name: targetUser.firstName || '',
-      last_name: targetUser.lastName || '',
-      role: targetUser.role as any,
-      custom_role: targetUser.customRoleId,
-      custom_role_name: targetUser.customRole?.name || null,
-      is_staff: targetUser.isStaff,
-      is_active: targetUser.isActive,
-      must_change_password: targetUser.mustChangePassword,
-      student_id: targetUser.studentProfile?.studentId || null,
-    };
-
-    return {
-      user: userDto,
-      access,
-      refresh,
-      message: `已切換為 ${targetUser.username} 身分`,
     };
   }
 }

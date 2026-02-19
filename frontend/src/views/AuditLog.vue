@@ -91,9 +91,6 @@
               <td class="whitespace-nowrap px-4 py-4 text-sm text-slate-700">
                 <div>
                   <div>{{ log.user_username || '未知' }}</div>
-                  <div v-if="log.impersonated_by_username" class="text-xs text-amber-600 font-semibold mt-1">
-                    🔐 管理員代理操作（{{ log.impersonated_by_username }}）
-                  </div>
                 </div>
               </td>
               <td class="whitespace-nowrap px-4 py-4 text-sm text-slate-700">

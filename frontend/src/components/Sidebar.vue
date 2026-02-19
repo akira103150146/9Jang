@@ -29,37 +29,8 @@
             <p class="text-sm font-semibold text-slate-900 truncate">{{ currentUser.username }}</p>
             <p class="text-xs text-slate-500 truncate">
               {{ effectiveRoleDisplay }}
-              <span v-if="isImpersonating" class="text-amber-600">（模擬中）</span>
             </p>
           </div>
-        </div>
-        
-        <!-- 角色切換（僅管理員可見） -->
-        <div v-if="currentUser.role === 'ADMIN'" class="mt-3">
-          <label class="block text-xs font-semibold text-slate-700 mb-1 px-1">切換身分模擬</label>
-          <select
-            v-model="selectedRole"
-            @change="handleRoleSelect"
-            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-          >
-            <option value="">選擇身分...</option>
-            <option value="TEACHER">老師</option>
-            <option value="STUDENT">學生</option>
-            <option value="ACCOUNTANT">會計</option>
-          </select>
-        </div>
-
-        <!-- 停止模擬按鈕（當處於模擬狀態時顯示） -->
-        <div v-if="isImpersonating" class="mt-3">
-          <button
-            @click="stopImpersonation"
-            class="w-full flex items-center justify-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-100 transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-11.25a.75.75 0 00-1.5 0v2.5h-2.5a.75.75 0 000 1.5h2.5v2.5a.75.75 0 001.5 0v-2.5h2.5a.75.75 0 000-1.5h-2.5v-2.5z" clip-rule="evenodd" />
-            </svg>
-            停止模擬（返回管理員）
-          </button>
         </div>
       </div>
 
@@ -88,23 +59,14 @@
         </button>
       </div>
     </div>
-
-    <!-- 用戶選擇 Modal -->
-    <UserSelectModal 
-      :is-open="showUserSelectModal"
-      :role="targetRole"
-      @close="closeUserSelectModal"
-      @select="handleUserSelect"
-    />
   </aside>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { authAPI, setTokens, clearTokens } from '../services/api'
+import { authAPI, clearTokens } from '../services/api'
 import logoUrl from '../assets/logo_jiuzhang.png'
-import UserSelectModal from './UserSelectModal.vue'
 
 /**
  * 用戶類型
@@ -159,10 +121,6 @@ const route = useRoute()
 const router = useRouter()
 const currentUser: Ref<User | null> = ref(null)
 const userPermissions: Ref<Permission[]> = ref([])
-const selectedRole: Ref<string> = ref('')
-const showUserSelectModal: Ref<boolean> = ref(false)
-const targetRole: Ref<string> = ref('')
-const isImpersonating: Ref<boolean> = ref(false)
 
 const roleDisplayMap: Record<string, string> = {
   ADMIN: '系統管理員',
@@ -291,37 +249,22 @@ const fetchUserInfo = async (): Promise<void> => {
       return
     }
 
-    // 檢查是否在模擬中
-    if (localStorage.getItem('original_access_token')) {
-      isImpersonating.value = true
-    }
-
     // 從 localStorage 獲取用戶信息
     const userStr = localStorage.getItem('user')
     if (userStr) {
       currentUser.value = JSON.parse(userStr) as User
-      // Force disable password change prompt during impersonation
-      if (isImpersonating.value && currentUser.value.must_change_password) {
-        currentUser.value.must_change_password = false
-        // Update local storage to prevent prompt on refresh
-        localStorage.setItem('user', JSON.stringify(currentUser.value))
-      }
 
       // 從用戶資料中讀取權限（已在登入時包含）
-      userPermissions.value = currentUser.value.permissions || []
+      userPermissions.value = (currentUser.value.permissions as Permission[]) || []
     } else {
       // 嘗試從 API 獲取
       const { authAPI } = await import('../services/api')
       const response = await authAPI.getCurrentUser()
       currentUser.value = response.data as User
-      // Force disable password change prompt during impersonation
-      if (isImpersonating.value && currentUser.value.must_change_password) {
-        currentUser.value.must_change_password = false
-      }
       localStorage.setItem('user', JSON.stringify(currentUser.value))
 
       // 從用戶資料中讀取權限（已在 API 回應中包含）
-      userPermissions.value = currentUser.value.permissions || []
+      userPermissions.value = (currentUser.value.permissions as Permission[]) || []
     }
   } catch (error) {
     const axiosError = error as { response?: { status?: number } }
@@ -329,10 +272,6 @@ const fetchUserInfo = async (): Promise<void> => {
       clearTokens()
       currentUser.value = null
       userPermissions.value = []
-      // Also clear impersonation data if session invalid
-      localStorage.removeItem('original_access_token')
-      localStorage.removeItem('original_refresh_token')
-      localStorage.removeItem('original_user')
     } else {
       console.error('獲取用戶信息失敗:', error)
     }
@@ -341,130 +280,12 @@ const fetchUserInfo = async (): Promise<void> => {
 
 const handleLogout = async (): Promise<void> => {
   try {
-    // 如果是模擬中，直接登出會清除所有 token (包括原始管理員的)
-    // 這裡我們直接調用 API 並清除所有本地存儲
     await authAPI.logout()
   } catch (error) {
     console.error('登出失敗:', error)
   } finally {
     clearTokens()
-    // 清除模擬數據
-    localStorage.removeItem('original_access_token')
-    localStorage.removeItem('original_refresh_token')
-    localStorage.removeItem('original_user')
-    localStorage.removeItem('temp_role')
-
-    isImpersonating.value = false
-    selectedRole.value = ''
     router.push('/login')
-  }
-}
-
-const handleRoleSelect = (event: Event): void => {
-  const target = event.target as HTMLSelectElement
-  const role = target.value
-  if (!role) return
-
-  targetRole.value = role
-  showUserSelectModal.value = true
-  // Reset select to avoid state issues if modal cancelled
-  selectedRole.value = ''
-}
-
-const closeUserSelectModal = (): void => {
-  showUserSelectModal.value = false
-  targetRole.value = ''
-}
-
-const handleUserSelect = async (user: { id: number }): Promise<void> => {
-  try {
-    // 1. 獲取管理員 Token（如果處於模擬狀態，從 original_access_token 獲取）
-    let adminAccess = localStorage.getItem('original_access_token')
-    let adminRefresh = localStorage.getItem('original_refresh_token')
-    let adminUser = localStorage.getItem('original_user')
-    
-    // 如果沒有原始 token（第一次模擬），從當前 token 獲取
-    if (!adminAccess || !adminRefresh) {
-      adminAccess = localStorage.getItem('access_token')
-      adminRefresh = localStorage.getItem('refresh_token')
-      adminUser = localStorage.getItem('user')
-      
-      if (!adminAccess || !adminRefresh) {
-        alert('無法獲取當前管理員憑證')
-        return
-      }
-      
-      // 保存原始管理員 Token（第一次模擬時）
-      localStorage.setItem('original_access_token', adminAccess)
-      localStorage.setItem('original_refresh_token', adminRefresh)
-      localStorage.setItem('original_user', adminUser)
-    }
-    
-    // 2. 如果處於模擬狀態，先恢復管理員 Token 以便調用 API
-    const wasImpersonating = isImpersonating.value
-    if (wasImpersonating) {
-      setTokens(adminAccess, adminRefresh)
-    }
-    
-    // 3. 調用模擬 API（使用管理員 Token）
-    const response = await authAPI.impersonateUser(user.id)
-    
-    // 4. 設置新 Token
-    setTokens(response.data.access, response.data.refresh)
-    const impersonatedUser = response.data.user as User
-    impersonatedUser.must_change_password = false // Force disable password change for impersonation
-    localStorage.setItem('user', JSON.stringify(impersonatedUser))
-
-    // 5. 更新模擬狀態和用戶信息
-    isImpersonating.value = true
-    currentUser.value = impersonatedUser
-
-    // 6. 關閉 Modal
-    closeUserSelectModal()
-
-    // 7. 根據角色決定跳轉
-    if (impersonatedUser.role === 'STUDENT') {
-      window.location.href = '/student-home'
-    } else if (impersonatedUser.role === 'TEACHER') {
-      // 老師預設進題庫系統
-      router.push('/questions')
-    } else if (impersonatedUser.role === 'ACCOUNTANT') {
-      // 會計預設進學生管理
-      router.push('/students')
-    } else {
-      // 其他角色重新載入頁面
-      window.location.reload()
-    }
-  } catch (error) {
-    console.error('模擬用戶失敗:', error)
-    alert('模擬用戶失敗，請稍後再試')
-    closeUserSelectModal()
-  }
-}
-
-const stopImpersonation = (): void => {
-  const originalAccess = localStorage.getItem('original_access_token')
-  const originalRefresh = localStorage.getItem('original_refresh_token')
-  const originalUser = localStorage.getItem('original_user')
-  
-  if (originalAccess && originalRefresh) {
-    // 恢復原始 Token
-    setTokens(originalAccess, originalRefresh)
-    if (originalUser) {
-      localStorage.setItem('user', originalUser)
-    }
-    
-    // 清除模擬數據
-    localStorage.removeItem('original_access_token')
-    localStorage.removeItem('original_refresh_token')
-    localStorage.removeItem('original_user')
-    localStorage.removeItem('temp_role')
-    
-    // 回到老闆（ADMIN）預設頁：儀表板
-    window.location.href = '/'
-  } else {
-    // 如果找不到原始 Token，只能登出
-    handleLogout()
   }
 }
 

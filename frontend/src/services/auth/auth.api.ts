@@ -78,9 +78,5 @@ export const authAPI = {
       old_password: oldPassword,
       new_password: newPassword
     } as ChangePasswordRequestDto)
-  },
-
-  impersonateUser: async (userId: number): Promise<AxiosResponse<unknown>> => {
-    return api.post('/account/impersonate-user/', { user_id: userId })
   }
 }

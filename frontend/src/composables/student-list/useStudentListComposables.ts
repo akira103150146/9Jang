@@ -37,6 +37,12 @@ export function useStudentListComposables() {
     deleteStudent,
     restoreStudent,
     updateStudent,
+    currentPage,
+    pageSize,
+    totalCount,
+    totalPages,
+    setCurrentPage,
+    setPageSize,
   } = useStudentList()
 
   // 課程 composable
@@ -78,9 +84,16 @@ export function useStudentListComposables() {
     removeFilter,
     syncFiltersFromRoute: syncFiltersFromRouteComposable,
     getActiveFilters,
-  } = useStudentFilters(canSeeAccountingFeatures, async (queryString: string) => {
-    await fetchStudents(queryString)
-  })
+  } = useStudentFilters(
+    canSeeAccountingFeatures, 
+    async (queryString: string) => {
+      await fetchStudents(queryString)
+    },
+    () => {
+      // 當篩選條件改變時，重置到第一頁
+      setCurrentPage(1)
+    }
+  )
 
   // 報名管理 composable
   const enrollmentComposable = useStudentEnrollment(
@@ -221,6 +234,9 @@ export function useStudentListComposables() {
    * 處理顯示已刪除選項的變更
    */
   const handleShowDeletedChange = (): void => {
+    // 重置到第一頁
+    setCurrentPage(1)
+    
     const queryParams: Record<string, string> = {}
     Object.keys(route.query).forEach(key => {
       const value = route.query[key]
@@ -253,6 +269,14 @@ export function useStudentListComposables() {
     deleteStudent,
     restoreStudent,
     updateStudent,
+    
+    // 分頁
+    currentPage,
+    pageSize,
+    totalCount,
+    totalPages,
+    setCurrentPage,
+    setPageSize,
 
     // 課程
     courses,

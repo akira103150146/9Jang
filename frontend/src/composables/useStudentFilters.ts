@@ -17,7 +17,8 @@ export interface StudentFilters {
  */
 export function useStudentFilters(
   canSeeAccountingFeatures: Ref<boolean>,
-  onFiltersChange: (queryString: string) => Promise<void>
+  onFiltersChange: (queryString: string) => Promise<void>,
+  resetToFirstPage?: () => void
 ) {
   const router = useRouter()
   const route = useRoute()
@@ -60,6 +61,11 @@ export function useStudentFilters(
     
     isFiltering.value = true
     try {
+      // 篩選時重置到第一頁
+      if (resetToFirstPage) {
+        resetToFirstPage()
+      }
+      
       const query = buildQueryParams()
       await router.replace({ path: '/students', query })
       
@@ -79,6 +85,11 @@ export function useStudentFilters(
    * 清除所有篩選
    */
   const clearFilters = (): void => {
+    // 篩選時重置到第一頁
+    if (resetToFirstPage) {
+      resetToFirstPage()
+    }
+    
     filters.value = {
       name: '',
       phone: '',

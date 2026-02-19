@@ -142,20 +142,6 @@ export class AccountController {
     return this.accountService.resetRole(req.user.id);
   }
 
-  @Post('impersonate-user')
-  @Permission({ resource: '/account/impersonate-user' })
-  async impersonateUser(
-    @Request() req: AuthRequest,
-    @Body() body: { user_id: number },
-  ): Promise<{
-    user: User;
-    access: string;
-    refresh: string;
-    message: string;
-  }> {
-    return this.accountService.impersonateUser(req.user.id, body.user_id);
-  }
-
   @Post('change-password')
   @Permission({ resource: '/account/change-password' })
   @ApiBearerAuth('JWT-auth')

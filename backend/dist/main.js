@@ -21,7 +21,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.AccountController = void 0;
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
@@ -57,9 +57,6 @@ let AccountController = class AccountController {
     }
     async resetRole(req) {
         return this.accountService.resetRole(req.user.id);
-    }
-    async impersonateUser(req, body) {
-        return this.accountService.impersonateUser(req.user.id, body.user_id);
     }
     async changePassword(req, changePasswordDto) {
         await this.accountService.changePassword(req.user.id, changePasswordDto);
@@ -165,15 +162,6 @@ __decorate([
     __metadata("design:returntype", typeof (_o = typeof Promise !== "undefined" && Promise) === "function" ? _o : Object)
 ], AccountController.prototype, "resetRole", null);
 __decorate([
-    (0, common_1.Post)('impersonate-user'),
-    (0, permission_guard_1.Permission)({ resource: '/account/impersonate-user' }),
-    __param(0, (0, common_1.Request)()),
-    __param(1, (0, common_1.Body)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_p = typeof request_types_1.AuthRequest !== "undefined" && request_types_1.AuthRequest) === "function" ? _p : Object, Object]),
-    __metadata("design:returntype", typeof (_q = typeof Promise !== "undefined" && Promise) === "function" ? _q : Object)
-], AccountController.prototype, "impersonateUser", null);
-__decorate([
     (0, common_1.Post)('change-password'),
     (0, permission_guard_1.Permission)({ resource: '/account/change-password' }),
     (0, swagger_1.ApiBearerAuth)('JWT-auth'),
@@ -184,8 +172,8 @@ __decorate([
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Body)(new nestjs_zod_1.ZodValidationPipe(shared_2.ChangePasswordRequestSchema))),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_r = typeof request_types_1.AuthRequest !== "undefined" && request_types_1.AuthRequest) === "function" ? _r : Object, typeof (_s = typeof shared_1.ChangePasswordRequestDto !== "undefined" && shared_1.ChangePasswordRequestDto) === "function" ? _s : Object]),
-    __metadata("design:returntype", typeof (_t = typeof Promise !== "undefined" && Promise) === "function" ? _t : Object)
+    __metadata("design:paramtypes", [typeof (_p = typeof request_types_1.AuthRequest !== "undefined" && request_types_1.AuthRequest) === "function" ? _p : Object, typeof (_q = typeof shared_1.ChangePasswordRequestDto !== "undefined" && shared_1.ChangePasswordRequestDto) === "function" ? _q : Object]),
+    __metadata("design:returntype", typeof (_r = typeof Promise !== "undefined" && Promise) === "function" ? _r : Object)
 ], AccountController.prototype, "changePassword", null);
 __decorate([
     (0, common_1.Get)('users'),
@@ -214,7 +202,7 @@ __decorate([
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
-    __metadata("design:returntype", typeof (_u = typeof Promise !== "undefined" && Promise) === "function" ? _u : Object)
+    __metadata("design:returntype", typeof (_s = typeof Promise !== "undefined" && Promise) === "function" ? _s : Object)
 ], AccountController.prototype, "getUser", null);
 __decorate([
     (0, common_1.Get)('roles'),
@@ -634,51 +622,6 @@ let AccountService = class AccountService {
             temp_role_display: effectiveTempRole ? this.getRoleDisplay(effectiveTempRole) : null,
             effective_role: effectiveRole,
             effective_role_display: this.getRoleDisplay(effectiveRole),
-        };
-    }
-    async impersonateUser(adminUserId, targetUserId) {
-        const adminUser = await this.prisma.accountCustomUser.findUnique({
-            where: { id: adminUserId },
-        });
-        if (!adminUser || adminUser.role !== 'ADMIN') {
-            throw new common_1.ForbiddenException('只有管理員可以模擬其他用戶');
-        }
-        const targetUser = await this.prisma.accountCustomUser.findUnique({
-            where: { id: targetUserId },
-            include: {
-                customRole: {
-                    include: {
-                        permissions: true,
-                    },
-                },
-                studentProfile: true,
-            },
-        });
-        if (!targetUser) {
-            throw new common_1.NotFoundException('目標用戶不存在');
-        }
-        const payload = { sub: targetUser.id, username: targetUser.username, role: targetUser.role };
-        const access = this.jwtService.sign(payload, { expiresIn: '1h' });
-        const refresh = this.jwtService.sign(payload, { expiresIn: '7d' });
-        const userDto = {
-            id: targetUser.id,
-            username: targetUser.username,
-            email: targetUser.email,
-            first_name: targetUser.firstName || '',
-            last_name: targetUser.lastName || '',
-            role: targetUser.role,
-            custom_role: targetUser.customRoleId,
-            custom_role_name: targetUser.customRole?.name || null,
-            is_staff: targetUser.isStaff,
-            is_active: targetUser.isActive,
-            must_change_password: targetUser.mustChangePassword,
-            student_id: targetUser.studentProfile?.studentId || null,
-        };
-        return {
-            user: userDto,
-            access,
-            refresh,
-            message: `已切換為 ${targetUser.username} 身分`,
         };
     }
 };
@@ -18912,7 +18855,6 @@ async function bootstrap() {
             'x-csrftoken',
             'x-requested-with',
             'x-temp-role',
-            'x-impersonated-by',
         ],
         exposedHeaders: ['content-length', 'content-type'],
         preflightContinue: false,

@@ -114,22 +114,20 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
-  // 檢查管理員是否在模擬狀態下訪問老師專用頁面
-  if (user.role === 'ADMIN' && effectiveRole === 'ADMIN') {
-    // 管理員在非模擬狀態下，不允許訪問老師專用頁面
-    // 例外：允許管理員以唯讀模式查看資源
+  // 管理員不允許訪問老師專用頁面
+  if (user.role === 'ADMIN') {
     const teacherOnlyPaths = ['/questions', '/templates']
     const teacherOnlyResourcePaths = ['/resources/new', '/resources/edit']
 
     if (teacherOnlyPaths.some((path) => to.path.startsWith(path))) {
-      toast.info('管理員需要先切換到老師身分才能訪問此功能')
+      toast.info('管理員無法訪問此功能，請使用老師帳號登入')
       next('/')
       return
     }
 
-    // 檢查資源相關路徑（允許查看，但不允許新增和編輯）
+    // 檢查資源相關路徑（不允許新增和編輯）
     if (teacherOnlyResourcePaths.some((path) => to.path.startsWith(path))) {
-      toast.info('管理員需要先切換到老師身分才能編輯資源')
+      toast.info('管理員無法編輯資源，請使用老師帳號登入')
       next('/')
       return
     }
