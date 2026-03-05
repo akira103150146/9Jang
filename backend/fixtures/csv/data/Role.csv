@@ -9,3 +9,4 @@ id,code,name,description,is_active
 4,STAFF_ADMIN,行政人員,可管理學生資料和財務,true
 5,PARENT,學生家長,可查看學生資料和繳費記錄,true
 6,STUDENT,學生,只能查看自己的資料,true
+7,ACCOUNTANT,會計,可管理財務和訂單,true

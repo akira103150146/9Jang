@@ -45,4 +45,4 @@ student039,password123,冠緯,劉,student039@example.com,@Role:code:STUDENT
 student040,password123,云雅,李,student040@example.com,@Role:code:STUDENT
 teacher001,password123,永明,郭,teacher001@example.com,@Role:code:TEACHER_FULL
 teacher002,password123,智凱,莊,teacher002@example.com,@Role:code:TEACHER_FULL
-teacher003,password123,如吟,陳,teacher003@example.com,@Role:code:TEACHER_FULL
+teacher003,password123,如吟,陳,teacher003@example.com,@Role:code:ACCOUNTANT
