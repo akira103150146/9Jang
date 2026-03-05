@@ -130,7 +130,7 @@ export class RolesService {
   /**
    * 建立角色 (可同時設定權限)
    */
-  async create(data: CreateRoleDto & { permissions?: CreateRolePermissionDto[] }) {
+  async create(data: CreateRoleDto) {
     // 檢查 code 是否重複
     if (data.code) {
       const existing = await this.prisma.accountRole.findUnique({

@@ -9,10 +9,10 @@ import * as cors from 'cors';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  
+
   // 啟用 CORS - 使用原生 cors 中間件
   const isDevelopment = process.env.NODE_ENV !== 'production';
-  
+
   // CORS 設定
   const corsOptions: cors.CorsOptions = {
     origin: (origin, callback) => {
@@ -56,7 +56,7 @@ async function bootstrap() {
     preflightContinue: false,
     optionsSuccessStatus: 204,
   };
-  
+
   app.use(cors(corsOptions));
 
   // 使用 Zod 驗證（從共享 schema）

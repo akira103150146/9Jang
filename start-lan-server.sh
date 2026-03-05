@@ -8,11 +8,22 @@ WSL_IP=$(hostname -I | awk '{print $1}')
 echo "📡 WSL IP 地址: $WSL_IP"
 echo ""
 
-echo "⚠️  請先在 Windows PowerShell (系統管理員) 中執行:"
-echo "   .\wsl-port-forward.ps1"
-echo ""
-echo "按 Enter 繼續啟動應用程式..."
-read
+echo "🔍 檢查端口轉發設置..."
+PORT_FORWARD_CHECK=$(powershell.exe -Command "netsh interface portproxy show v4tov4" 2>/dev/null | grep -E "5173|3000" || echo "")
+
+if [ -z "$PORT_FORWARD_CHECK" ]; then
+    echo ""
+    echo "⚠️  警告: 未檢測到端口轉發設置！"
+    echo ""
+    echo "請先在 Windows PowerShell (系統管理員) 中執行:"
+    echo "   .\wsl-port-forward.ps1"
+    echo ""
+    echo "如果您已經執行過，按 Enter 繼續..."
+    read
+else
+    echo "✅ 端口轉發已設置"
+    echo ""
+fi
 
 if [ ! -f "package.json" ]; then
     echo "❌ 錯誤: 請在專案根目錄執行此腳本"

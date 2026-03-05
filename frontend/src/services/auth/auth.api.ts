@@ -22,25 +22,29 @@ import { logger } from '../../utils/logger'
 
 export const authAPI = {
   login: async (email: string, password: string): Promise<AxiosResponse<LoginResponse>> => {
-    const response = await api.post<LoginResponse>('/account/login/', {
-      email,
-      password
-    } as LoginRequestDto)
+    try {
+      const response = await api.post<LoginResponse>('/account/login/', {
+        email,
+        password
+      } as LoginRequestDto)
 
-    // 驗證響應
-    const validated = LoginResponseSchema.parse(response.data)
+      // 驗證響應
+      const validated = LoginResponseSchema.parse(response.data)
 
-    // 保存 token 和用戶信息
-    if (validated.access) {
-      setTokens(validated.access, validated.refresh)
-      if (validated.user) {
-        localStorage.setItem('user', JSON.stringify(validated.user))
+      // 保存 token 和用戶信息
+      if (validated.access) {
+        setTokens(validated.access, validated.refresh)
+        if (validated.user) {
+          localStorage.setItem('user', JSON.stringify(validated.user))
+        }
       }
-    }
 
-    return {
-      ...response,
-      data: validated
+      return {
+        ...response,
+        data: validated
+      }
+    } catch (error) {
+      throw error;
     }
   },
 

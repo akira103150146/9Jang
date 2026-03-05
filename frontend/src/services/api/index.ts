@@ -18,6 +18,7 @@ export const api: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
   withCredentials: true, // 允許發送 cookies（用於 session 支持）
+  timeout: 30000, // 30 秒超時
 })
 
 // 配置攔截器

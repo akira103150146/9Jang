@@ -5,8 +5,12 @@
 $wslIp = (wsl hostname -I).Trim()
 Write-Host "WSL IP: $wslIp"
 
-# 獲取 Windows IP 地址
-$windowsIp = (Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias "Wi-Fi" | Select-Object -First 1).IPAddress
+# 獲取 Windows IP 地址（自動偵測）
+$windowsIp = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object {
+    $_.IPAddress -notlike "127.*" -and 
+    $_.IPAddress -notlike "169.254.*" -and 
+    $_.PrefixOrigin -eq "Dhcp"
+} | Select-Object -First 1).IPAddress
 Write-Host "Windows IP: $windowsIp"
 
 # 定義需要轉發的端口
