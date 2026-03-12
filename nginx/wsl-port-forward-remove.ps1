@@ -1,7 +1,7 @@
 # 清除 WSL 端口轉發規則
 # 請以系統管理員身分在 Windows PowerShell 中執行此腳本
 
-$ports = @(3000, 5173)
+$ports = @(80)
 
 Write-Host "正在清除端口轉發規則..."
 

@@ -14,7 +14,7 @@ $windowsIp = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object {
 Write-Host "Windows IP: $windowsIp"
 
 # 定義需要轉發的端口
-$ports = @(3000, 5173)
+$ports = @(8080)
 
 foreach ($port in $ports) {
     Write-Host "正在設定端口 $port 的轉發..."
@@ -46,7 +46,7 @@ foreach ($port in $ports) {
 }
 
 Write-Host "`n設定完成！"
-Write-Host "學生可以透過以下網址訪問:"
-Write-Host "前端: http://${windowsIp}:5173"
-Write-Host "後端 API: http://${windowsIp}:3000/api"
-Write-Host "Swagger 文檔: http://${windowsIp}:3000/api/docs"
+# Write-Host "學生可以透過以下網址訪問:"
+# Write-Host "前端: http://${windowsIp}:5173"
+# Write-Host "後端 API: http://${windowsIp}:3000/api"
+# Write-Host "Swagger 文檔: http://${windowsIp}:3000/api/docs"
