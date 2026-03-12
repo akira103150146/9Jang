@@ -14,7 +14,7 @@ $windowsIp = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object {
 Write-Host "Windows IP: $windowsIp"
 
 # 定義需要轉發的端口
-$ports = @(8080)
+$ports = @(80)
 
 foreach ($port in $ports) {
     Write-Host "正在設定端口 $port 的轉發..."

@@ -6,7 +6,7 @@ services:
     restart: unless-stopped
     ports:
       # 左邊是外面的 Port : 右邊是 Nginx 內部的 Port
-      - "8080:80" 
+      - "80:80" 
       - "443:443"
     extra_hosts:
       - "host.docker.internal:host-gateway"
